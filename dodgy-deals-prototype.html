@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dodgy Deal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --dodgy-xhigh: #FF6DB6;
+    --dodgy-high:  #FFB3D2;
+    --dodgy-med:   #EDCDE8;
+    --dodgy-low:   #F5E0F2;
+    --fair:        #C8DDED;
+    --saver:       #B0D8E6;
+    --white: #fff;
+    --black: #000;
+    --gray-bg: #F0F0F0;
+    --gray-border: #D0D0D0;
+    --gray-text: #666;
+    --nw-red: #D62127;
+    --pns-yellow: #FDDB00;
+    --ww-green: #1D9247;
+    --fs-orange: #E8560A;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--black);
+    background: #fff;
+    min-height: 100vh;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 18px 48px 0;
+    background: #fff;
+  }
+  .header-top {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .header-greeting {
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+  }
+  .header-greeting:hover { text-decoration: underline; }
+  .header-title {
+    text-align: center;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .header-subtitle {
+    text-align: center;
+    font-size: 15px;
+    color: #333;
+    margin-top: 6px;
+    margin-bottom: 14px;
+  }
+  .header-divider {
+    border: none;
+    border-top: 1.5px solid #000;
+    margin: 0 -48px;
+  }
+
+  /* nav dropdown */
+  .nav-dropdown {
+    position: absolute;
+    right: 0;
+    top: 28px;
+    background: #e8e8e8;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    z-index: 100;
+    overflow: hidden;
+    display: none;
+    min-width: 180px;
+  }
+  .nav-dropdown.open { display: block; }
+  .nav-dropdown a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .nav-dropdown a:hover { background: #d8d8d8; }
+  .nav-badge {
+    background: #000;
+    color: #fff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── STORE SELECTOR ── */
+  .store-selector {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    padding: 20px 48px 0;
+    flex-wrap: wrap;
+  }
+  .store-option {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .store-option input[type="radio"] {
+    accent-color: #000;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 16px 48px 0;
+  }
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: #E8E8E8;
+    border-radius: 999px;
+    padding: 10px 18px;
+    width: 100%;
+    max-width: 520px;
+    gap: 8px;
+  }
+  .search-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    outline: none;
+    color: #333;
+  }
+  .search-bar input::placeholder { color: #888; }
+  .search-divider {
+    width: 1px;
+    height: 18px;
+    background: #aaa;
+    margin: 0 4px;
+  }
+  .search-icon {
+    cursor: pointer;
+    color: #555;
+    font-size: 16px;
+    line-height: 1;
+    transition: color .15s;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+  }
+  .search-icon:hover { color: #000; }
+
+  /* ── SECTION HEADING ── */
+  .section-heading {
+    font-size: clamp(22px, 3.5vw, 32px);
+    font-weight: 800;
+    text-align: center;
+    margin: 28px 48px 0;
+  }
+
+  /* ── CARD SECTION ── */
+  .card-section {
+    background: var(--gray-bg);
+    margin: 14px 48px 48px;
+    border-radius: 12px;
+    padding: 20px 24px 28px;
+  }
+  .card-section-subtitle {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 20px;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+  .product-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 12px 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .store-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 9px;
+    line-height: 1.1;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .badge-nw  { background: var(--nw-red); color: #fff; }
+  .badge-pns { background: var(--pns-yellow); color: #000; }
+  .badge-ww  { background: var(--ww-green); color: #fff; }
+  .badge-fs  { background: var(--fs-orange); color: #fff; }
+
+  .bell-icon {
+    font-size: 18px;
+    cursor: pointer;
+    color: #000;
+    opacity: 0.75;
+    transition: opacity .15s;
+    user-select: none;
+  }
+  .bell-icon:hover { opacity: 1; }
+
+  .card-image {
+    background: #e8e8e8;
+    border-radius: 6px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    margin: 4px 0;
+  }
+  .card-price {
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .card-btn {
+    margin-top: 4px;
+    padding: 7px 14px;
+    border: 1.5px solid #000;
+    border-radius: 999px;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    width: 100%;
+  }
+  .card-btn:hover { background: #000; color: #fff; }
+
+  /* see all */
+  .see-all-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 4px;
+  }
+  .see-all-btn {
+    padding: 13px 52px;
+    border: 2px solid #000;
+    border-radius: 999px;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .see-all-btn:hover { background: #000; color: #fff; }
+
+  /* ── RESULT SCREEN ── */
+  .result-level {
+    text-align: center;
+    font-size: clamp(18px, 3vw, 26px);
+    font-weight: 700;
+    margin: 24px 48px 12px;
+  }
+  .result-section {
+    margin: 0 48px 48px;
+    border-radius: 16px;
+    padding: 28px 32px;
+    transition: background .3s;
+  }
+  .result-headline {
+    font-size: clamp(16px, 2.5vw, 22px);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .result-best-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 18px;
+  }
+  .price-comparison {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .price-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 80px;
+  }
+  .store-logo-lg {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+  }
+  .price-amount {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .price-tag {
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+  }
+  .result-verdict {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 14px 0 20px;
+    line-height: 1.5;
+  }
+  .result-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .result-product-img {
+    background: rgba(255,255,255,0.7);
+    border-radius: 10px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+  }
+  .result-chart {
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+    position: relative;
+  }
+  /* simple bar chart */
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 100px;
+    position: relative;
+  }
+  .chart-bar {
+    width: 18px;
+    background: #000;
+    border-radius: 2px 2px 0 0;
+    transition: height .4s;
+  }
+  .chart-baseline {
+    width: 100%;
+    height: 1.5px;
+    background: #000;
+    margin-top: 2px;
+  }
+  .chart-dollar {
+    position: absolute;
+    top: 0;
+    right: -18px;
+    font-size: 22px;
+    font-weight: 900;
+  }
+  .chart-trend-arrow {
+    position: absolute;
+    top: 8px;
+    right: -14px;
+    font-size: 20px;
+  }
+  .notify-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0,0,0,0.15);
+  }
+  .notify-text {
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* toggle */
+  .toggle {
+    width: 44px;
+    height: 24px;
+    background: #000;
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  .toggle.off { background: #ccc; }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+  }
+  .toggle.off::after { transform: translateX(0); }
+  .toggle:not(.off)::after { transform: translateX(20px); }
+
+  /* ── DEMO CONTROLS ── */
+  .demo-controls {
+    background: #1a1a1a;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: sticky;
+    bottom: 0;
+    z-index: 200;
+  }
+  .demo-label {
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-right: 4px;
+  }
+  .demo-btn {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1.5px solid #555;
+    background: transparent;
+    color: #ccc;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .demo-btn:hover, .demo-btn.active { background: #fff; color: #000; border-color: #fff; }
+
+  /* ── SEARCH RESULTS HEADING ── */
+  .results-heading {
+    font-size: clamp(22px, 3.5vw, 30px);
+    font-weight: 800;
+    text-align: center;
+    margin: 22px 48px 0;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 720px) {
+    .header { padding: 14px 20px 0; }
+    .header-divider { margin: 0 -20px; }
+    .store-selector { gap: 16px; padding: 16px 20px 0; }
+    .search-wrap { padding: 14px 20px 0; }
+    .section-heading { margin: 22px 20px 0; }
+    .card-section { margin: 12px 20px 32px; padding: 16px 16px 20px; }
+    .result-level { margin: 18px 20px 10px; }
+    .result-section { margin: 0 20px 32px; padding: 20px 18px; }
+    .result-bottom { grid-template-columns: 1fr; }
+    .results-heading { margin: 18px 20px 0; }
+    .price-comparison { gap: 12px; }
+    .store-logo-lg { width: 56px; height: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 1: HOMEPAGE
+═══════════════════════════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="header">
+    <div class="header-top">
+      <span class="header-greeting" id="greeting-home" onclick="toggleNav('home')">Hi Jay ▾</span>
+      <div class="nav-dropdown" id="nav-home">
+        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
+        <a onclick="goTo('screen-home')">Your checked items</a>
+        <a>FAQs</a>
+      </div>
+    </div>
+    <div class="header-title">Dodgy Deal</div>
+    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
+    <hr class="header-divider">
+  </div>
+
+  <div class="store-selector">
+    <label class="store-option">
+      <input type="radio" name="store-home" value="nw" checked> New World
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-home" value="pns"> PAK'n SAVE
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-home" value="ww"> Woolworths
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-home" value="fs"> FourSquare
+    </label>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Butter" onkeydown="if(event.key==='Enter') doSearch()">
+      <button class="search-icon" onclick="clearSearch()" title="Clear">✕</button>
+      <div class="search-divider"></div>
+      <button class="search-icon" onclick="doSearch()" title="Voice search">🎙</button>
+      <button class="search-icon" onclick="doSearch()" title="Camera">📷</button>
+    </div>
+  </div>
+
+  <div class="section-heading">Real savers from your tracked items</div>
+
+  <div class="card-section">
+    <div class="card-section-subtitle">Tracked items currently priced lower than expected and among the best offers we found.</div>
+    <div class="card-grid" id="home-cards"></div>
+    <div class="see-all-wrap">
+      <button class="see-all-btn" onclick="goTo('screen-tracked')">See all</button>
+    </div>
+  </div>
+
+  <div class="demo-controls">
+    <span class="demo-label">Navigate →</span>
+    <button class="demo-btn active" onclick="goTo('screen-home')">Home</button>
+    <button class="demo-btn" onclick="doSearch()">Search Results</button>
+    <button class="demo-btn" onclick="showResult('xhigh')">Extremely High</button>
+    <button class="demo-btn" onclick="showResult('high')">High</button>
+    <button class="demo-btn" onclick="showResult('med')">Medium</button>
+    <button class="demo-btn" onclick="showResult('low')">Low</button>
+    <button class="demo-btn" onclick="showResult('fair')">Looks Fair</button>
+    <button class="demo-btn" onclick="showResult('saver')">Real Saver</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 2: SEARCH RESULTS
+═══════════════════════════════════════ -->
+<div class="screen" id="screen-results">
+  <div class="header">
+    <div class="header-top">
+      <span class="header-greeting" id="greeting-results" onclick="toggleNav('results')">Hi Jay ▾</span>
+      <div class="nav-dropdown" id="nav-results">
+        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
+        <a onclick="goTo('screen-home')">Your checked items</a>
+        <a>FAQs</a>
+      </div>
+    </div>
+    <div class="header-title">Dodgy Deal</div>
+    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
+    <hr class="header-divider">
+  </div>
+
+  <div class="store-selector">
+    <label class="store-option">
+      <input type="radio" name="store-results" value="nw" checked> New World
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-results" value="pns"> PAK'n SAVE
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-results" value="ww"> Woolworths
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-results" value="fs"> FourSquare
+    </label>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-bar">
+      <input type="text" id="search-input-2" value="Butter" onkeydown="if(event.key==='Enter') doSearch()">
+      <button class="search-icon" onclick="clearSearch2()" title="Clear">✕</button>
+      <div class="search-divider"></div>
+      <button class="search-icon" title="Voice">🎙</button>
+      <button class="search-icon" title="Camera">📷</button>
+    </div>
+  </div>
+
+  <div class="results-heading" id="results-heading">Butter Specials at New World</div>
+
+  <div class="card-section">
+    <div class="card-section-subtitle">Check whether that supermarket deal is really worth it.</div>
+    <div class="card-grid" id="results-cards"></div>
+  </div>
+
+  <div class="demo-controls">
+    <span class="demo-label">Navigate →</span>
+    <button class="demo-btn" onclick="goTo('screen-home')">Home</button>
+    <button class="demo-btn active" onclick="doSearch()">Search Results</button>
+    <button class="demo-btn" onclick="showResult('xhigh')">Extremely High</button>
+    <button class="demo-btn" onclick="showResult('high')">High</button>
+    <button class="demo-btn" onclick="showResult('med')">Medium</button>
+    <button class="demo-btn" onclick="showResult('low')">Low</button>
+    <button class="demo-btn" onclick="showResult('fair')">Looks Fair</button>
+    <button class="demo-btn" onclick="showResult('saver')">Real Saver</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 3: DEAL RESULT
+═══════════════════════════════════════ -->
+<div class="screen" id="screen-result">
+  <div class="header">
+    <div class="header-top">
+      <span class="header-greeting" id="greeting-result" onclick="toggleNav('result')">Hi Jay ▾</span>
+      <div class="nav-dropdown" id="nav-result">
+        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
+        <a onclick="goTo('screen-home')">Your checked items</a>
+        <a>FAQs</a>
+      </div>
+    </div>
+    <div class="header-title">Dodgy Deal</div>
+    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
+    <hr class="header-divider">
+  </div>
+
+  <div class="store-selector">
+    <label class="store-option">
+      <input type="radio" name="store-result" value="nw" checked> New World
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-result" value="pns"> PAK'n SAVE
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-result" value="ww"> Woolworths
+    </label>
+    <label class="store-option">
+      <input type="radio" name="store-result" value="fs"> FourSquare
+    </label>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-bar">
+      <input type="text" id="search-input-3" value="Butter">
+      <button class="search-icon" title="Clear">✕</button>
+      <div class="search-divider"></div>
+      <button class="search-icon" title="Voice">🎙</button>
+      <button class="search-icon" title="Camera">📷</button>
+    </div>
+  </div>
+
+  <div class="result-level" id="result-level-label"></div>
+
+  <div class="result-section" id="result-section">
+    <div class="result-headline" id="result-headline"></div>
+    <div class="result-best-label" id="result-best-label"></div>
+    <div class="price-comparison" id="price-comparison"></div>
+    <div class="result-verdict" id="result-verdict"></div>
+    <div class="result-bottom">
+      <div class="result-product-img">Product Image</div>
+      <div class="result-chart">
+        <div class="chart-bars" id="chart-bars">
+          <div class="chart-bar" style="height:35px"></div>
+          <div class="chart-bar" style="height:48px"></div>
+          <div class="chart-bar" style="height:42px"></div>
+          <div class="chart-bar" style="height:58px"></div>
+          <div class="chart-bar" style="height:65px"></div>
+          <div class="chart-bar" style="height:78px"></div>
+          <div class="chart-bar" style="height:88px"></div>
+        </div>
+        <div class="chart-baseline"></div>
+        <span style="font-size:22px;position:absolute;top:4px;right:4px;">💲</span>
+      </div>
+    </div>
+    <div class="notify-row">
+      <div class="notify-text">
+        🔔 Notify me when any supermarket offers a genuinely good price.
+      </div>
+      <div class="toggle" id="notify-toggle" onclick="this.classList.toggle('off')"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;margin: 0 48px 40px;">
+    <button class="see-all-btn" onclick="doSearch()">Check another deal</button>
+  </div>
+
+  <div class="demo-controls">
+    <span class="demo-label">Navigate →</span>
+    <button class="demo-btn" onclick="goTo('screen-home')">Home</button>
+    <button class="demo-btn" onclick="doSearch()">Search Results</button>
+    <button class="demo-btn" id="dbn-xhigh" onclick="showResult('xhigh')">Extremely High</button>
+    <button class="demo-btn" id="dbn-high" onclick="showResult('high')">High</button>
+    <button class="demo-btn" id="dbn-med" onclick="showResult('med')">Medium</button>
+    <button class="demo-btn" id="dbn-low" onclick="showResult('low')">Low</button>
+    <button class="demo-btn" id="dbn-fair" onclick="showResult('fair')">Looks Fair</button>
+    <button class="demo-btn" id="dbn-saver" onclick="showResult('saver')">Real Saver</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 4: TRACKED ITEMS
+═══════════════════════════════════════ -->
+<div class="screen" id="screen-tracked">
+  <div class="header">
+    <div class="header-top">
+      <span class="header-greeting" onclick="toggleNav('tracked2')">Hi Jay ▾</span>
+      <div class="nav-dropdown" id="nav-tracked2">
+        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
+        <a onclick="goTo('screen-home')">Your checked items</a>
+        <a>FAQs</a>
+      </div>
+    </div>
+    <div class="header-title">Dodgy Deal</div>
+    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
+    <hr class="header-divider">
+  </div>
+
+  <div class="section-heading" style="text-align:left;margin-bottom:0;">Your Tracked Items</div>
+  <div style="margin:6px 48px 0;color:#555;font-size:14px;">Real Savers only — items currently priced lower than expected.</div>
+
+  <div class="card-section" style="margin-top:16px;">
+    <div class="card-grid" id="tracked-cards"></div>
+  </div>
+
+  <div class="demo-controls">
+    <span class="demo-label">Navigate →</span>
+    <button class="demo-btn" onclick="goTo('screen-home')">Home</button>
+    <button class="demo-btn" onclick="doSearch()">Search Results</button>
+    <button class="demo-btn" onclick="showResult('xhigh')">Extremely High</button>
+    <button class="demo-btn" onclick="showResult('high')">High</button>
+    <button class="demo-btn" onclick="showResult('med')">Medium</button>
+    <button class="demo-btn" onclick="showResult('low')">Low</button>
+    <button class="demo-btn" onclick="showResult('fair')">Looks Fair</button>
+    <button class="demo-btn active" onclick="goTo('screen-tracked')">Real Saver</button>
+  </div>
+</div>
+
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const STORES = {
+  nw:  { name: 'New World',   cls: 'badge-nw',  label: 'NW',              price: '$12.00' },
+  pns: { name: "PAK'n SAVE",  cls: 'badge-pns', label: "PAK'n\nSAVE",     price: '$10.90' },
+  ww:  { name: 'Woolworths',  cls: 'badge-ww',  label: '⚛',               price: '$12.50' },
+  fs:  { name: 'FourSquare',  cls: 'badge-fs',  label: '4SQ',             price: '$13.00' },
+};
+
+const PRODUCTS = [
+  { name: 'Anchor Butter 500g',    price: '$7.50',  store: 'pns' },
+  { name: 'Meadow Fresh Milk 2L',  price: '$3.80',  store: 'nw'  },
+  { name: 'Vogel Bread',           price: '$5.20',  store: 'pns' },
+  { name: 'Free Range Eggs 12pk',  price: '$8.00',  store: 'ww'  },
+  { name: 'Mainland Cheese 400g',  price: '$9.50',  store: 'nw'  },
+  { name: 'Milo 400g',             price: '$6.00',  store: 'pns' },
+];
+
+const LEVELS = {
+  xhigh: {
+    bg: 'var(--dodgy-xhigh)',
+    levelLabel: 'Dodgyness level: EXTREMELY HIGH',
+    headline: 'You can get this item for less elsewhere',
+    bestLabel: 'Best price',
+    bestStore: 'pns',
+    verdict: 'AND price is 5% HIGHER than expected given price history and inflation.',
+    prices: [
+      { store: 'pns', amount: '$10.90', tag: 'Best price'   },
+      { store: 'nw',  amount: '$12.00', tag: 'Your deal'    },
+      { store: 'ww',  amount: '$12.00', tag: ''             },
+    ],
+    chartHeights: [35,44,52,60,55,70,88],
+  },
+  high: {
+    bg: 'var(--dodgy-high)',
+    levelLabel: 'Dodgyness level: HIGH',
+    headline: "You've found the best available price",
+    bestLabel: 'Your deal — Best price',
+    bestStore: 'nw',
+    verdict: "BUT price is 5% HIGHER than expected given price history and inflation.",
+    prices: [
+      { store: 'nw',  amount: '$10.90', tag: 'Your deal'    },
+      { store: 'pns', amount: '$12.00', tag: ''             },
+      { store: 'ww',  amount: '$12.00', tag: ''             },
+    ],
+    chartHeights: [40,52,48,62,70,80,85],
+  },
+  med: {
+    bg: 'var(--dodgy-med)',
+    levelLabel: 'Dodgyness level: MEDIUM',
+    headline: 'You can get this item for less elsewhere',
+    bestLabel: 'Best price',
+    bestStore: 'pns',
+    verdict: "BUT, price is in line with expected given inflation.",
+    prices: [
+      { store: 'pns', amount: '$10.90', tag: 'Best price'   },
+      { store: 'nw',  amount: '$12.00', tag: 'Your deal'    },
+      { store: 'ww',  amount: '$12.50', tag: ''             },
+    ],
+    chartHeights: [42,50,55,62,60,68,72],
+  },
+  low: {
+    bg: 'var(--dodgy-low)',
+    levelLabel: 'Dodgyness level: LOW',
+    headline: 'You can get this item for less elsewhere',
+    bestLabel: 'Best price',
+    bestStore: 'pns',
+    verdict: "BUT price is 5% LOWER than expected given price history and inflation.",
+    prices: [
+      { store: 'pns', amount: '$10.90', tag: 'Best price'   },
+      { store: 'nw',  amount: '$12.00', tag: 'Your deal'    },
+      { store: 'ww',  amount: '$12.00', tag: ''             },
+    ],
+    chartHeights: [55,62,58,68,65,60,55],
+  },
+  fair: {
+    bg: 'var(--fair)',
+    levelLabel: 'Looks  fair',
+    headline: "You've found the best available price",
+    bestLabel: 'Your deal — Best price',
+    bestStore: 'nw',
+    verdict: "AND, price is in line with expected given inflation.",
+    prices: [
+      { store: 'nw',  amount: '$10.90', tag: 'Your deal'    },
+      { store: 'pns', amount: '$12.00', tag: ''             },
+      { store: 'ww',  amount: '$12.00', tag: ''             },
+    ],
+    chartHeights: [58,62,68,65,60,58,55],
+  },
+  saver: {
+    bg: 'var(--saver)',
+    levelLabel: 'Real Saver',
+    headline: "You've found the best available price",
+    bestLabel: 'Your deal — Best price',
+    bestStore: 'nw',
+    verdict: "AND price is 5% LOWER than expected given price history and inflation.",
+    prices: [
+      { store: 'nw',  amount: '$10.90', tag: 'Your deal'    },
+      { store: 'pns', amount: '$12.00', tag: ''             },
+      { store: 'ww',  amount: '$13.50', tag: ''             },
+    ],
+    chartHeights: [70,65,60,55,50,48,44],
+  },
+};
+
+// ── HELPERS ──────────────────────────────────────────
+function storeBadge(storeKey, size='sm') {
+  const s = STORES[storeKey];
+  const cls = size === 'lg' ? 'store-logo-lg' : 'store-badge';
+  const logoMap = {
+    nw:  `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#D62127" rx="6"/><polygon points="24,6 42,18 42,30 24,42 6,30 6,18" fill="none" stroke="white" stroke-width="2.5"/><text x="24" y="28" text-anchor="middle" fill="white" font-family="Inter" font-weight="900" font-size="${size==='lg'?14:7}">NW</text></svg>`,
+    pns: `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#FDDB00" rx="6"/><text x="24" y="20" text-anchor="middle" fill="#000" font-family="Inter" font-weight="900" font-size="${size==='lg'?11:5.5}">PAK'n</text><text x="24" y="32" text-anchor="middle" fill="#000" font-family="Inter" font-weight="900" font-size="${size==='lg'?11:5.5}">SAVE</text></svg>`,
+    ww:  `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#fff" rx="6"/><circle cx="24" cy="24" r="18" fill="none" stroke="#1D9247" stroke-width="3"/><text x="24" y="30" text-anchor="middle" fill="#1D9247" font-family="Inter" font-weight="900" font-size="${size==='lg'?16:8}">W</text></svg>`,
+    fs:  `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#E8560A" rx="6"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Inter" font-weight="900" font-size="${size==='lg'?13:6.5}">4SQ</text></svg>`,
+  };
+  return logoMap[storeKey] || '';
+}
+
+function makeCard(p, idx) {
+  const s = STORES[p.store];
+  return `
+    <div class="product-card">
+      <div class="card-top">
+        <div style="width:38px;height:38px;border-radius:6px;overflow:hidden">${storeBadge(p.store,'sm')}</div>
+        <span class="bell-icon" title="Track">🔔</span>
+      </div>
+      <div class="card-image">Product Image</div>
+      <div class="card-price">${p.price}</div>
+      <button class="card-btn" onclick="showResult('${pickLevel(idx)}')">Check deal</button>
+    </div>`;
+}
+
+const levelOrder = ['xhigh','high','med','low','fair','saver'];
+function pickLevel(idx) { return levelOrder[idx % levelOrder.length]; }
+
+function renderCards(containerId, products) {
+  document.getElementById(containerId).innerHTML = products.map((p,i)=>makeCard(p,i)).join('');
+}
+
+// ── NAVIGATION ───────────────────────────────────────
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0,0);
+  closeAllNavs();
+  updateDemoButtons(screenId);
+}
+
+function updateDemoButtons(screenId) {
+  // only update buttons in visible screen
+}
+
+function toggleNav(id) {
+  const el = document.getElementById('nav-'+id);
+  const isOpen = el.classList.contains('open');
+  closeAllNavs();
+  if (!isOpen) el.classList.add('open');
+}
+function closeAllNavs() {
+  document.querySelectorAll('.nav-dropdown').forEach(d=>d.classList.remove('open'));
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.header-greeting') && !e.target.closest('.nav-dropdown')) closeAllNavs();
+});
+
+// ── SEARCH ───────────────────────────────────────────
+function doSearch() {
+  const q = document.getElementById('search-input').value || 'Butter';
+  const store = document.querySelector('input[name="store-home"]:checked')?.value || 'nw';
+  document.getElementById('search-input-2').value = q;
+  document.getElementById('search-input-3').value = q;
+  const sName = STORES[store]?.name || 'New World';
+  document.getElementById('results-heading').textContent = `${q} Specials at ${sName}`;
+
+  // populate results with same-store cards
+  const resultProds = PRODUCTS.map(p => ({ ...p, store }));
+  renderCards('results-cards', resultProds);
+
+  goTo('screen-results');
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-input').focus();
+}
+function clearSearch2() {
+  document.getElementById('search-input-2').value = '';
+}
+
+// ── RESULT ───────────────────────────────────────────
+function showResult(levelKey) {
+  const L = LEVELS[levelKey];
+  if (!L) return;
+
+  document.getElementById('result-level-label').textContent = L.levelLabel;
+  document.getElementById('result-section').style.background = L.bg;
+  document.getElementById('result-headline').textContent = L.headline;
+  document.getElementById('result-best-label').textContent = L.bestLabel;
+  document.getElementById('result-verdict').textContent = L.verdict;
+
+  // prices
+  const pc = document.getElementById('price-comparison');
+  pc.innerHTML = L.prices.map(p => `
+    <div class="price-item">
+      <div style="width:72px;height:72px;border-radius:10px;overflow:hidden">${storeBadge(p.store,'lg')}</div>
+      <div class="price-amount">${p.amount}</div>
+      ${p.tag ? `<div class="price-tag">${p.tag}</div>` : ''}
+    </div>`).join('');
+
+  // chart bars
+  const bars = document.getElementById('chart-bars');
+  bars.innerHTML = L.chartHeights.map(h => `<div class="chart-bar" style="height:${h}px"></div>`).join('');
+
+  // demo buttons
+  document.querySelectorAll('#screen-result .demo-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('dbn-'+levelKey);
+  if (btn) btn.classList.add('active');
+
+  goTo('screen-result');
+}
+
+// ── INIT ─────────────────────────────────────────────
+renderCards('home-cards', PRODUCTS);
+renderCards('tracked-cards', PRODUCTS.filter((_,i) => i < 4));
+</script>
+</body>
+</html>
