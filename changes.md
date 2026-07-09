@@ -8,6 +8,46 @@ Full backend/data-layer history (Supabase schema, scrapers, identity matching, e
 
 ---
 
+## 2026-07-10 — Search relevance ranking (category matches now outrank incidental keyword hits)
+
+User reported not being able to find "butter" or "milk" via search. Category text was already part of the match (name/brand/category all searched), and the data itself is fine — real milk/butter products with correct categories and live prices are all in the DB, and load on page 0 of the streamed catalogue. The actual bug: no relevance ranking existed, so results fell back to cheapest-price-first, and a cheap chocolate bar ("Dairy Milk"), biscuit ("Milk Arrowroot"), or sauce ("Butter Chicken") that merely *mentions* the word buried the real category items a shopper was after.
+
+- Added `getSearchRelevance()` — tokenises the query and product name/brand/category into whole words (so "milk" matches "Standard Milk" but not "Milky"/"Buttermilk-flavoured") and scores category match (4) > name match (3) > brand match (2) > the existing substring-only fallback (1).
+- `sortedProducts` now sorts by this relevance score first; the user's chosen cheapest/discount/dodgy-rating sort is applied only as a tiebreaker within the same relevance tier, not as the primary order.
+- Checked against live data: "milk"/"butter" now lead with genuine dairy-aisle items (coconut/almond/oat milk, Anchor/Westgold butter, butter-vs-margarine spreads — all actually co-categorised with dairy in the retailers' own taxonomy) ahead of incidental mentions. Some overlap between butter and spreads/margarine, or milk and "milk chocolate" labelling, is expected — that's real shared vocabulary in supermarket category taxonomies, not a bug.
+- **Peer review:** compiled clean. jsdom + live-Supabase harness re-checked "coffee"/"weetbix" (still clean, on-target) plus "milk"/"butter" (79 and 68 real results, top-6 now genuinely category-relevant).
+
+## 2026-07-10 — Sentence-case search input, camera-based scanner rebuild, "Weetbix" search fix
+
+Three fixes requested together.
+
+- **Search input case:** the input had a Tailwind `uppercase` class forcing all-caps display regardless of what was typed. Removed it — text now shows exactly as entered.
+- **Scanner rebuilt around a real camera:** removed `SCANNER_PRESETS` (3 hardcoded fake price tags) and the fake `setTimeout`-based "audit" that fabricated a Dodgy/Real Deal verdict and silently logged it to history. Replaced with two real actions — "Scan Barcode" (hidden `<input type="file" accept="image/*" capture="environment">`, the standard way a web page triggers the device's actual camera app) and "Upload Photo" (same without `capture`, opens the gallery). Either shows a preview with "Retake" or "Search for This Item" (closes the scanner, switches to the search tab via a new `onSearchForItem` prop, so the user looks the item up through the app's real live classifier instead of a fabricated result). Removed the now-unused `handleAddHistory` in `App()`.
+- **"Weetbix" search fix:** confirmed live in the DB — it's there (12 real "Sanitarium Weet-Bix" rows with live prices), just spelled with a hyphen. Search was a naive substring check, so "Weetbix" (no hyphen) never matched "weet-bix". Added `normalizeSearchText()` (strips non-alphanumerics before comparing, same idea already used for store-name matching) to both `SearchTab`'s product filter and `HistoryTab`'s own history search.
+- **Peer review:** compiled clean. jsdom + live-Supabase harness confirmed no `uppercase` class and typed case preserved; "Weetbix" search returns 8 real items; scanner has no preset/audit text, both camera (`capture="environment"`) and gallery file inputs present and wired, preview + "Search for This Item" flow works end to end.
+
+## 2026-07-10 — Global nav bar, scan button relocated to search bar, live full-screen search, pill carousel
+
+Four related UI changes requested together.
+
+- **Global `AppHeader`:** extracted the home screen's header (logo/back-arrow, profile icon + dropdown menu) into a shared `AppHeader` component. `DealModal` (both its main view and "Cheaper Alternatives" sub-view) previously had its own bespoke, non-interactive header (dead `CircleUser` icon) — now uses the same `AppHeader`, wired to close the modal and switch tabs via new `onNavigateToHowItWorks`/`onNavigateToManageAccount`/`onLogout` props.
+- **Scan button relocated:** removed the `camera-scan-fab` floating button from `HistoryTab` (All Checks). The home search bar's old "Search" submit button is now a barcode-scan icon that opens `ScannerModal` via a new `onOpenScanner` prop.
+- **Full-screen search + live suggestions:** typing any character now opens a full-screen search overlay (same phone-frame convention as other modals) with the search bar pinned at the top; results now live-update on every keystroke (previously required hitting "Search") instead of only on submit. Below 3 characters shows a "Keep typing..." hint; 3+ characters shows results immediately. Backspacing to empty, the X, or the back arrow all close the overlay.
+- **Pill carousel:** "Filter by Supermarket" pills changed from wrapping to a single-row horizontal scroll (`overflow-x-auto`, new `.hide-scrollbar` CSS utility) so the row doesn't eat vertical space.
+- **Peer review:** compiled clean. jsdom + live-Supabase harness scripted the full flow — profile menu, scan button, typing → full-screen view → live results, pill carousel classes, All Checks (no scan FAB), DealModal profile menu + navigation. One false alarm from the test's own Framer Motion stub (recreating a new component identity per render, causing spurious remounts) was found and fixed in the harness — not a real app bug, confirmed by re-running after the stub fix.
+
+## 2026-07-10 — Real product images on product cards, cleaned to a plain white background
+
+- Product cards across `SearchTab` (home widget + search results), `TrackedTab`, `HistoryTab`, and `DealModal` (all 4 product-summary blocks) showed a static gray "Product Image" placeholder box instead of an actual photo, even though the live data layer already carried a real `products.image_url` per item. Added a shared `ProductImage` component (real `<img>`, falls back to a placehold.co image on load error) and swapped it in at all 8 locations.
+- Follow-up: removed the background colour and border from all 8 image containers so photos sit directly on the card's white background instead of in a shaded/outlined box.
+- **Peer review:** compiled clean both times. jsdom + live-Supabase harness confirmed real `fsimg.co.nz` photo URLs render in search results, the deal modal, and My List (92/92, then 4/4 cards respectively).
+
+## 2026-07-10 — Fixed stale hardcoded "coffee" state when returning to home
+
+- `DealModal`'s `onClose` handler hardcoded `setSearchInputValue('coffee')`/`setActiveSearchQuery('coffee')` before returning to the search tab — since home is just the search tab with an empty query, closing a deal from the home screen replaced the empty query with a fixed "coffee" search instead of showing the real home view.
+- Fixed by resetting both to `''` instead, so closing the modal returns to a genuinely empty query and the home screen renders normally.
+- **Peer review:** compiled clean; confirmed no other hardcoded query resets exist anywhere in the file.
+
 ## 2026-07-10 — Full catalogue browsing: every item is now findable, not just current specials
 
 Follow-up to the 2026-07-09 "no cap" work below, after the user asked whether the app pulls every item the supermarkets stock or just specials, and whether users should be able to find any item (to see its price history) even when it isn't currently discounted. It didn't -- `loadLiveProducts()` queried `current_prices?...&is_special=eq.true`, so anything not actively on special was invisible to search/browse, even though `price_history` already had regular-price data for those items.
