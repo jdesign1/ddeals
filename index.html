@@ -463,42 +463,70 @@ const STORE_DISPLAY_FALLBACK = {
 
 // PostgREST caps responses (commonly 1000 rows) regardless of ?limit=, so
 // anything that can exceed that must be paged with the Range header.
+//
+// Fetches page 1 with `Prefer: count=exact` to learn the true row count
+// from the `Content-Range` response header, then fires every remaining
+// page in parallel rather than one-at-a-time. This matters now that
+// `current_prices` is fetched WITHOUT the is_special filter (~12.7k rows,
+// full catalogue, not just the ~4.4k on-special subset) -- measured
+// 2026-07-10: ~6s sequential vs ~1.5s parallel for the full table.
 async function fetchAllRows(path) {
-  const rows = [];
   const page = 1000;
-  let start = 0;
-  for (let i = 0; i < 50; i++) {
+  const MAX_PAGES = 100; // safety cap: 100k rows
+
+  const fetchPage = async (start, extraHeaders) => {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         'Range-Unit': 'items',
         Range: `${start}-${start + page - 1}`,
+        ...extraHeaders,
       },
     });
     if (!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
-    const data = await res.json();
-    rows.push(...data);
-    if (data.length < page) break;
-    start += page;
+    return res;
+  };
+
+  const firstRes = await fetchPage(0, { Prefer: 'count=exact' });
+  const firstData = await firstRes.json();
+  const contentRange = firstRes.headers.get('content-range'); // e.g. "0-999/12702"
+  const total = contentRange && contentRange.includes('/') ? parseInt(contentRange.split('/')[1], 10) : NaN;
+
+  if (!Number.isFinite(total) || firstData.length < page) {
+    return firstData; // no exact count available, or that one page was everything
   }
-  return rows;
+
+  const remainingPages = Math.min(Math.ceil((total - page) / page), MAX_PAGES - 1);
+  const restResponses = await Promise.all(
+    Array.from({ length: remainingPages }, (_, i) => fetchPage(page * (i + 1)))
+  );
+  const restData = await Promise.all(restResponses.map((res) => res.json()));
+  return firstData.concat(...restData);
 }
 
 // Batched `in.(...)` lookups -- PostgREST/URL length gets risky past a few
-// hundred UUIDs in one query string, so chunk the id list.
+// hundred UUIDs in one query string, so chunk the id list. Chunks are
+// independent lookups (order doesn't matter, only used to build maps
+// afterwards) so they're fired in parallel -- with the is_special filter
+// gone, a page's worth of match groups can span several hundred product
+// ids (several chunks), and this used to run them one at a time.
 async function fetchByIds(path, column, select, ids, chunkSize = 100) {
-  const rows = [];
+  const chunks = [];
   for (let i = 0; i < ids.length; i += chunkSize) {
-    const chunk = ids.slice(i, i + chunkSize);
-    const url = `${SUPABASE_URL}/rest/v1/${path}?select=${select}&${column}=in.(${chunk.join(',')})`;
-    const res = await fetch(url, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-    if (!res.ok) throw new Error(`${path} in-lookup -> HTTP ${res.status}`);
-    rows.push(...(await res.json()));
+    chunks.push(ids.slice(i, i + chunkSize));
   }
-  return rows;
+  const results = await Promise.all(
+    chunks.map(async (chunk) => {
+      const url = `${SUPABASE_URL}/rest/v1/${path}?select=${select}&${column}=in.(${chunk.join(',')})`;
+      const res = await fetch(url, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      });
+      if (!res.ok) throw new Error(`${path} in-lookup -> HTTP ${res.status}`);
+      return res.json();
+    })
+  );
+  return results.flat();
 }
 
 function median(nums) {
@@ -695,20 +723,43 @@ async function buildProductCardsForGroups(pageGroups, storeNameById) {
 
     for (const row of rows) {
       const pairHistory = historyByPair.get(`${row.product_id}::${row.store_id}`) || [];
-      const verdict = classifySpecial(row.price, pairHistory);
-      if (verdict.verdict === 'UNKNOWN') continue; // no basis to judge -- skip rather than guess
 
-      if (verdict.normalPrice != null) normalPrices.push(verdict.normalPrice);
-      currentDeals.push({
-        store: storeName(row.store_id),
-        price: row.price,
-        originalPrice: verdict.normalPrice ?? row.was_price ?? row.price,
-        discountPercentage: Math.max(0, Math.round(verdict.savingPct ?? 0)),
-        dealType: VERDICT_TO_DEAL_TYPE[verdict.verdict],
-        wasArtificiallyInflated: verdict.verdict === 'DODGY',
-        reason: verdict.verdict === 'DODGY' ? 'Artificial Discount (Was-Is Trap)' : verdict.verdict === 'GENUINE' ? 'Genuine Sale' : 'Standard Special',
-        explanation: verdict.reason,
-      });
+      if (row.is_special) {
+        // Actively promoted special -- run it through the real DODGY/
+        // GENUINE/MARGINAL/UNKNOWN classifier, same as before.
+        const verdict = classifySpecial(row.price, pairHistory);
+        if (verdict.verdict !== 'UNKNOWN') {
+          if (verdict.normalPrice != null) normalPrices.push(verdict.normalPrice);
+          currentDeals.push({
+            store: storeName(row.store_id),
+            price: row.price,
+            originalPrice: verdict.normalPrice ?? row.was_price ?? row.price,
+            discountPercentage: Math.max(0, Math.round(verdict.savingPct ?? 0)),
+            dealType: VERDICT_TO_DEAL_TYPE[verdict.verdict],
+            wasArtificiallyInflated: verdict.verdict === 'DODGY',
+            reason: verdict.verdict === 'DODGY' ? 'Artificial Discount (Was-Is Trap)' : verdict.verdict === 'GENUINE' ? 'Genuine Sale' : 'Standard Special',
+            explanation: verdict.reason,
+            isOnSpecial: true,
+          });
+        }
+        // UNKNOWN (no usable history) still falls through with no deal
+        // entry for this store -- unchanged behaviour from before.
+      } else {
+        // Not currently on special -- no verdict to render (there's no
+        // "deal" to judge), but the item still belongs in the catalogue so
+        // it's browsable/searchable and its price history is visible.
+        currentDeals.push({
+          store: storeName(row.store_id),
+          price: row.price,
+          originalPrice: row.price,
+          discountPercentage: 0,
+          dealType: 'Fair Price',
+          wasArtificiallyInflated: false,
+          reason: 'Regular Price',
+          explanation: 'Not currently on special -- this is the regular shelf price.',
+          isOnSpecial: false,
+        });
+      }
 
       for (const h of pairHistory) {
         priceHistory.push({
@@ -720,7 +771,7 @@ async function buildProductCardsForGroups(pageGroups, storeNameById) {
       }
     }
 
-    if (!currentDeals.length) continue; // every store's special in this group was UNKNOWN
+    if (!currentDeals.length) continue; // no usable row in this group (e.g. only UNKNOWN specials, no plain price)
 
     // The identity-matching pipeline occasionally links two distinct
     // retailer catalogue rows from the *same* store into one match group
@@ -758,35 +809,43 @@ async function buildProductCardsForGroups(pageGroups, storeNameById) {
 // price_history fetch bounded regardless of total catalogue size.
 const GROUPS_PER_PAGE = 250;
 
-// Loads every current special (no cap -- deliberately, per 2026-07-09
-// discussion), grouped into real cross-store match groups, and streams
-// results back in pages via `onUpdate(cumulativeProductsSoFar)` so the app
-// can render the first page immediately and keep filling in the rest in
-// the background rather than blocking on one giant fetch. Groups with more
-// distinct real stores are processed first so the richest comparisons show
-// up in the earliest, fastest-rendering page.
+// Loads EVERY current-priced item (no cap, no is_special filter -- per
+// 2026-07-10 discussion: users should be able to find any item the
+// supermarkets stock, not just ones currently on special, so they can see
+// an item's price history even when it isn't discounted right now),
+// grouped into real cross-store match groups, and streams results back in
+// pages via `onUpdate(cumulativeProductsSoFar)` so the app can render the
+// first page immediately and keep filling in the rest in the background
+// rather than blocking on one giant fetch. Groups with more distinct real
+// stores AND an active special are processed first so the richest,
+// most-actionable comparisons show up in the earliest, fastest-rendering
+// page; plain (non-special) items still load, just later.
 async function loadLiveProducts(onUpdate) {
-  const [specials, storeRows, matchIndex] = await Promise.all([
-    fetchAllRows('current_prices?select=product_id,store_id,price,was_price,special_label&is_special=eq.true'),
+  const [allCurrentPrices, storeRows, matchIndex] = await Promise.all([
+    fetchAllRows('current_prices?select=product_id,store_id,price,was_price,is_special,special_label'),
     fetchAllRows('stores?select=id,name'),
     buildMatchIndex(),
   ]);
-  if (!specials.length) return [];
+  if (!allCurrentPrices.length) return [];
   const storeNameById = new Map(storeRows.map((s) => [s.id, s.name]));
 
   const byGroup = new Map();
-  for (const row of specials) {
+  for (const row of allCurrentPrices) {
     const groupId = matchIndex.find(row.product_id);
     if (!byGroup.has(groupId)) byGroup.set(groupId, []);
     byGroup.get(groupId).push(row);
   }
 
-  // Richest (most real cross-store) comparisons first, product-count as a
-  // stable tiebreaker so page contents are reproducible run to run.
+  // Groups with an active special first (most immediately useful), then
+  // richest (most real cross-store) comparisons, product-count as a stable
+  // tiebreaker so page contents are reproducible run to run. Plain
+  // (non-special) groups still load, just in later pages.
   const groups = [...byGroup.entries()].sort((a, b) => {
+    const specialA = a[1].some((r) => r.is_special) ? 1 : 0;
+    const specialB = b[1].some((r) => r.is_special) ? 1 : 0;
     const storesA = new Set(a[1].map((r) => r.store_id)).size;
     const storesB = new Set(b[1].map((r) => r.store_id)).size;
-    return storesB - storesA || b[1].length - a[1].length;
+    return specialB - specialA || storesB - storesA || b[1].length - a[1].length;
   });
 
   const allProducts = [];
@@ -986,7 +1045,9 @@ function SearchTab({
     }
   };
 
-  // Filter products matching selected stores
+  // Filter products matching selected stores. Every item the supermarkets
+  // stock is browsable here now, not just ones currently on special --
+  // "all stores" just needs the product to be sold/priced somewhere.
   const matchedProducts = filteredProducts.filter((product) => {
     if (selectedStores.includes('all')) {
       return product.currentDeals.length > 0;
@@ -1098,8 +1159,13 @@ function SearchTab({
 
         const listItemsOnSale = mockProducts.filter((p) => {
           const isInList = allListProductIds.includes(p.id);
-          const hasDeals = p.currentDeals && p.currentDeals.length > 0;
-          return isInList && hasDeals;
+          // isOnSpecial is undefined on FALLBACK_PRODUCTS mock deals (all
+          // treated as active deals, unchanged) but explicitly false on
+          // live regular-priced rows -- only real specials belong in this
+          // "on sale" widget, browse-all items show up via search instead.
+          const hasActiveSpecial =
+            p.currentDeals && p.currentDeals.some((d) => d.isOnSpecial !== false);
+          return isInList && hasActiveSpecial;
         });
 
         if (listItemsOnSale.length === 0) return null;
@@ -1246,7 +1312,7 @@ function SearchTab({
         <>
           <section className="text-center space-y-2">
             <h2 id="search-title" className="text-3xl font-black tracking-tighter text-slate-900 leading-none font-display">
-              Specials for '{activeSearchQuery || 'all'}'
+              Results for '{activeSearchQuery || 'all'}'
             </h2>
         <p id="search-subtitle" className="text-xs font-bold text-slate-400 uppercase tracking-widest">
           {sortedProducts.length} {sortedProducts.length === 1 ? 'item' : 'items'} found · {totalRetailersCount} {totalRetailersCount === 1 ? 'retailer' : 'retailers'}
@@ -1404,6 +1470,7 @@ function SearchTab({
                     {(() => {
                       const dealsToUse = applicableDeals.length > 0 ? applicableDeals : product.currentDeals;
                       const lowestPrice = dealsToUse.reduce((min, d) => d.price < min ? d.price : min, dealsToUse[0]?.price || 0);
+                      const hasActiveSpecial = dealsToUse.some((d) => d.isOnSpecial !== false);
                       return (
                         <div className="flex items-center gap-3 flex-wrap">
                           <div className="flex items-baseline gap-1 flex-shrink-0 whitespace-nowrap">
@@ -1412,6 +1479,15 @@ function SearchTab({
                               ${lowestPrice.toFixed(2)}
                             </span>
                           </div>
+                          {hasActiveSpecial ? (
+                            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
+                              On Special
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">
+                              Regular Price
+                            </span>
+                          )}
                         </div>
                       );
                     })()}
@@ -1436,9 +1512,9 @@ function SearchTab({
             <p className="font-bold text-slate-500 uppercase tracking-widest text-xs">
               {!selectedStores.includes('all')
                 ? selectedStores.length === 1
-                  ? `No ${activeSearchQuery || 'grocery'} deals were found at ${getStoreDisplayName(selectedStores[0])}`
-                  : `No ${activeSearchQuery || 'grocery'} deals were found at the selected supermarkets (${selectedStores.map(getStoreDisplayName).join(', ')})`
-                : `No specials matching '${activeSearchQuery}'`}
+                  ? `No ${activeSearchQuery || 'grocery'} items were found at ${getStoreDisplayName(selectedStores[0])}`
+                  : `No ${activeSearchQuery || 'grocery'} items were found at the selected supermarkets (${selectedStores.map(getStoreDisplayName).join(', ')})`
+                : `No items matching '${activeSearchQuery}'`}
             </p>
             <p className="text-xs text-slate-400">
               {!selectedStores.includes('all')
@@ -3080,7 +3156,15 @@ function DealModal({
   let verdictBgClass = '';
   let verdictBorderClass = '';
 
-  if (discountPct >= 6) {
+  if (deal.isOnSpecial === false) {
+    // Browsing a plain, non-special item -- there's no "deal" to judge as
+    // dodgy/genuine/fair, so show a neutral price-history state instead of
+    // a verdict that implies a promotion exists.
+    verdict = 'Regular Price';
+    verdictColorClass = 'text-slate-700';
+    verdictBgClass = 'bg-slate-50';
+    verdictBorderClass = 'border-slate-200';
+  } else if (discountPct >= 6) {
     verdict = 'Real Saver';
     verdictColorClass = 'text-emerald-800';
     verdictBgClass = 'bg-emerald-50';
