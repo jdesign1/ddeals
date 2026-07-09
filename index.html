@@ -82,7 +82,7 @@ import {
 
 /* ===================== data/products.ts ===================== */
 
-const mockProducts = [
+const FALLBACK_PRODUCTS = [
   {
     id: 'moccona-classic-200g',
     brand: 'Moccona',
@@ -430,6 +430,320 @@ const mockProducts = [
     description: 'Rich, creamy, and wholesome pasteurised full cream dairy milk. Excellent source of calcium and essential nutrients.'
   }
 ];
+
+// Mutable binding: reassigned to live Supabase data in the boot sequence
+// below (before first render) if the fetch succeeds; every other reference
+// to `mockProducts` throughout the app reads this same variable.
+let mockProducts = FALLBACK_PRODUCTS;
+
+/* ===================== lib/supabase-live.ts ===================== */
+/*
+ * Live data layer. Replaces FALLBACK_PRODUCTS with real rows from the
+ * Supabase project (current_prices / products / stores / price_history),
+ * classified client-side with the same GENUINE/DODGY/MARGINAL/UNKNOWN logic
+ * as analyser.py and dodgy_deals_view.sql (the deployed `dodgy_deals` view
+ * is stale -- missing columns the checked-in SQL defines and returns zero
+ * rows -- so the classifier is ported here instead of querying the view).
+ *
+ * Uses the public anon key directly, same pattern as matching-dashboard.html
+ * (anon key + RLS-scoped SELECT grants; safe to embed, not a secret).
+ */
+
+const SUPABASE_URL = 'https://dlcaxnorkqorrkfxigfg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsY2F4bm9ya3FvcnJrZnhpZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MjU2MzMsImV4cCI6MjA5NTAwMTYzM30.5H3OGOtDD6fq8OpVlBe71HhOAd_mjEh8XnAMa2ykBnc';
+
+const STORE_DISPLAY_FALLBACK = {
+  newworld: 'New World',
+  paknsave: "PAK'nSAVE",
+  woolworths: 'Woolworths',
+  foursquare: 'Four Square',
+  freshchoice: 'FreshChoice',
+  supervalue: 'SuperValue',
+};
+
+// PostgREST caps responses (commonly 1000 rows) regardless of ?limit=, so
+// anything that can exceed that must be paged with the Range header.
+async function fetchAllRows(path) {
+  const rows = [];
+  const page = 1000;
+  let start = 0;
+  for (let i = 0; i < 50; i++) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Range-Unit': 'items',
+        Range: `${start}-${start + page - 1}`,
+      },
+    });
+    if (!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
+    const data = await res.json();
+    rows.push(...data);
+    if (data.length < page) break;
+    start += page;
+  }
+  return rows;
+}
+
+// Batched `in.(...)` lookups -- PostgREST/URL length gets risky past a few
+// hundred UUIDs in one query string, so chunk the id list.
+async function fetchByIds(path, column, select, ids, chunkSize = 100) {
+  const rows = [];
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const url = `${SUPABASE_URL}/rest/v1/${path}?select=${select}&${column}=in.(${chunk.join(',')})`;
+    const res = await fetch(url, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    if (!res.ok) throw new Error(`${path} in-lookup -> HTTP ${res.status}`);
+    rows.push(...(await res.json()));
+  }
+  return rows;
+}
+
+function median(nums) {
+  if (!nums.length) return null;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+const LOOKBACK_DAYS = 30;
+const DODGY_THRESHOLD = 5;    // % pre-sale inflation to flag dodgy
+const GENUINE_THRESHOLD = 10; // % saving to count as genuine
+const MARGINAL_THRESHOLD = 3; // % saving floor for "marginal"
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Classifies one (product_id, store_id) current special using its own
+// price_history series. Mirrors dodgy_deals_view.sql exactly:
+//   normal_price = median of pre-sale prices within the 30-day lookback
+//   inflate_pct  = how much price was pumped in the 7 days before the sale
+//   verdict: UNKNOWN (no history) / DODGY (fake markup) / GENUINE (>=10% off)
+//            / MARGINAL (3-10% off, or nothing better established)
+function classifySpecial(salePrice, historyRows) {
+  const sorted = [...historyRows].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+
+  // Walk backwards while is_special=true to find when the current streak began.
+  let saleStartedAt = null;
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i].is_special) {
+      saleStartedAt = new Date(sorted[i].scraped_at);
+    } else {
+      break;
+    }
+  }
+  if (saleStartedAt === null) {
+    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice: null, savingPct: null };
+  }
+
+  const preSale = sorted.filter((r) => !r.is_special && new Date(r.scraped_at) < saleStartedAt && r.price != null);
+  if (!preSale.length) {
+    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice: null, savingPct: null };
+  }
+
+  const lookbackCutoff = new Date(saleStartedAt.getTime() - LOOKBACK_DAYS * DAY_MS);
+  const recentPreSale = preSale.filter((r) => new Date(r.scraped_at) >= lookbackCutoff);
+  const normalPrice = median((recentPreSale.length ? recentPreSale : preSale).map((r) => r.price));
+
+  const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
+  const veryEarly = preSale.filter((r) => new Date(r.scraped_at) < sevenDayCutoff).map((r) => r.price);
+  const preSaleRecent = preSale.filter((r) => new Date(r.scraped_at) >= sevenDayCutoff).map((r) => r.price);
+  let inflatePct = 0;
+  if (veryEarly.length && preSaleRecent.length) {
+    const baseline = median(veryEarly);
+    const peak = Math.max(...preSaleRecent);
+    inflatePct = baseline ? ((peak - baseline) / baseline) * 100 : 0;
+  }
+
+  const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : 0;
+
+  if (normalPrice == null) {
+    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice, savingPct: null };
+  }
+  if (salePrice > normalPrice) {
+    return {
+      verdict: 'DODGY',
+      reason: `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(2)}) -- fake deal`,
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+    };
+  }
+  if (inflatePct >= DODGY_THRESHOLD && savingPct < GENUINE_THRESHOLD) {
+    return {
+      verdict: 'DODGY',
+      reason: `Price was raised ${inflatePct.toFixed(1)}% just before the sale -- you're only saving ${savingPct.toFixed(1)}%`,
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+    };
+  }
+  if (savingPct >= GENUINE_THRESHOLD) {
+    return {
+      verdict: 'GENUINE',
+      reason: `Saving ${savingPct.toFixed(1)}% vs the recent normal price`,
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+    };
+  }
+  if (savingPct >= MARGINAL_THRESHOLD) {
+    return {
+      verdict: 'MARGINAL',
+      reason: `Only a ${savingPct.toFixed(1)}% saving -- barely worth it`,
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+    };
+  }
+  return {
+    verdict: 'MARGINAL',
+    reason: 'Minimal saving vs normal price',
+    normalPrice,
+    savingPct: Math.round(savingPct * 10) / 10,
+  };
+}
+
+const VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', GENUINE: 'Real Deal', MARGINAL: 'Fair Price' };
+
+// Caps how many distinct products get pulled into the live prototype so a
+// phone browser isn't rendering/fetching history for all ~4,300 current
+// specials. Prioritises products with specials at more than one store,
+// since those give the richer store-vs-store comparison the UI is built
+// around; falls back to filling the rest with single-store specials.
+const MAX_LIVE_PRODUCTS = 220;
+
+async function loadLiveProducts() {
+  const specials = await fetchAllRows('current_prices?select=product_id,store_id,price,was_price,special_label&is_special=eq.true');
+  if (!specials.length) return [];
+
+  const byProduct = new Map();
+  for (const row of specials) {
+    if (!byProduct.has(row.product_id)) byProduct.set(row.product_id, []);
+    byProduct.get(row.product_id).push(row);
+  }
+
+  const multiStore = [...byProduct.entries()].filter(([, rows]) => rows.length > 1).sort((a, b) => a[0].localeCompare(b[0]));
+  const singleStore = [...byProduct.entries()].filter(([, rows]) => rows.length === 1).sort((a, b) => a[0].localeCompare(b[0]));
+  const chosen = [...multiStore, ...singleStore].slice(0, MAX_LIVE_PRODUCTS);
+  const chosenIds = chosen.map(([id]) => id);
+  if (!chosenIds.length) return [];
+
+  const [productRows, storeRows, historyRows] = await Promise.all([
+    fetchByIds('products', 'id', 'id,name,brand,category,image_url,unit_size', chosenIds),
+    fetchAllRows('stores?select=id,name'),
+    fetchByIds('price_history', 'product_id', 'product_id,store_id,price,is_special,scraped_at', chosenIds),
+  ]);
+
+  const productById = new Map(productRows.map((p) => [p.id, p]));
+  const storeNameById = new Map(storeRows.map((s) => [s.id, s.name]));
+  const historyByPair = new Map();
+  for (const row of historyRows) {
+    const key = `${row.product_id}::${row.store_id}`;
+    if (!historyByPair.has(key)) historyByPair.set(key, []);
+    historyByPair.get(key).push(row);
+  }
+
+  const titleCase = (s) => (s || '').replace(/\b\w/g, (c) => c.toUpperCase());
+  const storeName = (id) => storeNameById.get(id) || STORE_DISPLAY_FALLBACK[id] || titleCase(id);
+
+  const products = [];
+  for (const [productId, rows] of chosen) {
+    const meta = productById.get(productId);
+    if (!meta) continue;
+
+    const currentDeals = [];
+    const priceHistory = [];
+    const normalPrices = [];
+
+    for (const row of rows) {
+      const pairHistory = historyByPair.get(`${productId}::${row.store_id}`) || [];
+      const verdict = classifySpecial(row.price, pairHistory);
+      if (verdict.verdict === 'UNKNOWN') continue; // no basis to judge -- skip rather than guess
+
+      if (verdict.normalPrice != null) normalPrices.push(verdict.normalPrice);
+      currentDeals.push({
+        store: storeName(row.store_id),
+        price: row.price,
+        originalPrice: verdict.normalPrice ?? row.was_price ?? row.price,
+        discountPercentage: Math.max(0, Math.round(verdict.savingPct ?? 0)),
+        dealType: VERDICT_TO_DEAL_TYPE[verdict.verdict],
+        wasArtificiallyInflated: verdict.verdict === 'DODGY',
+        reason: verdict.verdict === 'DODGY' ? 'Artificial Discount (Was-Is Trap)' : verdict.verdict === 'GENUINE' ? 'Genuine Sale' : 'Standard Special',
+        explanation: verdict.reason,
+      });
+
+      for (const h of pairHistory) {
+        priceHistory.push({
+          date: new Date(h.scraped_at).toLocaleDateString('en-NZ', { month: 'short', day: '2-digit' }),
+          price: h.price,
+          isPromo: h.is_special,
+          store: storeName(row.store_id),
+        });
+      }
+    }
+
+    if (!currentDeals.length) continue; // every store's special for this product was UNKNOWN
+
+    products.push({
+      id: productId,
+      brand: titleCase(meta.brand) || 'Unbranded',
+      name: titleCase(meta.name),
+      category: meta.category || 'Grocery',
+      image: meta.image_url || 'https://placehold.co/300x300?text=No+Image',
+      standardPrice: normalPrices.length ? Math.min(...normalPrices) : Math.min(...rows.map((r) => r.price)),
+      unit: meta.unit_size || '',
+      currentDeals,
+      priceHistory,
+      description: '',
+    });
+  }
+
+  return products;
+}
+
+// Builds working demo content for the tracked-items/history/alerts tabs out
+// of whatever real products actually loaded, since those tabs stay local
+// mock state (per project scope) but previously pointed at the old
+// hardcoded mock product ids -- which no longer exist once real UUIDs are
+// in play.
+function buildSeedLists(products) {
+  const ids = products.slice(0, 6).map((p) => p.id);
+  if (!ids.length) return [{ id: 'list-1', name: 'List 1', itemIds: [] }];
+  return [
+    { id: 'list-1', name: 'List 1', itemIds: ids.slice(0, 3) },
+    { id: 'list-2', name: 'List 2', itemIds: ids.slice(2, 5) },
+    { id: 'list-3', name: 'List 3', itemIds: ids.length > 3 ? [ids[0], ids[3], ids[ids.length - 1]] : ids },
+  ];
+}
+
+const HISTORY_DEAL_TYPE = { 'Dodgy Deal': 'Dodgy Deal', 'Real Deal': 'Real Saver', 'Fair Price': 'Fair Deal' };
+
+function buildSeedHistory(products) {
+  return products.slice(0, 9).map((p, idx) => {
+    const deal = p.currentDeals[0];
+    return {
+      id: `hist-${idx + 1}`,
+      productId: p.id,
+      checkedAt: idx < 3 ? ['10:24 AM', '08:15 AM', '4:45 PM'][idx] : `Jul ${Math.max(1, 9 - idx)}`,
+      store: deal.store,
+      price: deal.price,
+      dealType: HISTORY_DEAL_TYPE[deal.dealType] || 'Fair Deal',
+    };
+  });
+}
+
+function buildSeedAlerts(products) {
+  return products.slice(0, 4).map((p, idx) => {
+    const deal = p.currentDeals[0];
+    return {
+      id: `alert-${idx + 1}`,
+      productId: p.id,
+      store: deal.store,
+      oldPrice: deal.originalPrice,
+      newPrice: deal.price,
+      alertType: deal.dealType,
+      timestamp: idx === 0 ? 'Today' : idx === 1 ? 'Yesterday' : `${idx} days ago`,
+      read: idx > 1,
+    };
+  });
+}
 
 /* ===================== components/SearchTab.tsx ===================== */
 
@@ -4887,11 +5201,7 @@ function App() {
   const [previousTab, setPreviousTab] = useState('search');
   const [lastExternalTab, setLastExternalTab] = useState('search');
   const [selectedListId, setSelectedListId] = useState(null);
-  const [lists, setLists] = useState([
-    { id: 'list-1', name: 'List 1', itemIds: ['avalanche-sachets-10pk', 'fresh-apples-1kg', 'cadbury-milk-110g'] },
-    { id: 'list-2', name: 'List 2', itemIds: ['meadow-fresh-milk-2l', 'lurpak-butter-250g', 'fresh-apples-1kg'] },
-    { id: 'list-3', name: 'List 3', itemIds: ['avalanche-sachets-10pk', 'meadow-fresh-milk-2l', 'lurpak-butter-250g', 'cadbury-milk-110g'] },
-  ]);
+  const [lists, setLists] = useState(() => buildSeedLists(mockProducts));
 
   const activeList = lists.find(l => l.id === selectedListId) || lists[0];
   const trackedProductIds = activeList ? activeList.itemIds : [];
@@ -4907,103 +5217,9 @@ function App() {
   const [selectedStores, setSelectedStores] = useState(['all']);
   const [sortBy, setSortBy] = useState('cheapest');
 
-  const [history, setHistory] = useState([
-    {
-      id: 'hist-1',
-      productId: 'nescafe-gold-200g',
-      checkedAt: '10:24 AM',
-      store: 'Woolworths',
-      price: 12.50,
-      dealType: 'Real Saver',
-    },
-    {
-      id: 'hist-2',
-      productId: 'heinz-ketchup-460g',
-      checkedAt: '08:15 AM',
-      store: 'New World',
-      price: 3.50,
-      dealType: 'Real Saver',
-    },
-    {
-      id: 'hist-3',
-      productId: 'kelloggs-cornflakes-720g',
-      checkedAt: '4:45 PM',
-      store: 'FreshChoice',
-      price: 5.50,
-      dealType: 'Real Saver',
-    },
-    {
-      id: 'hist-4',
-      productId: 'moccona-classic-200g',
-      checkedAt: 'Oct 24',
-      store: 'New World',
-      price: 11.99,
-      dealType: 'Fair Deal',
-    },
-    {
-      id: 'hist-5',
-      productId: 'cadbury-milk-110g',
-      checkedAt: 'Oct 22',
-      store: 'Woolworths',
-      price: 3.35,
-      dealType: 'Fair Deal',
-    },
-    {
-      id: 'hist-6',
-      productId: 'meadow-fresh-milk-2l',
-      checkedAt: 'Oct 20',
-      store: 'Woolworths',
-      price: 3.65,
-      dealType: 'Fair Deal',
-    },
-    {
-      id: 'hist-7',
-      productId: 'robert-harris-plunger-200g',
-      checkedAt: 'Oct 18',
-      store: "PAK'nSAVE",
-      price: 7.20,
-      dealType: 'Dodgy Deal',
-    },
-    {
-      id: 'hist-8',
-      productId: 'lurpak-butter-250g',
-      checkedAt: 'Oct 15',
-      store: 'New World',
-      price: 7.20,
-      dealType: 'Dodgy Deal',
-    },
-    {
-      id: 'hist-9',
-      productId: 'avalanche-sachets-10pk',
-      checkedAt: 'Oct 10',
-      store: 'Woolworths',
-      price: 6.40,
-      dealType: 'Dodgy Deal',
-    },
-  ]);
+  const [history, setHistory] = useState(() => buildSeedHistory(mockProducts));
 
-  const [alerts, setAlerts] = useState([
-    {
-      id: 'alert-1',
-      productId: 'heinz-ketchup-460g',
-      store: "PAK'nSAVE",
-      oldPrice: 6.80,
-      newPrice: 5.50,
-      alertType: 'Dodgy Deal',
-      timestamp: 'Today',
-      read: false,
-    },
-    {
-      id: 'alert-2',
-      productId: 'moccona-classic-200g',
-      store: 'Woolworths',
-      oldPrice: 10.50,
-      newPrice: 9.50,
-      alertType: 'Real Deal',
-      timestamp: 'Yesterday',
-      read: true,
-    },
-  ]);
+  const [alerts, setAlerts] = useState(() => buildSeedAlerts(mockProducts));
 
   const showSnackbar = (message) => {
     // All floating feedback has been disabled across the entire application.
@@ -5514,8 +5730,20 @@ function App() {
 
 /* ===================== boot ===================== */
 
-const root = createRoot(document.getElementById('root'));
-root.render(<App />);
+(async () => {
+  try {
+    const live = await loadLiveProducts();
+    if (live.length) {
+      mockProducts = live;
+    } else {
+      console.warn('Supabase returned no usable current specials -- falling back to demo data.');
+    }
+  } catch (err) {
+    console.error('Live Supabase fetch failed, falling back to demo data:', err);
+  }
+  const root = createRoot(document.getElementById('root'));
+  root.render(<App />);
+})();
 </script>
 
 <script>

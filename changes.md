@@ -6,6 +6,15 @@ Full backend/data-layer history (Supabase schema, scrapers, identity matching, e
 
 ---
 
+## 2026-07-09 — Connected to live Supabase data (product search, deals, price history)
+
+- `mockProducts` (the 10-item hardcoded array) is now `FALLBACK_PRODUCTS`; a mutable `mockProducts` binding gets swapped to real Supabase data on boot before first render, or silently falls back to the old mock data if the fetch fails. Login (still "Skip for now") and tracked items/alerts/history stay local mock state — full backend wiring (real auth, persisted lists) was scoped out as a separate task.
+- Fetches `current_prices` (current specials), `products`, `stores`, `price_history` directly via the anon key (same embedded-anon-key + RLS pattern as `matching-dashboard.html`), caps at 220 products prioritising multi-store deals, and classifies each deal GENUINE/DODGY/MARGINAL/UNKNOWN client-side with the same thresholds as `analyser.py`/`dodgy_deals_view.sql` — the deployed `dodgy_deals` view turned out to be stale (missing columns vs. the checked-in SQL, returns 0 rows), so the classifier was ported into the prototype directly rather than queried from the view. Full details and peer-review steps in `project.md`.
+- "My List" / "All Checks" (history) / alerts seed content is now generated from whichever real products actually load, since the old hardcoded seed data pointed at mock product ids that no longer exist.
+- Caveat: `price_history` is sparse for most products (often 1-2 rows), so most current specials skew GENUINE/MARGINAL rather than DODGY — a data-depth limitation, not a bug in the classifier.
+
+---
+
 ## 2026-07-09 — Connected `Prototype/` to the `ddealsprototype` deploy repo, pushed live fix
 
 - Cloned `github.com/jdesign1/ddealsprototype` into `ddealsprototype/` inside this project folder (separate nested git repo, own remote/history; added to `.gitignore` here so this repo doesn't try to track it as a submodule).
