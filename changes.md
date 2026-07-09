@@ -6,6 +6,16 @@ Full backend/data-layer history (Supabase schema, scrapers, identity matching, e
 
 ---
 
+## 2026-07-09 — Rebuilt product grouping on real cross-store matches, removed the product cap, added paginated/progressive loading
+
+Follow-up to the same day's Supabase connection work below, after the user asked whether search surfaced the ~600 reviewed cross-store product matches (e.g. Pak'nSave ↔ New World ↔ Woolworths) already in the database. It didn't — the first pass only merged deals that happened to share the exact same `product_id`, which almost never spans stores since each retailer's catalogue has its own row per product.
+
+- Added `buildMatchIndex()`: union-find over `products.canonical_product_id` (exact-SKU matches, 272 linked products / 158 groups) and `app_comparable_family_links` (332 reviewed "fair to compare" pairs, spans all stores not just Foodstuffs). Current specials are now grouped by resolved match-group id instead of raw `product_id`, so genuinely matched items from different retailer catalogue rows land on one product card.
+- Removed the 220-product cap entirely, per explicit instruction — all ~3,459 qualifying current specials (out of 4,276 total) now load, not a capped subset.
+- Replaced the single blocking fetch with **paginated, progressive loading**: groups are processed 250 at a time (richest, most-multi-store groups first), each page's products/price-history fetch stays bounded regardless of total catalogue size, and results stream in via an `onUpdate` callback. The app only blocks on the *first* page (~3s) before rendering; later pages arrive in the background (~16s total) and trigger a re-render through a small tick-based subscription in `App()`, without a full remount.
+- **Bug found via the render harness, not manually:** the identity-matching pipeline occasionally links two distinct retailer catalogue rows from the *same* store into one match group (confirmed live: two separate Pak'nSave rows both canonical-linked to one Woolworths "Anchor Butter" row) — a pre-existing data-quality quirk in the underlying tables, not something introduced here. This produced two `Pak'nSave` entries on one card, which the existing UI can't render safely since two places key list items by `deal.store` alone (a React "duplicate key" warning surfaced this). Fixed by deduplicating to the best (lowest) price per store within a group, in the data layer rather than touching render code.
+- Live result: 19 product cards now show a genuine multi-store comparison (up from ~0 meaningful ones before); the rest are single-store cards, which is an honest reflection of how rarely the same matched item is on special at two stores simultaneously right now, not a bug.
+
 ## 2026-07-09 — Connected to live Supabase data (product search, deals, price history)
 
 - `mockProducts` (the 10-item hardcoded array) is now `FALLBACK_PRODUCTS`; a mutable `mockProducts` binding gets swapped to real Supabase data on boot before first render, or silently falls back to the old mock data if the fetch fails. Login (still "Skip for now") and tracked items/alerts/history stay local mock state — full backend wiring (real auth, persisted lists) was scoped out as a separate task.
