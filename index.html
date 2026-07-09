@@ -1,1020 +1,1193 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dodgy Deal</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dodgy Deal — Mobile Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          display: ['"Space Grotesk"', 'sans-serif'],
+        }
+      }
+    }
+  }
+</script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --store-nw:#D4002A;   /* New World red */
+    --store-pns:#FFD100;  /* PAK'nSAVE yellow */
+    --store-ww:#1E8A44;   /* Woolworths green */
+    --store-fs:#0066B3;   /* Four Square blue */
+    --store-fc:#F1811B;   /* FreshChoice orange */
+  }
+  html,body{ height:100%; }
+  body{
+    background: linear-gradient(180deg,#eef1f6 0%,#e4e9f2 100%);
+    font-family:'Plus Jakarta Sans', sans-serif;
+    min-height:100vh;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:40px 16px;
+  }
+  .font-display{ font-family:'Space Grotesk', sans-serif; }
 
-  :root {
-    --dodgy-xhigh: #FF6DB6;
-    --dodgy-high:  #FFB3D2;
-    --dodgy-med:   #EDCDE8;
-    --dodgy-low:   #F5E0F2;
-    --fair:        #C8DDED;
-    --saver:       #B0D8E6;
-    --white: #fff;
-    --black: #000;
-    --gray-bg: #F0F0F0;
-    --gray-border: #D0D0D0;
-    --gray-text: #666;
-    --nw-red: #D62127;
-    --pns-yellow: #FDDB00;
-    --ww-green: #1D9247;
-    --fs-orange: #E8560A;
+  .device{
+    width:390px;
+    max-width:100%;
+    background:#f8fafc;
+    border-radius:44px;
+    box-shadow: 0 30px 60px -20px rgba(15,23,42,.35), 0 0 0 10px #0f172a, 0 0 0 12px #232f42;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    height:844px;
   }
+  .notch{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:120px; height:26px; background:#0f172a; border-radius:0 0 16px 16px; z-index:50;
+  }
+  .screen-body{
+    flex:1; overflow-y:auto; -ms-overflow-style:none; scrollbar-width:none; position:relative; background:#f8fafc;
+  }
+  .screen-body::-webkit-scrollbar{ display:none; }
 
-  body {
-    font-family: 'Inter', sans-serif;
-    color: var(--black);
-    background: #fff;
-    min-height: 100vh;
-  }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fadein .18s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
 
-  /* ── SCREENS ── */
-  .screen { display: none; min-height: 100vh; flex-direction: column; }
-  .screen.active { display: flex; }
+  .modal-overlay{
+    position:absolute; inset:0; background:rgba(15,23,42,.55); z-index:60;
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .modal-overlay.open{ opacity:1; pointer-events:auto; }
+  .modal-sheet{
+    background:#fff; width:100%; max-height:88%; border-radius:24px 24px 0 0;
+    overflow-y:auto; transform:translateY(16px); transition:transform .2s ease;
+    padding-bottom:24px;
+  }
+  .modal-overlay.open .modal-sheet{ transform:translateY(0); }
 
-  /* ── HEADER ── */
-  .header {
-    padding: 18px 48px 0;
-    background: #fff;
-  }
-  .header-top {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-bottom: 10px;
-    position: relative;
-  }
-  .header-greeting {
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    user-select: none;
-  }
-  .header-greeting:hover { text-decoration: underline; }
-  .header-title {
-    text-align: center;
-    font-size: clamp(32px, 5vw, 52px);
-    font-weight: 900;
-    letter-spacing: -1px;
-    line-height: 1;
-  }
-  .header-subtitle {
-    text-align: center;
-    font-size: 15px;
-    color: #333;
-    margin-top: 6px;
-    margin-bottom: 14px;
-  }
-  .header-divider {
-    border: none;
-    border-top: 1.5px solid #000;
-    margin: 0 -48px;
+  .badge-dot{ width:6px;height:6px;border-radius:999px; }
+
+  .store-chip[data-active="true"]{ background:#0f172a; color:#fff; border-color:#0f172a; }
+
+  .tab-underline{ position:relative; }
+  .tab-underline.active{ color:#4f46e5; }
+  .tab-underline.active::after{
+    content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-9px;
+    width:4px; height:4px; border-radius:999px; background:#4f46e5;
   }
 
-  /* nav dropdown */
-  .nav-dropdown {
-    position: absolute;
-    right: 0;
-    top: 28px;
-    background: #e8e8e8;
-    border-radius: 6px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    z-index: 100;
-    overflow: hidden;
-    display: none;
-    min-width: 180px;
-  }
-  .nav-dropdown.open { display: block; }
-  .nav-dropdown a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #000;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background .15s;
-  }
-  .nav-dropdown a:hover { background: #d8d8d8; }
-  .nav-badge {
-    background: #000;
-    color: #fff;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+  .chart-bar{ transition: height .5s ease; }
 
-  /* ── STORE SELECTOR ── */
-  .store-selector {
-    display: flex;
-    justify-content: center;
-    gap: 28px;
-    padding: 20px 48px 0;
-    flex-wrap: wrap;
-  }
-  .store-option {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 500;
-  }
-  .store-option input[type="radio"] {
-    accent-color: #000;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-  }
+  input:focus{ outline:none; }
 
-  /* ── SEARCH BAR ── */
-  .search-wrap {
-    display: flex;
-    justify-content: center;
-    padding: 16px 48px 0;
-  }
-  .search-bar {
-    display: flex;
-    align-items: center;
-    background: #E8E8E8;
-    border-radius: 999px;
-    padding: 10px 18px;
-    width: 100%;
-    max-width: 520px;
-    gap: 8px;
-  }
-  .search-bar input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    outline: none;
-    color: #333;
-  }
-  .search-bar input::placeholder { color: #888; }
-  .search-divider {
-    width: 1px;
-    height: 18px;
-    background: #aaa;
-    margin: 0 4px;
-  }
-  .search-icon {
-    cursor: pointer;
-    color: #555;
-    font-size: 16px;
-    line-height: 1;
-    transition: color .15s;
-    background: none;
-    border: none;
-    padding: 0;
-    font-family: 'Inter', sans-serif;
-  }
-  .search-icon:hover { color: #000; }
-
-  /* ── SECTION HEADING ── */
-  .section-heading {
-    font-size: clamp(22px, 3.5vw, 32px);
-    font-weight: 800;
-    text-align: center;
-    margin: 28px 48px 0;
-  }
-
-  /* ── CARD SECTION ── */
-  .card-section {
-    background: var(--gray-bg);
-    margin: 14px 48px 48px;
-    border-radius: 12px;
-    padding: 20px 24px 28px;
-  }
-  .card-section-subtitle {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 20px;
-  }
-  .card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 14px;
-  }
-  .product-card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 12px 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    position: relative;
-  }
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-  .store-badge {
-    width: 38px;
-    height: 38px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 9px;
-    line-height: 1.1;
-    text-align: center;
-    flex-shrink: 0;
-  }
-  .badge-nw  { background: var(--nw-red); color: #fff; }
-  .badge-pns { background: var(--pns-yellow); color: #000; }
-  .badge-ww  { background: var(--ww-green); color: #fff; }
-  .badge-fs  { background: var(--fs-orange); color: #fff; }
-
-  .bell-icon {
-    font-size: 18px;
-    cursor: pointer;
-    color: #000;
-    opacity: 0.75;
-    transition: opacity .15s;
-    user-select: none;
-  }
-  .bell-icon:hover { opacity: 1; }
-
-  .card-image {
-    background: #e8e8e8;
-    border-radius: 6px;
-    height: 90px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: #888;
-    margin: 4px 0;
-  }
-  .card-price {
-    font-size: 15px;
-    font-weight: 700;
-    text-align: center;
-  }
-  .card-btn {
-    margin-top: 4px;
-    padding: 7px 14px;
-    border: 1.5px solid #000;
-    border-radius: 999px;
-    background: transparent;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s, color .15s;
-    width: 100%;
-  }
-  .card-btn:hover { background: #000; color: #fff; }
-
-  /* see all */
-  .see-all-wrap {
-    display: flex;
-    justify-content: center;
-    padding: 12px 0 4px;
-  }
-  .see-all-btn {
-    padding: 13px 52px;
-    border: 2px solid #000;
-    border-radius: 999px;
-    background: transparent;
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .15s, color .15s;
-  }
-  .see-all-btn:hover { background: #000; color: #fff; }
-
-  /* ── RESULT SCREEN ── */
-  .result-level {
-    text-align: center;
-    font-size: clamp(18px, 3vw, 26px);
-    font-weight: 700;
-    margin: 24px 48px 12px;
-  }
-  .result-section {
-    margin: 0 48px 48px;
-    border-radius: 16px;
-    padding: 28px 32px;
-    transition: background .3s;
-  }
-  .result-headline {
-    font-size: clamp(16px, 2.5vw, 22px);
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-  .result-best-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #444;
-    margin-bottom: 18px;
-  }
-  .price-comparison {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-  }
-  .price-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-    min-width: 80px;
-  }
-  .store-logo-lg {
-    width: 72px;
-    height: 72px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 11px;
-    line-height: 1.2;
-    text-align: center;
-  }
-  .price-amount {
-    font-size: 18px;
-    font-weight: 700;
-  }
-  .price-tag {
-    font-size: 12px;
-    font-weight: 700;
-    color: #333;
-  }
-  .result-verdict {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 14px 0 20px;
-    line-height: 1.5;
-  }
-  .result-bottom {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    align-items: start;
-  }
-  .result-product-img {
-    background: rgba(255,255,255,0.7);
-    border-radius: 10px;
-    height: 140px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-    color: #666;
-  }
-  .result-chart {
-    height: 140px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    padding-bottom: 8px;
-    position: relative;
-  }
-  /* simple bar chart */
-  .chart-bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 5px;
-    height: 100px;
-    position: relative;
-  }
-  .chart-bar {
-    width: 18px;
-    background: #000;
-    border-radius: 2px 2px 0 0;
-    transition: height .4s;
-  }
-  .chart-baseline {
-    width: 100%;
-    height: 1.5px;
-    background: #000;
-    margin-top: 2px;
-  }
-  .chart-dollar {
-    position: absolute;
-    top: 0;
-    right: -18px;
-    font-size: 22px;
-    font-weight: 900;
-  }
-  .chart-trend-arrow {
-    position: absolute;
-    top: 8px;
-    right: -14px;
-    font-size: 20px;
-  }
-  .notify-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(0,0,0,0.15);
-  }
-  .notify-text {
-    font-size: 13px;
-    font-weight: 500;
-    flex: 1;
-    margin-right: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  /* toggle */
-  .toggle {
-    width: 44px;
-    height: 24px;
-    background: #000;
-    border-radius: 999px;
-    position: relative;
-    cursor: pointer;
-    transition: background .2s;
-    flex-shrink: 0;
-  }
-  .toggle.off { background: #ccc; }
-  .toggle::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 18px;
-    height: 18px;
-    background: #fff;
-    border-radius: 50%;
-    transition: transform .2s;
-  }
-  .toggle.off::after { transform: translateX(0); }
-  .toggle:not(.off)::after { transform: translateX(20px); }
-
-  /* ── DEMO CONTROLS ── */
-  .demo-controls {
-    background: #1a1a1a;
-    padding: 12px 24px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    position: sticky;
-    bottom: 0;
-    z-index: 200;
-  }
-  .demo-label {
-    color: #888;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    margin-right: 4px;
-  }
-  .demo-btn {
-    padding: 5px 12px;
-    border-radius: 999px;
-    border: 1.5px solid #555;
-    background: transparent;
-    color: #ccc;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .demo-btn:hover, .demo-btn.active { background: #fff; color: #000; border-color: #fff; }
-
-  /* ── SEARCH RESULTS HEADING ── */
-  .results-heading {
-    font-size: clamp(22px, 3.5vw, 30px);
-    font-weight: 800;
-    text-align: center;
-    margin: 22px 48px 0;
-  }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 720px) {
-    .header { padding: 14px 20px 0; }
-    .header-divider { margin: 0 -20px; }
-    .store-selector { gap: 16px; padding: 16px 20px 0; }
-    .search-wrap { padding: 14px 20px 0; }
-    .section-heading { margin: 22px 20px 0; }
-    .card-section { margin: 12px 20px 32px; padding: 16px 16px 20px; }
-    .result-level { margin: 18px 20px 10px; }
-    .result-section { margin: 0 20px 32px; padding: 20px 18px; }
-    .result-bottom { grid-template-columns: 1fr; }
-    .results-heading { margin: 18px 20px 0; }
-    .price-comparison { gap: 12px; }
-    .store-logo-lg { width: 56px; height: 56px; }
+  .scan-viewfinder{
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.08) 0 1px, transparent 1px 24px),
+                repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 24px),
+                #111827;
   }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════
-     SCREEN 1: HOMEPAGE
-═══════════════════════════════════════ -->
-<div class="screen active" id="screen-home">
-  <div class="header">
-    <div class="header-top">
-      <span class="header-greeting" id="greeting-home" onclick="toggleNav('home')">Hi Jay ▾</span>
-      <div class="nav-dropdown" id="nav-home">
-        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
-        <a onclick="goTo('screen-home')">Your checked items</a>
-        <a>FAQs</a>
-      </div>
-    </div>
-    <div class="header-title">Dodgy Deal</div>
-    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
-    <hr class="header-divider">
-  </div>
+<div class="device">
+  <div class="notch"></div>
 
-  <div class="store-selector">
-    <label class="store-option">
-      <input type="radio" name="store-home" value="nw" checked> New World
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-home" value="pns"> PAK'n SAVE
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-home" value="ww"> Woolworths
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-home" value="fs"> FourSquare
-    </label>
-  </div>
-
-  <div class="search-wrap">
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="Butter" onkeydown="if(event.key==='Enter') doSearch()">
-      <button class="search-icon" onclick="clearSearch()" title="Clear">✕</button>
-      <div class="search-divider"></div>
-      <button class="search-icon" onclick="doSearch()" title="Voice search">🎙</button>
-      <button class="search-icon" onclick="doSearch()" title="Camera">📷</button>
-    </div>
-  </div>
-
-  <div class="section-heading">Real savers from your tracked items</div>
-
-  <div class="card-section">
-    <div class="card-section-subtitle">Tracked items currently priced lower than expected and among the best offers we found.</div>
-    <div class="card-grid" id="home-cards"></div>
-    <div class="see-all-wrap">
-      <button class="see-all-btn" onclick="goTo('screen-tracked')">See all</button>
-    </div>
-  </div>
-
-  <div class="demo-controls">
-    <span class="demo-label">Navigate →</span>
-    <button class="demo-btn active" onclick="goTo('screen-home')">Home</button>
-    <button class="demo-btn" onclick="doSearch()">Search Results</button>
-    <button class="demo-btn" onclick="showResult('xhigh')">Extremely High</button>
-    <button class="demo-btn" onclick="showResult('high')">High</button>
-    <button class="demo-btn" onclick="showResult('med')">Medium</button>
-    <button class="demo-btn" onclick="showResult('low')">Low</button>
-    <button class="demo-btn" onclick="showResult('fair')">Looks Fair</button>
-    <button class="demo-btn" onclick="showResult('saver')">Real Saver</button>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════
-     SCREEN 2: SEARCH RESULTS
-═══════════════════════════════════════ -->
-<div class="screen" id="screen-results">
-  <div class="header">
-    <div class="header-top">
-      <span class="header-greeting" id="greeting-results" onclick="toggleNav('results')">Hi Jay ▾</span>
-      <div class="nav-dropdown" id="nav-results">
-        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
-        <a onclick="goTo('screen-home')">Your checked items</a>
-        <a>FAQs</a>
-      </div>
-    </div>
-    <div class="header-title">Dodgy Deal</div>
-    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
-    <hr class="header-divider">
-  </div>
-
-  <div class="store-selector">
-    <label class="store-option">
-      <input type="radio" name="store-results" value="nw" checked> New World
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-results" value="pns"> PAK'n SAVE
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-results" value="ww"> Woolworths
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-results" value="fs"> FourSquare
-    </label>
-  </div>
-
-  <div class="search-wrap">
-    <div class="search-bar">
-      <input type="text" id="search-input-2" value="Butter" onkeydown="if(event.key==='Enter') doSearch()">
-      <button class="search-icon" onclick="clearSearch2()" title="Clear">✕</button>
-      <div class="search-divider"></div>
-      <button class="search-icon" title="Voice">🎙</button>
-      <button class="search-icon" title="Camera">📷</button>
-    </div>
-  </div>
-
-  <div class="results-heading" id="results-heading">Butter Specials at New World</div>
-
-  <div class="card-section">
-    <div class="card-section-subtitle">Check whether that supermarket deal is really worth it.</div>
-    <div class="card-grid" id="results-cards"></div>
-  </div>
-
-  <div class="demo-controls">
-    <span class="demo-label">Navigate →</span>
-    <button class="demo-btn" onclick="goTo('screen-home')">Home</button>
-    <button class="demo-btn active" onclick="doSearch()">Search Results</button>
-    <button class="demo-btn" onclick="showResult('xhigh')">Extremely High</button>
-    <button class="demo-btn" onclick="showResult('high')">High</button>
-    <button class="demo-btn" onclick="showResult('med')">Medium</button>
-    <button class="demo-btn" onclick="showResult('low')">Low</button>
-    <button class="demo-btn" onclick="showResult('fair')">Looks Fair</button>
-    <button class="demo-btn" onclick="showResult('saver')">Real Saver</button>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════
-     SCREEN 3: DEAL RESULT
-═══════════════════════════════════════ -->
-<div class="screen" id="screen-result">
-  <div class="header">
-    <div class="header-top">
-      <span class="header-greeting" id="greeting-result" onclick="toggleNav('result')">Hi Jay ▾</span>
-      <div class="nav-dropdown" id="nav-result">
-        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
-        <a onclick="goTo('screen-home')">Your checked items</a>
-        <a>FAQs</a>
-      </div>
-    </div>
-    <div class="header-title">Dodgy Deal</div>
-    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
-    <hr class="header-divider">
-  </div>
-
-  <div class="store-selector">
-    <label class="store-option">
-      <input type="radio" name="store-result" value="nw" checked> New World
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-result" value="pns"> PAK'n SAVE
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-result" value="ww"> Woolworths
-    </label>
-    <label class="store-option">
-      <input type="radio" name="store-result" value="fs"> FourSquare
-    </label>
-  </div>
-
-  <div class="search-wrap">
-    <div class="search-bar">
-      <input type="text" id="search-input-3" value="Butter">
-      <button class="search-icon" title="Clear">✕</button>
-      <div class="search-divider"></div>
-      <button class="search-icon" title="Voice">🎙</button>
-      <button class="search-icon" title="Camera">📷</button>
-    </div>
-  </div>
-
-  <div class="result-level" id="result-level-label"></div>
-
-  <div class="result-section" id="result-section">
-    <div class="result-headline" id="result-headline"></div>
-    <div class="result-best-label" id="result-best-label"></div>
-    <div class="price-comparison" id="price-comparison"></div>
-    <div class="result-verdict" id="result-verdict"></div>
-    <div class="result-bottom">
-      <div class="result-product-img">Product Image</div>
-      <div class="result-chart">
-        <div class="chart-bars" id="chart-bars">
-          <div class="chart-bar" style="height:35px"></div>
-          <div class="chart-bar" style="height:48px"></div>
-          <div class="chart-bar" style="height:42px"></div>
-          <div class="chart-bar" style="height:58px"></div>
-          <div class="chart-bar" style="height:65px"></div>
-          <div class="chart-bar" style="height:78px"></div>
-          <div class="chart-bar" style="height:88px"></div>
+  <!-- ===================== LOGIN SCREEN ===================== -->
+  <div id="view-login" class="view active screen-body">
+    <div class="min-h-full flex flex-col justify-between p-6 pt-14 font-sans select-none">
+      <div class="max-w-md w-full mx-auto text-center">
+        <div class="w-14 h-14 mx-auto bg-indigo-600 rounded-[14px] rotate-45 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+          <svg class="w-7 h-7 text-white -rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 21h18L12 2Z" fill="none"/><path d="M9 21h6M12 15v6"/></svg>
         </div>
-        <div class="chart-baseline"></div>
-        <span style="font-size:22px;position:absolute;top:4px;right:4px;">💲</span>
+        <h1 class="text-3xl font-black text-slate-900 tracking-widest uppercase mt-5 font-display">Dodgy Deal</h1>
+        <p class="text-xs text-slate-500 font-medium mt-3 leading-relaxed max-w-xs mx-auto">
+          Compare prices across supermarkets to instantly assess whether that special is a real saver or a dodgy offer.
+        </p>
       </div>
-    </div>
-    <div class="notify-row">
-      <div class="notify-text">
-        🔔 Notify me when any supermarket offers a genuinely good price.
+
+      <div class="max-w-md w-full mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-100/40 space-y-6 mt-10">
+        <div class="flex bg-slate-100/80 p-1 rounded-xl">
+          <button onclick="setAuthMode(false)" id="tab-login" class="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">Log In</button>
+          <button onclick="setAuthMode(true)" id="tab-signup" class="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">Sign Up</button>
+        </div>
+
+        <div class="text-center space-y-1">
+          <h2 id="auth-title" class="text-xl font-black text-slate-900 uppercase tracking-wider font-display">Log In</h2>
+          <p id="auth-subtitle" class="text-[11px] text-slate-500 font-semibold">Welcome back to Dodgy Deal</p>
+        </div>
+
+        <div id="auth-error" class="hidden text-rose-600 text-xs font-semibold bg-rose-50 border border-rose-100 rounded-xl p-3 text-center"></div>
+
+        <form onsubmit="handleLogin(event)" class="space-y-4">
+          <div id="signup-name-field" class="space-y-1.5 hidden">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Name</label>
+            <input type="text" id="auth-name" placeholder="John Doe" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium bg-slate-50 focus:border-indigo-400 focus:bg-white transition-colors">
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Email</label>
+            <input type="email" required id="auth-email" placeholder="you@example.com" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium bg-slate-50 focus:border-indigo-400 focus:bg-white transition-colors">
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Password</label>
+            <input type="password" required id="auth-password" placeholder="••••••••" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium bg-slate-50 focus:border-indigo-400 focus:bg-white transition-colors">
+          </div>
+          <div id="signup-confirm-field" class="space-y-1.5 hidden">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Confirm Password</label>
+            <input type="password" id="auth-confirm" placeholder="••••••••" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium bg-slate-50 focus:border-indigo-400 focus:bg-white transition-colors">
+          </div>
+          <button type="submit" class="w-full bg-slate-900 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-colors shadow-lg shadow-slate-900/10" id="auth-submit-btn">Log In</button>
+        </form>
       </div>
-      <div class="toggle" id="notify-toggle" onclick="this.classList.toggle('off')"></div>
+      <p class="text-center text-[10px] text-slate-400 font-semibold mt-8">Prototype only — no real account is created.</p>
     </div>
   </div>
 
-  <div style="display:flex;justify-content:center;margin: 0 48px 40px;">
-    <button class="see-all-btn" onclick="doSearch()">Check another deal</button>
+  <!-- ===================== APP SHELL ===================== -->
+  <div id="app-shell" class="hidden flex-col h-full">
+    <!-- Top bar -->
+    <header class="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white relative z-40 flex-shrink-0">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="goTo('home')">
+        <div class="w-7 h-7 bg-indigo-600 rounded-[6px] rotate-45 flex items-center justify-center shadow-sm">
+          <svg class="w-4 h-4 text-white -rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 21h18L12 2Z"/></svg>
+        </div>
+        <span class="font-black text-slate-900 tracking-tight font-display text-lg">DODGY DEAL<span class="text-indigo-600">.</span></span>
+      </div>
+      <button onclick="toggleUserMenu()" class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors relative">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+        <span id="alert-dot" class="hidden absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></span>
+      </button>
+
+      <div id="user-menu" class="hidden absolute top-16 right-4 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-300/30 w-52 py-2 z-50">
+        <button onclick="goTo('alerts'); toggleUserMenu()" class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          Notifications
+        </button>
+        <button onclick="goTo('howitworks'); toggleUserMenu()" class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
+          How It Works
+        </button>
+        <div class="h-px bg-slate-100 my-1"></div>
+        <button onclick="logOut()" class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Log Out
+        </button>
+      </div>
+    </header>
+
+    <main class="screen-body flex-1 px-5 pt-5">
+
+      <!-- HOME / CHECK DEALS -->
+      <section id="view-home" class="view active pb-8 -mx-5 -mt-5 px-5 pt-5 min-h-full bg-gradient-to-b from-indigo-50 via-slate-50 to-white">
+        <div class="text-center space-y-3 pb-6">
+          <div class="w-14 h-14 mx-auto bg-indigo-600 rounded-2xl rotate-45 flex items-center justify-center shadow-md shadow-indigo-600/25">
+            <svg class="w-7 h-7 text-white -rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 uppercase tracking-wide font-display">Dodgy Deal</h1>
+          <p class="text-xs text-slate-500 font-medium max-w-xs mx-auto leading-relaxed">An app that allows you to search and compare for sales across the main supermarkets in Aotearoa, New Zealand.</p>
+        </div>
+
+        <form onsubmit="submitSearch(event)" class="flex items-center bg-white rounded-xl pl-4 pr-2 py-2 border border-slate-200 shadow-sm">
+          <svg class="text-slate-400 w-5 h-5 mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="home-search-input" type="text" placeholder="Search for products…" class="bg-transparent border-none w-full text-sm font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-semibold" />
+          <button type="submit" class="ml-2 text-xs font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2.5 rounded-lg flex-shrink-0 transition-colors">Search</button>
+        </form>
+
+        <div id="home-specials-wrap" class="pt-7">
+          <div class="text-center space-y-1 pb-4">
+            <h3 class="text-sm font-black text-slate-900 uppercase tracking-wide">Your Items On Special</h3>
+            <p id="specials-subtitle" class="text-[11px] text-slate-400 font-semibold"></p>
+          </div>
+          <div id="home-specials-list" class="space-y-4"></div>
+        </div>
+
+        <div id="home-results-wrap" class="hidden pt-6 space-y-4">
+          <div class="flex gap-2 overflow-x-auto pb-1" id="store-chip-row"></div>
+          <div class="flex items-center justify-between">
+            <span id="results-count" class="text-[11px] font-bold text-slate-400 uppercase tracking-widest"></span>
+            <select id="sort-select" onchange="setSortBy(this.value)" class="text-[11px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 rounded-lg px-2.5 py-1.5 border-none">
+              <option value="relevance">Relevance</option>
+              <option value="price">Price</option>
+              <option value="brand">Brand</option>
+              <option value="discount">Discount</option>
+            </select>
+          </div>
+          <div id="home-results-list" class="space-y-4"></div>
+        </div>
+
+        <footer class="mt-8 mb-2 bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Dodgy Deal</p>
+          <p class="text-xs font-semibold text-slate-500 mt-1 leading-relaxed">Helping New Zealand shoppers spot real savings, compare supermarket specials, and avoid dodgy offers.</p>
+        </footer>
+      </section>
+
+      <!-- MY LIST / TRACKED -->
+      <section id="view-tracked" class="view pb-8"></section>
+
+      <!-- ALL CHECKS / HISTORY -->
+      <section id="view-history" class="view pb-24"></section>
+
+      <!-- DEAL STATS / PROFILE -->
+      <section id="view-profile" class="view pb-8"></section>
+
+      <!-- ALERTS -->
+      <section id="view-alerts" class="view pb-8"></section>
+
+      <!-- HOW IT WORKS -->
+      <section id="view-howitworks" class="view pb-8"></section>
+
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="flex items-stretch border-t border-slate-100 bg-white flex-shrink-0">
+      <button onclick="goTo('home')" data-navbtn="home" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-slate-400 tab-underline">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span class="text-[9px] font-black uppercase tracking-wider">Check Deals</span>
+      </button>
+      <button onclick="goTo('tracked')" data-navbtn="tracked" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-slate-400 tab-underline">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <span class="text-[9px] font-black uppercase tracking-wider">My List</span>
+      </button>
+      <button onclick="goTo('history')" data-navbtn="history" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-slate-400 tab-underline">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>
+        <span class="text-[9px] font-black uppercase tracking-wider">All Checks</span>
+      </button>
+      <button onclick="goTo('profile')" data-navbtn="profile" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-slate-400 tab-underline">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>
+        <span class="text-[9px] font-black uppercase tracking-wider">Deal Stats</span>
+      </button>
+    </nav>
   </div>
 
-  <div class="demo-controls">
-    <span class="demo-label">Navigate →</span>
-    <button class="demo-btn" onclick="goTo('screen-home')">Home</button>
-    <button class="demo-btn" onclick="doSearch()">Search Results</button>
-    <button class="demo-btn" id="dbn-xhigh" onclick="showResult('xhigh')">Extremely High</button>
-    <button class="demo-btn" id="dbn-high" onclick="showResult('high')">High</button>
-    <button class="demo-btn" id="dbn-med" onclick="showResult('med')">Medium</button>
-    <button class="demo-btn" id="dbn-low" onclick="showResult('low')">Low</button>
-    <button class="demo-btn" id="dbn-fair" onclick="showResult('fair')">Looks Fair</button>
-    <button class="demo-btn" id="dbn-saver" onclick="showResult('saver')">Real Saver</button>
+  <!-- ===================== DEAL MODAL ===================== -->
+  <div id="deal-modal" class="modal-overlay">
+    <div class="modal-sheet" id="deal-modal-body"></div>
   </div>
+
+  <!-- ===================== SCANNER MODAL ===================== -->
+  <div id="scanner-modal" class="modal-overlay">
+    <div class="modal-sheet" id="scanner-modal-body"></div>
+  </div>
+
+  <!-- ===================== CREATE LIST MODAL ===================== -->
+  <div id="createlist-modal" class="modal-overlay">
+    <div class="modal-sheet p-6">
+      <h3 class="text-lg font-black text-slate-900 uppercase tracking-wide font-display mb-1">New List</h3>
+      <p class="text-xs text-slate-500 font-medium mb-4">Give your new grocery list a name to get started tracking specials and comparing prices.</p>
+      <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">List Name</label>
+      <input id="new-list-name" type="text" placeholder="e.g. Weekly Groceries" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 mb-5 bg-slate-50">
+      <div class="flex gap-3">
+        <button onclick="closeModal('createlist-modal')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
+        <button onclick="createList()" class="flex-1 bg-slate-900 hover:bg-indigo-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Snackbar -->
+  <div id="snackbar" class="absolute left-1/2 -translate-x-1/2 bottom-24 bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl opacity-0 pointer-events-none transition-all z-[70]"></div>
 </div>
-
-<!-- ═══════════════════════════════════════
-     SCREEN 4: TRACKED ITEMS
-═══════════════════════════════════════ -->
-<div class="screen" id="screen-tracked">
-  <div class="header">
-    <div class="header-top">
-      <span class="header-greeting" onclick="toggleNav('tracked2')">Hi Jay ▾</span>
-      <div class="nav-dropdown" id="nav-tracked2">
-        <a onclick="goTo('screen-tracked')">Your tracked items <span class="nav-badge">3</span></a>
-        <a onclick="goTo('screen-home')">Your checked items</a>
-        <a>FAQs</a>
-      </div>
-    </div>
-    <div class="header-title">Dodgy Deal</div>
-    <div class="header-subtitle">Choose a supermarket, then search for a product to check if it's on special.</div>
-    <hr class="header-divider">
-  </div>
-
-  <div class="section-heading" style="text-align:left;margin-bottom:0;">Your Tracked Items</div>
-  <div style="margin:6px 48px 0;color:#555;font-size:14px;">Real Savers only — items currently priced lower than expected.</div>
-
-  <div class="card-section" style="margin-top:16px;">
-    <div class="card-grid" id="tracked-cards"></div>
-  </div>
-
-  <div class="demo-controls">
-    <span class="demo-label">Navigate →</span>
-    <button class="demo-btn" onclick="goTo('screen-home')">Home</button>
-    <button class="demo-btn" onclick="doSearch()">Search Results</button>
-    <button class="demo-btn" onclick="showResult('xhigh')">Extremely High</button>
-    <button class="demo-btn" onclick="showResult('high')">High</button>
-    <button class="demo-btn" onclick="showResult('med')">Medium</button>
-    <button class="demo-btn" onclick="showResult('low')">Low</button>
-    <button class="demo-btn" onclick="showResult('fair')">Looks Fair</button>
-    <button class="demo-btn active" onclick="goTo('screen-tracked')">Real Saver</button>
-  </div>
-</div>
-
 
 <script>
-// ── DATA ──────────────────────────────────────────────
-const STORES = {
-  nw:  { name: 'New World',   cls: 'badge-nw',  label: 'NW',              price: '$12.00' },
-  pns: { name: "PAK'n SAVE",  cls: 'badge-pns', label: "PAK'n\nSAVE",     price: '$10.90' },
-  ww:  { name: 'Woolworths',  cls: 'badge-ww',  label: '⚛',               price: '$12.50' },
-  fs:  { name: 'FourSquare',  cls: 'badge-fs',  label: '4SQ',             price: '$13.00' },
+/* ============================================================
+   DATA MODEL — shaped after the source app's Product/Deal types
+   ============================================================ */
+const STORES = ['New World', "PAK'nSAVE", 'Woolworths', 'Four Square', 'FreshChoice'];
+const STORE_META = {
+  'New World':   { short:'NW',  color:'var(--store-nw)'  },
+  "PAK'nSAVE":   { short:'PNS', color:'var(--store-pns)' },
+  'Woolworths':  { short:'WW',  color:'var(--store-ww)'  },
+  'Four Square': { short:'FS',  color:'var(--store-fs)'  },
+  'FreshChoice': { short:'FC',  color:'var(--store-fc)'  },
 };
+const STORE_MULTIPLIER = { "PAK'nSAVE":0.88, 'New World':0.98, 'Woolworths':1.0, 'FreshChoice':1.02, 'Four Square':1.06 };
+
+const VERDICT = {
+  'Dodgy Deal': { label:'Dodgy Deal', tag:'Caution',  text:'text-red-600',     bg:'bg-red-50/60',     border:'border-red-200',     chip:'bg-red-100 text-red-800',        icon:'shield' },
+  'Fair Deal':  { label:'Fair Deal',  tag:'Okay Buy',  text:'text-amber-600',   bg:'bg-amber-50/60',   border:'border-amber-200',   chip:'bg-amber-100 text-amber-800',    icon:'trend' },
+  'Real Saver': { label:'Real Saver', tag:'Best Buy',  text:'text-emerald-600', bg:'bg-emerald-50/60', border:'border-emerald-200', chip:'bg-emerald-100 text-emerald-800', icon:'award' },
+};
+
+function icon(name, cls){
+  const icons = {
+    shield:'<path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z"/><path d="M12 8v4M12 15.5h.01" stroke-linecap="round"/>',
+    trend:'<path d="M22 17 13.5 8.5 8.5 13.5 2 7"/><path d="M16 17h6v-6"/>',
+    award:'<circle cx="12" cy="8" r="6"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>',
+    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    bookmark:'<path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+    calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    x:'<path d="M18 6 6 18M6 6l12 12"/>',
+    camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+    chevronRight:'<path d="m9 18 6-6-6-6"/>',
+    trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/>',
+  };
+  return '<svg class="'+(cls||'w-4 h-4')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+icons[name]+'</svg>';
+}
 
 const PRODUCTS = [
-  { name: 'Anchor Butter 500g',    price: '$7.50',  store: 'pns' },
-  { name: 'Meadow Fresh Milk 2L',  price: '$3.80',  store: 'nw'  },
-  { name: 'Vogel Bread',           price: '$5.20',  store: 'pns' },
-  { name: 'Free Range Eggs 12pk',  price: '$8.00',  store: 'ww'  },
-  { name: 'Mainland Cheese 400g',  price: '$9.50',  store: 'nw'  },
-  { name: 'Milo 400g',             price: '$6.00',  store: 'pns' },
+  { id:'avalanche-sachets-10pk', brand:'Avalanche', name:'Café Style Coffee Sachets 10pk', category:'Pantry', unit:'10pk', standardPrice:8.20,
+    deals:[ { store:'New World', price:6.50, originalPrice:9.20, dealType:'Real Saver', reason:'Genuine Sale', explanation:"New World's standard price is $8.20. This is a genuine price reduction to $6.50 (29% off) — a solid discount that matches historical promo depth." } ],
+    history:[6.9,6.9,7.2,8.2,8.2,6.5] },
+
+  { id:'fresh-apples-1kg', brand:'Fresh Produce', name:'Royal Gala Apples 1kg', category:'Fruit & Veg', unit:'1kg', standardPrice:4.30,
+    deals:[ { store:"PAK'nSAVE", price:3.49, originalPrice:4.60, dealType:'Real Saver', reason:'Genuine Sale', explanation:"PAK'nSAVE's normal shelf price runs around $4.30–$4.60. $3.49 is a real 24% reduction consistent with typical seasonal produce specials." } ],
+    history:[4.3,4.4,4.5,4.3,4.6,3.49] },
+
+  { id:'cadbury-milk-110g', brand:'Cadbury', name:'Dairy Milk Chocolate Block 110g', category:'Snacks & Confectionery', unit:'110g', standardPrice:3.60,
+    deals:[ { store:'Woolworths', price:2.50, originalPrice:4.80, dealType:'Dodgy Deal', reason:'Artificial Discount (Was-Is Trap)', explanation:'Woolworths quietly lifted the shelf price from $3.60 to $4.80 nine days ago, then slapped on a "Save $2.30!" tag. The $2.50 sale price is barely 30c below the real recent average.' } ],
+    history:[3.6,3.6,3.5,4.8,4.8,2.5] },
+
+  { id:'meadow-fresh-milk-2l', brand:'Meadow Fresh', name:'Original Milk 2L', category:'Dairy & Eggs', unit:'2L', standardPrice:4.10,
+    deals:[
+      { store:'Woolworths', price:4.29, originalPrice:5.99, dealType:'Dodgy Deal', reason:'Artificial Discount (Was-Is Trap)', explanation:'Woolworths bumped the standard price from $4.10 up to $5.99 two weeks ago. Now they are offering a "Save $1.70!" discount that still leaves it above the real everyday price.' },
+      { store:"PAK'nSAVE", price:3.65, originalPrice:4.20, dealType:'Fair Deal', reason:'Modest Discount', explanation:"A genuine but minor price drop at PAK'nSAVE. It's a discount matching typical promotional frequency, meaning it's safe to buy but not an exceptional saving." },
+    ], history:[4.1,4.1,4.0,4.1,4.2,3.65] },
+
+  { id:'lurpak-butter-250g', brand:'Lurpak', name:'Butter 250g', category:'Dairy & Eggs', unit:'250g', standardPrice:6.80,
+    deals:[ { store:'Four Square', price:5.99, originalPrice:7.20, dealType:'Real Saver', reason:'Genuine Sale', explanation:'A deep, authentic discount well below the average historical pricing at Four Square. This is an outstanding deal — stock up while it lasts.' } ],
+    history:[6.8,6.9,6.7,6.8,7.2,5.99] },
+
+  { id:'moccona-classic-200g', brand:'Moccona', name:'Classic Instant Coffee 200g', category:'Pantry', unit:'200g', standardPrice:10.50,
+    deals:[
+      { store:'New World', price:11.99, originalPrice:16.99, dealType:'Dodgy Deal', reason:'Artificial Discount (Was-Is Trap)', explanation:'New World bumped the standard price from $10.50 up to $16.99 two weeks ago. Now they are offering a "Save $5.00!" discount that still leaves it above the genuine everyday price.' },
+      { store:'Woolworths', price:9.50, originalPrice:11.50, dealType:'Real Saver', reason:'Genuine Sale', explanation:"Woolworths' standard price is $10.50. This is a genuine price reduction to $9.50 (17% off) — a solid purchase." },
+    ], history:[10.5,10.5,10.5,16.99,16.99,9.5] },
+
+  { id:'nescafe-gold-200g', brand:'Nescafé', name:'Gold Blend Instant Coffee 200g', category:'Pantry', unit:'200g', standardPrice:11.20,
+    deals:[ { store:'Woolworths', price:9.99, originalPrice:11.99, dealType:'Fair Deal', reason:'Modest Discount', explanation:'A real but modest discount off the everyday price — worth grabbing if you need it, though not the deepest cut we track.' } ],
+    history:[11.2,11.4,11.0,11.99,11.99,9.99] },
+
+  { id:'vogels-bread-750g', brand:"Vogel's", name:'Original Mixed Grain Bread 750g', category:'Bakery', unit:'750g', standardPrice:5.60,
+    deals:[ { store:'New World', price:4.60, originalPrice:5.80, dealType:'Real Saver', reason:'Genuine Sale', explanation:"A genuine reduction of over 20% versus New World's recent average shelf price. Great time to stock the freezer." } ],
+    history:[5.6,5.7,5.5,5.6,5.8,4.6] },
+
+  { id:'tegel-chicken-breast-1kg', brand:'Tegel', name:'Chicken Breast 1kg', category:'Meat & Seafood', unit:'1kg', standardPrice:14.00,
+    deals:[ { store:"PAK'nSAVE", price:11.50, originalPrice:16.00, dealType:'Dodgy Deal', reason:'Artificial Discount (Was-Is Trap)', explanation:"PAK'nSAVE lifted the price to $16.00 just before this \"special\" started. $11.50 is only slightly below the genuine $14.00 everyday price." } ],
+    history:[14,14.2,13.9,16,16,11.5] },
+
+  { id:'pams-eggs-12pk', brand:'Pams', name:'Free Range Eggs 12pk', category:'Dairy & Eggs', unit:'12pk', standardPrice:8.40,
+    deals:[ { store:'New World', price:6.99, originalPrice:8.60, dealType:'Real Saver', reason:'Genuine Sale', explanation:'A solid, genuine discount below the recent historical average price — a real saver worth tracking.' } ],
+    history:[8.4,8.5,8.3,8.4,8.6,6.99] },
 ];
 
-const LEVELS = {
-  xhigh: {
-    bg: 'var(--dodgy-xhigh)',
-    levelLabel: 'Dodgyness level: EXTREMELY HIGH',
-    headline: 'You can get this item for less elsewhere',
-    bestLabel: 'Best price',
-    bestStore: 'pns',
-    verdict: 'AND price is 5% HIGHER than expected given price history and inflation.',
-    prices: [
-      { store: 'pns', amount: '$10.90', tag: 'Best price'   },
-      { store: 'nw',  amount: '$12.00', tag: 'Your deal'    },
-      { store: 'ww',  amount: '$12.00', tag: ''             },
-    ],
-    chartHeights: [35,44,52,60,55,70,88],
-  },
-  high: {
-    bg: 'var(--dodgy-high)',
-    levelLabel: 'Dodgyness level: HIGH',
-    headline: "You've found the best available price",
-    bestLabel: 'Your deal — Best price',
-    bestStore: 'nw',
-    verdict: "BUT price is 5% HIGHER than expected given price history and inflation.",
-    prices: [
-      { store: 'nw',  amount: '$10.90', tag: 'Your deal'    },
-      { store: 'pns', amount: '$12.00', tag: ''             },
-      { store: 'ww',  amount: '$12.00', tag: ''             },
-    ],
-    chartHeights: [40,52,48,62,70,80,85],
-  },
-  med: {
-    bg: 'var(--dodgy-med)',
-    levelLabel: 'Dodgyness level: MEDIUM',
-    headline: 'You can get this item for less elsewhere',
-    bestLabel: 'Best price',
-    bestStore: 'pns',
-    verdict: "BUT, price is in line with expected given inflation.",
-    prices: [
-      { store: 'pns', amount: '$10.90', tag: 'Best price'   },
-      { store: 'nw',  amount: '$12.00', tag: 'Your deal'    },
-      { store: 'ww',  amount: '$12.50', tag: ''             },
-    ],
-    chartHeights: [42,50,55,62,60,68,72],
-  },
-  low: {
-    bg: 'var(--dodgy-low)',
-    levelLabel: 'Dodgyness level: LOW',
-    headline: 'You can get this item for less elsewhere',
-    bestLabel: 'Best price',
-    bestStore: 'pns',
-    verdict: "BUT price is 5% LOWER than expected given price history and inflation.",
-    prices: [
-      { store: 'pns', amount: '$10.90', tag: 'Best price'   },
-      { store: 'nw',  amount: '$12.00', tag: 'Your deal'    },
-      { store: 'ww',  amount: '$12.00', tag: ''             },
-    ],
-    chartHeights: [55,62,58,68,65,60,55],
-  },
-  fair: {
-    bg: 'var(--fair)',
-    levelLabel: 'Looks  fair',
-    headline: "You've found the best available price",
-    bestLabel: 'Your deal — Best price',
-    bestStore: 'nw',
-    verdict: "AND, price is in line with expected given inflation.",
-    prices: [
-      { store: 'nw',  amount: '$10.90', tag: 'Your deal'    },
-      { store: 'pns', amount: '$12.00', tag: ''             },
-      { store: 'ww',  amount: '$12.00', tag: ''             },
-    ],
-    chartHeights: [58,62,68,65,60,58,55],
-  },
-  saver: {
-    bg: 'var(--saver)',
-    levelLabel: 'Real Saver',
-    headline: "You've found the best available price",
-    bestLabel: 'Your deal — Best price',
-    bestStore: 'nw',
-    verdict: "AND price is 5% LOWER than expected given price history and inflation.",
-    prices: [
-      { store: 'nw',  amount: '$10.90', tag: 'Your deal'    },
-      { store: 'pns', amount: '$12.00', tag: ''             },
-      { store: 'ww',  amount: '$13.50', tag: ''             },
-    ],
-    chartHeights: [70,65,60,55,50,48,44],
-  },
+function productById(id){ return PRODUCTS.find(p=>p.id===id); }
+function everydayPrice(product, store){
+  const deal = product.deals.find(d=>d.store===store);
+  if(deal) return deal.price;
+  return Math.round(product.standardPrice * (STORE_MULTIPLIER[store]||1) * 100)/100;
+}
+function bestDeal(product){
+  return product.deals.slice().sort((a,b)=>a.price-b.price)[0];
+}
+// Escapes a value for safe embedding inside a single-quoted JS string literal
+// within an onclick="..." attribute. Needed because store names like
+// "PAK'nSAVE" contain an apostrophe that would otherwise break the handler.
+function q(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g, "\\'"); }
+
+/* ============================================================
+   APP STATE
+   ============================================================ */
+const state = {
+  isSignUp:false,
+  currentScreen:'home',
+  tracked: new Set(['avalanche-sachets-10pk','fresh-apples-1kg','cadbury-milk-110g','meadow-fresh-milk-2l','lurpak-butter-250g']),
+  lists:[
+    { id:'list-1', name:'List 1', itemIds:['avalanche-sachets-10pk','fresh-apples-1kg','cadbury-milk-110g'] },
+    { id:'list-2', name:'List 2', itemIds:['meadow-fresh-milk-2l','lurpak-butter-250g','fresh-apples-1kg'] },
+    { id:'list-3', name:'List 3', itemIds:['avalanche-sachets-10pk','meadow-fresh-milk-2l','lurpak-butter-250g','cadbury-milk-110g'] },
+  ],
+  quantities:{ 'fresh-apples-1kg':1 },
+  selectedListId:null,
+  history:[
+    { productId:'moccona-classic-200g', store:'New World', price:11.99, dealType:'Dodgy Deal', timestamp:'2 days ago' },
+    { productId:'lurpak-butter-250g', store:'Four Square', price:5.99, dealType:'Real Saver', timestamp:'3 days ago' },
+    { productId:'meadow-fresh-milk-2l', store:'Woolworths', price:4.29, dealType:'Dodgy Deal', timestamp:'5 days ago' },
+    { productId:'vogels-bread-750g', store:'New World', price:4.60, dealType:'Real Saver', timestamp:'1 week ago' },
+    { productId:'nescafe-gold-200g', store:'Woolworths', price:9.99, dealType:'Fair Deal', timestamp:'1 week ago' },
+  ],
+  alerts:[
+    { id:'a1', productId:'moccona-classic-200g', alertType:'Dodgy Deal', oldPrice:16.99, newPrice:11.99, read:false, timestamp:'Jun 28' },
+    { id:'a2', productId:'lurpak-butter-250g', alertType:'Real Saver', oldPrice:6.80, newPrice:5.99, read:false, timestamp:'Jun 26' },
+    { id:'a3', productId:'meadow-fresh-milk-2l', alertType:'Dodgy Deal', oldPrice:5.99, newPrice:4.29, read:true, timestamp:'Jun 20' },
+  ],
+  searchInput:'',
+  activeQuery:'',
+  selectedStores:['all'],
+  sortBy:'relevance',
+  dealsExpanded:false,
 };
 
-// ── HELPERS ──────────────────────────────────────────
-function storeBadge(storeKey, size='sm') {
-  const s = STORES[storeKey];
-  const cls = size === 'lg' ? 'store-logo-lg' : 'store-badge';
-  const logoMap = {
-    nw:  `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#D62127" rx="6"/><polygon points="24,6 42,18 42,30 24,42 6,30 6,18" fill="none" stroke="white" stroke-width="2.5"/><text x="24" y="28" text-anchor="middle" fill="white" font-family="Inter" font-weight="900" font-size="${size==='lg'?14:7}">NW</text></svg>`,
-    pns: `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#FDDB00" rx="6"/><text x="24" y="20" text-anchor="middle" fill="#000" font-family="Inter" font-weight="900" font-size="${size==='lg'?11:5.5}">PAK'n</text><text x="24" y="32" text-anchor="middle" fill="#000" font-family="Inter" font-weight="900" font-size="${size==='lg'?11:5.5}">SAVE</text></svg>`,
-    ww:  `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#fff" rx="6"/><circle cx="24" cy="24" r="18" fill="none" stroke="#1D9247" stroke-width="3"/><text x="24" y="30" text-anchor="middle" fill="#1D9247" font-family="Inter" font-weight="900" font-size="${size==='lg'?16:8}">W</text></svg>`,
-    fs:  `<svg width="${size==='lg'?48:24}" height="${size==='lg'?48:24}" viewBox="0 0 48 48"><rect width="48" height="48" fill="#E8560A" rx="6"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Inter" font-weight="900" font-size="${size==='lg'?13:6.5}">4SQ</text></svg>`,
-  };
-  return logoMap[storeKey] || '';
+/* ============================================================
+   AUTH
+   ============================================================ */
+function setAuthMode(signUp){
+  state.isSignUp = signUp;
+  document.getElementById('tab-login').className = 'flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ' + (!signUp ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400');
+  document.getElementById('tab-signup').className = 'flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ' + (signUp ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400');
+  document.getElementById('auth-title').textContent = signUp ? 'Sign Up' : 'Log In';
+  document.getElementById('auth-subtitle').textContent = signUp ? 'Create your Dodgy Deal account' : 'Welcome back to Dodgy Deal';
+  document.getElementById('signup-name-field').classList.toggle('hidden', !signUp);
+  document.getElementById('signup-confirm-field').classList.toggle('hidden', !signUp);
+  document.getElementById('auth-submit-btn').textContent = signUp ? 'Create Account' : 'Log In';
+  document.getElementById('auth-error').classList.add('hidden');
+}
+function handleLogin(e){
+  e.preventDefault();
+  const errBox = document.getElementById('auth-error');
+  if(state.isSignUp){
+    const pw = document.getElementById('auth-password').value;
+    const cpw = document.getElementById('auth-confirm').value;
+    if(pw !== cpw){ errBox.textContent='Passwords do not match'; errBox.classList.remove('hidden'); return; }
+  }
+  errBox.classList.add('hidden');
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('app-shell').classList.remove('hidden');
+  document.getElementById('app-shell').classList.add('flex');
+  goTo('home');
+  refreshAlertDot();
+}
+function logOut(){
+  document.getElementById('app-shell').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('flex');
+  document.getElementById('view-login').classList.add('active');
+  toggleUserMenu(true);
+}
+setAuthMode(false);
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goTo(screen){
+  state.currentScreen = screen;
+  document.querySelectorAll('#app-shell main .view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+screen).classList.add('active');
+  document.querySelectorAll('[data-navbtn]').forEach(btn=>{
+    const active = btn.dataset.navbtn === screen;
+    btn.classList.toggle('tab-underline', true);
+    btn.classList.toggle('active', active);
+    btn.classList.toggle('text-slate-400', !active);
+  });
+  document.getElementById('app-shell').querySelector('main').scrollTop = 0;
+  if(screen==='home') renderHome();
+  if(screen==='tracked') renderTracked();
+  if(screen==='history') renderHistory();
+  if(screen==='profile') renderProfile();
+  if(screen==='alerts') renderAlerts();
+  if(screen==='howitworks') renderHowItWorks();
+  toggleUserMenu(true);
+}
+function toggleUserMenu(forceClose){
+  const el = document.getElementById('user-menu');
+  if(forceClose){ el.classList.add('hidden'); return; }
+  el.classList.toggle('hidden');
 }
 
-function makeCard(p, idx) {
-  const s = STORES[p.store];
-  return `
-    <div class="product-card">
-      <div class="card-top">
-        <div style="width:38px;height:38px;border-radius:6px;overflow:hidden">${storeBadge(p.store,'sm')}</div>
-        <span class="bell-icon" title="Track">🔔</span>
+function showSnackbar(msg){
+  const el = document.getElementById('snackbar');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(window._snackTimer);
+  window._snackTimer = setTimeout(()=>{ el.style.opacity='0'; }, 1800);
+}
+
+/* ============================================================
+   SHARED PRODUCT CARD
+   ============================================================ */
+function productImageBox(size){
+  size = size || 'w-24 h-24';
+  return '<div class="'+size+' flex-shrink-0 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">'+
+    '<span class="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight text-center px-1">Product<br>Image</span></div>';
+}
+function verdictChip(dealType){
+  const v = VERDICT[dealType];
+  return '<span class="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider '+v.chip+'">'+v.label+'</span>';
+}
+function trackIcon(productId, filled){
+  return '<button onclick="toggleTrack(\''+productId+'\', event)" class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors '+(filled?'bg-indigo-50 text-indigo-600':'bg-slate-50 text-slate-300 hover:text-slate-400')+'">'+
+    icon('bookmark','w-4 h-4'+(filled?' fill-current':''))+'</button>';
+}
+function toggleTrack(productId, e){
+  if(e) e.stopPropagation();
+  if(state.tracked.has(productId)){ state.tracked.delete(productId); showSnackbar('Removed from tracking'); }
+  else { state.tracked.add(productId); showSnackbar('Now tracking this product'); }
+  if(state.currentScreen==='home') renderHome();
+  if(state.currentScreen==='tracked') renderTracked();
+}
+
+function productCard(product, opts){
+  opts = opts || {};
+  const deal = bestDeal(product);
+  const v = VERDICT[deal.dealType];
+  const store = STORE_META[deal.store];
+  return '<div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">' +
+    '<div class="flex p-4 gap-4 cursor-pointer" onclick="openDealModal(\''+product.id+'\',\''+q(deal.store)+'\')">' +
+      productImageBox() +
+      '<div class="flex-grow min-w-0 flex flex-col justify-between py-0.5">' +
+        '<div>' +
+          '<div class="flex items-center gap-1.5 flex-wrap">' +
+            '<span class="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded text-white" style="background:'+store.color+'">'+store.short+'</span>' +
+            verdictChip(deal.dealType) +
+          '</div>' +
+          '<h3 class="font-bold text-sm text-slate-900 leading-snug mt-1.5 font-display">'+product.brand+' '+product.name+'</h3>' +
+        '</div>' +
+        '<div class="flex items-end gap-2 mt-2">' +
+          '<span class="text-lg font-black text-slate-900">$'+deal.price.toFixed(2)+'</span>' +
+          '<span class="text-xs text-slate-400 line-through font-semibold mb-0.5">$'+deal.originalPrice.toFixed(2)+'</span>' +
+        '</div>' +
+      '</div>' +
+      trackIcon(product.id, state.tracked.has(product.id)) +
+    '</div>' +
+    (opts.hideCta ? '' : '<div class="px-4 pb-4"><button onclick="openDealModal(\''+product.id+'\',\''+q(deal.store)+'\')" class="w-full bg-slate-900 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-colors">Check Deals</button></div>') +
+  '</div>';
+}
+
+/* ============================================================
+   HOME / SEARCH
+   ============================================================ */
+function renderHome(){
+  const trackedWithDeals = PRODUCTS.filter(p=>state.tracked.has(p.id));
+  document.getElementById('specials-subtitle').textContent = trackedWithDeals.length + ' items from your lists are currently on sale';
+  document.getElementById('home-specials-list').innerHTML = trackedWithDeals.length
+    ? trackedWithDeals.map(p=>productCard(p)).join('')
+    : '<div class="text-center py-12 space-y-2 bg-white border border-slate-200 rounded-2xl">'+icon('bookmark','w-10 h-10 text-slate-300 mx-auto')+'<p class="font-bold text-slate-500 uppercase tracking-widest text-xs">No tracked items yet</p><p class="text-xs text-slate-400 max-w-[220px] mx-auto">Track products from search results to see them here when they go on special.</p></div>';
+
+  if(state.activeQuery){
+    document.getElementById('home-specials-wrap').classList.add('hidden');
+    document.getElementById('home-results-wrap').classList.remove('hidden');
+    renderStoreChips();
+    renderResultsList();
+  } else {
+    document.getElementById('home-specials-wrap').classList.remove('hidden');
+    document.getElementById('home-results-wrap').classList.add('hidden');
+  }
+}
+function submitSearch(e){
+  e.preventDefault();
+  const val = document.getElementById('home-search-input').value.trim();
+  state.activeQuery = val;
+  renderHome();
+}
+function clearSearch(){
+  state.activeQuery=''; state.searchInput='';
+  document.getElementById('home-search-input').value='';
+  renderHome();
+}
+function renderStoreChips(){
+  const row = document.getElementById('store-chip-row');
+  const chips = ['all', ...STORES];
+  row.innerHTML = chips.map(s=>{
+    const active = state.selectedStores.includes(s);
+    const label = s==='all' ? 'All Stores' : s;
+    return '<button onclick="toggleStoreChip(\''+q(s)+'\')" data-active="'+active+'" class="store-chip flex-shrink-0 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl border transition-all '+(active?'':'bg-white border-slate-200 text-slate-600')+'">'+
+      (active&&s!=='all' ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 mr-1"></span>' : '') + label + '</button>';
+  }).join('');
+}
+function toggleStoreChip(storeId){
+  let next = [...state.selectedStores];
+  if(storeId==='all'){ next=['all']; }
+  else {
+    if(next.includes(storeId)) next = next.filter(s=>s!==storeId);
+    else { next = next.filter(s=>s!=='all'); next.push(storeId); }
+    if(next.length===0) next=['all'];
+  }
+  state.selectedStores = next;
+  showSnackbar(next.includes('all') ? 'Showing specials from all supermarkets' : 'Filtering by: '+next.join(', '));
+  renderStoreChips();
+  renderResultsList();
+}
+function setSortBy(val){ state.sortBy = val; renderResultsList(); }
+
+function renderResultsList(){
+  const query = state.activeQuery.toLowerCase();
+  let matched = PRODUCTS.filter(p => (p.name+' '+p.brand+' '+p.category).toLowerCase().includes(query));
+  matched = matched.filter(p => p.deals.some(d => state.selectedStores.includes('all') || state.selectedStores.includes(d.store)));
+
+  if(state.sortBy==='price') matched.sort((a,b)=>bestDeal(a).price-bestDeal(b).price);
+  else if(state.sortBy==='brand') matched.sort((a,b)=>a.brand.localeCompare(b.brand));
+  else if(state.sortBy==='discount') matched.sort((a,b)=>{
+    const da = bestDeal(a); const db = bestDeal(b);
+    const pa = (da.originalPrice-da.price)/da.originalPrice; const pb=(db.originalPrice-db.price)/db.originalPrice;
+    return pb-pa;
+  });
+
+  document.getElementById('results-count').textContent = matched.length + ' result' + (matched.length===1?'':'s');
+
+  const list = document.getElementById('home-results-list');
+  if(matched.length===0){
+    list.innerHTML = '<div class="text-center py-12 space-y-2 bg-white border border-slate-200 rounded-2xl">'+icon('bell','w-10 h-10 text-slate-300 mx-auto')+'<p class="font-bold text-slate-500 uppercase tracking-widest text-xs">No specials found</p><p class="text-xs text-slate-400 max-w-[220px] mx-auto">Try a different product name, brand, or selected supermarket.</p></div>';
+    return;
+  }
+  list.innerHTML = matched.map(p=>productCard(p)).join('');
+}
+
+/* ============================================================
+   TRACKED / MY LIST
+   ============================================================ */
+function renderTracked(){
+  const el = document.getElementById('view-tracked');
+  if(!state.selectedListId){
+    el.innerHTML = renderListsOverview();
+  } else {
+    el.innerHTML = renderListDetail(state.selectedListId);
+  }
+}
+function renderListsOverview(){
+  const borderColors = ['border-indigo-400','border-emerald-400','border-amber-400','border-sky-400'];
+  const textColors = ['text-indigo-700','text-emerald-700','text-amber-700','text-sky-700'];
+  let html = '<div class="space-y-4 pt-1">';
+  html += '<h2 class="text-xl font-black text-slate-900 font-display tracking-tight">My Lists</h2>';
+  html += '<div class="space-y-3">';
+  state.lists.forEach((list, i)=>{
+    const count = list.itemIds.length;
+    html += '<div class="flex items-center gap-3">' +
+      '<div onclick="openList(\''+list.id+'\')" class="flex-grow bg-white border border-slate-200 border-l-4 '+borderColors[i%4]+' rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between">' +
+        '<div class="flex items-center gap-2">' +
+          '<h3 class="text-base font-black uppercase tracking-wider '+textColors[i%4]+'">'+list.name+'</h3>' +
+          '<span class="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded-full">'+count+' item'+(count===1?'':'s')+'</span>' +
+        '</div>' +
+        '<div class="w-8 h-8 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center text-slate-400">'+icon('chevronRight','w-4 h-4')+'</div>' +
+      '</div>' +
+      '<button onclick="deleteList(\''+list.id+'\')" class="w-11 h-11 flex-shrink-0 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 hover:border-rose-200">'+icon('trash','w-4 h-4')+'</button>' +
+    '</div>';
+  });
+  html += '</div>';
+  html += '<button onclick="openModal(\'createlist-modal\')" class="w-full border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:text-indigo-600 text-slate-400 font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-colors">+ Create New List</button>';
+  html += '</div>';
+  return html;
+}
+function openList(id){ state.selectedListId = id; renderTracked(); }
+function backToLists(){ state.selectedListId = null; renderTracked(); }
+function deleteList(id){
+  state.lists = state.lists.filter(l=>l.id!==id);
+  showSnackbar('List deleted');
+  renderTracked();
+}
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function createList(){
+  const nameInput = document.getElementById('new-list-name');
+  const name = nameInput.value.trim();
+  if(!name) return;
+  state.lists.push({ id:'list-'+Date.now(), name, itemIds:[] });
+  nameInput.value='';
+  closeModal('createlist-modal');
+  showSnackbar('List created');
+  renderTracked();
+}
+
+function renderListDetail(listId){
+  const list = state.lists.find(l=>l.id===listId);
+  if(!list) return renderListsOverview();
+  const items = list.itemIds.map(id=>productById(id)).filter(Boolean);
+
+  // cheapest total across stores
+  const totals = STORES.map(store=>{
+    const total = items.reduce((sum,p)=> sum + everydayPrice(p, store) * (state.quantities[p.id]||1), 0);
+    return { store, total };
+  }).sort((a,b)=>a.total-b.total);
+
+  let html = '<div class="space-y-5 pt-1">';
+  html += '<div class="flex items-center gap-2">' +
+    '<button onclick="backToLists()" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">'+
+      '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to Lists</button>' +
+    '<span class="text-xs text-slate-400 font-bold bg-slate-100/80 px-2.5 py-1 rounded-lg">Active: '+list.name+'</span>' +
+  '</div>';
+  html += '<h4 class="text-lg font-black text-slate-900 tracking-tight font-display">Track individual grocery specials in '+list.name+' or compare total list cost across supermarkets.</h4>';
+
+  if(totals.length && items.length){
+    html += '<div class="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 space-y-2">' +
+      '<p class="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Cheapest place to buy this whole list</p>' +
+      '<div class="flex items-center justify-between">' +
+        '<span class="text-sm font-black text-slate-900">'+totals[0].store+'</span>' +
+        '<span class="text-xl font-black text-indigo-700">$'+totals[0].total.toFixed(2)+'</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  html += '<div class="space-y-4">';
+  if(items.length===0){
+    html += '<div class="text-center py-12 space-y-2 bg-white border border-slate-200 rounded-2xl">'+icon('bookmark','w-10 h-10 text-slate-300 mx-auto')+'<p class="font-bold text-slate-500 uppercase tracking-widest text-xs">This list is empty</p><p class="text-xs text-slate-400 max-w-[220px] mx-auto">Add products from search results to start tracking them here.</p></div>';
+  } else {
+    items.forEach(p=>{
+      const qty = state.quantities[p.id]||1;
+      const deal = bestDeal(p);
+      html += '<div class="relative bg-white border border-slate-200 rounded-2xl overflow-hidden">' +
+        '<button onclick="removeFromList(\''+list.id+'\',\''+p.id+'\')" class="absolute top-3 right-3 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100/70 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider z-10">Remove</button>' +
+        '<div class="flex p-4 gap-4 cursor-pointer" onclick="openDealModal(\''+p.id+'\',\''+q(deal.store)+'\')">' +
+          productImageBox('w-20 h-20') +
+          '<div class="min-w-0 flex-1 pr-16">' +
+            '<span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">'+p.brand+'</span>' +
+            '<h3 class="font-bold text-sm text-slate-900 leading-snug font-display truncate">'+p.name+'</h3>' +
+            '<p class="text-xs text-slate-500 font-semibold mt-1">Best now: <span class="font-black text-slate-900">$'+deal.price.toFixed(2)+'</span> at '+deal.store+'</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between px-4 pb-4">' +
+          '<div class="flex items-center border border-slate-200 rounded-xl overflow-hidden">' +
+            '<button onclick="changeQty(\''+p.id+'\',-1)" class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 font-black">–</button>' +
+            '<span class="w-9 text-center text-xs font-black text-slate-800">'+qty+'</span>' +
+            '<button onclick="changeQty(\''+p.id+'\',1)" class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 font-black">+</button>' +
+          '</div>' +
+          '<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">'+p.unit+' each</span>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  html += '</div></div>';
+  return html;
+}
+function changeQty(productId, delta){
+  const cur = state.quantities[productId]||1;
+  state.quantities[productId] = Math.max(1, cur+delta);
+  renderTracked();
+}
+function removeFromList(listId, productId){
+  const list = state.lists.find(l=>l.id===listId);
+  list.itemIds = list.itemIds.filter(id=>id!==productId);
+  showSnackbar('Removed from list');
+  renderTracked();
+}
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+function refreshAlertDot(){
+  const hasUnread = state.alerts.some(a=>!a.read);
+  document.getElementById('alert-dot').classList.toggle('hidden', !hasUnread);
+}
+function renderAlerts(){
+  const el = document.getElementById('view-alerts');
+  let html = '<div class="space-y-6 pt-1">';
+  html += '<div class="flex items-center justify-between">' +
+    '<div class="flex items-center gap-2">' +
+      '<div class="w-6 h-6 bg-indigo-600 rounded-[2px] rotate-45 flex items-center justify-center shadow-md">'+icon('bell','w-3.5 h-3.5 text-white -rotate-45')+'</div>' +
+      '<h3 class="text-2xl font-black text-slate-900 tracking-tighter font-display">Price Alerts Log</h3>' +
+    '</div>' +
+    (state.alerts.length ? '<button onclick="clearAllAlerts()" class="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700 bg-rose-50 border border-rose-100 px-3 py-1.5 rounded">Clear All</button>' : '') +
+  '</div>';
+
+  if(state.alerts.length===0){
+    html += '<div class="text-center py-16 space-y-4 bg-white border border-slate-200 rounded-2xl">'+icon('bell','w-12 h-12 text-slate-300 mx-auto')+
+      '<p class="font-bold text-slate-500 uppercase tracking-widest text-xs">No new price alerts</p>' +
+      '<p class="text-xs text-slate-400 max-w-xs mx-auto">You will receive instant push notifications if any of your tracked specials get artificially marked up or drop to real deals.</p></div>';
+  } else {
+    html += '<div class="space-y-3">';
+    state.alerts.forEach(alert=>{
+      const product = productById(alert.productId);
+      const isDodgy = alert.alertType === 'Dodgy Deal';
+      html += '<div onclick="markAlertRead(\''+alert.id+'\')" class="p-5 rounded-2xl border cursor-pointer relative overflow-hidden '+
+        (alert.read ? 'bg-white border-slate-200 opacity-65' : isDodgy ? 'bg-red-50/50 border-red-200 shadow-sm' : 'bg-emerald-50/50 border-emerald-200 shadow-sm') + '">';
+      if(!alert.read) html += '<span class="absolute top-0 right-0 w-3 h-3 rounded-bl-xl '+(isDodgy?'bg-red-500':'bg-emerald-500')+'"></span>';
+      html += '<div class="flex items-center justify-between mb-2">' +
+        '<span class="'+(isDodgy?'text-red-600':'text-emerald-600')+' text-[10px] font-black uppercase tracking-widest flex items-center gap-1">'+icon(isDodgy?'shield':'award','w-3.5 h-3.5')+' '+alert.alertType+'</span>' +
+        '<span class="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-wider">'+icon('calendar','w-3.5 h-3.5')+' '+alert.timestamp+'</span>' +
+      '</div>';
+      html += '<h4 class="font-bold text-base text-slate-900 font-display truncate mb-1">'+product.brand+' '+product.name+'</h4>';
+      if(isDodgy){
+        html += '<p class="text-xs text-slate-600 leading-relaxed"><span class="font-bold text-red-600">Dodgy Deal Detected:</span> Regular shelf price of <span class="font-bold text-slate-900">$'+product.standardPrice.toFixed(2)+'</span> was artificially bumped to <span class="font-bold line-through text-slate-400">$'+alert.oldPrice.toFixed(2)+'</span>… now advertised at <span class="font-bold text-red-600">$'+alert.newPrice.toFixed(2)+'</span>.</p>';
+      } else {
+        html += '<p class="text-xs text-slate-600 leading-relaxed"><span class="font-bold text-emerald-600">Real Deal Verified:</span> Price has dropped to <span class="font-bold text-emerald-600">$'+alert.newPrice.toFixed(2)+'</span> (was <span class="font-bold line-through text-slate-400">$'+alert.oldPrice.toFixed(2)+'</span>). You save <span class="font-bold text-emerald-600">$'+(alert.oldPrice-alert.newPrice).toFixed(2)+'</span>!</p>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+  refreshAlertDot();
+}
+function markAlertRead(id){
+  const alert = state.alerts.find(a=>a.id===id);
+  if(alert && !alert.read){ alert.read = true; showSnackbar('Notification acknowledged'); renderAlerts(); }
+}
+function clearAllAlerts(){ state.alerts = []; showSnackbar('Cleared all notifications'); renderAlerts(); }
+
+/* ============================================================
+   HISTORY / ALL CHECKS
+   ============================================================ */
+let historySearch = '';
+function renderHistory(){
+  const el = document.getElementById('view-history');
+  const filtered = state.history.filter(h=>{
+    const p = productById(h.productId);
+    if(!p) return false;
+    const q = historySearch.toLowerCase().trim();
+    if(!q) return true;
+    return (p.name+' '+p.brand).toLowerCase().includes(q);
+  });
+
+  let html = '<div class="space-y-5 pt-1">';
+  html += '<div class="bg-sky-50 border border-sky-100/80 rounded-2xl p-5 space-y-4">' +
+    '<div class="space-y-1.5">' +
+      '<h4 class="font-extrabold text-sky-950 text-sm">Your checked deals history</h4>' +
+      '<p class="text-xs text-sky-800 leading-relaxed">Review all the supermarket deals and prices you have checked, shown in chronological order — most recent first.</p>' +
+    '</div>' +
+    '<div class="relative">' +
+      icon('bell','hidden') +
+      '<svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-500/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' +
+      '<input type="text" value="'+historySearch+'" oninput="historySearch=this.value; renderHistory()" placeholder="Search your check history…" class="w-full bg-white border border-sky-200/60 rounded-xl pl-10 pr-4 py-2 text-xs font-medium text-slate-800 placeholder:text-sky-400">' +
+    '</div>' +
+  '</div>';
+
+  if(state.history.length===0){
+    html += '<div class="text-center py-16 space-y-3 bg-white border border-slate-200 rounded-2xl">'+
+      '<svg class="w-12 h-12 text-slate-300 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z"/></svg>'+
+      '<p class="font-bold text-slate-500 uppercase tracking-widest text-xs">Your checking history is empty</p>' +
+      '<p class="text-xs text-slate-400 max-w-[240px] mx-auto">Scan product shelf labels or use "Check Deals" on the Home search page.</p></div>';
+  } else if(filtered.length===0){
+    html += '<div class="text-center py-12 space-y-2 bg-white border border-slate-200 rounded-2xl">'+icon('bell','w-10 h-10 text-slate-300 mx-auto')+'<p class="font-bold text-slate-500 uppercase tracking-widest text-[10px]">No matching checks found</p><p class="text-xs text-slate-400">Try searching for a different product name or brand.</p></div>';
+  } else {
+    html += '<div class="space-y-4">';
+    filtered.forEach(h=>{
+      const p = productById(h.productId);
+      const isTracked = state.tracked.has(p.id);
+      html += '<div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">' +
+        '<div class="flex p-4 gap-4 cursor-pointer" onclick="openDealModal(\''+p.id+'\',\''+q(h.store)+'\')">' +
+          productImageBox('w-20 h-20') +
+          '<div class="flex-grow flex flex-col justify-between py-0.5 min-w-0">' +
+            '<div>' +
+              '<span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">'+p.brand+'</span>' +
+              '<h3 class="font-bold text-sm text-slate-900 leading-snug font-display truncate">'+p.name+'</h3>' +
+            '</div>' +
+            '<div class="flex items-center gap-2 mt-1">' +
+              '<span class="text-sm font-black text-slate-900">$'+h.price.toFixed(2)+'</span>' +
+              '<span class="text-[10px] text-slate-400 font-bold">@ '+h.store+'</span>' +
+              verdictChip(h.dealType) +
+            '</div>' +
+          '</div>' +
+          trackIcon(p.id, isTracked) +
+        '</div>' +
+        '<div class="flex gap-3 px-4 pb-4">' +
+          '<button onclick="event.stopPropagation(); showSnackbar(\'Rechecking latest price…\')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest py-2.5 rounded-xl">Recheck</button>' +
+          '<span class="flex items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2">'+h.timestamp+'</span>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '</div>';
+  html += '<div class="fixed" style="bottom:96px; left:50%; transform:translateX(calc(-50% + 137px)); z-index:40;">' +
+    '<button onclick="openScanner()" title="Scan product tag" class="pointer-events-auto bg-slate-900 hover:bg-indigo-600 text-white p-4 rounded-2xl shadow-xl transition-colors flex items-center justify-center">'+icon('camera','w-6 h-6')+'</button>' +
+  '</div>';
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   PROFILE / DEAL STATS
+   ============================================================ */
+function renderProfile(){
+  const el = document.getElementById('view-profile');
+  const totalChecked = state.history.length;
+  const realSavers = state.history.filter(h=>h.dealType==='Real Saver').length;
+  const dodgySpotted = state.history.filter(h=>h.dealType==='Dodgy Deal').length;
+  const moneySaved = state.history.reduce((sum,h)=>{
+    const p = productById(h.productId);
+    return sum + Math.max(0, p.standardPrice - h.price);
+  },0);
+
+  const storeStats = STORES.map(store=>{
+    const rows = state.history.filter(h=>h.store===store);
+    return { name:store, real: rows.filter(r=>r.dealType==='Real Saver').length, dodgy: rows.filter(r=>r.dealType==='Dodgy Deal').length };
+  });
+
+  let html = '<div class="space-y-5 pt-1">';
+  html += '<div class="text-center py-2 space-y-1">' +
+    '<h3 class="text-lg font-black text-slate-900 font-display tracking-tight">This is how Dodgy Deal works for you</h3>' +
+  '</div>';
+
+  html += '<div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs space-y-6">' +
+    '<div class="grid grid-cols-3 divide-x divide-slate-100 text-center">' +
+      '<div class="flex flex-col justify-between px-1"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight block min-h-[32px]">Total Deals Checked</span><span class="text-2xl font-black text-slate-900 font-display tabular-nums mt-2">'+totalChecked+'</span></div>' +
+      '<div class="flex flex-col justify-between px-1"><span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-tight block min-h-[32px]">Real Savers Found</span><span class="text-2xl font-black text-emerald-600 font-display tabular-nums mt-2">'+realSavers+'</span></div>' +
+      '<div class="flex flex-col justify-between px-1"><span class="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-tight block min-h-[32px]">Dodgy Spotted</span><span class="text-2xl font-black text-rose-500 font-display tabular-nums mt-2">'+dodgySpotted+'</span></div>' +
+    '</div>' +
+    '<div class="space-y-0.5">';
+  storeStats.forEach(s=>{
+    html += '<div class="grid grid-cols-12 gap-2 items-center py-2 border-b border-slate-50 last:border-0">' +
+      '<span class="col-span-6 text-xs font-bold text-slate-800 font-display">'+s.name+'</span>' +
+      '<div class="col-span-3 text-center"><span class="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md inline-block min-w-[32px]">'+s.real+'</span></div>' +
+      '<div class="col-span-3 text-center"><span class="text-xs font-black text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-md inline-block min-w-[32px]">'+s.dodgy+'</span></div>' +
+    '</div>';
+  });
+  html += '</div></div>';
+
+  html += '<div class="bg-emerald-50/40 border border-emerald-100/80 rounded-2xl p-5 space-y-4">' +
+    '<div class="flex items-center justify-between">' +
+      '<span class="text-sm font-extrabold text-emerald-950 font-display">Estimated Savings</span>' +
+      '<span class="text-3xl font-black text-emerald-700 font-display tabular-nums">$'+moneySaved.toFixed(2)+'</span>' +
+    '</div>' +
+    '<div class="bg-white/95 border border-emerald-100 rounded-xl p-4">' +
+      '<p class="text-xs text-emerald-900/80 leading-relaxed">Calculated from the gap between each item\'s everyday shelf price and the price you actually paid on Real Saver and Fair Deal checks.</p>' +
+    '</div>' +
+  '</div>';
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   HOW IT WORKS
+   ============================================================ */
+function renderHowItWorks(){
+  const el = document.getElementById('view-howitworks');
+  el.innerHTML = `
+  <div class="space-y-6 pt-1">
+    <div class="bg-slate-900 text-white rounded-3xl p-6 relative overflow-hidden shadow-xl">
+      <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-600/20 rounded-full blur-2xl"></div>
+      <div class="absolute bottom-0 left-0 w-24 h-24 bg-emerald-600/10 rounded-full blur-xl"></div>
+      <div class="relative z-10 space-y-3">
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+          ${icon('award','w-3.5 h-3.5')} Empowering Consumers
+        </div>
+        <h2 class="text-2xl font-black tracking-tight uppercase font-display leading-tight">How Dodgy Deal Works</h2>
+        <p class="text-xs text-slate-300 leading-relaxed font-medium">Supermarket specials aren't always what they seem. We track real-time price history across Aotearoa to help you spot genuine savings — and avoid "was/is" price traps.</p>
       </div>
-      <div class="card-image">Product Image</div>
-      <div class="card-price">${p.price}</div>
-      <button class="card-btn" onclick="showResult('${pickLevel(idx)}')">Check deal</button>
-    </div>`;
+    </div>
+
+    <section class="space-y-3">
+      <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Our Deal Rating System</h3>
+      <div class="grid grid-cols-1 gap-3">
+        <div class="bg-white border border-slate-200 rounded-2xl p-4.5 flex gap-4 shadow-xs">
+          <div class="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0 text-rose-600">${icon('shield','w-5 h-5')}</div>
+          <div class="space-y-1">
+            <div class="flex items-center gap-2"><span class="text-xs font-black uppercase tracking-wider text-rose-700">Dodgy Deal</span><span class="bg-rose-100 text-rose-800 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase">Caution</span></div>
+            <p class="text-xs text-slate-600 leading-relaxed font-semibold">An item marked as a "special" that has no actual discount, or was artificially bumped up in price just before the sale started.</p>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4.5 flex gap-4 shadow-xs">
+          <div class="w-10 h-10 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0 text-amber-600">${icon('trend','w-5 h-5')}</div>
+          <div class="space-y-1">
+            <div class="flex items-center gap-2"><span class="text-xs font-black uppercase tracking-wider text-amber-700">Fair Deal</span><span class="bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase">Okay Buy</span></div>
+            <p class="text-xs text-slate-600 leading-relaxed font-semibold">A genuine but minor price drop. It's a discount matching typical promotional frequency, meaning it's safe to buy — just not exceptional.</p>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4.5 flex gap-4 shadow-xs">
+          <div class="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">${icon('award','w-5 h-5')}</div>
+          <div class="space-y-1">
+            <div class="flex items-center gap-2"><span class="text-xs font-black uppercase tracking-wider text-emerald-700">Real Saver</span><span class="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase">Best Buy</span></div>
+            <p class="text-xs text-slate-600 leading-relaxed font-semibold">A deep, authentic discount well below the average historical pricing. These are outstanding deals you should act on.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-3">
+      <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">How To Use Dodgy Deal</h3>
+      <div class="bg-slate-100/70 border border-slate-200 rounded-3xl p-5 space-y-4">
+        <div class="flex gap-4">
+          <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center">1</span>
+          <div class="space-y-1"><h4 class="text-xs font-black uppercase tracking-wider text-slate-900">Search grocery products</h4><p class="text-xs text-slate-600 leading-relaxed font-semibold">Look up any item to instantly see its verdict across supermarkets.</p></div>
+        </div>
+        <div class="flex gap-4 border-t border-slate-200/60 pt-4">
+          <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center">2</span>
+          <div class="space-y-1"><h4 class="text-xs font-black uppercase tracking-wider text-slate-900">Add to lists to monitor</h4><p class="text-xs text-slate-600 leading-relaxed font-semibold">Add products you buy regularly to your personalised lists. We will continuously scan them for you.</p></div>
+        </div>
+        <div class="flex gap-4 border-t border-slate-200/60 pt-4">
+          <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center">3</span>
+          <div class="space-y-1"><h4 class="text-xs font-black uppercase tracking-wider text-slate-900">Get deal warnings</h4><p class="text-xs text-slate-600 leading-relaxed font-semibold">Receive proactive alerts when tracked products change price, showing whether the discount matches reality.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="pt-2">
+      <button onclick="goTo('home')" class="w-full bg-slate-900 hover:bg-indigo-600 text-white py-4 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to Check Deals
+      </button>
+    </div>
+  </div>`;
 }
 
-const levelOrder = ['xhigh','high','med','low','fair','saver'];
-function pickLevel(idx) { return levelOrder[idx % levelOrder.length]; }
+/* ============================================================
+   DEAL MODAL
+   ============================================================ */
+function openDealModal(productId, storeId){
+  const product = productById(productId);
+  const deal = product.deals.find(d=>d.store===storeId) || bestDeal(product);
+  const v = VERDICT[deal.dealType];
 
-function renderCards(containerId, products) {
-  document.getElementById(containerId).innerHTML = products.map((p,i)=>makeCard(p,i)).join('');
+  // build per-store price comparison
+  const rows = STORES.map(store=>({ store, price: everydayPrice(product, store) })).sort((a,b)=>a.price-b.price);
+  const cheapest = rows[0];
+
+  // alternatives: other products, same category, cheapest store option
+  let alts = PRODUCTS.filter(p=>p.category===product.category && p.id!==product.id);
+  if(alts.length===0) alts = PRODUCTS.filter(p=>p.id!==product.id).slice(0,3);
+  const altsWithPrice = alts.map(p=>{
+    const opts = STORES.map(s=>({ store:s, price: everydayPrice(p,s) })).sort((a,b)=>a.price-b.price)[0];
+    return { product:p, store:opts.store, price:opts.price, saving: deal.price-opts.price };
+  }).filter(a=>a.saving>0).sort((a,b)=>b.saving-a.saving).slice(0,3);
+
+  const maxPrice = Math.max(...rows.map(r=>r.price), deal.originalPrice);
+
+  let html = '<div class="flex-1 overflow-y-auto p-6 space-y-6 pb-8">';
+  html += '<div class="flex items-center justify-between">' +
+    '<span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Deal Details</span>' +
+    '<button onclick="closeModal(\'deal-modal\')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">'+icon('x','w-4 h-4')+'</button>' +
+  '</div>';
+
+  html += '<div>' +
+    '<span class="text-[10px] font-black uppercase tracking-widest text-slate-400">'+product.brand+'</span>' +
+    '<h2 class="text-xl font-black text-slate-900 font-display leading-snug">'+product.name+'</h2>' +
+  '</div>';
+
+  // Context banner
+  const verdictVerb = deal.dealType==='Dodgy Deal' ? "you're looking at a Dodgy Deal!" : deal.dealType==='Fair Deal' ? "this looks like a Fair Deal." : "you found a Real Saver!";
+  html += '<div class="'+v.bg+' border '+v.border+' rounded-2xl p-5 space-y-3.5">' +
+    '<div class="flex items-start gap-3">' +
+      '<div class="p-2 rounded-lg flex-shrink-0 '+v.chip+'">'+icon(v.icon,'w-5 h-5')+'</div>' +
+      '<div>' +
+        '<h3 class="font-black text-slate-950 text-sm leading-snug">'+ (deal.dealType==='Dodgy Deal'?"You're looking at a Dodgy Deal!":deal.dealType==='Fair Deal'?"This looks like a Fair Deal.":"You found a Real Saver!") +'</h3>' +
+        '<p class="text-xs font-semibold '+v.text+' mt-1">'+deal.reason+'</p>' +
+      '</div>' +
+    '</div>' +
+    '<p class="text-xs text-slate-700 leading-relaxed font-medium">'+deal.explanation+'</p>' +
+  '</div>';
+
+  // price at deal store
+  html += '<div class="flex items-end justify-between bg-slate-50 border border-slate-200 rounded-2xl p-5">' +
+    '<div>' +
+      '<span class="text-[10px] font-black uppercase tracking-widest text-slate-400">'+deal.store+'</span>' +
+      '<div class="flex items-end gap-2 mt-1"><span class="text-3xl font-black text-slate-900 font-display">$'+deal.price.toFixed(2)+'</span><span class="text-sm text-slate-400 line-through font-bold mb-1">$'+deal.originalPrice.toFixed(2)+'</span></div>' +
+    '</div>' +
+    trackIcon(product.id, state.tracked.has(product.id)) +
+  '</div>';
+
+  // price comparison bars
+  html += '<div class="space-y-3">' +
+    '<h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Price Across Supermarkets</h4>' +
+    '<div class="space-y-2.5">';
+  rows.forEach(r=>{
+    const meta = STORE_META[r.store];
+    const pct = Math.max(8, Math.round((r.price/maxPrice)*100));
+    html += '<div class="flex items-center gap-3">' +
+      '<span class="w-8 text-[10px] font-black text-slate-500">'+meta.short+'</span>' +
+      '<div class="flex-1 h-6 bg-slate-100 rounded-md overflow-hidden">' +
+        '<div class="chart-bar h-full rounded-md flex items-center justify-end pr-2" style="width:'+pct+'%; background:'+meta.color+'">' +
+        '</div>' +
+      '</div>' +
+      '<span class="w-14 text-right text-xs font-black text-slate-800">$'+r.price.toFixed(2)+'</span>' +
+    '</div>';
+  });
+  html += '</div></div>';
+
+  // alternatives
+  if(altsWithPrice.length){
+    html += '<div class="space-y-3">' +
+      '<h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400">More Ways to Compare</h4>' +
+      '<div class="space-y-2.5">';
+    altsWithPrice.forEach(a=>{
+      html += '<div onclick="openDealModal(\''+a.product.id+'\',\''+q(a.store)+'\')" class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3 cursor-pointer hover:border-indigo-200">' +
+        productImageBox('w-12 h-12') +
+        '<div class="flex-1 min-w-0"><h5 class="text-xs font-bold text-slate-900 truncate">'+a.product.brand+' '+a.product.name+'</h5><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">'+a.store+'</p></div>' +
+        '<span class="text-sm font-black text-emerald-600">$'+a.price.toFixed(2)+'</span>' +
+      '</div>';
+    });
+    html += '</div></div>';
+  }
+
+  html += '<button onclick="recordCheck(\''+product.id+'\',\''+q(deal.store)+'\',\''+q(deal.dealType)+'\','+deal.price+')" class="w-full bg-slate-900 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl">Log This Check</button>';
+  html += '</div>';
+
+  document.getElementById('deal-modal-body').innerHTML = html;
+  openModal('deal-modal');
+}
+function recordCheck(productId, store, dealType, price){
+  state.history.unshift({ productId, store, price:parseFloat(price), dealType, timestamp:'Just now' });
+  showSnackbar('Added to your check history');
+  closeModal('deal-modal');
 }
 
-// ── NAVIGATION ───────────────────────────────────────
-function goTo(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
-  window.scrollTo(0,0);
-  closeAllNavs();
-  updateDemoButtons(screenId);
+/* ============================================================
+   SCANNER MODAL
+   ============================================================ */
+const SCAN_PRESETS = [
+  { name:'Moccona 200g @ New World', productId:'moccona-classic-200g', store:'New World' },
+  { name:'Meadow Fresh 2L @ Woolworths', productId:'meadow-fresh-milk-2l', store:'Woolworths' },
+  { name:"Lurpak 250g @ Four Square", productId:'lurpak-butter-250g', store:'Four Square' },
+];
+let scanState = { presetIdx:null, scanning:false, result:null };
+
+function openScanner(){
+  scanState = { presetIdx:null, scanning:false, result:null };
+  renderScanner();
+  openModal('scanner-modal');
+}
+function renderScanner(){
+  let html = '<div class="p-6 space-y-5">';
+  html += '<div class="flex items-center justify-between">' +
+    '<h3 class="text-lg font-black text-slate-900 uppercase tracking-wide font-display">Scan Product Tag</h3>' +
+    '<button onclick="closeModal(\'scanner-modal\')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">'+icon('x','w-4 h-4')+'</button>' +
+  '</div>';
+
+  html += '<div class="scan-viewfinder rounded-2xl aspect-[4/3] flex flex-col items-center justify-center text-slate-400 relative overflow-hidden">';
+  if(scanState.scanning){
+    html += '<div class="absolute inset-x-0 h-1 bg-indigo-400 shadow-[0_0_12px_4px_rgba(99,102,241,.6)] animate-pulse" style="top:50%"></div>' +
+      '<p class="text-[10px] font-black uppercase tracking-widest text-indigo-300">Scanning shelf tag…</p>';
+  } else if(scanState.result){
+    html += '<div class="text-center space-y-2">'+icon('camera','w-10 h-10 mx-auto text-emerald-400')+'<p class="text-[10px] font-black uppercase tracking-widest text-emerald-300">Match Found</p></div>';
+  } else {
+    html += icon('camera','w-10 h-10 mb-2') + '<p class="text-[10px] font-black uppercase tracking-widest">Point camera at a price tag</p>';
+  }
+  html += '</div>';
+
+  if(!scanState.scanning && !scanState.result){
+    html += '<div class="space-y-2">' +
+      '<p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Demo presets (no real camera in this prototype)</p>' +
+      '<div class="space-y-2">';
+    SCAN_PRESETS.forEach((preset,i)=>{
+      const active = scanState.presetIdx===i;
+      html += '<button onclick="selectPreset('+i+')" class="w-full text-left px-4 py-3 rounded-xl border text-xs font-bold '+(active?'border-indigo-400 bg-indigo-50 text-indigo-700':'border-slate-200 text-slate-600 hover:border-slate-300')+'">'+preset.name+'</button>';
+    });
+    html += '</div></div>';
+    html += '<button onclick="startScan()" '+(scanState.presetIdx===null?'disabled':'')+' class="w-full bg-slate-900 disabled:bg-slate-300 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-colors">Start Scan</button>';
+  }
+
+  if(scanState.result){
+    const p = productById(scanState.result.productId);
+    const deal = p.deals.find(d=>d.store===scanState.result.store) || bestDeal(p);
+    html += '<div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">' +
+      productImageBox('w-14 h-14') +
+      '<div class="flex-1 min-w-0"><h5 class="text-xs font-bold text-slate-900 truncate">'+p.brand+' '+p.name+'</h5><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">'+scanState.result.store+'</p></div>' +
+      '<span class="text-sm font-black text-slate-900">$'+deal.price.toFixed(2)+'</span>' +
+    '</div>';
+    html += '<div class="flex gap-3">' +
+      '<button onclick="closeModal(\'scanner-modal\'); openDealModal(\''+p.id+'\',\''+q(scanState.result.store)+'\')" class="flex-1 bg-slate-900 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest py-3 rounded-xl">View Deal</button>' +
+      '<button onclick="openScanner()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-widest py-3 rounded-xl">Scan Again</button>' +
+    '</div>';
+  }
+
+  html += '</div>';
+  document.getElementById('scanner-modal-body').innerHTML = html;
+}
+function selectPreset(i){ scanState.presetIdx = i; renderScanner(); }
+function startScan(){
+  if(scanState.presetIdx===null) return;
+  scanState.scanning = true;
+  renderScanner();
+  setTimeout(()=>{
+    scanState.scanning = false;
+    scanState.result = SCAN_PRESETS[scanState.presetIdx];
+    renderScanner();
+  }, 1400);
 }
 
-function updateDemoButtons(screenId) {
-  // only update buttons in visible screen
-}
-
-function toggleNav(id) {
-  const el = document.getElementById('nav-'+id);
-  const isOpen = el.classList.contains('open');
-  closeAllNavs();
-  if (!isOpen) el.classList.add('open');
-}
-function closeAllNavs() {
-  document.querySelectorAll('.nav-dropdown').forEach(d=>d.classList.remove('open'));
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('.header-greeting') && !e.target.closest('.nav-dropdown')) closeAllNavs();
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#user-menu') && !e.target.closest('[onclick="toggleUserMenu()"]')){
+    document.getElementById('user-menu').classList.add('hidden');
+  }
 });
-
-// ── SEARCH ───────────────────────────────────────────
-function doSearch() {
-  const q = document.getElementById('search-input').value || 'Butter';
-  const store = document.querySelector('input[name="store-home"]:checked')?.value || 'nw';
-  document.getElementById('search-input-2').value = q;
-  document.getElementById('search-input-3').value = q;
-  const sName = STORES[store]?.name || 'New World';
-  document.getElementById('results-heading').textContent = `${q} Specials at ${sName}`;
-
-  // populate results with same-store cards
-  const resultProds = PRODUCTS.map(p => ({ ...p, store }));
-  renderCards('results-cards', resultProds);
-
-  goTo('screen-results');
-}
-
-function clearSearch() {
-  document.getElementById('search-input').value = '';
-  document.getElementById('search-input').focus();
-}
-function clearSearch2() {
-  document.getElementById('search-input-2').value = '';
-}
-
-// ── RESULT ───────────────────────────────────────────
-function showResult(levelKey) {
-  const L = LEVELS[levelKey];
-  if (!L) return;
-
-  document.getElementById('result-level-label').textContent = L.levelLabel;
-  document.getElementById('result-section').style.background = L.bg;
-  document.getElementById('result-headline').textContent = L.headline;
-  document.getElementById('result-best-label').textContent = L.bestLabel;
-  document.getElementById('result-verdict').textContent = L.verdict;
-
-  // prices
-  const pc = document.getElementById('price-comparison');
-  pc.innerHTML = L.prices.map(p => `
-    <div class="price-item">
-      <div style="width:72px;height:72px;border-radius:10px;overflow:hidden">${storeBadge(p.store,'lg')}</div>
-      <div class="price-amount">${p.amount}</div>
-      ${p.tag ? `<div class="price-tag">${p.tag}</div>` : ''}
-    </div>`).join('');
-
-  // chart bars
-  const bars = document.getElementById('chart-bars');
-  bars.innerHTML = L.chartHeights.map(h => `<div class="chart-bar" style="height:${h}px"></div>`).join('');
-
-  // demo buttons
-  document.querySelectorAll('#screen-result .demo-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('dbn-'+levelKey);
-  if (btn) btn.classList.add('active');
-
-  goTo('screen-result');
-}
-
-// ── INIT ─────────────────────────────────────────────
-renderCards('home-cards', PRODUCTS);
-renderCards('tracked-cards', PRODUCTS.filter((_,i) => i < 4));
+renderHome();
 </script>
 </body>
 </html>
