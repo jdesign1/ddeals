@@ -35,6 +35,10 @@
     margin: 0;
   }
   .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+  /* Used by the "Filter by Supermarket" pill carousel in full-screen search
+     mode -- horizontally scrollable, but no visible scrollbar clutter. */
+  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
 </style>
 <script type="importmap">
 {
@@ -691,6 +695,68 @@ function mergeProductMeta(memberMetas) {
 const VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', GENUINE: 'Real Deal', MARGINAL: 'Fair Price' };
 const titleCase = (s) => (s || '').replace(/\b\w/g, (c) => c.toUpperCase());
 
+// Strips everything but letters/numbers before comparing search text, so
+// punctuation/spacing differences between how a product is actually named
+// in the database and how a shopper types it don't cause false misses --
+// e.g. "Weetbix" (how most people type it) vs the DB's "Weet-Bix", or
+// "PAK'nSAVE" vs "paknsave" (same normalisation already used for store-name
+// matching elsewhere in this file, applied here to product search text too).
+const normalizeSearchText = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Splits into normalised whole-word tokens, e.g. for telling an exact word
+// match ("milk" in "Standard Milk") apart from an incidental substring
+// inside a longer, unrelated word ("milk" inside "Milky", "butter" inside
+// "Buttery"/"Butterscotch"/"Buttermilk-flavoured Chips").
+const tokenizeSearchText = (s) => (s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+// Relevance score for ranking search results -- without this, a plain
+// substring match with no ranking left cheap incidental hits (a "Butter
+// Chicken" simmer sauce, "Buttery" spread, "Milk Arrowroot" biscuits) sorted
+// ahead of the actual milk/butter category items a shopper searching "milk"
+// or "butter" is looking for, since the default sort is cheapest-price-first
+// and snacks/sauces are usually cheaper than a carton of milk or block of
+// butter. Category match (the product's real aisle/category) ranks highest,
+// then an exact word match in the name, then brand, then finally the same
+// permissive substring match used for inclusion (so "milky"/"buttery"-type
+// items still show up, just ranked below the literal category matches).
+const getSearchRelevance = (product, query) => {
+  const queryTokens = tokenizeSearchText(query);
+  if (queryTokens.length === 0) return 1;
+  const isWholeWordMatch = (text) => {
+    const tokens = tokenizeSearchText(text);
+    return queryTokens.every((qt) => tokens.includes(qt));
+  };
+  if (isWholeWordMatch(product.category)) return 4;
+  if (isWholeWordMatch(product.name)) return 3;
+  if (isWholeWordMatch(product.brand)) return 2;
+  return 1;
+};
+
+// Shared fallback used both when a product row has no image_url in the
+// database and as an <img onError> safety net if a stored URL 404s/expires.
+const FALLBACK_PRODUCT_IMAGE = 'https://placehold.co/300x300?text=No+Image';
+
+// Renders a product's real photo (from products.image_url in Supabase) with
+// a placeholder fallback. Used everywhere a card previously showed a static
+// "Product Image" text box instead of an actual image.
+function ProductImage({ src, alt, className }) {
+  return (
+    <img
+      src={src || FALLBACK_PRODUCT_IMAGE}
+      alt={alt || 'Product'}
+      loading="lazy"
+      draggable="false"
+      className={className}
+      onError={(e) => {
+        if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+        }
+      }}
+    />
+  );
+}
+
 // Builds full product cards (metadata + classified deals + price history)
 // for one page's worth of match-groups. Kept separate from the pagination
 // loop below so each page only fetches products/price_history for the
@@ -793,7 +859,7 @@ async function buildProductCardsForGroups(pageGroups, storeNameById) {
       brand: titleCase(meta.brand) || 'Unbranded',
       name: titleCase(meta.name),
       category: meta.category || 'Grocery',
-      image: meta.image_url || 'https://placehold.co/300x300?text=No+Image',
+      image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
       standardPrice: normalPrices.length ? Math.min(...normalPrices) : Math.min(...rows.map((r) => r.price)),
       unit: meta.unit_size || '',
       currentDeals: dedupedDeals,
@@ -909,6 +975,119 @@ function buildSeedAlerts(products) {
   });
 }
 
+/* ===================== components/AppHeader.tsx ===================== */
+
+// Shared global top nav bar. Used on every main-app screen (via App()) and
+// on the Check Deal page (DealModal, both its assessment and cheaper-
+// alternatives views) so the profile icon always sits in the same place and
+// opens the same account menu everywhere, instead of DealModal rendering
+// its own bespoke, non-interactive header.
+function AppHeader({
+  title,
+  onBack,
+  backButtonId = 'global-header-back-btn',
+  showCloseButton = false,
+  onCloseButtonClick,
+  isProfileHighlighted = false,
+  onOpenHowItWorks,
+  onOpenManageAccount,
+  onOpenSettings,
+  onLogout,
+}) {
+  const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
+
+  return (
+    <header className="sticky top-0 z-40 bg-white flex justify-between items-center w-full px-6 h-16 border-b border-slate-200 shadow-xs flex-shrink-0">
+      <div className="flex items-center justify-between w-full">
+        <div className="flex items-center gap-3">
+          {onBack ? (
+            <button
+              onClick={onBack}
+              id={backButtonId}
+              className="p-1.5 -ml-2 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          ) : (
+            <div className="w-7 h-7 bg-indigo-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-lg shadow-indigo-100">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+          )}
+          <span className="font-black text-xl tracking-tighter text-slate-900 uppercase font-display">{title}.</span>
+        </div>
+        <div className="flex items-center gap-3 relative">
+          {showCloseButton ? (
+            <button
+              onClick={onCloseButtonClick}
+              className="p-2 transition-all duration-150 ease-in-out rounded-lg cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              id="global-header-profile-btn"
+              className={`p-2 transition-all duration-150 ease-in-out rounded-lg cursor-pointer relative ${
+                isUserMenuOpen || isProfileHighlighted ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <User className="w-5 h-5" />
+            </button>
+          )}
+
+          {isUserMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setIsUserMenuOpen(false)}
+              />
+              <div className="absolute right-0 top-12 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 py-2 animate-fadeIn">
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenHowItWorks && onOpenHowItWorks();
+                  }}
+                  className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors uppercase tracking-wider block cursor-pointer"
+                >
+                  How Dodgy Deal works
+                </button>
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenManageAccount && onOpenManageAccount();
+                  }}
+                  className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                >
+                  Manage Account
+                </button>
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenSettings && onOpenSettings();
+                  }}
+                  className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                >
+                  Store Settings
+                </button>
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onLogout && onLogout();
+                  }}
+                  className="w-full text-left px-4 py-3 text-xs font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                >
+                  Log Out
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
 /* ===================== components/SearchTab.tsx ===================== */
 
 function SearchTab({
@@ -926,8 +1105,20 @@ function SearchTab({
   sortBy,
   setSortBy,
   onNavigateToSettings,
+  onOpenScanner,
 }) {
   const [isAllDealsExpanded, setIsAllDealsExpanded] = React.useState(false);
+
+  // Full-screen search view -- opens as soon as the user types the first
+  // character into the search bar (see renderSearchBar's onChange below),
+  // and closes automatically once the field is cleared back to empty
+  // (backspacing it all out, tapping the X, or tapping the back arrow).
+  const [isSearchActive, setIsSearchActive] = React.useState(false);
+  React.useEffect(() => {
+    if (searchInputValue.trim() === '') {
+      setIsSearchActive(false);
+    }
+  }, [searchInputValue]);
 
   const [usePersonalised, setUsePersonalised] = React.useState(() => {
     return localStorage.getItem('use_personalised_settings') === 'true';
@@ -959,30 +1150,40 @@ function SearchTab({
     return defaults;
   });
 
-  // Filter products matching search query
+  // Filter products matching search query. Normalised on both sides (see
+  // normalizeSearchText) so punctuation/spacing quirks in how a product is
+  // named in the database -- "Weet-Bix" vs a shopper typing "Weetbix" -- don't
+  // cause a real, in-stock item to fail to show up at all.
   const filteredProducts = mockProducts.filter((p) => {
-    const query = activeSearchQuery.trim();
+    const query = normalizeSearchText(activeSearchQuery.trim());
     const matchesSearch =
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.brand.toLowerCase().includes(query.toLowerCase()) ||
-      p.category.toLowerCase().includes(query.toLowerCase());
+      normalizeSearchText(p.name).includes(query) ||
+      normalizeSearchText(p.brand).includes(query) ||
+      normalizeSearchText(p.category).includes(query);
     return matchesSearch;
   });
 
-  const handleSearchSubmit = (e) => {
+  // No more explicit "Search" submit button (it's been replaced by the
+  // barcode-scan button below) -- results now live-filter as the user
+  // types, so form submission is just swallowed to stop a stray Enter key
+  // press from reloading the page.
+  const handleSearchFormSubmit = (e) => {
     e.preventDefault();
-    const query = searchInputValue.trim();
-    setActiveSearchQuery(query);
-    if (query) {
-      showSnackbar(`Searching for "${query}"...`);
-    } else {
-      showSnackbar('Cleared search results');
+  };
+
+  const handleSearchInputChange = (e) => {
+    const value = e.target.value;
+    setSearchInputValue(value);
+    setActiveSearchQuery(value);
+    if (value.length > 0) {
+      setIsSearchActive(true);
     }
   };
 
   const handleClearSearch = () => {
     setSearchInputValue('');
     setActiveSearchQuery('');
+    setIsSearchActive(false);
     showSnackbar('Cleared search results');
   };
 
@@ -1061,8 +1262,19 @@ function SearchTab({
     });
   });
 
-  // Sort products
+  // Sort products. Relevance to the search query comes first (see
+  // getSearchRelevance -- category matches beat name matches beat brand
+  // matches beat incidental substring-only matches), so the actual "Milk" or
+  // "Butter" category items surface ahead of things that merely mention the
+  // word in passing (a "Butter Chicken" sauce, "Milky" candy). The user's
+  // chosen sort (cheapest / biggest discount / dodgy rating) still applies,
+  // just as the tiebreaker *within* each relevance tier rather than
+  // overriding it -- otherwise a 99c snack that happens to match the query
+  // would keep beating the actual product being searched for.
   const sortedProducts = [...matchedProducts].sort((a, b) => {
+    const relevanceDiff = getSearchRelevance(b, activeSearchQuery) - getSearchRelevance(a, activeSearchQuery);
+    if (relevanceDiff !== 0) return relevanceDiff;
+
     const getBestPrice = (p) => Math.min(...p.currentDeals.map((d) => d.price));
     const getMaxDiscount = (p) => Math.max(...p.currentDeals.map((d) => d.discountPercentage));
     const getDodgyScore = (p) =>
@@ -1099,10 +1311,53 @@ function SearchTab({
     }
   };
 
+  // Rendered both inline on the home screen and pinned to the top of the
+  // full-screen search view once active -- same controlled input/state
+  // either way, just a plain helper (not a nested component) so re-renders
+  // on every keystroke don't remount the <input> and steal focus.
+  const renderSearchBar = (autoFocus) => (
+    <form
+      onSubmit={handleSearchFormSubmit}
+      className="flex items-center bg-white rounded-xl pl-4 pr-2 py-2 border border-slate-200 focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-xs"
+    >
+      <Search className="text-slate-400 w-5 h-5 mr-3 flex-shrink-0" />
+      <input
+        id="search-input"
+        autoFocus={autoFocus}
+        className="bg-transparent border-none focus:outline-none w-full text-sm font-bold text-slate-900 placeholder:text-slate-400 tracking-wider h-10"
+        placeholder="Search for products..."
+        type="text"
+        value={searchInputValue}
+        onChange={handleSearchInputChange}
+        enterKeyHint="search"
+      />
+      {searchInputValue && (
+        <button
+          onClick={handleClearSearch}
+          id="clear-search-btn"
+          className="text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-50 cursor-pointer flex-shrink-0"
+          type="button"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onOpenScanner}
+        id="scan-barcode-btn"
+        title="Scan a barcode"
+        aria-label="Scan a barcode"
+        className="ml-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-indigo-100 flex items-center justify-center"
+      >
+        <Camera className="w-4 h-4" />
+      </button>
+    </form>
+  );
+
   return (
     <div className="space-y-6">
       {/* Short description shown BEFORE a search is conducted */}
-      {activeSearchQuery.trim() === '' && (
+      {!isSearchActive && (
         <div className="space-y-4 text-center py-4">
           <div className="flex justify-center">
             <div className="w-12 h-12 bg-indigo-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-lg">
@@ -1121,39 +1376,12 @@ function SearchTab({
       )}
 
       {/* Persistent Search Bar */}
-      <section className="relative">
-        <form onSubmit={handleSearchSubmit} className="flex items-center bg-white rounded-xl pl-4 pr-2 py-2 border border-slate-200 focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-xs">
-          <Search className="text-slate-400 w-5 h-5 mr-3 flex-shrink-0" />
-          <input
-            id="search-input"
-            className="bg-transparent border-none focus:outline-none w-full text-sm font-bold text-slate-900 placeholder:text-slate-400 uppercase tracking-wider h-10"
-            placeholder="Search for products..."
-            type="text"
-            value={searchInputValue}
-            onChange={(e) => setSearchInputValue(e.target.value)}
-            enterKeyHint="search"
-          />
-          {searchInputValue && (
-            <button
-              onClick={handleClearSearch}
-              id="clear-search-btn"
-              className="text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-50 cursor-pointer flex-shrink-0"
-              type="button"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-          <button
-            type="submit"
-            className="ml-2 text-xs font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-indigo-100"
-          >
-            Search
-          </button>
-        </form>
-      </section>
+      {!isSearchActive && (
+        <section className="relative">{renderSearchBar(false)}</section>
+      )}
 
       {/* Generic Specials Alert - Highlight items on sale in user's lists */}
-      {activeSearchQuery.trim() === '' && (() => {
+      {!isSearchActive && (() => {
         // Collect all product IDs in any list
         const allListProductIds = Array.from(new Set(lists.flatMap((l) => l.itemIds)));
 
@@ -1223,10 +1451,8 @@ function SearchTab({
 
                       <div className="flex p-5 gap-5">
                         <div className="flex flex-col gap-2 items-center flex-shrink-0">
-                          <div className="w-24 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 text-center select-none">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                              Product Image
-                            </span>
+                          <div className="w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden select-none">
+                            <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                           </div>
 
                           {!isPartiallyVisible && (
@@ -1308,223 +1534,251 @@ function SearchTab({
         );
       })()}
 
-      {activeSearchQuery.trim() !== '' && (
-        <>
-          <section className="text-center space-y-2">
-            <h2 id="search-title" className="text-3xl font-black tracking-tighter text-slate-900 leading-none font-display">
-              Results for '{activeSearchQuery || 'all'}'
-            </h2>
-        <p id="search-subtitle" className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-          {sortedProducts.length} {sortedProducts.length === 1 ? 'item' : 'items'} found · {totalRetailersCount} {totalRetailersCount === 1 ? 'retailer' : 'retailers'}
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
-            Filter by Supermarket:
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { id: 'all', label: 'All Supermarkets' },
-              { id: 'woolworths', label: getStoreDisplayName('woolworths') },
-              { id: 'paknsave', label: getStoreDisplayName('paknsave') },
-              { id: 'newworld', label: getStoreDisplayName('newworld') },
-              { id: 'foursquare', label: getStoreDisplayName('foursquare') },
-              { id: 'freshchoice', label: getStoreDisplayName('freshchoice') },
-            ].map((store) => {
-              const isSelected = selectedStores.includes(store.id);
-              return (
-                <button
-                  key={store.id}
-                  onClick={() => handleStoreToggle(store.id)}
-                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />}
-                  {store.label}
-                </button>
-              );
-            })}
+      {isSearchActive && (
+        <div className="fixed inset-0 z-50 bg-slate-50 max-w-md mx-auto w-full flex flex-col">
+          <div className="flex items-center gap-2 px-4 pt-4 pb-3 bg-white border-b border-slate-200 shadow-xs flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              id="close-search-btn"
+              aria-label="Back"
+              className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer flex-shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1">{renderSearchBar(true)}</div>
           </div>
 
-          <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                id="use-personalised-settings"
-                checked={usePersonalised}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setUsePersonalised(checked);
-                  localStorage.setItem('use_personalised_settings', String(checked));
-                  if (checked) {
-                    showSnackbar('Switched to personalised store branches');
-                  } else {
-                    showSnackbar('Switched to generic supermarket filters');
-                  }
-                }}
-                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-              />
-              <label
-                htmlFor="use-personalised-settings"
-                className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none"
-              >
-                Use personalised store settings
-              </label>
-            </div>
-            {usePersonalised && onNavigateToSettings && (
-              <button
-                onClick={onNavigateToSettings}
-                className="text-indigo-600 hover:text-indigo-800 hover:underline text-xs font-black uppercase tracking-wider cursor-pointer transition-colors"
-              >
-                Change
-              </button>
+          <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+            {activeSearchQuery.trim().length < 3 ? (
+              <div className="text-center py-16 space-y-2">
+                <Search className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="font-bold text-slate-500 uppercase tracking-widest text-[10px]">
+                  Keep typing...
+                </p>
+                <p className="text-xs text-slate-400">
+                  Enter at least 3 characters to see suggested items
+                </p>
+              </div>
+            ) : (
+              <>
+                <section className="text-center space-y-2">
+                  <h2 id="search-title" className="text-3xl font-black tracking-tighter text-slate-900 leading-none font-display">
+                    Results for '{activeSearchQuery || 'all'}'
+                  </h2>
+                  <p id="search-subtitle" className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    {sortedProducts.length} {sortedProducts.length === 1 ? 'item' : 'items'} found · {totalRetailersCount} {totalRetailersCount === 1 ? 'retailer' : 'retailers'}
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-4">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                      Filter by Supermarket:
+                    </label>
+                    {/* Horizontally-scrolling carousel (no wrap) so the pill row stays a single line and doesn't eat vertical space in the full-screen search view. */}
+                    <div className="flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
+                      {[
+                        { id: 'all', label: 'All Supermarkets' },
+                        { id: 'woolworths', label: getStoreDisplayName('woolworths') },
+                        { id: 'paknsave', label: getStoreDisplayName('paknsave') },
+                        { id: 'newworld', label: getStoreDisplayName('newworld') },
+                        { id: 'foursquare', label: getStoreDisplayName('foursquare') },
+                        { id: 'freshchoice', label: getStoreDisplayName('freshchoice') },
+                      ].map((store) => {
+                        const isSelected = selectedStores.includes(store.id);
+                        return (
+                          <button
+                            key={store.id}
+                            onClick={() => handleStoreToggle(store.id)}
+                            className={`flex-shrink-0 whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />}
+                            {store.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 flex-wrap gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          id="use-personalised-settings"
+                          checked={usePersonalised}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setUsePersonalised(checked);
+                            localStorage.setItem('use_personalised_settings', String(checked));
+                            if (checked) {
+                              showSnackbar('Switched to personalised store branches');
+                            } else {
+                              showSnackbar('Switched to generic supermarket filters');
+                            }
+                          }}
+                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                        />
+                        <label
+                          htmlFor="use-personalised-settings"
+                          className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none"
+                        >
+                          Use personalised store settings
+                        </label>
+                      </div>
+                      {usePersonalised && onNavigateToSettings && (
+                        <button
+                          onClick={onNavigateToSettings}
+                          className="text-indigo-600 hover:text-indigo-800 hover:underline text-xs font-black uppercase tracking-wider cursor-pointer transition-colors"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  {sortedProducts.length > 0 ? (
+                    sortedProducts.map((product, idx) => {
+                      const isTracked = trackedProductIds.includes(product.id);
+
+                      const applicableDeals = product.currentDeals.filter((deal) => {
+                        if (selectedStores.includes('all')) return true;
+                        const normalizedDealStore = deal.store.toLowerCase().replace(/[^a-z]/g, '');
+                        return selectedStores.some(selected => {
+                          const normalizedSelected = selected.toLowerCase().replace(/[^a-z]/g, '');
+                          return normalizedDealStore === normalizedSelected;
+                        });
+                      });
+
+                      const activeStores = applicableDeals.map((d) => d.store);
+
+                      const bestDeal = applicableDeals.reduce((lowest, current) => {
+                        return current.price < lowest.price ? current : lowest;
+                      }, applicableDeals[0] || product.currentDeals[0]);
+
+                      return (
+                        <div
+                          key={`${product.id}-${idx}`}
+                          className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-slate-100"
+                        >
+                          <button
+                            onClick={() => handleTrackClick(product.id, product.name)}
+                            id={`track-${product.id}`}
+                            className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
+                              isTracked
+                                ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100/50'
+                                : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100/50'
+                            }`}
+                          >
+                            {isTracked ? 'Remove from list' : 'Add to list'}
+                          </button>
+
+                          <div className="flex p-5 gap-5">
+                            <div className="flex flex-col gap-2 items-center flex-shrink-0">
+                              <div className="w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden select-none">
+                                <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                              </div>
+
+                              {(() => {
+                                const dealsToUse = applicableDeals.length > 0 ? applicableDeals : product.currentDeals;
+                                return (
+                                  <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 max-w-[96px] justify-center">
+                                    <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mr-0.5">At:</span>
+                                    <div className="flex -space-x-1.5 overflow-hidden">
+                                      {dealsToUse.map((deal) => {
+                                        const meta = getStoreLogoMeta(deal.store);
+                                        return (
+                                          <div
+                                            key={deal.store}
+                                            title={getStoreDisplayName(deal.store)}
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black border border-white select-none shadow-xs ${meta.bg} ${meta.text}`}
+                                          >
+                                            {meta.short}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+
+                            <div className="flex-grow flex flex-col justify-between py-1 pr-24">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                  {product.brand}
+                                </span>
+                                <h3 className="font-bold text-base text-slate-900 leading-snug mt-1 font-display">
+                                  {product.name}
+                                </h3>
+                              </div>
+
+                              {(() => {
+                                const dealsToUse = applicableDeals.length > 0 ? applicableDeals : product.currentDeals;
+                                const lowestPrice = dealsToUse.reduce((min, d) => d.price < min ? d.price : min, dealsToUse[0]?.price || 0);
+                                const hasActiveSpecial = dealsToUse.some((d) => d.isOnSpecial !== false);
+                                return (
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-baseline gap-1 flex-shrink-0 whitespace-nowrap">
+                                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Lowest price:</span>
+                                      <span className="text-base font-black text-slate-900 font-mono">
+                                        ${lowestPrice.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    {hasActiveSpecial ? (
+                                      <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
+                                        On Special
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">
+                                        Regular Price
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 px-5 pb-5">
+                            <button
+                              onClick={() => onCheckDeal(product, bestDeal.store)}
+                              id={`check-deal-${product.id}`}
+                              className="flex-1 bg-slate-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-indigo-600 transition-colors shadow-lg shadow-slate-200 flex items-center justify-center cursor-pointer"
+                            >
+                              Check Deals
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-12 space-y-3 bg-white border border-slate-200 rounded-2xl p-6">
+                      <AlertCircle className="w-12 h-12 text-slate-300 mx-auto" />
+                      <p className="font-bold text-slate-500 uppercase tracking-widest text-xs">
+                        {!selectedStores.includes('all')
+                          ? selectedStores.length === 1
+                            ? `No ${activeSearchQuery || 'grocery'} items were found at ${getStoreDisplayName(selectedStores[0])}`
+                            : `No ${activeSearchQuery || 'grocery'} items were found at the selected supermarkets (${selectedStores.map(getStoreDisplayName).join(', ')})`
+                          : `No items matching '${activeSearchQuery}'`}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {!selectedStores.includes('all')
+                          ? "Try selecting 'All Supermarkets' or search for another item."
+                          : 'Try searching for "coffee", "ketchup" or "butter"'}
+                      </p>
+                    </div>
+                  )}
+                </section>
+              </>
             )}
           </div>
         </div>
-      </section>
-
-      <section className="space-y-4">
-        {sortedProducts.length > 0 ? (
-          sortedProducts.map((product, idx) => {
-            const isTracked = trackedProductIds.includes(product.id);
-
-            const applicableDeals = product.currentDeals.filter((deal) => {
-              if (selectedStores.includes('all')) return true;
-              const normalizedDealStore = deal.store.toLowerCase().replace(/[^a-z]/g, '');
-              return selectedStores.some(selected => {
-                const normalizedSelected = selected.toLowerCase().replace(/[^a-z]/g, '');
-                return normalizedDealStore === normalizedSelected;
-              });
-            });
-
-            const activeStores = applicableDeals.map((d) => d.store);
-
-            const bestDeal = applicableDeals.reduce((lowest, current) => {
-              return current.price < lowest.price ? current : lowest;
-            }, applicableDeals[0] || product.currentDeals[0]);
-
-            return (
-              <div
-                key={`${product.id}-${idx}`}
-                className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-slate-100"
-              >
-                <button
-                  onClick={() => handleTrackClick(product.id, product.name)}
-                  id={`track-${product.id}`}
-                  className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
-                    isTracked
-                      ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100/50'
-                      : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100/50'
-                  }`}
-                >
-                  {isTracked ? 'Remove from list' : 'Add to list'}
-                </button>
-
-                <div className="flex p-5 gap-5">
-                  <div className="flex flex-col gap-2 items-center flex-shrink-0">
-                    <div className="w-24 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 text-center select-none">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                        Product Image
-                      </span>
-                    </div>
-
-                    {(() => {
-                      const dealsToUse = applicableDeals.length > 0 ? applicableDeals : product.currentDeals;
-                      return (
-                        <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 max-w-[96px] justify-center">
-                          <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mr-0.5">At:</span>
-                          <div className="flex -space-x-1.5 overflow-hidden">
-                            {dealsToUse.map((deal) => {
-                              const meta = getStoreLogoMeta(deal.store);
-                              return (
-                                <div
-                                  key={deal.store}
-                                  title={getStoreDisplayName(deal.store)}
-                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black border border-white select-none shadow-xs ${meta.bg} ${meta.text}`}
-                                >
-                                  {meta.short}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="flex-grow flex flex-col justify-between py-1 pr-24">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {product.brand}
-                      </span>
-                      <h3 className="font-bold text-base text-slate-900 leading-snug mt-1 font-display">
-                        {product.name}
-                      </h3>
-                    </div>
-
-                    {(() => {
-                      const dealsToUse = applicableDeals.length > 0 ? applicableDeals : product.currentDeals;
-                      const lowestPrice = dealsToUse.reduce((min, d) => d.price < min ? d.price : min, dealsToUse[0]?.price || 0);
-                      const hasActiveSpecial = dealsToUse.some((d) => d.isOnSpecial !== false);
-                      return (
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div className="flex items-baseline gap-1 flex-shrink-0 whitespace-nowrap">
-                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Lowest price:</span>
-                            <span className="text-base font-black text-slate-900 font-mono">
-                              ${lowestPrice.toFixed(2)}
-                            </span>
-                          </div>
-                          {hasActiveSpecial ? (
-                            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
-                              On Special
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">
-                              Regular Price
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                <div className="flex gap-3 px-5 pb-5">
-                  <button
-                    onClick={() => onCheckDeal(product, bestDeal.store)}
-                    id={`check-deal-${product.id}`}
-                    className="flex-1 bg-slate-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-indigo-600 transition-colors shadow-lg shadow-slate-200 flex items-center justify-center cursor-pointer"
-                  >
-                    Check Deals
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="text-center py-12 space-y-3 bg-white border border-slate-200 rounded-2xl p-6">
-            <AlertCircle className="w-12 h-12 text-slate-300 mx-auto" />
-            <p className="font-bold text-slate-500 uppercase tracking-widest text-xs">
-              {!selectedStores.includes('all')
-                ? selectedStores.length === 1
-                  ? `No ${activeSearchQuery || 'grocery'} items were found at ${getStoreDisplayName(selectedStores[0])}`
-                  : `No ${activeSearchQuery || 'grocery'} items were found at the selected supermarkets (${selectedStores.map(getStoreDisplayName).join(', ')})`
-                : `No items matching '${activeSearchQuery}'`}
-            </p>
-            <p className="text-xs text-slate-400">
-              {!selectedStores.includes('all')
-                ? "Try selecting 'All Supermarkets' or search for another item."
-                : 'Try searching for "coffee", "ketchup" or "butter"'}
-            </p>
-          </div>
-        )}
-      </section>
-        </>
       )}
     </div>
   );
@@ -1912,10 +2166,8 @@ function TrackedTab({
                   </button>
 
                   <div className="flex p-5 gap-5">
-                    <div className="w-24 h-24 flex-shrink-0 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 text-center select-none">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                        Product Image
-                      </span>
+                    <div className="w-24 h-24 flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden select-none">
+                      <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                     </div>
 
                     <div className="flex-grow flex flex-col justify-between py-1 pr-24">
@@ -2239,7 +2491,6 @@ function HistoryTab({
   onTrackToggle,
   trackedProductIds,
   lists = [],
-  onOpenScanner,
   showSnackbar,
 }) {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -2247,12 +2498,15 @@ function HistoryTab({
   const filteredHistory = history.filter((item) => {
     const product = mockProducts.find(p => p.id === item.productId);
     if (!product) return false;
-    const query = searchQuery.toLowerCase().trim();
+    // Same punctuation/spacing-tolerant matching as the main search bar --
+    // see normalizeSearchText -- so e.g. a checked "Weet-Bix" still turns up
+    // when searching history for "weetbix".
+    const query = normalizeSearchText(searchQuery.trim());
     if (!query) return true;
     return (
-      product.name.toLowerCase().includes(query) ||
-      product.brand.toLowerCase().includes(query) ||
-      (product.description && product.description.toLowerCase().includes(query))
+      normalizeSearchText(product.name).includes(query) ||
+      normalizeSearchText(product.brand).includes(query) ||
+      (product.description && normalizeSearchText(product.description).includes(query))
     );
   });
 
@@ -2323,10 +2577,8 @@ function HistoryTab({
                 })()}
 
                 <div className="flex p-5 gap-5">
-                  <div className="w-24 h-24 flex-shrink-0 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 text-center select-none">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                      Product Image
-                    </span>
+                  <div className="w-24 h-24 flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden select-none">
+                    <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                   </div>
 
                   <div className="flex-grow flex flex-col justify-between py-1 pr-24">
@@ -2365,20 +2617,9 @@ function HistoryTab({
         <div className="text-center py-16 space-y-3 bg-white border border-slate-200 rounded-2xl">
           <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto" />
           <p className="font-bold text-slate-500 uppercase tracking-widest text-xs">Your checking history is empty</p>
-          <p className="text-xs text-slate-400">Scan product shelf labels or use "Check deal" on the Home search page</p>
+          <p className="text-xs text-slate-400">Scan a barcode or search for a product on the Home screen to check a deal</p>
         </div>
       )}
-
-      <div className="fixed bottom-24 left-0 right-0 max-w-md mx-auto pointer-events-none z-40 px-6 flex justify-end">
-        <button
-          onClick={onOpenScanner}
-          id="camera-scan-fab"
-          title="Scan product tag"
-          className="pointer-events-auto bg-slate-900 hover:bg-indigo-600 text-white p-4.5 rounded-2xl shadow-xl hover:shadow-2xl active:scale-95 transition-all flex items-center justify-center cursor-pointer border border-slate-800"
-        >
-          <Camera className="w-6 h-6" />
-        </button>
-      </div>
     </div>
   );
 }
@@ -2905,6 +3146,9 @@ function DealModal({
   isTracked,
   trackedProductIds = [],
   onNavigateToSettings,
+  onNavigateToHowItWorks,
+  onNavigateToManageAccount,
+  onLogout,
 }) {
   if (!product || !dealStore) return null;
 
@@ -3205,18 +3449,15 @@ function DealModal({
         >
           {currentView === 'cheaper-alternatives' ? (
             <>
-              <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100 flex-shrink-0">
-                <button
-                  onClick={() => setCurrentView('assessment')}
-                  id="back-to-assessment-btn"
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                  aria-label="Go back to assessment"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="font-extrabold text-slate-900 tracking-tight font-display text-xs uppercase tracking-widest">Cheaper Alternatives</span>
-                <div className="w-8" />
-              </div>
+              <AppHeader
+                title="Cheaper Alternatives"
+                onBack={() => setCurrentView('assessment')}
+                backButtonId="back-to-assessment-btn"
+                onOpenHowItWorks={onNavigateToHowItWorks}
+                onOpenManageAccount={onNavigateToManageAccount}
+                onOpenSettings={onNavigateToSettings}
+                onLogout={onLogout}
+              />
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-12">
                 <div className={`p-6 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} flex flex-col items-center text-center space-y-4 shadow-xs`}>
@@ -3225,10 +3466,8 @@ function DealModal({
                   </h2>
 
                   <div className="bg-white border border-slate-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                    <div className="w-16 h-16 flex-shrink-0 bg-slate-50 rounded-lg border border-slate-200/60 flex items-center justify-center p-2 text-center select-none">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                        Product Image
-                      </span>
+                    <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
+                      <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
@@ -3344,10 +3583,8 @@ function DealModal({
 
                           <div className="flex gap-5">
                             <div className="flex flex-col gap-2 items-center flex-shrink-0">
-                              <div className="w-24 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 text-center select-none">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                                  Product Image
-                                </span>
+                              <div className="w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden select-none">
+                                <ProductImage src={altProd.image} alt={altProd.name} className="w-full h-full object-contain" />
                               </div>
 
                               {(() => {
@@ -3414,20 +3651,16 @@ function DealModal({
             </>
           ) : (
             <>
-              <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100">
-                <button
-                  onClick={onClose}
-                  id="close-modal-btn"
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                  aria-label="Go back"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <div className="text-slate-700">
-                  <CircleUser className="w-6 h-6" />
-                </div>
-                <div className="w-8" />
-              </div>              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <AppHeader
+                title="Dodgy Deal"
+                onBack={onClose}
+                backButtonId="close-modal-btn"
+                onOpenHowItWorks={onNavigateToHowItWorks}
+                onOpenManageAccount={onNavigateToManageAccount}
+                onOpenSettings={onNavigateToSettings}
+                onLogout={onLogout}
+              />
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
                 {verdict === 'Dodgy Deal' ? (
                   <div className={`p-6 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} flex flex-col items-center text-center space-y-4 shadow-xs`}>
@@ -3460,10 +3693,8 @@ function DealModal({
                     </div>
 
                     <div className="bg-white border border-red-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                      <div className="w-16 h-16 flex-shrink-0 bg-slate-50 rounded-lg border border-slate-200/60 flex items-center justify-center p-2 text-center select-none">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                          Product Image
-                        </span>
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
+                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
@@ -3513,10 +3744,8 @@ function DealModal({
                     </div>
 
                     <div className="bg-white border border-amber-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                      <div className="w-16 h-16 flex-shrink-0 bg-slate-50 rounded-lg border border-slate-200/60 flex items-center justify-center p-2 text-center select-none">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                          Product Image
-                        </span>
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
+                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
@@ -3566,10 +3795,8 @@ function DealModal({
                     </div>
 
                     <div className="bg-white border border-emerald-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                      <div className="w-16 h-16 flex-shrink-0 bg-slate-50 rounded-lg border border-slate-200/60 flex items-center justify-center p-2 text-center select-none">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">
-                          Product Image
-                        </span>
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
+                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
@@ -3784,101 +4011,40 @@ function DealModal({
 
 /* ===================== components/ScannerModal.tsx ===================== */
 
-const SCANNER_PRESETS = [
-  {
-    name: 'New World - Moccona $11.99 Tag',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFCnRiet4R9ZrBU4ziW4kfan3ZB4TYrrUa-9oPeCPBsEL8UJj4FDqlLJcRowTVasBD0LgvZd6nLfCfS6NdUd1xl4vSHcYE-OppxN4b3DXbyTGhotAT2U3F_seN8w_a9IUXlDg6kWP5pUNeA86bzOwYwpL8Im8fAEkT8tKbf_xzMADew-Mn4mvHsQCIstwTNQrimNjdXS886M0Fy2rGExzenArTMcdNubPq-DlpeU2I11IFdBdHcr-WQIM_d4el7HXxd5PaGdwsSNTI',
-    store: 'New World',
-    price: 11.99,
-    productName: 'Classic Instant Coffee 200g',
-    brand: 'Moccona',
-    rating: 'Dodgy Deal',
-    details: 'The yellow tag screams "Save $5.00!" down from $16.99, but history audit shows standard price was $10.50. This is a markup disguised as a discount!',
-    matchId: 'moccona-classic-200g'
-  },
-  {
-    name: 'Woolworths - Heinz Ketchup $3.50 Tag',
-    image: 'https://images.unsplash.com/photo-1607305387299-a3d9611cd46f?auto=format&fit=crop&q=80&w=300',
-    store: 'New World',
-    price: 3.50,
-    productName: 'Heinz Tomato Ketchup 460g',
-    brand: 'Heinz',
-    rating: 'Real Deal',
-    details: 'This tag is 100% verified. The normal price is $4.20, making this a genuine 16% discount on premium ketchup!',
-    matchId: 'heinz-ketchup-460g'
-  },
-  {
-    name: 'Woolworths - Lurpak Butter $7.20 Tag',
-    image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&q=80&w=300',
-    store: 'New World',
-    price: 7.20,
-    productName: 'Lurpak Slightly Salted 250g',
-    brand: 'Lurpak',
-    rating: 'Dodgy Deal',
-    details: 'Tag boasts a "20% Discount" down from $8.99, but their standard price was $5.80. You are paying a high premium.',
-    matchId: 'lurpak-butter-250g'
-  }
-];
+// Real barcode/OCR recognition isn't feasible in a static prototype, so this
+// no longer fabricates a scan result. It captures a photo (via the device's
+// real camera, using a file input with capture="environment" -- the
+// standard way a web page triggers the native camera app rather than a
+// canvas/getUserMedia live-preview) or an uploaded photo, then hands the
+// user off to the real search flow (which does run the genuine dodgy/fair/
+// real-saver classifier against the live database) to look the item up.
+function ScannerModal({ isOpen, onClose, onSearchForItem }) {
+  const [capturedImage, setCapturedImage] = useState(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
-function ScannerModal({ isOpen, onClose, onAddHistory }) {
-  const [selectedPreset, setSelectedPreset] = useState(null);
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
-  const fileInputRef = useRef(null);
-
-  const handlePresetSelect = (preset) => {
-    setSelectedPreset(preset);
-    setUploadedImage(null);
-    setScanResult(null);
-  };
-
-  const handleFileUpload = (event) => {
+  const handleImageSelected = (event) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = () => {
-        setUploadedImage(reader.result);
-        setSelectedPreset(null);
-        setScanResult(null);
-      };
+      reader.onload = () => setCapturedImage(reader.result);
       reader.readAsDataURL(file);
     }
+    // Reset so choosing the same file again still fires onChange.
+    event.target.value = '';
   };
 
-  const startScan = () => {
-    if (!selectedPreset && !uploadedImage) return;
+  const handleRetake = () => setCapturedImage(null);
 
-    setIsScanning(true);
-    setScanResult(null);
+  const handleClose = () => {
+    setCapturedImage(null);
+    onClose();
+  };
 
-    setTimeout(() => {
-      setIsScanning(false);
-      if (selectedPreset) {
-        setScanResult(selectedPreset);
-        const product = mockProducts.find(p => p.id === selectedPreset.matchId);
-        if (product) {
-          onAddHistory(product, selectedPreset.store, selectedPreset.price, selectedPreset.rating);
-        }
-      } else {
-        const randomProduct = mockProducts[Math.floor(Math.random() * mockProducts.length)];
-        const store = 'Woolworths';
-        const price = randomProduct.standardPrice * 1.15;
-        const result = {
-          name: 'Scanned Price Tag',
-          image: uploadedImage || '',
-          store,
-          price,
-          productName: randomProduct.name,
-          brand: randomProduct.brand,
-          rating: 'Dodgy Deal',
-          details: `Scanned image matched: ${randomProduct.brand} ${randomProduct.name}. Scanned price is $${price.toFixed(2)}, which is higher than the standard historical shelf price of $${randomProduct.standardPrice.toFixed(2)}. An artificial discount has been flagged.`,
-          matchId: randomProduct.id
-        };
-        setScanResult(result);
-        onAddHistory(randomProduct, store, price, 'Dodgy Deal');
-      }
-    }, 2800);
+  const handleSearchForItem = () => {
+    setCapturedImage(null);
+    onClose();
+    onSearchForItem && onSearchForItem();
   };
 
   return (
@@ -3889,7 +4055,7 @@ function ScannerModal({ isOpen, onClose, onAddHistory }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           />
 
@@ -3908,7 +4074,7 @@ function ScannerModal({ isOpen, onClose, onAddHistory }) {
                 <h3 className="font-bold text-base text-slate-900 uppercase tracking-wider font-display">Price Tag Scanner</h3>
               </div>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-1 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -3916,47 +4082,30 @@ function ScannerModal({ isOpen, onClose, onAddHistory }) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {!scanResult && !isScanning && (
+              {!capturedImage && (
                 <div className="space-y-4">
                   <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                    Test the smart price checker! Pick one of our preloaded shelf tags to scan, or upload your own price label photo.
+                    Point your camera at a shelf price tag or barcode to check it in-store, or upload a photo you've already taken.
                   </p>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Preloaded Price Tags
-                    </label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {SCANNER_PRESETS.map((preset) => (
-                        <button
-                          key={preset.name}
-                          onClick={() => handlePresetSelect(preset)}
-                          className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                            selectedPreset?.name === preset.name
-                              ? 'border-indigo-600 bg-indigo-50/50'
-                              : 'border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <img
-                            src={preset.image}
-                            alt={preset.name}
-                            className="w-10 h-10 object-cover rounded-lg border bg-white border-slate-100"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{preset.store}</p>
-                            <p className="text-sm font-bold text-slate-800 truncate font-display">{preset.name}</p>
-                          </div>
-                          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-[4px] ${
-                            preset.rating === 'Dodgy Deal'
-                              ? 'bg-red-50 border border-red-100 text-red-600'
-                              : 'bg-emerald-50 border border-emerald-100 text-emerald-600'
-                          }`}>
-                            {preset.rating}
-                          </span>
-                        </button>
-                      ))}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={cameraInputRef}
+                    onChange={handleImageSelected}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="w-full py-8 border-2 border-dashed border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-md">
+                      <Camera className="w-6 h-6 text-white" />
                     </div>
-                  </div>
+                    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Scan Barcode</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Opens your camera</p>
+                  </button>
 
                   <div className="flex items-center my-4">
                     <div className="flex-grow border-t border-slate-200" />
@@ -3964,176 +4113,63 @@ function ScannerModal({ isOpen, onClose, onAddHistory }) {
                     <div className="flex-grow border-t border-slate-200" />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Upload from Gallery
-                    </label>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`w-full py-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
-                        uploadedImage
-                          ? 'border-indigo-600 bg-indigo-50/20'
-                          : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
-                      }`}
-                    >
-                      {uploadedImage ? (
-                        <>
-                          <CheckCircle className="w-8 h-8 text-indigo-600" />
-                          <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Image Uploaded Successfully</p>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Click to change photo</p>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-8 h-8 text-slate-400" />
-                          <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Select Price Label Photo</p>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Supports JPG, PNG, WEBP</p>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={galleryInputRef}
+                    onChange={handleImageSelected}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="w-full py-6 border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Upload className="w-8 h-8 text-slate-400" />
+                    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Upload Photo</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Supports JPG, PNG, WEBP</p>
+                  </button>
                 </div>
               )}
 
-              {isScanning && (
-                <div className="flex flex-col items-center justify-center py-12 space-y-6">
-                  <div className="relative w-48 h-48 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center shadow-inner">
-                    <img
-                      src={selectedPreset?.image || uploadedImage || ''}
-                      alt="Scanning Target"
-                      className="w-full h-full object-cover opacity-60"
-                    />
-                    <motion.div
-                      initial={{ y: 0 }}
-                      animate={{ y: 192 }}
-                      transition={{
-                        repeat: Infinity,
-                        repeatType: 'reverse',
-                        duration: 1.4,
-                        ease: 'easeInOut',
-                      }}
-                      className="absolute inset-x-0 h-1 bg-red-500 shadow-[0_0_12px_#ef4444]"
-                    />
-                  </div>
-                  <div className="text-center space-y-2">
-                    <div className="flex items-center justify-center gap-2 text-indigo-600">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="font-black text-xs tracking-widest uppercase">Auditing Retail History...</span>
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      Extracting text values and comparing store records to True standard index
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {scanResult && (
+              {capturedImage && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 flex-shrink-0 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-1 text-center select-none">
-                      <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 leading-none">
-                        Product Image
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{scanResult.brand}</p>
-                      <h4 className="font-bold text-base text-slate-900 font-display leading-tight">
-                        {scanResult.productName}
-                      </h4>
-                    </div>
+                  <div className="w-full aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                    <img
+                      src={capturedImage}
+                      alt="Captured price tag"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-
-                  <div className={`p-5 rounded-2xl border ${
-                    scanResult.rating === 'Dodgy Deal'
-                      ? 'bg-red-50 border-red-200 text-red-900'
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                  } space-y-3`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {scanResult.rating === 'Dodgy Deal' ? (
-                          <AlertTriangle className="w-5 h-5 text-red-600" />
-                        ) : (
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
-                        )}
-                        <span className={`font-bold text-base font-display ${
-                          scanResult.rating === 'Dodgy Deal' ? 'text-red-700' : 'text-emerald-700'
-                        }`}>
-                          {scanResult.rating}
-                        </span>
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-white px-2 py-0.5 border border-slate-100 rounded-[4px]">
-                        {scanResult.store}
-                      </span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-slate-700 font-medium">
-                      {scanResult.details}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Scanned Shelf Price</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1 tabular-nums">
-                        ${scanResult.price.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center flex flex-col justify-center">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Audit Recommendation</p>
-                      <p className={`text-sm font-black uppercase tracking-widest mt-2 ${
-                        scanResult.rating === 'Dodgy Deal' ? 'text-red-600' : 'text-emerald-600'
-                      }`}>
-                        {scanResult.rating === 'Dodgy Deal' ? 'DO NOT BUY' : 'VERIFIED BUY'}
-                      </p>
-                    </div>
-                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed font-medium text-center">
+                    Now search for this item to see its real price history and whether the current price is a genuine deal.
+                  </p>
                 </div>
               )}
             </div>
 
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
-              {scanResult ? (
+              {capturedImage ? (
                 <>
                   <button
-                    onClick={() => {
-                      setSelectedPreset(null);
-                      setUploadedImage(null);
-                      setScanResult(null);
-                    }}
+                    onClick={handleRetake}
                     className="flex-1 border border-slate-200 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-colors cursor-pointer"
                   >
-                    Scan Another
+                    Retake
                   </button>
                   <button
-                    onClick={onClose}
+                    onClick={handleSearchForItem}
                     className="flex-1 bg-slate-900 hover:bg-indigo-600 text-white py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest shadow-md cursor-pointer"
                   >
-                    Close Report
+                    Search for This Item
                   </button>
                 </>
               ) : (
-                <>
-                  <button
-                    onClick={onClose}
-                    disabled={isScanning}
-                    className="flex-1 border border-slate-200 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={startScan}
-                    disabled={(!selectedPreset && !uploadedImage) || isScanning}
-                    className="flex-1 bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-400 text-white py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
-                  >
-                    <Play className="w-4 h-4 fill-current" />
-                    Start Audit
-                  </button>
-                </>
+                <button
+                  onClick={handleClose}
+                  className="flex-1 border border-slate-200 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
               )}
             </div>
           </motion.div>
@@ -5401,7 +5437,6 @@ function App() {
   }, []);
 
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState('search');
   const [previousTab, setPreviousTab] = useState('search');
   const [lastExternalTab, setLastExternalTab] = useState('search');
@@ -5587,19 +5622,6 @@ function App() {
     }
   };
 
-  const handleAddHistory = (product, store, price, dealType) => {
-    const newHistoryItem = {
-      id: `hist-${Date.now()}`,
-      productId: product.id,
-      checkedAt: 'Just Now',
-      store,
-      price,
-      dealType,
-    };
-    setHistory((prev) => [newHistoryItem, ...prev]);
-    showSnackbar(`Audit recorded: ${product.brand} added to history log.`);
-  };
-
   const handleMarkAsRead = (id) => {
     setAlerts((prev) =>
       prev.map((alert) => (alert.id === id ? { ...alert, read: true } : alert))
@@ -5676,8 +5698,8 @@ function App() {
             onClose={() => {
               setIsDealModalOpen(false);
               if (currentTab !== 'saved' && currentTab !== 'history') {
-                setSearchInputValue('coffee');
-                setActiveSearchQuery('coffee');
+                setSearchInputValue('');
+                setActiveSearchQuery('');
                 setCurrentTab('search');
               }
             }}
@@ -5690,6 +5712,20 @@ function App() {
               setIsDealModalOpen(false);
               setCurrentTab('settings');
             }}
+            onNavigateToHowItWorks={() => {
+              setIsDealModalOpen(false);
+              setPreviousTab(currentTab);
+              setCurrentTab('howitworks');
+            }}
+            onNavigateToManageAccount={() => {
+              setIsDealModalOpen(false);
+              setPreviousTab(currentTab);
+              setCurrentTab('manageaccount');
+            }}
+            onLogout={() => {
+              setIsDealModalOpen(false);
+              handleLogout();
+            }}
           />
           {renderListSelectorModal()}
         </div>
@@ -5701,87 +5737,25 @@ function App() {
     <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
       <div className="bg-slate-50 text-slate-900 min-h-screen w-full max-w-md flex flex-col font-sans select-none pb-24 transition-colors duration-200 relative shadow-2xl border-x border-slate-200/80">
 
-        <header className="sticky top-0 z-40 bg-white flex justify-between items-center w-full px-6 h-16 border-b border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 bg-indigo-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-lg shadow-indigo-100">
-                <div className="w-2 h-2 bg-white rounded-full"></div>
-              </div>
-              <span className="font-black text-xl tracking-tighter text-slate-900 uppercase font-display">{getHeaderTitle()}.</span>
-            </div>
-             <div className="flex items-center gap-3 relative">
-              {currentTab === 'manageaccount' || currentTab === 'settings' || currentTab === 'howitworks' ? (
-                <button
-                  onClick={() => {
-                    setCurrentTab(lastExternalTab);
-                  }}
-                  className="p-2 transition-all duration-150 ease-in-out rounded-lg cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className={`p-2 transition-all duration-150 ease-in-out rounded-lg cursor-pointer relative ${
-                    isUserMenuOpen || currentTab === 'profile' || currentTab === 'howitworks' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <User className="w-5 h-5" />
-                </button>
-              )}
-
-              {isUserMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40 bg-transparent"
-                    onClick={() => setIsUserMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 top-12 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 py-2 animate-fadeIn">
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setPreviousTab(currentTab);
-                        setCurrentTab('howitworks');
-                      }}
-                      className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors uppercase tracking-wider block cursor-pointer"
-                    >
-                      How Dodgy Deal works
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setPreviousTab(currentTab);
-                        setCurrentTab('manageaccount');
-                      }}
-                      className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
-                    >
-                      Manage Account
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setPreviousTab(currentTab);
-                        setCurrentTab('settings');
-                      }}
-                      className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
-                    >
-                      Store Settings
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        handleLogout();
-                      }}
-                      className="w-full text-left px-4 py-3 text-xs font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
-                    >
-                      Log Out
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
+        <AppHeader
+          title={getHeaderTitle()}
+          showCloseButton={currentTab === 'manageaccount' || currentTab === 'settings' || currentTab === 'howitworks'}
+          onCloseButtonClick={() => setCurrentTab(lastExternalTab)}
+          isProfileHighlighted={currentTab === 'profile' || currentTab === 'howitworks'}
+          onOpenHowItWorks={() => {
+            setPreviousTab(currentTab);
+            setCurrentTab('howitworks');
+          }}
+          onOpenManageAccount={() => {
+            setPreviousTab(currentTab);
+            setCurrentTab('manageaccount');
+          }}
+          onOpenSettings={() => {
+            setPreviousTab(currentTab);
+            setCurrentTab('settings');
+          }}
+          onLogout={handleLogout}
+        />
 
         <main className="w-full px-4 pt-4 flex-1">
           {currentTab === 'search' && (
@@ -5800,6 +5774,7 @@ function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               onNavigateToSettings={() => setCurrentTab('settings')}
+              onOpenScanner={() => setIsScannerOpen(true)}
             />
           )}
 
@@ -5835,7 +5810,6 @@ function App() {
               onTrackToggle={handleTrackToggle}
               trackedProductIds={trackedProductIds}
               lists={lists}
-              onOpenScanner={() => setIsScannerOpen(true)}
               showSnackbar={showSnackbar}
             />
           )}
@@ -5925,7 +5899,7 @@ function App() {
         <ScannerModal
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
-          onAddHistory={handleAddHistory}
+          onSearchForItem={() => setCurrentTab('search')}
         />
         {renderListSelectorModal()}
       </div>
