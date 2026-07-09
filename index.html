@@ -989,9 +989,11 @@ function AppHeader({
   showCloseButton = false,
   onCloseButtonClick,
   isProfileHighlighted = false,
+  isLoggedIn = true,
   onOpenHowItWorks,
   onOpenManageAccount,
   onOpenSettings,
+  onOpenLogin,
   onLogout,
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
@@ -1052,33 +1054,48 @@ function AppHeader({
                 >
                   How Dodgy Deal works
                 </button>
-                <button
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    onOpenManageAccount && onOpenManageAccount();
-                  }}
-                  className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
-                >
-                  Manage Account
-                </button>
-                <button
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    onOpenSettings && onOpenSettings();
-                  }}
-                  className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
-                >
-                  Store Settings
-                </button>
-                <button
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    onLogout && onLogout();
-                  }}
-                  className="w-full text-left px-4 py-3 text-xs font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
-                >
-                  Log Out
-                </button>
+                {isLoggedIn ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenManageAccount && onOpenManageAccount();
+                      }}
+                      className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                    >
+                      Manage Account
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenSettings && onOpenSettings();
+                      }}
+                      className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                    >
+                      Store Settings
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onLogout && onLogout();
+                      }}
+                      className="w-full text-left px-4 py-3 text-xs font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                    >
+                      Log Out
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    id="global-header-login-btn"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onOpenLogin && onOpenLogin();
+                    }}
+                    className="w-full text-left px-4 py-3 text-xs font-black text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors border-t border-slate-100 uppercase tracking-wider block cursor-pointer"
+                  >
+                    Create Account / Log In
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -1106,6 +1123,7 @@ function SearchTab({
   setSortBy,
   onNavigateToSettings,
   onOpenScanner,
+  isLoggedIn = true,
 }) {
   const [isAllDealsExpanded, setIsAllDealsExpanded] = React.useState(false);
 
@@ -1380,8 +1398,10 @@ function SearchTab({
         <section className="relative">{renderSearchBar(false)}</section>
       )}
 
-      {/* Generic Specials Alert - Highlight items on sale in user's lists */}
-      {!isSearchActive && (() => {
+      {/* Generic Specials Alert - Highlight items on sale in user's lists.
+          Gated behind login since it surfaces "your list" membership, which
+          doesn't exist for a signed-out/guest browser. */}
+      {!isSearchActive && isLoggedIn && (() => {
         // Collect all product IDs in any list
         const allListProductIds = Array.from(new Set(lists.flatMap((l) => l.itemIds)));
 
@@ -1666,17 +1686,19 @@ function SearchTab({
                           key={`${product.id}-${idx}`}
                           className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-slate-100"
                         >
-                          <button
-                            onClick={() => handleTrackClick(product.id, product.name)}
-                            id={`track-${product.id}`}
-                            className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
-                              isTracked
-                                ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100/50'
-                                : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100/50'
-                            }`}
-                          >
-                            {isTracked ? 'Remove from list' : 'Add to list'}
-                          </button>
+                          {isLoggedIn && (
+                            <button
+                              onClick={() => handleTrackClick(product.id, product.name)}
+                              id={`track-${product.id}`}
+                              className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
+                                isTracked
+                                  ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100/50'
+                                  : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100/50'
+                              }`}
+                            >
+                              {isTracked ? 'Remove from list' : 'Add to list'}
+                            </button>
+                          )}
 
                           <div className="flex p-5 gap-5">
                             <div className="flex flex-col gap-2 items-center flex-shrink-0">
@@ -1798,6 +1820,8 @@ function TrackedTab({
   onDeleteList,
   onResetLists,
   onCreateList,
+  isLoggedIn = true,
+  onOpenLogin,
 }) {
   const [quantities, setQuantities] = React.useState({
     'avalanche-sachets-10pk': 1,
@@ -1817,6 +1841,32 @@ function TrackedTab({
 
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState('');
+
+  // List functions require an account -- guests/signed-out users get a
+  // login/create-account prompt instead of the real list UI. Placed after
+  // all hooks above so hook call order stays stable across renders.
+  if (!isLoggedIn) {
+    return (
+      <div className="text-center py-20 space-y-4 bg-white border border-slate-200 rounded-2xl animate-fadeIn">
+        <div className="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
+          <Bookmark className="w-6 h-6 stroke-[2]" />
+        </div>
+        <div className="space-y-1.5 max-w-xs mx-auto">
+          <p className="font-black text-slate-800 uppercase tracking-wider text-sm">Log in to use lists</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Create a free account or log in to save products, build grocery lists, and compare checkout costs across supermarkets.
+          </p>
+        </div>
+        <button
+          id="tracked-tab-login-btn"
+          onClick={onOpenLogin}
+          className="bg-slate-900 hover:bg-indigo-600 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer active:scale-95 shadow-md shadow-slate-200 inline-flex items-center gap-2"
+        >
+          Create Account / Log In
+        </button>
+      </div>
+    );
+  }
 
   const handleDecrease = (productId, isWeight) => {
     setQuantities((prev) => {
@@ -2492,6 +2542,7 @@ function HistoryTab({
   trackedProductIds,
   lists = [],
   showSnackbar,
+  isLoggedIn = true,
 }) {
   const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -2551,7 +2602,7 @@ function HistoryTab({
                 key={`${item.id}-${idx}`}
                 className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-slate-100"
               >
-                {(() => {
+                {isLoggedIn && (() => {
                   const productLists = lists ? lists.filter(l => l.itemIds.includes(product.id)) : [];
                   const isInAnyList = productLists.length > 0;
                   const buttonText = isInAnyList
@@ -2626,7 +2677,30 @@ function HistoryTab({
 
 /* ===================== components/ProfileTab.tsx ===================== */
 
-function ProfileTab({ stats, history }) {
+function ProfileTab({ stats, history, isLoggedIn = true, onOpenLogin }) {
+  if (!isLoggedIn) {
+    return (
+      <div className="text-center py-20 space-y-4 bg-white border border-slate-200 rounded-2xl animate-fadeIn max-w-md mx-auto">
+        <div className="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
+          <BarChart3 className="w-6 h-6 stroke-[2]" />
+        </div>
+        <div className="space-y-1.5 max-w-xs mx-auto">
+          <p className="font-black text-slate-800 uppercase tracking-wider text-sm">Log in to see Deal Stats</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Create a free account or log in to track your checked deals, real savers spotted, and estimated total savings.
+          </p>
+        </div>
+        <button
+          id="profile-tab-login-btn"
+          onClick={onOpenLogin}
+          className="bg-slate-900 hover:bg-indigo-600 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer active:scale-95 shadow-md shadow-slate-200 inline-flex items-center gap-2"
+        >
+          Create Account / Log In
+        </button>
+      </div>
+    );
+  }
+
   const allSupermarkets = [
     { name: 'New World', key: 'New World' },
     { name: 'Woolworths', key: 'Woolworths' },
@@ -2750,7 +2824,7 @@ function ProfileTab({ stats, history }) {
 
 /* ===================== components/LoginPage.tsx ===================== */
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, onSkip, onBack }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -2796,7 +2870,17 @@ function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 sm:p-8 md:p-12 font-sans select-none">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 sm:p-8 md:p-12 font-sans select-none relative">
+      {onBack && (
+        <button
+          onClick={onBack}
+          id="login-page-close-btn"
+          aria-label="Close"
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer z-10"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
       <div className="max-w-md w-full mx-auto text-center pt-8">
         <h1 className="text-3xl font-black text-slate-900 tracking-widest uppercase">
           DODGY DEAL
@@ -2965,14 +3049,16 @@ function LoginPage({ onLogin }) {
             </button>
           </div>
 
-          <div className="pt-1 border-t border-slate-100">
-            <button
-              onClick={onLogin}
-              className="text-[10px] text-slate-400 hover:text-slate-600 font-extrabold uppercase tracking-widest transition-colors cursor-pointer"
-            >
-              Skip for now &gt;
-            </button>
-          </div>
+          {!onBack && onSkip && (
+            <div className="pt-1 border-t border-slate-100">
+              <button
+                onClick={onSkip}
+                className="text-[10px] text-slate-400 hover:text-slate-600 font-extrabold uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                Skip for now &gt;
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -3145,9 +3231,11 @@ function DealModal({
   onTrackToggle,
   isTracked,
   trackedProductIds = [],
+  isLoggedIn = true,
   onNavigateToSettings,
   onNavigateToHowItWorks,
   onNavigateToManageAccount,
+  onNavigateToLogin,
   onLogout,
 }) {
   if (!product || !dealStore) return null;
@@ -3453,9 +3541,11 @@ function DealModal({
                 title="Cheaper Alternatives"
                 onBack={() => setCurrentView('assessment')}
                 backButtonId="back-to-assessment-btn"
+                isLoggedIn={isLoggedIn}
                 onOpenHowItWorks={onNavigateToHowItWorks}
                 onOpenManageAccount={onNavigateToManageAccount}
                 onOpenSettings={onNavigateToSettings}
+                onOpenLogin={onNavigateToLogin}
                 onLogout={onLogout}
               />
 
@@ -3570,16 +3660,18 @@ function DealModal({
                           key={`${altProd.id}-${altStore}`}
                           className="relative bg-white border border-slate-200/80 rounded-2xl p-5 flex flex-col gap-4 shadow-xs hover:border-slate-300 transition-all"
                         >
-                          <button
-                            onClick={() => onTrackToggle(altProd.id)}
-                            className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
-                              isAltTracked
-                                ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100/50'
-                                : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100/50'
-                            }`}
-                          >
-                            {isAltTracked ? 'Remove' : 'Add to list'}
-                          </button>
+                          {isLoggedIn && (
+                            <button
+                              onClick={() => onTrackToggle(altProd.id)}
+                              className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
+                                isAltTracked
+                                  ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100/50'
+                                  : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100/50'
+                              }`}
+                            >
+                              {isAltTracked ? 'Remove' : 'Add to list'}
+                            </button>
+                          )}
 
                           <div className="flex gap-5">
                             <div className="flex flex-col gap-2 items-center flex-shrink-0">
@@ -3655,9 +3747,11 @@ function DealModal({
                 title="Dodgy Deal"
                 onBack={onClose}
                 backButtonId="close-modal-btn"
+                isLoggedIn={isLoggedIn}
                 onOpenHowItWorks={onNavigateToHowItWorks}
                 onOpenManageAccount={onNavigateToManageAccount}
                 onOpenSettings={onNavigateToSettings}
+                onOpenLogin={onNavigateToLogin}
                 onLogout={onLogout}
               />
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -3990,7 +4084,7 @@ function DealModal({
                 </div>
               </div>
 
-              {!isTracked && (
+              {!isTracked && isLoggedIn && (
                 <div className="p-4.5 bg-white border-t border-slate-100 flex">
                   <button
                     onClick={() => onTrackToggle(product.id)}
@@ -5436,7 +5530,14 @@ function App() {
     };
   }, []);
 
+  // isLoggedIn: a real account (login/signup submitted). hasEnteredApp: has
+  // passed the initial gate at all, either by logging in or by tapping
+  // "Skip for now" -- guests get hasEnteredApp=true but isLoggedIn=false, so
+  // they can browse/search but list functions, Deal Stats, and the
+  // Add/Remove-from-list pills stay locked behind a login/create-account
+  // prompt (see TrackedTab, ProfileTab, AppHeader, product card pills below).
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
+  const [hasEnteredApp, setHasEnteredApp] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [currentTab, setCurrentTab] = useState('search');
   const [previousTab, setPreviousTab] = useState('search');
   const [lastExternalTab, setLastExternalTab] = useState('search');
@@ -5466,7 +5567,7 @@ function App() {
   };
 
   useEffect(() => {
-    const isDropDownPage = currentTab === 'howitworks' || currentTab === 'manageaccount' || currentTab === 'settings';
+    const isDropDownPage = currentTab === 'howitworks' || currentTab === 'manageaccount' || currentTab === 'settings' || currentTab === 'login';
     if (!isDropDownPage) {
       setLastExternalTab(currentTab);
     }
@@ -5593,12 +5694,29 @@ function App() {
   const handleLogin = () => {
     localStorage.setItem('isLoggedIn', 'true');
     setIsLoggedIn(true);
+    setHasEnteredApp(true);
     showSnackbar('Welcome to Dodgy Deal!');
+  };
+
+  // Guest browsing: passes the initial gate without an account. List
+  // functions/Deal Stats/list pills stay locked (isLoggedIn stays false)
+  // until the guest logs in or creates an account via handleOpenLogin below.
+  const handleSkip = () => {
+    setHasEnteredApp(true);
+  };
+
+  // Opens the login/signup screen from within the app (guest tapping a
+  // "Create Account / Log In" prompt) rather than the initial full-screen
+  // gate -- returns to whatever tab they were on, via the 'login' tab branch
+  // below and lastExternalTab.
+  const handleOpenLogin = () => {
+    setCurrentTab('login');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     setIsLoggedIn(false);
+    setHasEnteredApp(false);
     showSnackbar('Logged out successfully');
   };
 
@@ -5679,11 +5797,27 @@ function App() {
     }
   };
 
-  if (!isLoggedIn) {
+  if (!hasEnteredApp) {
     return (
       <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
         <div className="bg-slate-50 min-h-screen w-full max-w-md relative shadow-2xl border-x border-slate-200/80 flex flex-col justify-between">
-          <LoginPage onLogin={handleLogin} />
+          <LoginPage onLogin={handleLogin} onSkip={handleSkip} />
+        </div>
+      </div>
+    );
+  }
+
+  if (currentTab === 'login') {
+    return (
+      <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
+        <div className="bg-slate-50 min-h-screen w-full max-w-md relative shadow-2xl border-x border-slate-200/80 flex flex-col justify-between">
+          <LoginPage
+            onLogin={() => {
+              handleLogin();
+              setCurrentTab(lastExternalTab);
+            }}
+            onBack={() => setCurrentTab(lastExternalTab)}
+          />
         </div>
       </div>
     );
@@ -5708,6 +5842,7 @@ function App() {
             onTrackToggle={handleTrackToggle}
             isTracked={selectedProduct ? trackedProductIds.includes(selectedProduct.id) : false}
             trackedProductIds={trackedProductIds}
+            isLoggedIn={isLoggedIn}
             onNavigateToSettings={() => {
               setIsDealModalOpen(false);
               setCurrentTab('settings');
@@ -5721,6 +5856,10 @@ function App() {
               setIsDealModalOpen(false);
               setPreviousTab(currentTab);
               setCurrentTab('manageaccount');
+            }}
+            onNavigateToLogin={() => {
+              setIsDealModalOpen(false);
+              setCurrentTab('login');
             }}
             onLogout={() => {
               setIsDealModalOpen(false);
@@ -5742,6 +5881,7 @@ function App() {
           showCloseButton={currentTab === 'manageaccount' || currentTab === 'settings' || currentTab === 'howitworks'}
           onCloseButtonClick={() => setCurrentTab(lastExternalTab)}
           isProfileHighlighted={currentTab === 'profile' || currentTab === 'howitworks'}
+          isLoggedIn={isLoggedIn}
           onOpenHowItWorks={() => {
             setPreviousTab(currentTab);
             setCurrentTab('howitworks');
@@ -5754,6 +5894,7 @@ function App() {
             setPreviousTab(currentTab);
             setCurrentTab('settings');
           }}
+          onOpenLogin={handleOpenLogin}
           onLogout={handleLogout}
         />
 
@@ -5775,6 +5916,7 @@ function App() {
               setSortBy={setSortBy}
               onNavigateToSettings={() => setCurrentTab('settings')}
               onOpenScanner={() => setIsScannerOpen(true)}
+              isLoggedIn={isLoggedIn}
             />
           )}
 
@@ -5791,6 +5933,8 @@ function App() {
               onDeleteList={handleDeleteList}
               onResetLists={handleResetLists}
               onCreateList={handleCreateList}
+              isLoggedIn={isLoggedIn}
+              onOpenLogin={handleOpenLogin}
             />
           )}
 
@@ -5811,11 +5955,12 @@ function App() {
               trackedProductIds={trackedProductIds}
               lists={lists}
               showSnackbar={showSnackbar}
+              isLoggedIn={isLoggedIn}
             />
           )}
 
           {currentTab === 'profile' && (
-            <ProfileTab stats={stats} history={history} />
+            <ProfileTab stats={stats} history={history} isLoggedIn={isLoggedIn} onOpenLogin={handleOpenLogin} />
           )}
 
           {currentTab === 'howitworks' && (

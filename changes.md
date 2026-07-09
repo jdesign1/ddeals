@@ -8,6 +8,18 @@ Full backend/data-layer history (Supabase schema, scrapers, identity matching, e
 
 ---
 
+## 2026-07-10 — Guest browsing enforced: list functions, Deal Stats, and list pills locked behind login
+
+User asked for a real logged-out state: no list functions or Deal Stats for a non-authenticated user, profile menu shouldn't offer Manage Account/Store Settings to a guest (show a Create Account/Log In prompt instead, plus add that item to the menu itself), and Add-to-list/Remove-from-list pills shouldn't appear on product cards for signed-out users.
+
+- **There was no real guest state to gate.** `App()`'s `!isLoggedIn` branch showed only the full-screen `LoginPage`, and its "Skip for now" button called `onLogin` directly — silently logging the user in with placeholder credentials instead of granting guest access. Every screen this task needed to lock down was already unreachable while "logged out" in the old sense.
+- **Split "entered the app" from "has an account":** added `hasEnteredApp` state alongside `isLoggedIn`. `handleSkip` (new) sets `hasEnteredApp` true only, so skipping now actually drops you into the app as a signed-out guest; `handleLogin` (form submit) sets both. `handleLogout` resets both, same as the old logged-out gate.
+- **`TrackedTab` (My List)** and **`ProfileTab` (Deal Stats)** each get an early-return login/create-account prompt in place of their real content when `isLoggedIn` is false.
+- **`AppHeader`'s profile dropdown** takes a new `isLoggedIn` prop: shows Manage Account/Store Settings/Log Out unchanged when logged in, a single "Create Account / Log In" item when not. "How Dodgy Deal works" stays visible either way (static info, not an account function).
+- **List pills hidden for guests everywhere:** `SearchTab`'s "Your Items on Special" home widget (whole widget, since it's inherently "your list" content) and its product-grid cards, `HistoryTab`'s bookmark/"Add to list" pill, `DealModal`'s "Cheaper Alternatives" per-item pill and its bottom "Add to List" bar.
+- **New `login` tab** so a guest can log in from anywhere (profile menu, My List prompt, Deal Stats prompt) without losing their place — `LoginPage` gained separate `onSkip`/`onBack` props (previously "Skip for now" literally called `onLogin`); `onBack` shows a close (X) button and hides the redundant skip link, returns to `lastExternalTab` either way.
+- **Peer review:** compiled `#app-source` with the project's standard Babel config, ran in Node + jsdom with network stubbed to fail (confirms the existing `FALLBACK_PRODUCTS` demo-data path still renders). Scripted end-to-end: gate → skip → My List/Deal Stats both show their prompt with zero real UI leaking → profile menu shows only "Create Account / Log In" (no Manage Account/Store Settings/Log Out) → opening it shows the close-button login screen with no "Skip for now" → closing returns to search → a live search renders product cards with no Add/Remove-from-list pill anywhere → completed a real signup and confirmed the reverse (all of the above unlocks). No thrown errors.
+
 ## 2026-07-10 — Search relevance ranking (category matches now outrank incidental keyword hits)
 
 User reported not being able to find "butter" or "milk" via search. Category text was already part of the match (name/brand/category all searched), and the data itself is fine — real milk/butter products with correct categories and live prices are all in the DB, and load on page 0 of the streamed catalogue. The actual bug: no relevance ranking existed, so results fell back to cheapest-price-first, and a cheap chocolate bar ("Dairy Milk"), biscuit ("Milk Arrowroot"), or sauce ("Butter Chicken") that merely *mentions* the word buried the real category items a shopper was after.
