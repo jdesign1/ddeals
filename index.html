@@ -1135,16 +1135,17 @@ function SearchTab({
 }) {
   const [isAllDealsExpanded, setIsAllDealsExpanded] = React.useState(false);
 
-  // Full-screen search view -- opens as soon as the user types the first
-  // character into the search bar (see renderSearchBar's onChange below),
-  // and closes automatically once the field is cleared back to empty
-  // (backspacing it all out, tapping the X, or tapping the back arrow).
+  // Full-screen search view -- opens as soon as the search bar is tapped
+  // (onFocus, see renderSearchBar below) or as soon as a character is typed.
+  // Closing is now explicit only: the back arrow and the full-screen bar's
+  // dedicated close button both call handleClearSearch (clears text + exits).
+  // Deliberately does NOT auto-close just because the query goes back to
+  // empty (via backspacing or the inline field's clear-X) -- that used to
+  // double as "close", which is what made the inline X feel like it was
+  // closing search instead of just clearing the text typed so far. Native
+  // search screens keep you in the full-screen view (showing "Keep
+  // typing...") until you explicitly back out.
   const [isSearchActive, setIsSearchActive] = React.useState(false);
-  React.useEffect(() => {
-    if (searchInputValue.trim() === '') {
-      setIsSearchActive(false);
-    }
-  }, [searchInputValue]);
 
   const [usePersonalised, setUsePersonalised] = React.useState(() => {
     return localStorage.getItem('use_personalised_settings') === 'true';
@@ -1272,6 +1273,27 @@ function SearchTab({
     sortedProducts.flatMap((p) => p.currentDeals.map((d) => d.store))
   ).size;
 
+  // Shown in the full-screen search view before the user has typed 3+
+  // characters (the "Keep typing..." state) so there's something to browse
+  // rather than a dead end -- the biggest current specials across the whole
+  // live catalogue, ranked by discount, same "best deal per product" idea
+  // used by the results list below.
+  const popularSpecials = React.useMemo(() => {
+    return mockProducts
+      .map((product) => {
+        const specialDeals = (product.currentDeals || []).filter((d) => d.isOnSpecial !== false);
+        if (specialDeals.length === 0) return null;
+        const bestDeal = specialDeals.reduce((best, d) =>
+          (d.discountPercentage || 0) > (best.discountPercentage || 0) ? d : best
+        , specialDeals[0]);
+        return { product, bestDeal };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.bestDeal.discountPercentage || 0) - (a.bestDeal.discountPercentage || 0))
+      .slice(0, 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productsVersion]);
+
   // No more explicit "Search" submit button (it's been replaced by the
   // barcode-scan button below) -- results now live-filter as the user
   // types, so form submission is just swallowed to stop a stray Enter key
@@ -1289,10 +1311,23 @@ function SearchTab({
     }
   };
 
+  // Closes the full-screen search view entirely (back arrow, and the
+  // dedicated close button in the full-screen bar) -- resets the query too,
+  // same as leaving a native search screen.
   const handleClearSearch = () => {
     setSearchInputValue('');
     setActiveSearchQuery('');
     setIsSearchActive(false);
+    showSnackbar('Cleared search results');
+  };
+
+  // Clears just the typed text, staying on the full-screen search view --
+  // this is what the inline X inside the search field itself does. Kept
+  // distinct from handleClearSearch above: that one also backs out of the
+  // full-screen view, which the inline field X should not do.
+  const handleClearSearchText = () => {
+    setSearchInputValue('');
+    setActiveSearchQuery('');
     showSnackbar('Cleared search results');
   };
 
@@ -1369,7 +1404,11 @@ function SearchTab({
   // full-screen search view once active -- same controlled input/state
   // either way, just a plain helper (not a nested component) so re-renders
   // on every keystroke don't remount the <input> and steal focus.
-  const renderSearchBar = (autoFocus) => (
+  // `isFullScreen` (distinct from `autoFocus`, even though today both call
+  // sites happen to pass the same boolean) swaps the trailing icon: the
+  // scan-barcode button only makes sense on the home bar, and the
+  // full-screen bar gets a close button in its place instead.
+  const renderSearchBar = (autoFocus, isFullScreen) => (
     <form
       onSubmit={handleSearchFormSubmit}
       className="flex items-center bg-white rounded-xl pl-4 pr-2 py-2 border border-slate-200 focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-xs"
@@ -1388,24 +1427,39 @@ function SearchTab({
       />
       {searchInputValue && (
         <button
-          onClick={handleClearSearch}
+          onClick={handleClearSearchText}
           id="clear-search-btn"
-          className="text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-50 cursor-pointer flex-shrink-0"
+          title="Clear search"
+          aria-label="Clear search"
+          className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 cursor-pointer flex-shrink-0 whitespace-nowrap"
           type="button"
         >
-          <X className="w-5 h-5" />
+          Clear
         </button>
       )}
-      <button
-        type="button"
-        onClick={onOpenScanner}
-        id="scan-barcode-btn"
-        title="Scan a barcode"
-        aria-label="Scan a barcode"
-        className="ml-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-indigo-100 flex items-center justify-center"
-      >
-        <Camera className="w-4 h-4" />
-      </button>
+      {isFullScreen ? (
+        <button
+          type="button"
+          onClick={handleClearSearch}
+          id="close-search-fullscreen-btn"
+          title="Close search"
+          aria-label="Close search"
+          className="ml-2 text-slate-500 bg-slate-100 hover:bg-slate-200 p-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-slate-200 flex items-center justify-center"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onOpenScanner}
+          id="scan-barcode-btn"
+          title="Scan a barcode"
+          aria-label="Scan a barcode"
+          className="ml-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-indigo-100 flex items-center justify-center"
+        >
+          <Camera className="w-4 h-4" />
+        </button>
+      )}
     </form>
   );
 
@@ -1432,7 +1486,7 @@ function SearchTab({
 
       {/* Persistent Search Bar */}
       {!isSearchActive && (
-        <section className="relative">{renderSearchBar(false)}</section>
+        <section className="relative">{renderSearchBar(false, false)}</section>
       )}
 
       {/* Guest empty state -- signed-out users have no "Your Items on Special"
@@ -1610,10 +1664,20 @@ function SearchTab({
       <AnimatePresence>
       {isSearchActive && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
+          // Opacity-only (no x/y) on purpose: a `transform` on ANY ancestor of
+          // the pill carousel further down this tree -- even a settled
+          // `translateY(0px)`, which is what framer-motion leaves behind as
+          // an inline style once a y-based animation finishes -- silently
+          // breaks `position: sticky` for descendants in every browser (a
+          // transformed ancestor becomes sticky's containing block instead
+          // of the real scroll container). Found via manual testing: the
+          // pills stopped docking the moment this overlay gained a `y`
+          // entrance animation. Opacity doesn't have this effect, so the
+          // fade stays smooth and sticky keeps working once the panel is open.
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
           className="fixed inset-0 z-50 bg-slate-50 max-w-md mx-auto w-full flex flex-col"
         >
           <div className="flex items-center gap-2 px-4 pt-4 pb-3 bg-white border-b border-slate-200 shadow-xs flex-shrink-0">
@@ -1626,23 +1690,77 @@ function SearchTab({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="flex-1">{renderSearchBar(true)}</div>
+            <div className="flex-1">{renderSearchBar(true, true)}</div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+          {/* No top padding here (was py-5) -- with it, the scroll container's own
+              padding-top left a persistent gap between the pinned search bar and the
+              sticky pill row once docked (sticky's stuck offset is measured from this
+              container's padding edge, so top padding here shows up as a permanent
+              gap above the pills, not just before the first scroll). Padding removed
+              from the container entirely and reintroduced instead on the "Results
+              for..." heading below (which scrolls away before the pills would ever
+              dock, so it can't reintroduce the gap) to keep the same breathing room
+              at rest. The "Keep typing..." state already carries its own py-8. */}
+          <div className="flex-1 overflow-y-auto px-4 pb-5 space-y-6">
             {activeSearchQuery.trim().length < 3 ? (
-              <div className="text-center py-16 space-y-2">
-                <Search className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="font-bold text-slate-500 uppercase tracking-widest text-[10px]">
-                  Keep typing...
-                </p>
-                <p className="text-xs text-slate-400">
-                  Enter at least 3 characters to see suggested items
-                </p>
+              <div className="space-y-8">
+                <div className="text-center py-8 space-y-2">
+                  <Search className="w-10 h-10 text-slate-300 mx-auto" />
+                  <p className="font-bold text-slate-500 uppercase tracking-widest text-[10px]">
+                    Keep typing...
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Enter at least 3 characters to see suggested items
+                  </p>
+                </div>
+
+                {popularSpecials.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                      Popular Specials Right Now
+                    </h3>
+                    <div className="space-y-3">
+                      {popularSpecials.map(({ product, bestDeal }) => (
+                        <div
+                          key={product.id}
+                          className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl p-3"
+                        >
+                          <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center select-none">
+                            <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                              {product.brand}
+                            </span>
+                            <h4 className="font-bold text-sm text-slate-900 leading-snug truncate font-display">
+                              {product.name}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-sm font-black text-slate-900 font-mono">
+                                ${bestDeal.price.toFixed(2)}
+                              </span>
+                              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
+                                {getStoreDisplayName(bestDeal.store)}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => onCheckDeal(product, bestDeal.store)}
+                            id={`check-deal-popular-${product.id}`}
+                            className="flex-shrink-0 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2.5 rounded-xl hover:bg-indigo-600 transition-colors cursor-pointer"
+                          >
+                            Check
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
-                <section className="text-center space-y-2">
+                <section className="text-center space-y-2 pt-5">
                   <h2 id="search-title" className="text-3xl font-black tracking-tighter text-slate-900 leading-none font-display">
                     Results for '{activeSearchQuery || 'all'}'
                   </h2>
@@ -1651,15 +1769,22 @@ function SearchTab({
                   </p>
                 </section>
 
+                {/* This whole <section> (filter label through the product grid at the bottom) is deliberately one single container now, not two
+                    separate ones -- position: sticky only stays "docked" for as long as its own immediate parent's box hasn't scrolled past, so the
+                    pill carousel below needs its containing block to span the full results list, not just the few short filter rows around it.
+                    Splitting the filter block and the product grid into separate <section>s (the previous version) meant the pills unstuck the
+                    moment that small filter block scrolled past, i.e. as soon as the product cards came into view -- exactly the reported bug. */}
                 <section className="flex flex-col gap-4">
                   <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
                       Filter by Supermarket:
                     </label>
-                    {/* Horizontally-scrolling carousel (no wrap) so the pill row stays a single line and doesn't eat vertical space in the full-screen search view.
-                        Sticky (top-0 within the scrollable results container) so it docks directly below the pinned search bar once the heading scrolls
-                        past it -- only this row sticks, the "Filter by Supermarket" label and personalised-settings row above/below stay in normal flow. */}
-                    <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar">
+                  </div>
+
+                  {/* Horizontally-scrolling carousel (no wrap) so the pill row stays a single line and doesn't eat vertical space in the full-screen search view.
+                      Sticky (top-0 within the scrollable results container) so it docks directly below the pinned search bar once the heading scrolls
+                      past it -- only this row sticks, the "Filter by Supermarket" label above and personalised-settings row below stay in normal flow. */}
+                  <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-2 bg-slate-50 border-b border-slate-200 flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar">
                       {[
                         { id: 'all', label: 'All Supermarkets' },
                         { id: 'woolworths', label: getStoreDisplayName('woolworths') },
@@ -1720,10 +1845,8 @@ function SearchTab({
                         </button>
                       )}
                     </div>
-                  </div>
-                </section>
 
-                <section className="space-y-4">
+                  <div className="space-y-4">
                   {sortedProducts.length > 0 ? (
                     sortedProducts.map((product, idx) => {
                       const isTracked = trackedProductIds.includes(product.id);
@@ -1858,6 +1981,7 @@ function SearchTab({
                       </p>
                     </div>
                   )}
+                  </div>
                 </section>
               </>
             )}
