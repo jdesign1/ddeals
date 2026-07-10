@@ -1383,6 +1383,7 @@ function SearchTab({
         type="text"
         value={searchInputValue}
         onChange={handleSearchInputChange}
+        onFocus={() => setIsSearchActive(true)}
         enterKeyHint="search"
       />
       {searchInputValue && (
@@ -1432,6 +1433,22 @@ function SearchTab({
       {/* Persistent Search Bar */}
       {!isSearchActive && (
         <section className="relative">{renderSearchBar(false)}</section>
+      )}
+
+      {/* Guest empty state -- signed-out users have no "Your Items on Special"
+          widget (that's gated behind login below, since it's inherently
+          list-membership content), so without this the home screen would
+          just show the tagline and search bar with nothing guiding a guest
+          toward what to do next. */}
+      {!isSearchActive && !isLoggedIn && (
+        <div className="text-center py-10 px-6 space-y-3 bg-white border border-dashed border-slate-200 rounded-3xl">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+            <Search className="w-6 h-6 text-indigo-600" />
+          </div>
+          <p className="text-sm font-bold text-slate-700 leading-relaxed max-w-xs mx-auto">
+            Search your favourite brands or shopping items, we will scan prices across all NZ supermarkets for the best price, or check if a deal is dodgy
+          </p>
+        </div>
       )}
 
       {/* Generic Specials Alert - Highlight items on sale in user's lists.
@@ -1590,8 +1607,15 @@ function SearchTab({
         );
       })()}
 
+      <AnimatePresence>
       {isSearchActive && (
-        <div className="fixed inset-0 z-50 bg-slate-50 max-w-md mx-auto w-full flex flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 bg-slate-50 max-w-md mx-auto w-full flex flex-col"
+        >
           <div className="flex items-center gap-2 px-4 pt-4 pb-3 bg-white border-b border-slate-200 shadow-xs flex-shrink-0">
             <button
               type="button"
@@ -1632,8 +1656,10 @@ function SearchTab({
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
                       Filter by Supermarket:
                     </label>
-                    {/* Horizontally-scrolling carousel (no wrap) so the pill row stays a single line and doesn't eat vertical space in the full-screen search view. */}
-                    <div className="flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
+                    {/* Horizontally-scrolling carousel (no wrap) so the pill row stays a single line and doesn't eat vertical space in the full-screen search view.
+                        Sticky (top-0 within the scrollable results container) so it docks directly below the pinned search bar once the heading scrolls
+                        past it -- only this row sticks, the "Filter by Supermarket" label and personalised-settings row above/below stay in normal flow. */}
+                    <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar">
                       {[
                         { id: 'all', label: 'All Supermarkets' },
                         { id: 'woolworths', label: getStoreDisplayName('woolworths') },
@@ -1836,8 +1862,9 @@ function SearchTab({
               </>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -5584,6 +5611,14 @@ function App() {
   const trackedProductIds = activeList ? activeList.itemIds : [];
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isDealModalOpen, setIsDealModalOpen] = useState(false);
+  // App()'s outer scroll container (bg-slate-100 ... overflow-y-auto) is the
+  // same DOM node across the isDealModalOpen/currentTab branches below (React
+  // reconciles it in place since it's the same element type at the same tree
+  // position each render), so its scrollTop otherwise carries over from
+  // whatever the user had scrolled to on the previous screen -- e.g. tapping
+  // "Check Deals" on a card lower down the home screen landed the deal page
+  // already scrolled down. Reset to top whenever the deal modal opens.
+  const appScrollRef = useRef(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedStore, setSelectedStore] = useState(null);
   const [snackbarMessage, setSnackbarMessage] = useState(null);
@@ -5756,6 +5791,12 @@ function App() {
     showSnackbar('Logged out successfully');
   };
 
+  useEffect(() => {
+    if (isDealModalOpen && appScrollRef.current) {
+      appScrollRef.current.scrollTop = 0;
+    }
+  }, [isDealModalOpen]);
+
   const handleCheckDeal = (product, store) => {
     setSelectedProduct(product);
     setSelectedStore(store);
@@ -5835,7 +5876,7 @@ function App() {
 
   if (!hasEnteredApp) {
     return (
-      <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
+      <div ref={appScrollRef} className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
         <div className="bg-slate-50 min-h-screen w-full max-w-md relative shadow-2xl border-x border-slate-200/80 flex flex-col justify-between">
           <LoginPage onLogin={handleLogin} onSkip={handleSkip} />
         </div>
@@ -5845,7 +5886,7 @@ function App() {
 
   if (currentTab === 'login') {
     return (
-      <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
+      <div ref={appScrollRef} className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
         <div className="bg-slate-50 min-h-screen w-full max-w-md relative shadow-2xl border-x border-slate-200/80 flex flex-col justify-between">
           <LoginPage
             onLogin={() => {
@@ -5861,7 +5902,7 @@ function App() {
 
   if (isDealModalOpen && selectedProduct && selectedStore) {
     return (
-      <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
+      <div ref={appScrollRef} className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
         <div className="bg-slate-50 min-h-screen w-full max-w-md relative shadow-2xl border-x border-slate-200/80 flex flex-col">
           <DealModal
             isOpen={isDealModalOpen}
@@ -5909,7 +5950,7 @@ function App() {
   }
 
   return (
-    <div className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
+    <div ref={appScrollRef} className="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto">
       <div className="bg-slate-50 text-slate-900 min-h-screen w-full max-w-md flex flex-col font-sans select-none pb-24 transition-colors duration-200 relative shadow-2xl border-x border-slate-200/80">
 
         <AppHeader
