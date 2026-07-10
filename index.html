@@ -39,6 +39,13 @@
      mode -- horizontally scrollable, but no visible scrollbar clutter. */
   .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
   .hide-scrollbar::-webkit-scrollbar { display: none; }
+  /* Mobile WebKit (iOS Safari/Chrome) auto-zooms the whole page on focus of
+     any input whose computed font-size is under 16px. The search bar was
+     using Tailwind's text-sm (14px), so tapping it visibly zoomed the
+     viewport. #search-input's ID specificity overrides .text-sm here without
+     touching the class list or disabling pinch-zoom globally via the
+     viewport meta (which would be an accessibility regression). */
+  #search-input { font-size: 16px; }
 </style>
 <script type="importmap">
 {
@@ -54,9 +61,9 @@
   }
 }
 </script>
-<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Plus Jakarta Sans, system-ui, -apple-system, sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:JetBrains Mono, monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.relative{position:relative}.mx-auto{margin-left:auto;margin-right:auto}.my-auto{margin-top:auto;margin-bottom:auto}.mt-2{margin-top:0.5rem}.mt-3{margin-top:0.75rem}.block{display:block}.flex{display:flex}.min-h-screen{min-height:100vh}.w-full{width:100%}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;user-select:none}.flex-col{flex-direction:column}.items-start{align-items:flex-start}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-1\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.375rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.overflow-y-auto{overflow-y:auto}.rounded-3xl{border-radius:1.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-x{border-left-width:1px;border-right-width:1px}.border-t{border-top-width:1px}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249 / var(--tw-border-opacity, 1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240 / var(--tw-border-opacity, 1))}.border-slate-200\/80{border-color:rgb(226 232 240 / 0.8)}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252 / var(--tw-bg-opacity, 1))}.bg-slate-50\/50{background-color:rgb(248 250 252 / 0.5)}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-4{padding-left:1rem;padding-right:1rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.pb-4{padding-bottom:1rem}.pt-1{padding-top:0.25rem}.pt-2{padding-top:0.5rem}.pt-6{padding-top:1.5rem}.pt-8{padding-top:2rem}.text-center{text-align:center}.font-display{font-family:Space Grotesk, sans-serif}.font-sans{font-family:Plus Jakarta Sans, system-ui, -apple-system, sans-serif}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[9px\]{font-size:9px}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.tracking-wider{letter-spacing:0.05em}.tracking-widest{letter-spacing:0.1em}.text-indigo-600{--tw-text-opacity:1;color:rgb(79 70 229 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59 / var(--tw-text-opacity, 1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.placeholder-slate-400::placeholder{--tw-placeholder-opacity:1;color:rgb(148 163 184 / var(--tw-placeholder-opacity, 1))}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-slate-100\/40{--tw-shadow-color:rgb(241 245 249 / 0.4);--tw-shadow:var(--tw-shadow-colored)}.shadow-slate-200{--tw-shadow-color:#e2e8f0;--tw-shadow:var(--tw-shadow-colored)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.hover\:bg-indigo-600:hover{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.hover\:text-indigo-800:hover{--tw-text-opacity:1;color:rgb(55 48 163 / var(--tw-text-opacity, 1))}.hover\:text-slate-600:hover{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.focus\:border-indigo-600:focus{--tw-border-opacity:1;border-color:rgb(79 70 229 / var(--tw-border-opacity, 1))}.focus\:ring-1:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.focus\:ring-indigo-600:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(79 70 229 / var(--tw-ring-opacity, 1))}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@media (min-width: 640px){.sm\:p-8{padding:2rem}}@media (min-width: 768px){.md\:p-12{padding:3rem}}</style></head>
+</head>
 <body>
-<div id="root"><div class="bg-slate-100 min-h-screen w-full flex justify-center items-start overflow-y-auto"><div class="bg-slate-50 min-h-screen w-full max-w-md relative shadow-2xl border-x border-slate-200/80 flex flex-col justify-between"><div class="min-h-screen bg-slate-50 flex flex-col justify-between p-6 sm:p-8 md:p-12 font-sans select-none"><div class="max-w-md w-full mx-auto text-center pt-8"><h1 class="text-3xl font-black text-slate-900 tracking-widest uppercase">DODGY DEAL</h1><p class="text-xs text-slate-500 font-medium mt-3 leading-relaxed max-w-sm mx-auto">Compare prices across supermarkets to instantly assess whether that special is a real saver or a dodgy offer.</p></div><div class="max-w-md w-full mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-100/40 space-y-6 my-auto"><div class="text-center space-y-1"><h2 class="text-xl font-black text-slate-900 uppercase tracking-wider font-display">Log In</h2><p class="text-[11px] text-slate-500 font-semibold">Welcome back to Dodgy Deal</p></div><form class="space-y-4"><div class="space-y-1.5"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Email Address</label><input type="email" required="" placeholder="name@example.com" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all bg-slate-50/50" value=""></div><div class="space-y-1.5"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Password</label><input type="password" required="" placeholder="••••••••" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all bg-slate-50/50" value=""></div><button type="submit" class="w-full mt-2 bg-slate-900 hover:bg-indigo-600 text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer active:scale-95 shadow-md shadow-slate-200">Log In</button></form><div class="text-center pt-2 space-y-3"><div><button class="text-[10px] text-indigo-600 hover:text-indigo-800 font-extrabold uppercase tracking-widest transition-colors cursor-pointer">Create an account</button></div><div class="pt-1 border-t border-slate-100"><button class="text-[10px] text-slate-400 hover:text-slate-600 font-extrabold uppercase tracking-widest transition-colors cursor-pointer">Skip for now &gt;</button></div></div></div><div class="max-w-md w-full mx-auto text-center pt-6 pb-4"><p class="text-[9px] font-black text-slate-300 uppercase tracking-widest">EST. 2026 • DODGY DEAL VALIDATION SYSTEM</p></div></div></div></div></div>
+<div id="root"></div>
 
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
@@ -1124,6 +1131,7 @@ function SearchTab({
   onNavigateToSettings,
   onOpenScanner,
   isLoggedIn = true,
+  productsVersion = 0,
 }) {
   const [isAllDealsExpanded, setIsAllDealsExpanded] = React.useState(false);
 
@@ -1168,18 +1176,101 @@ function SearchTab({
     return defaults;
   });
 
-  // Filter products matching search query. Normalised on both sides (see
-  // normalizeSearchText) so punctuation/spacing quirks in how a product is
-  // named in the database -- "Weet-Bix" vs a shopper typing "Weetbix" -- don't
-  // cause a real, in-stock item to fail to show up at all.
-  const filteredProducts = mockProducts.filter((p) => {
-    const query = normalizeSearchText(activeSearchQuery.trim());
-    const matchesSearch =
+  // The query actually used for filtering/sorting is debounced ~150ms behind
+  // what's typed. searchInputValue/activeSearchQuery still update on every
+  // keystroke (so the input itself and the "Results for '...'" heading never
+  // lag), but the expensive full-catalogue scan below only re-runs once
+  // typing pauses -- previously it ran synchronously on every single
+  // keystroke, which is what caused the noticeable suggestion lag on mobile.
+  const [debouncedQuery, setDebouncedQuery] = React.useState(activeSearchQuery);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(activeSearchQuery), 150);
+    return () => clearTimeout(timer);
+  }, [activeSearchQuery]);
+
+  // Filter -> store-match -> relevance-sort, all in one memo. Previously this
+  // whole pipeline (filter over every product in mockProducts, a second
+  // filter, then a sort whose comparator re-tokenised each product's
+  // name/brand/category from scratch on every pairwise comparison) re-ran on
+  // *every* render of SearchTab -- not just when the query changed, but also
+  // on unrelated re-renders like the background pagination tick that lands
+  // more of the live catalogue. With ~12.7k products live, that's what made
+  // typing feel laggy: the main thread was re-scanning the whole catalogue
+  // before the input's own updated value could paint.
+  // - Skips the scan entirely below 3 characters, matching the "Keep
+  //   typing..." UI gate that already hides results below that length --
+  //   no point filtering/sorting thousands of products just to throw the
+  //   result away unrendered.
+  // - Relevance (getSearchRelevance) is now computed once per product up
+  //   front instead of being recomputed inside the sort comparator on every
+  //   comparison (was O(n log n) re-tokenisations, now O(n)).
+  // - Depends on productsVersion (a tick bumped by App() each time a new
+  //   page of live products lands) rather than reading the mutable
+  //   `mockProducts` global directly, so the memo only recomputes when the
+  //   data, query, store filter, or sort mode actually changed.
+  const sortedProducts = React.useMemo(() => {
+    const trimmedQuery = debouncedQuery.trim();
+    if (trimmedQuery.length < 3) return [];
+
+    const query = normalizeSearchText(trimmedQuery);
+    const filteredProducts = mockProducts.filter((p) => (
       normalizeSearchText(p.name).includes(query) ||
       normalizeSearchText(p.brand).includes(query) ||
-      normalizeSearchText(p.category).includes(query);
-    return matchesSearch;
-  });
+      normalizeSearchText(p.category).includes(query)
+    ));
+
+    // Filter products matching selected stores. Every item the supermarkets
+    // stock is browsable here now, not just ones currently on special --
+    // "all stores" just needs the product to be sold/priced somewhere.
+    const matched = filteredProducts.filter((product) => {
+      if (selectedStores.includes('all')) {
+        return product.currentDeals.length > 0;
+      }
+      return product.currentDeals.some((deal) => {
+        const normalizedDealStore = deal.store.toLowerCase().replace(/[^a-z]/g, '');
+        return selectedStores.some((selected) => {
+          const normalizedSelectedStore = selected.toLowerCase().replace(/[^a-z]/g, '');
+          return normalizedDealStore === normalizedSelectedStore;
+        });
+      });
+    });
+
+    const getBestPrice = (p) => Math.min(...p.currentDeals.map((d) => d.price));
+    const getMaxDiscount = (p) => Math.max(...p.currentDeals.map((d) => d.discountPercentage));
+    const getDodgyScore = (p) =>
+      p.currentDeals.some((d) => d.dealType === 'Dodgy Deal')
+        ? 2
+        : p.currentDeals.some((d) => d.dealType === 'Fair Price')
+        ? 1
+        : 0;
+
+    // Sort products. Relevance to the search query comes first (see
+    // getSearchRelevance -- category matches beat name matches beat brand
+    // matches beat incidental substring-only matches), so the actual "Milk"
+    // or "Butter" category items surface ahead of things that merely
+    // mention the word in passing (a "Butter Chicken" sauce, "Milky"
+    // candy). The user's chosen sort (cheapest / biggest discount / dodgy
+    // rating) still applies, just as the tiebreaker *within* each relevance
+    // tier rather than overriding it -- otherwise a 99c snack that happens
+    // to match the query would keep beating the actual product being
+    // searched for.
+    return matched
+      .map((product) => ({ product, relevance: getSearchRelevance(product, trimmedQuery) }))
+      .sort((a, b) => {
+        if (b.relevance !== a.relevance) return b.relevance - a.relevance;
+        if (sortBy === 'cheapest') return getBestPrice(a.product) - getBestPrice(b.product);
+        if (sortBy === 'discount') return getMaxDiscount(b.product) - getMaxDiscount(a.product);
+        if (sortBy === 'dodgy-rating') return getDodgyScore(b.product) - getDodgyScore(a.product);
+        return 0;
+      })
+      .map((x) => x.product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productsVersion, debouncedQuery, selectedStores, sortBy]);
+
+  // Unique count of retailers offering these deals
+  const totalRetailersCount = new Set(
+    sortedProducts.flatMap((p) => p.currentDeals.map((d) => d.store))
+  ).size;
 
   // No more explicit "Search" submit button (it's been replaced by the
   // barcode-scan button below) -- results now live-filter as the user
@@ -1263,61 +1354,6 @@ function SearchTab({
       setSelectedStores(nextStores);
     }
   };
-
-  // Filter products matching selected stores. Every item the supermarkets
-  // stock is browsable here now, not just ones currently on special --
-  // "all stores" just needs the product to be sold/priced somewhere.
-  const matchedProducts = filteredProducts.filter((product) => {
-    if (selectedStores.includes('all')) {
-      return product.currentDeals.length > 0;
-    }
-    return product.currentDeals.some((deal) => {
-      const normalizedDealStore = deal.store.toLowerCase().replace(/[^a-z]/g, '');
-      return selectedStores.some((selected) => {
-        const normalizedSelectedStore = selected.toLowerCase().replace(/[^a-z]/g, '');
-        return normalizedDealStore === normalizedSelectedStore;
-      });
-    });
-  });
-
-  // Sort products. Relevance to the search query comes first (see
-  // getSearchRelevance -- category matches beat name matches beat brand
-  // matches beat incidental substring-only matches), so the actual "Milk" or
-  // "Butter" category items surface ahead of things that merely mention the
-  // word in passing (a "Butter Chicken" sauce, "Milky" candy). The user's
-  // chosen sort (cheapest / biggest discount / dodgy rating) still applies,
-  // just as the tiebreaker *within* each relevance tier rather than
-  // overriding it -- otherwise a 99c snack that happens to match the query
-  // would keep beating the actual product being searched for.
-  const sortedProducts = [...matchedProducts].sort((a, b) => {
-    const relevanceDiff = getSearchRelevance(b, activeSearchQuery) - getSearchRelevance(a, activeSearchQuery);
-    if (relevanceDiff !== 0) return relevanceDiff;
-
-    const getBestPrice = (p) => Math.min(...p.currentDeals.map((d) => d.price));
-    const getMaxDiscount = (p) => Math.max(...p.currentDeals.map((d) => d.discountPercentage));
-    const getDodgyScore = (p) =>
-      p.currentDeals.some((d) => d.dealType === 'Dodgy Deal')
-        ? 2
-        : p.currentDeals.some((d) => d.dealType === 'Fair Price')
-        ? 1
-        : 0;
-
-    if (sortBy === 'cheapest') {
-      return getBestPrice(a) - getBestPrice(b);
-    }
-    if (sortBy === 'discount') {
-      return getMaxDiscount(b) - getMaxDiscount(a);
-    }
-    if (sortBy === 'dodgy-rating') {
-      return getDodgyScore(b) - getDodgyScore(a);
-    }
-    return 0;
-  });
-
-  // Unique count of retailers offering these deals
-  const totalRetailersCount = new Set(
-    matchedProducts.flatMap((p) => p.currentDeals.map((d) => d.store))
-  ).size;
 
   const handleTrackClick = (productId, productName) => {
     onTrackToggle(productId);
@@ -5521,7 +5557,7 @@ function App() {
   // read `mockProducts` as a plain closure variable. This tick is just a
   // signal to re-render after each page lands so those reads pick up the
   // new data; it carries no value of its own.
-  const [, forceLiveProductsTick] = useState(0);
+  const [liveProductsTick, forceLiveProductsTick] = useState(0);
   useEffect(() => {
     const bump = () => forceLiveProductsTick((t) => t + 1);
     (window.__liveProductListeners = window.__liveProductListeners || []).push(bump);
@@ -5917,6 +5953,7 @@ function App() {
               onNavigateToSettings={() => setCurrentTab('settings')}
               onOpenScanner={() => setIsScannerOpen(true)}
               isLoggedIn={isLoggedIn}
+              productsVersion={liveProductsTick}
             />
           )}
 

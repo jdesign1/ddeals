@@ -8,6 +8,22 @@ Full backend/data-layer history (Supabase schema, scrapers, identity matching, e
 
 ---
 
+## 2026-07-10 — Search bar: fixed mobile zoom-on-focus and suggestion lag
+
+User reported the search bar zooms the whole page in when tapped on mobile, and that live suggested results lag noticeably while typing.
+
+- **Zoom on activation:** the input used Tailwind's `text-sm` (14px); mobile WebKit (iOS Safari and friends) auto-zooms the viewport on focus of any input under 16px. Added a scoped `#search-input { font-size: 16px; }` rule — ID specificity overrides `.text-sm` without touching the input's other styling or disabling pinch-zoom app-wide via the viewport meta (left untouched).
+- **Suggestion lag:** `SearchTab` had no memoization at all — the filter/store-match/sort pipeline over the full live catalogue (~12.7k products) re-ran synchronously on every render, including unrelated ones like the background pagination tick, and the sort comparator re-tokenised each product from scratch on every pairwise comparison instead of once per product. Wrapped the pipeline in `React.useMemo` keyed on a real `productsVersion` prop (the existing live-data tick from `App()`, now threaded down instead of left write-only), debounced the query driving that memo ~150ms behind the input's own instant value (the input and "Results for '...'" heading still update every keystroke), skipped the scan below the existing 3-character "Keep typing..." threshold, and precomputed relevance once per product before sorting instead of inside the comparator.
+- **Peer review:** compiled `#app-source` with the project's standard Babel config, ran in Node + jsdom against a real parse of `Prototype/index.html` (so the CSS rule and viewport meta were checked against the actual file, not a stand-in), network stubbed to fail (confirms `FALLBACK_PRODUCTS` path). Confirmed the zoom rule is present and viewport doesn't disable user-scalable. Typed "coffee" character-by-character with no pause between keystrokes: the expensive scan ran 0 times mid-typing, exactly once after the debounce settled (was: once per keystroke, unthrottled, every time). Confirmed the settled results are correct — 4 real coffee products (Avalanche, Robert Harris, Nescafé, Moccona) with correct prices/stores. No thrown errors. Full details in `project.md`.
+
+## 2026-07-10 — Removed stray baked-in DOM/CSS snapshot from `<head>`/`<body>`
+
+User reported the guest-browsing changes above weren't visible. Investigation: the deployed code was actually correct (diffed `#app-source` byte-for-byte between this repo and the live `ddealsprototype` `origin/main` — identical), so the real cause was stale `localStorage.isLoggedIn` from before this fix existed (every old "Skip for now" silently logged users in for real; anyone who'd used the app before just looked "already logged in" and never hit the new guest path). Separately, while checking the file, found unrelated leftover cruft: a frozen static snapshot of the rendered Login page baked directly into `<div id="root">...</div>`, plus a matching frozen Tailwind JIT `<style>` block (only the handful of utility classes used by that one snapshot) sitting right after the import map — both are relics of an old "Save Page As"/DOM-copy export, same failure mode documented in the 2026-07-09 "sole active prototype file" entry below, that had crept back in.
+
+- Removed the baked-in `<div id="root">...</div>` content back down to the correct empty container (`root.render(<App/>)` fully replaces it at boot anyway, so this was dead weight, not a functional bug, but confusing and risked masking a real future failure).
+- Removed the frozen Tailwind snapshot `<style>` block — the real `<script src="https://cdn.tailwindcss.com">` runtime tag (kept, line 8) regenerates every utility class needed at runtime regardless, so the frozen one was pure duplication.
+- **Peer review:** re-extracted `#app-source` (unchanged by this cleanup) and reran the full guest-flow jsdom harness end to end — identical clean pass, no thrown errors, confirming the cleanup didn't touch app behavior.
+
 ## 2026-07-10 — Guest browsing enforced: list functions, Deal Stats, and list pills locked behind login
 
 User asked for a real logged-out state: no list functions or Deal Stats for a non-authenticated user, profile menu shouldn't offer Manage Account/Store Settings to a guest (show a Create Account/Log In prompt instead, plus add that item to the menu itself), and Add-to-list/Remove-from-list pills shouldn't appear on product cards for signed-out users.
