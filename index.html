@@ -1146,6 +1146,7 @@ function SearchTab({
   // search screens keep you in the full-screen view (showing "Keep
   // typing...") until you explicitly back out.
   const [isSearchActive, setIsSearchActive] = React.useState(false);
+  const [priceFilter, setPriceFilter] = React.useState('all');
 
   const [usePersonalised, setUsePersonalised] = React.useState(() => {
     return localStorage.getItem('use_personalised_settings') === 'true';
@@ -1223,7 +1224,7 @@ function SearchTab({
     // Filter products matching selected stores. Every item the supermarkets
     // stock is browsable here now, not just ones currently on special --
     // "all stores" just needs the product to be sold/priced somewhere.
-    const matched = filteredProducts.filter((product) => {
+    const matchedByStore = filteredProducts.filter((product) => {
       if (selectedStores.includes('all')) {
         return product.currentDeals.length > 0;
       }
@@ -1234,6 +1235,15 @@ function SearchTab({
           return normalizedDealStore === normalizedSelectedStore;
         });
       });
+    });
+
+    // Keep price status as a simple product-level filter. Products with at
+    // least one promotional current price are "On special"; the remainder
+    // are "Normal price" items.
+    const matched = matchedByStore.filter((product) => {
+      if (priceFilter === 'all') return true;
+      const hasSpecial = product.currentDeals.some((deal) => deal.isOnSpecial !== false);
+      return priceFilter === 'special' ? hasSpecial : !hasSpecial;
     });
 
     const getBestPrice = (p) => Math.min(...p.currentDeals.map((d) => d.price));
@@ -1266,7 +1276,7 @@ function SearchTab({
       })
       .map((x) => x.product);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productsVersion, debouncedQuery, selectedStores, sortBy]);
+  }, [productsVersion, debouncedQuery, selectedStores, sortBy, priceFilter]);
 
   // Unique count of retailers offering these deals
   const totalRetailersCount = new Set(
@@ -1317,6 +1327,7 @@ function SearchTab({
   const handleClearSearch = () => {
     setSearchInputValue('');
     setActiveSearchQuery('');
+    setPriceFilter('all');
     setIsSearchActive(false);
     showSnackbar('Cleared search results');
   };
@@ -1777,6 +1788,37 @@ function SearchTab({
                 <section className="flex flex-col gap-4">
                   <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                      Filter by price:
+                    </label>
+                    <div className="flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1">
+                      {[
+                        { id: 'special', label: 'On special' },
+                        { id: 'normal', label: 'Normal price' },
+                        { id: 'all', label: 'All' },
+                      ].map((filter) => {
+                        const isSelected = priceFilter === filter.id;
+                        return (
+                          <button
+                            key={filter.id}
+                            type="button"
+                            id={`price-filter-${filter.id}`}
+                            aria-pressed={isSelected}
+                            onClick={() => setPriceFilter(filter.id)}
+                            className={`flex-shrink-0 whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all duration-150 cursor-pointer ${
+                              isSelected
+                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {filter.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
                       Filter by Supermarket:
                     </label>
                   </div>
@@ -1859,6 +1901,7 @@ function SearchTab({
                           return normalizedDealStore === normalizedSelected;
                         });
                       });
+                      const hasActiveSpecial = applicableDeals.some((deal) => deal.isOnSpecial !== false);
 
                       const activeStores = applicableDeals.map((d) => d.store);
 
@@ -1869,7 +1912,9 @@ function SearchTab({
                       return (
                         <div
                           key={`${product.id}-${idx}`}
-                          className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-slate-100"
+                          className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-slate-100 ${
+                            hasActiveSpecial ? 'border-indigo-200' : 'border-slate-200'
+                          }`}
                         >
                           {isLoggedIn && (
                             <button
@@ -1928,7 +1973,14 @@ function SearchTab({
                               {(() => {
                                 const dealsToUse = applicableDeals.length > 0 ? applicableDeals : product.currentDeals;
                                 const lowestPrice = dealsToUse.reduce((min, d) => d.price < min ? d.price : min, dealsToUse[0]?.price || 0);
-                                const hasActiveSpecial = dealsToUse.some((d) => d.isOnSpecial !== false);
+                                const specialStores = [...new Set(
+                                  dealsToUse
+                                    .filter((d) => d.isOnSpecial !== false)
+                                    .map((d) => getStoreDisplayName(d.store))
+                                )];
+                                const hasActiveSpecial = specialStores.length > 0;
+                                const visibleSpecialStores = specialStores.slice(0, 1).join('');
+                                const additionalSpecialStores = specialStores.length - 1;
                                 return (
                                   <div className="flex items-center gap-3 flex-wrap">
                                     <div className="flex items-baseline gap-1 flex-shrink-0 whitespace-nowrap">
@@ -1938,8 +1990,11 @@ function SearchTab({
                                       </span>
                                     </div>
                                     {hasActiveSpecial ? (
-                                      <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
-                                        On Special
+                                      <span
+                                        title={`On special at ${specialStores.join(', ')}`}
+                                        className="max-w-full truncate text-[9px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5"
+                                      >
+                                        Special at {visibleSpecialStores}{additionalSpecialStores > 0 ? ` +${additionalSpecialStores}` : ''}
                                       </span>
                                     ) : (
                                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">
