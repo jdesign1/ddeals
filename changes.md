@@ -23,7 +23,23 @@ User asked to improve search so typo'd/misspelled queries still find items. The 
 
 Full write-up in `project.md` (2026-08-05, "Typo-tolerant fuzzy search added, relevance scoring extended" entry).
 
-**State:** `Prototype/index.html` updated and peer-reviewed (self-review + independent second-agent review). Not committed/pushed — left for the user.
+**State:** `Prototype/index.html` updated and peer-reviewed (self-review + independent second-agent review). Committed to `nz-grocery-scraper` (`0a698aa`) and mirrored/pushed to this deploy repo (`91f0c7e`) together with the card-layout change below.
+
+---
+
+## 2026-08-05 — Product cards made tappable, "Check Deals"/"Check"/"Recheck" buttons removed
+
+User asked for the standalone "Check Deals" button removed from every product card, with the whole card itself made tappable to trigger the same navigation.
+
+- Found and updated all 5 places a product card has this button, not just the main search-results one: `SearchTab`'s "Your Items on Special" alert widget, its compact "Popular Specials Right Now" row, its main search-results card, `TrackedTab`'s "My List" card, and `HistoryTab`'s recheck card. Left the `DealModal` "Cheaper Alternatives" cards alone — those link out to the retailer's own site via a real `<a>`, not a "Check Deals" button, and should stay a real link.
+- New shared `handleCardKeyActivate` helper makes the tappable `<div>`s keyboard-operable (Enter/Space) the same way a real `<button>` would be for free. Every card gets `role="button"`, `tabIndex={0}`, and an `aria-label`, conditionally omitted (not just visually hidden) wherever tapping genuinely shouldn't work: the alert widget's faded "peek" preview card, and the My List card while its `compare`-mode weight/quantity controls are showing instead. Nested buttons inside tappable cards (track/bookmark, +/- quantity steppers) got `e.stopPropagation()` so tapping them doesn't also fire the card's navigation.
+- Caught in review and fixed: removing My List's button left behind an empty, unconditionally-rendered padding wrapper in the default "deals" mode — moved it inside the `compare`-mode condition so the extra blank space only appears when there's actually compare-mode content to hold.
+
+**Peer review:** compiled clean. Real jsdom + React 18 click-through testing (not just source reading) for 3 of the 5 sites, including a full "navigate to My List → tap card in deals mode → confirm it opens the deal page → switch to compare mode → confirm the card is no longer tappable/focusable → confirm the quantity stepper still works" pass. Independent second-agent review covered the remaining 2 sites plus the other 3, confirmed the conditional gating was complete and consistent everywhere, and caught the padding bug above.
+
+Full write-up in `project.md` (2026-08-05, "Product cards made tappable..." entry).
+
+**State:** `Prototype/index.html` updated and peer-reviewed. Not yet committed/pushed — manual push commands for both `nz-grocery-scraper` and `ddealsprototype` given to the user to run themselves.
 
 ---
 
@@ -39,7 +55,7 @@ Jay shared a wireframe for the product card (date row + bookmark icon, image + t
 
 Full write-up in `project.md` (2026-08-05, "Product card layout rebuilt to match a wireframe..." entry).
 
-**State:** `Prototype/index.html` updated and peer-reviewed. Not committed/pushed — left for the user.
+**State:** `Prototype/index.html` updated and peer-reviewed. Committed to `nz-grocery-scraper` (`0a698aa`, together with the fuzzy-search change above) and mirrored/pushed to this deploy repo (`91f0c7e`). Note: the "Check Deals" button this entry describes at the bottom of the card was subsequently removed in the very next session below (product cards made tappable) — the rest of this entry's layout description still stands.
 
 ---
 

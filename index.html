@@ -741,6 +741,20 @@ function mergeProductMeta(memberMetas) {
 const VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', GENUINE: 'Real Deal', MARGINAL: 'Fair Price' };
 const titleCase = (s) => (s || '').replace(/\b\w/g, (c) => c.toUpperCase());
 
+// Product cards are tappable as a whole (onClick on the card's own <div>)
+// now that the standalone "Check Deals" button has been removed from them.
+// A plain onClick div isn't keyboard-operable on its own, so every tappable
+// card also gets role="button"/tabIndex={0} and this onKeyDown handler --
+// mirrors what a real <button> gets for free, activating on Enter/Space
+// only (not e.g. arrow keys, which browsers don't treat as "activate"
+// either) and preventing Space's default page-scroll behaviour.
+const handleCardKeyActivate = (onActivate) => (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    onActivate();
+  }
+};
+
 // current_prices.special_end_date is a plain `date` column (no time/zone),
 // coming back over PostgREST as a bare "YYYY-MM-DD" string. `new
 // Date("YYYY-MM-DD")` parses that as UTC midnight, and formatting it then
@@ -1731,15 +1745,28 @@ function SearchTab({
                   return (
                     <div
                       key={`sale-alert-${product.id}-${idx}`}
+                      // The isPartiallyVisible "peek" card at the bottom of a
+                      // collapsed list is already fully inert visually
+                      // (pointer-events-none below blocks mouse/touch), but
+                      // that doesn't stop keyboard focus -- so the click
+                      // handler and the role/tabIndex/aria that make it
+                      // keyboard-activatable are only attached when the card
+                      // is actually real, not the faded peek copy.
+                      onClick={!isPartiallyVisible ? () => onCheckDeal(product, bestDeal.store) : undefined}
+                      onKeyDown={!isPartiallyVisible ? handleCardKeyActivate(() => onCheckDeal(product, bestDeal.store)) : undefined}
+                      role={!isPartiallyVisible ? 'button' : undefined}
+                      tabIndex={!isPartiallyVisible ? 0 : undefined}
+                      id={`check-deal-alert-${product.id}`}
+                      aria-label={!isPartiallyVisible ? `Check deals for ${product.name}` : undefined}
                       className={`relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 ${
                         isPartiallyVisible
                           ? 'h-24 pointer-events-none select-none border-dashed border-stone-300'
-                          : 'hover:shadow-lg hover:shadow-stone-100'
+                          : 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]'
                       }`}
                     >
                       {!isPartiallyVisible && (
                         <button
-                          onClick={() => handleTrackClick(product.id, product.name)}
+                          onClick={(e) => { e.stopPropagation(); handleTrackClick(product.id, product.name); }}
                           id={`track-alert-${product.id}`}
                           className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
                             isTracked
@@ -1800,18 +1827,6 @@ function SearchTab({
                           )}
                         </div>
                       </div>
-
-                      {!isPartiallyVisible && (
-                        <div className="flex gap-3 px-5 pb-5">
-                          <button
-                            onClick={() => onCheckDeal(product, bestDeal.store)}
-                            id={`check-deal-alert-${product.id}`}
-                            className="flex-1 bg-stone-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-ink-600 transition-colors shadow-lg shadow-stone-200 flex items-center justify-center cursor-pointer"
-                          >
-                            Check Deals
-                          </button>
-                        </div>
-                      )}
 
                       {isPartiallyVisible && (
                         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
@@ -1899,7 +1914,13 @@ function SearchTab({
                       {popularSpecials.map(({ product, bestDeal }) => (
                         <div
                           key={product.id}
-                          className="flex items-center gap-3 bg-white border border-stone-200 rounded-2xl p-3"
+                          onClick={() => onCheckDeal(product, bestDeal.store)}
+                          onKeyDown={handleCardKeyActivate(() => onCheckDeal(product, bestDeal.store))}
+                          role="button"
+                          tabIndex={0}
+                          id={`check-deal-popular-${product.id}`}
+                          aria-label={`Check deals for ${product.name}`}
+                          className="flex items-center gap-3 bg-white border border-stone-200 rounded-2xl p-3 cursor-pointer transition-all duration-150 hover:shadow-md hover:shadow-stone-100 active:scale-[0.99]"
                         >
                           <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center select-none">
                             <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
@@ -1920,13 +1941,6 @@ function SearchTab({
                               </span>
                             </div>
                           </div>
-                          <button
-                            onClick={() => onCheckDeal(product, bestDeal.store)}
-                            id={`check-deal-popular-${product.id}`}
-                            className="flex-shrink-0 bg-stone-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2.5 rounded-xl hover:bg-ink-600 transition-colors cursor-pointer"
-                          >
-                            Check
-                          </button>
                         </div>
                       ))}
                     </div>
@@ -2089,7 +2103,13 @@ function SearchTab({
                       return (
                         <div
                           key={`${product.id}-${idx}`}
-                          className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-stone-100 ${
+                          onClick={() => onCheckDeal(product, bestDeal.store)}
+                          onKeyDown={handleCardKeyActivate(() => onCheckDeal(product, bestDeal.store))}
+                          role="button"
+                          tabIndex={0}
+                          id={`check-deal-${product.id}`}
+                          aria-label={`Check deals for ${product.name}`}
+                          className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99] ${
                             hasActiveSpecial ? 'border-ink-200' : 'border-stone-200'
                           }`}
                         >
@@ -2102,7 +2122,7 @@ function SearchTab({
                             </span>
                             {isLoggedIn && (
                               <button
-                                onClick={() => handleTrackClick(product.id, product.name)}
+                                onClick={(e) => { e.stopPropagation(); handleTrackClick(product.id, product.name); }}
                                 id={`track-${product.id}`}
                                 aria-label={isTracked ? 'Remove from list' : 'Add to list'}
                                 title={isTracked ? 'Remove from list' : 'Add to list'}
@@ -2140,8 +2160,10 @@ function SearchTab({
                             </span>
                           </div>
 
-                          {/* Row 4: lowest-price store callout */}
-                          <div className="px-5 pt-1">
+                          {/* Row 4: lowest-price store callout -- only carries the
+                              card's bottom padding itself when there's no Row 5
+                              (also-on-special badges) coming after it. */}
+                          <div className={`px-5 pt-1 ${alsoSpecialStores.length > 0 ? '' : 'pb-5'}`}>
                             <span className="text-xs font-bold text-stone-600">
                               Lowest at {getStoreDisplayName(bestDeal.store)}.
                             </span>
@@ -2149,7 +2171,7 @@ function SearchTab({
 
                           {/* Row 5: also-on-special-at store badges */}
                           {alsoSpecialStores.length > 0 && (
-                            <div className="flex items-center gap-2 px-5 pt-3 flex-wrap">
+                            <div className="flex items-center gap-2 px-5 pt-3 pb-5 flex-wrap">
                               <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Also on special at:</span>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {alsoSpecialStores.map((store) => {
@@ -2167,16 +2189,6 @@ function SearchTab({
                               </div>
                             </div>
                           )}
-
-                          <div className="flex gap-3 px-5 pb-5 pt-4">
-                            <button
-                              onClick={() => onCheckDeal(product, bestDeal.store)}
-                              id={`check-deal-${product.id}`}
-                              className="flex-1 bg-stone-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-ink-600 transition-colors shadow-lg shadow-stone-200 flex items-center justify-center cursor-pointer"
-                            >
-                              Check Deals
-                            </button>
-                          </div>
                         </div>
                       );
                     })
@@ -2605,13 +2617,28 @@ function TrackedTab({
                 : (product.id === 'fresh-apples-1kg' || product.unit === '1kg' || product.category === 'Produce');
               const qty = quantities[product.id] ?? 1;
 
+              // Only tappable-to-check in "deals" mode -- "compare" mode
+              // swaps the card's bottom slot for weight/quantity controls
+              // (checkboxes, +/- steppers) that need their own clicks to
+              // land normally, and there's no single "check this deal"
+              // action to jump to while comparing total list cost anyway.
+              const isCardTappable = activeMode === 'deals';
+
               return (
                 <div
                   key={`${product.id}-${idx}`}
-                  className="relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-stone-100"
+                  onClick={isCardTappable ? () => onCheckDeal(product, storeName) : undefined}
+                  onKeyDown={isCardTappable ? handleCardKeyActivate(() => onCheckDeal(product, storeName)) : undefined}
+                  role={isCardTappable ? 'button' : undefined}
+                  tabIndex={isCardTappable ? 0 : undefined}
+                  id={`check-deal-${product.id}`}
+                  aria-label={isCardTappable ? `Check deals for ${product.name}` : undefined}
+                  className={`relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-stone-100 ${
+                    isCardTappable ? 'cursor-pointer active:scale-[0.99]' : ''
+                  }`}
                 >
                   <button
-                    onClick={() => handleTrackClick(product.id, product.name)}
+                    onClick={(e) => { e.stopPropagation(); handleTrackClick(product.id, product.name); }}
                     id={`track-${product.id}`}
                     className="absolute top-4 right-4 border border-alert-200 text-alert-600 bg-alert-50 hover:bg-alert-100/50 px-2.5 py-1.5 rounded-lg transition-colors active:scale-97 cursor-pointer text-[10px] font-bold uppercase tracking-wider z-10"
                   >
@@ -2635,8 +2662,15 @@ function TrackedTab({
                     </div>
                   </div>
 
-                  <div className="px-5 pb-5">
-                    {activeMode === 'compare' ? (
+                  {/* Only rendered in "compare" mode now that the "deals"-mode
+                      Check Deals button is gone -- previously this wrapper
+                      div was unconditional (with the button as its "deals"-
+                      mode content), which would otherwise leave an empty
+                      px-5 pb-5 strip of blank space under every card while
+                      in "deals" mode (the default) now that there's nothing
+                      left to fill it. */}
+                  {activeMode === 'compare' && (
+                    <div className="px-5 pb-5">
                       <div className="flex flex-col items-center animate-fadeIn">
                         {hasWeightAndQuantityOptions && (
                           <div className="flex items-center gap-6 justify-center mb-3 select-none">
@@ -2679,7 +2713,7 @@ function TrackedTab({
                             </div>
 
                             <button
-                              onClick={() => handleDecrease(product.id, isActualWeight)}
+                              onClick={(e) => { e.stopPropagation(); handleDecrease(product.id, isActualWeight); }}
                               className="w-12 bg-stone-700 hover:bg-stone-800 text-white flex items-center justify-center transition-colors cursor-pointer border-l border-stone-600 select-none active:scale-95"
                               title="Decrease"
                             >
@@ -2687,7 +2721,7 @@ function TrackedTab({
                             </button>
 
                             <button
-                              onClick={() => handleIncrease(product.id, isActualWeight)}
+                              onClick={(e) => { e.stopPropagation(); handleIncrease(product.id, isActualWeight); }}
                               className="w-12 bg-stone-700 hover:bg-stone-800 text-white flex items-center justify-center transition-colors cursor-pointer border-l border-stone-600 select-none active:scale-95"
                               title="Increase"
                             >
@@ -2696,16 +2730,8 @@ function TrackedTab({
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => onCheckDeal(product, storeName)}
-                        id={`check-deal-${product.id}`}
-                        className="w-full bg-stone-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-ink-600 transition-colors shadow-lg shadow-stone-200 flex items-center justify-center cursor-pointer animate-fadeIn"
-                      >
-                        Check Deals
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -3012,7 +3038,13 @@ function HistoryTab({
             return (
               <div
                 key={`${item.id}-${idx}`}
-                className="relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-stone-100"
+                onClick={() => onRecheck(product, item.store)}
+                onKeyDown={handleCardKeyActivate(() => onRecheck(product, item.store))}
+                role="button"
+                tabIndex={0}
+                id={`recheck-btn-${item.id}`}
+                aria-label={`Check deals for ${product.name}`}
+                className="relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]"
               >
                 {isLoggedIn && (() => {
                   const productLists = lists ? lists.filter(l => l.itemIds.includes(product.id)) : [];
@@ -3025,7 +3057,7 @@ function HistoryTab({
 
                   return (
                     <button
-                      onClick={() => onTrackToggle(product.id)}
+                      onClick={(e) => { e.stopPropagation(); onTrackToggle(product.id); }}
                       id={`track-btn-${item.id}`}
                       className={`absolute top-4 right-4 border px-2.5 py-1.5 rounded-lg transition-all active:scale-95 cursor-pointer text-[10px] font-black uppercase tracking-wider z-10 flex items-center gap-1.5 ${
                         isInAnyList
@@ -3056,15 +3088,6 @@ function HistoryTab({
                   </div>
                 </div>
 
-                <div className="flex gap-3 px-5 pb-5">
-                  <button
-                    onClick={() => onRecheck(product, item.store)}
-                    id={`recheck-btn-${item.id}`}
-                    className="flex-1 bg-stone-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-ink-600 transition-colors shadow-lg shadow-stone-200 flex items-center justify-center cursor-pointer"
-                  >
-                    Check Deals
-                  </button>
-                </div>
               </div>
             );
           })}
@@ -5955,8 +5978,9 @@ function App() {
   // reconciles it in place since it's the same element type at the same tree
   // position each render), so its scrollTop otherwise carries over from
   // whatever the user had scrolled to on the previous screen -- e.g. tapping
-  // "Check Deals" on a card lower down the home screen landed the deal page
-  // already scrolled down. Reset to top whenever the deal modal opens.
+  // a product card lower down the home screen (cards are tappable as a
+  // whole, see handleCardKeyActivate) landed the deal page already scrolled
+  // down. Reset to top whenever the deal modal opens.
   const appScrollRef = useRef(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedStore, setSelectedStore] = useState(null);
