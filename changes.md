@@ -8,6 +8,24 @@ Full backend/data-layer history (Supabase schema, scrapers, identity matching, e
 
 ---
 
+## 2026-08-05 — All product cards unified onto one shared ProductCard component, icon swapped Bookmark→Plus/Check
+
+User asked for the wireframe layout (already applied to the main search-results card in the session below) rolled out to *every* product card, keeping colors/fonts unchanged, and the top-right save icon changed from `Bookmark` to a "plus" material icon.
+
+- Built one shared top-level `ProductCard` component and migrated all 5 card sites onto it, replacing ~700 lines of independently hand-built, drifting JSX: `SearchTab`'s main results card, its "Your Items on Special" alert widget (`variant="peek"` for the faded inert preview), its "Popular Specials Right Now" row, `TrackedTab`'s My List card (compare-mode controls passed in via a new `children` prop), and `HistoryTab`'s recheck card.
+- Hoisted `getStoreDisplayName`/`getStoreLogoMeta` out of `SearchTab`-only scope to top-level so all 5 sites can use them; kept a local shadowing wrapper inside `SearchTab` so its existing personalised-branch-name behaviour is unaffected.
+- Row 4 wording kept honest per-site rather than uniform: "Lowest at" (main card + alert widget, both genuinely the cheapest deal), "On special at" (Popular Specials, picked by discount % not price), "Checked at" (History, shows the real historical price/store, deliberately no "Deal ends" date since history carries none).
+- Real accuracy bug fixed along the way: My List's `bestDeal` used to be `currentDeals[0]` (array order, not price) — harmless while unlabelled, but wrong now that it's shown as "Lowest at". Fixed to a proper lowest-price reduce.
+- Icon swap: `Bookmark` → `Plus` (not tracked) / `Check` (tracked), same colors, glyph only.
+
+**Peer review:** compiled clean. Real jsdom + React 18 render-and-click harness covering all 5 sites end-to-end. Independent second-agent review re-derived the wording-accuracy claims from the code directly and caught two real bugs, both fixed and re-verified: the peek-variant alert card's save-icon button wasn't actually gated off (card was inert to mouse via `pointer-events-none` but the button itself was still keyboard-focusable/clickable) — fixed with an explicit `!isPeek` guard; and `HistoryTab` had a leftover unused `lists` prop from the old multi-list-membership button logic — removed.
+
+Full write-up in `project.md` (2026-08-05, "All product cards unified onto one shared ProductCard component..." entry).
+
+**State:** `Prototype/index.html` updated and peer-reviewed. Not yet committed/pushed — manual commands given to the user for both `nz-grocery-scraper` and `ddealsprototype`.
+
+---
+
 ## 2026-08-05 — Typo-tolerant fuzzy search, extended relevance scoring
 
 User asked to improve search so typo'd/misspelled queries still find items. The existing match logic (`normalizeSearchText`/`tokenizeSearchText`, from the 2026-07-10 "Weetbix" fix) was punctuation/spacing-tolerant but still exact-substring only — a genuine misspelling ("weibix", "bananna") returned nothing.

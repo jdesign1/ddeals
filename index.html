@@ -933,6 +933,230 @@ function ProductImage({ src, alt, className }) {
   );
 }
 
+// Shared, pure store-name/logo helpers -- hoisted out of SearchTab (which
+// used to define its own local copies) so TrackedTab, HistoryTab, and the
+// shared ProductCard component below can all use the same logic instead of
+// each maintaining a separate near-duplicate. `branchOverrides` is optional:
+// pass a component's own personalised-branch-name lookup (see SearchTab's
+// `usePersonalised`/`selectedBranches` local state) to get e.g. "Woolworths
+// CBD" instead of the generic "Woolworths"; omit it for the plain generic
+// name, which is what TrackedTab/HistoryTab/ProductCard use directly since
+// neither of the first two currently has its own personalisation settings
+// UI. Named with a "Global" suffix (rather than plain getStoreDisplayName)
+// specifically so SearchTab can still define its own same-named, shadowing
+// wrapper that binds in its local personalisation state -- every existing
+// single-argument getStoreDisplayName(...) call site inside SearchTab then
+// keeps resolving to that wrapper unchanged, rather than silently losing
+// personalisation by resolving to this generic version instead.
+const getStoreDisplayNameGlobal = (storeKey, branchOverrides) => {
+  const generic = (() => {
+    switch (storeKey.toLowerCase()) {
+      case 'woolworths': return 'Woolworths';
+      case 'paknsave': return "PAK'nSAVE";
+      case 'newworld': return 'New World';
+      case 'foursquare': return 'Four Square';
+      case 'freshchoice': return 'FreshChoice';
+      default: return storeKey;
+    }
+  })();
+  if (!branchOverrides) return generic;
+  switch (storeKey.toLowerCase()) {
+    case 'woolworths': return branchOverrides['Woolworths'] || generic;
+    case 'paknsave': return branchOverrides["PAK'nSAVE"] || generic;
+    case 'newworld': return branchOverrides['New World'] || generic;
+    case 'foursquare': return branchOverrides['Four Square'] || generic;
+    case 'freshchoice': return branchOverrides['FreshChoice'] || generic;
+    default: return generic;
+  }
+};
+
+const getStoreLogoMeta = (storeName) => {
+  const STORE_LOGOS = {
+    'Woolworths': { short: 'WW', bg: 'bg-emerald-600', text: 'text-white' },
+    "PAK'nSAVE": { short: 'PNS', bg: 'bg-amber-500', text: 'text-stone-950' },
+    'New World': { short: 'NW', bg: 'bg-rose-600', text: 'text-white' },
+    'Four Square': { short: 'FS', bg: 'bg-green-600', text: 'text-white' },
+    'FreshChoice': { short: 'FC', bg: 'bg-sky-600', text: 'text-white' },
+  };
+  const norm = storeName.toLowerCase().replace(/[^a-z]/g, '');
+  if (norm.includes('woolworth')) return STORE_LOGOS['Woolworths'];
+  if (norm.includes('paknsave')) return STORE_LOGOS["PAK'nSAVE"];
+  if (norm.includes('newworld')) return STORE_LOGOS['New World'];
+  if (norm.includes('foursquare')) return STORE_LOGOS['Four Square'];
+  if (norm.includes('freshchoice')) return STORE_LOGOS['FreshChoice'];
+  return { short: storeName.substring(0, 2).toUpperCase(), bg: 'bg-stone-600', text: 'text-white' };
+};
+
+// Shared product-card layout used everywhere a product is shown as a card
+// (SearchTab's main results, its "Your Items on Special" alert widget and
+// "Popular Specials Right Now" row, TrackedTab's My List, and HistoryTab's
+// check history) -- previously each of those 5 places had its own
+// independently hand-built (and increasingly drifting) card layout. Five
+// rows: deal-ends date + save/track icon; image + brand/name/size; price;
+// a factual one-line callout about the store the price/deal shown belongs
+// to (wording varies by context -- "Lowest at", "On special at", "Checked
+// at" -- via `storeLinePrefix`, since not every card's displayed deal is
+// actually the cheapest option, and mislabelling one as "Lowest" would be
+// exactly the kind of fabricated-looking claim this project explicitly
+// avoids elsewhere); and a badges row for any other stores also running a
+// special right now.
+//
+// Props:
+// - id: DOM id for the outer card (kept from each call site's previous
+//   button/card id so nothing else that referenced it by id breaks).
+// - product: { name, brand, unit, image }.
+// - price: number shown in the big price row.
+// - storeKey: the raw store key the price/storeLinePrefix line is about.
+// - storeLinePrefix: text before the store name, e.g. "Lowest at".
+// - branchOverrides: optional personalised-branch-name lookup (see
+//   getStoreDisplayNameGlobal) -- omit for the generic store name.
+// - dealEndsText: precomputed "Deal ends ..." string, or '' to show nothing
+//   (never fabricated here -- callers only pass a real value when they
+//   actually have one).
+// - alsoSpecialStores: raw store keys (not display names) for the badges
+//   row; empty array hides the row entirely.
+// - isTracked / onToggleTrack: track/save icon state + handler. Passing no
+//   onToggleTrack hides the icon entirely (matches the previous
+//   `isLoggedIn &&` gating at each call site).
+// - onActivate: card tap/Enter handler. Passing none makes the card fully
+//   inert (used for TrackedTab's compare-mode cards, which have no single
+//   "check this deal" action while comparing total list cost).
+// - variant: 'full' (default) or 'peek' -- 'peek' renders the same content
+//   but clipped to a short, faded, fully inert preview height (used for the
+//   collapsed 3rd item in SearchTab's alert widget), matching the old
+//   isPartiallyVisible treatment.
+// - emphasizeBorder: ink-tinted border instead of the default stone one
+//   (used where the card set already conveys "something here is genuinely
+//   on special" at a glance, e.g. the main search results grid).
+function ProductCard({
+  id,
+  product,
+  price,
+  storeKey,
+  storeLinePrefix = 'Lowest at',
+  branchOverrides,
+  dealEndsText = '',
+  alsoSpecialStores = [],
+  isTracked = false,
+  onToggleTrack,
+  onActivate,
+  variant = 'full',
+  emphasizeBorder = false,
+  children,
+}) {
+  const isPeek = variant === 'peek';
+  const tappable = !isPeek && !!onActivate;
+  const storeLabel = getStoreDisplayNameGlobal(storeKey, branchOverrides);
+
+  return (
+    <div
+      id={id}
+      onClick={tappable ? onActivate : undefined}
+      onKeyDown={tappable ? handleCardKeyActivate(onActivate) : undefined}
+      role={tappable ? 'button' : undefined}
+      tabIndex={tappable ? 0 : undefined}
+      aria-label={tappable ? `Check deals for ${product.name}` : undefined}
+      className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 ${
+        isPeek
+          ? 'h-24 pointer-events-none select-none border-dashed border-stone-300'
+          : `${emphasizeBorder ? 'border-ink-200' : 'border-stone-200'} ${tappable ? 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]' : ''}`
+      }`}
+    >
+      {/* Row 1: deal-ends date (left) + save/track toggle (right) */}
+      <div className="flex items-start justify-between px-5 pt-5 gap-3">
+        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+          {dealEndsText}
+        </span>
+        {/* Peek cards are meant to be a fully inert preview -- pointer-events-none
+            on the outer container already blocks mouse clicks, but that alone
+            doesn't stop keyboard Tab focus or a synthetic .click(), so the
+            button itself has to be omitted here too, not just visually hidden. */}
+        {!isPeek && onToggleTrack && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleTrack(); }}
+            id={`track-${id}`}
+            aria-label={isTracked ? 'Remove from list' : 'Add to list'}
+            title={isTracked ? 'Remove from list' : 'Add to list'}
+            className={`flex-shrink-0 -m-1.5 p-1.5 rounded-lg transition-colors active:scale-97 cursor-pointer ${
+              isTracked ? 'text-alert-600 hover:bg-alert-50' : 'text-ink-600 hover:bg-ink-50'
+            }`}
+          >
+            {isTracked ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          </button>
+        )}
+      </div>
+
+      {/* Row 2: product image + title/brand/size */}
+      <div className="flex gap-4 px-5 pt-3">
+        <div className="w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden select-none flex-shrink-0">
+          <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+        </div>
+        <div className="flex flex-col justify-center min-w-0">
+          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+            {product.brand}
+          </span>
+          <h3 className="font-bold text-base text-stone-900 leading-snug mt-0.5 font-display truncate">
+            {product.name}
+          </h3>
+          {product.unit && (
+            <span className="text-xs font-medium text-stone-500 mt-0.5">{product.unit}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Row 3: price */}
+      <div className="px-5 pt-3">
+        <span className="text-2xl font-black text-stone-900 font-mono">
+          ${price.toFixed(2)}
+        </span>
+      </div>
+
+      {/* Row 4: store callout. Bottom padding (pb-5) only belongs here when
+          this is genuinely the card's last row -- not when Row 5 is coming,
+          and not when the caller passed extra `children` content (e.g.
+          TrackedTab's compare-mode weight/quantity controls) that supplies
+          its own trailing padding instead. */}
+      <div className={`px-5 pt-1 ${alsoSpecialStores.length === 0 && !children ? 'pb-5' : ''}`}>
+        <span className="text-xs font-bold text-stone-600">
+          {storeLinePrefix} {storeLabel}.
+        </span>
+      </div>
+
+      {/* Row 5: also-on-special-at store badges -- same trailing-padding
+          logic as Row 4 above. */}
+      {alsoSpecialStores.length > 0 && (
+        <div className={`flex items-center gap-2 px-5 pt-3 flex-wrap ${children ? '' : 'pb-5'}`}>
+          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Also on special at:</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {alsoSpecialStores.map((store) => {
+              const meta = getStoreLogoMeta(store);
+              return (
+                <div
+                  key={store}
+                  title={getStoreDisplayNameGlobal(store)}
+                  className={`px-2 py-1 rounded-md text-[9px] font-black select-none ${meta.bg} ${meta.text}`}
+                >
+                  {meta.short}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Optional extra content below the standard 5 rows -- currently only
+          used by TrackedTab's My List card for its compare-mode weight/
+          quantity controls, which need to live inside the same card but
+          aren't part of the shared wireframe layout itself. */}
+      {children}
+
+      {isPeek && (
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+      )}
+    </div>
+  );
+}
+
 // Builds full product cards (metadata + classified deals + price history)
 // for one page's worth of match-groups. Kept separate from the pagination
 // loop below so each page only fetches products/price_history for the
@@ -1520,43 +1744,15 @@ function SearchTab({
     showSnackbar('Cleared search results');
   };
 
-  const getStoreDisplayName = (storeKey) => {
-    if (usePersonalised) {
-      switch (storeKey.toLowerCase()) {
-        case 'woolworths': return selectedBranches['Woolworths'] || 'Woolworths';
-        case 'paknsave': return selectedBranches["PAK'nSAVE"] || "PAK'nSAVE";
-        case 'newworld': return selectedBranches['New World'] || 'New World';
-        case 'foursquare': return selectedBranches['Four Square'] || 'Four Square';
-        case 'freshchoice': return selectedBranches['FreshChoice'] || 'FreshChoice';
-        default: return storeKey;
-      }
-    }
-    switch (storeKey.toLowerCase()) {
-      case 'woolworths': return 'Woolworths';
-      case 'paknsave': return "PAK'nSAVE";
-      case 'newworld': return 'New World';
-      case 'foursquare': return 'Four Square';
-      case 'freshchoice': return 'FreshChoice';
-      default: return storeKey;
-    }
-  };
-
-  const getStoreLogoMeta = (storeName) => {
-    const STORE_LOGOS = {
-      'Woolworths': { short: 'WW', bg: 'bg-emerald-600', text: 'text-white' },
-      "PAK'nSAVE": { short: 'PNS', bg: 'bg-amber-500', text: 'text-stone-950' },
-      'New World': { short: 'NW', bg: 'bg-rose-600', text: 'text-white' },
-      'Four Square': { short: 'FS', bg: 'bg-green-600', text: 'text-white' },
-      'FreshChoice': { short: 'FC', bg: 'bg-sky-600', text: 'text-white' },
-    };
-    const norm = storeName.toLowerCase().replace(/[^a-z]/g, '');
-    if (norm.includes('woolworth')) return STORE_LOGOS['Woolworths'];
-    if (norm.includes('paknsave')) return STORE_LOGOS["PAK'nSAVE"];
-    if (norm.includes('newworld')) return STORE_LOGOS['New World'];
-    if (norm.includes('foursquare')) return STORE_LOGOS['Four Square'];
-    if (norm.includes('freshchoice')) return STORE_LOGOS['FreshChoice'];
-    return { short: storeName.substring(0, 2).toUpperCase(), bg: 'bg-stone-600', text: 'text-white' };
-  };
+  // Thin, personalisation-aware wrapper around the shared top-level
+  // getStoreDisplayName -- delegates the actual name-lookup logic, just
+  // binding in this component's own usePersonalised/selectedBranches local
+  // state. Deliberately shadows the top-level function under the same name
+  // (rather than a differently-named wrapper) so every existing single-
+  // argument getStoreDisplayName(...) call site elsewhere in this component
+  // keeps resolving to this personalisation-aware version unchanged.
+  const getStoreDisplayName = (storeKey) =>
+    getStoreDisplayNameGlobal(storeKey, usePersonalised ? selectedBranches : null);
 
   const handleStoreToggle = (storeId) => {
     if (storeId === 'all') {
@@ -1737,101 +1933,29 @@ function SearchTab({
                     d.price < best.price ? d : best
                   , product.currentDeals[0]);
 
-                  const dealsList = product.currentDeals || [];
-                  const lowestPrice = dealsList.reduce((min, d) => d.price < min ? d.price : min, dealsList[0]?.price || 0);
-
                   const isPartiallyVisible = !isAllDealsExpanded && idx === 2;
 
+                  const alsoSpecialStores = [...new Set(
+                    (product.currentDeals || [])
+                      .filter((d) => d.isOnSpecial !== false && d.store !== bestDeal.store)
+                      .map((d) => d.store)
+                  )];
+
                   return (
-                    <div
+                    <ProductCard
                       key={`sale-alert-${product.id}-${idx}`}
-                      // The isPartiallyVisible "peek" card at the bottom of a
-                      // collapsed list is already fully inert visually
-                      // (pointer-events-none below blocks mouse/touch), but
-                      // that doesn't stop keyboard focus -- so the click
-                      // handler and the role/tabIndex/aria that make it
-                      // keyboard-activatable are only attached when the card
-                      // is actually real, not the faded peek copy.
-                      onClick={!isPartiallyVisible ? () => onCheckDeal(product, bestDeal.store) : undefined}
-                      onKeyDown={!isPartiallyVisible ? handleCardKeyActivate(() => onCheckDeal(product, bestDeal.store)) : undefined}
-                      role={!isPartiallyVisible ? 'button' : undefined}
-                      tabIndex={!isPartiallyVisible ? 0 : undefined}
                       id={`check-deal-alert-${product.id}`}
-                      aria-label={!isPartiallyVisible ? `Check deals for ${product.name}` : undefined}
-                      className={`relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 ${
-                        isPartiallyVisible
-                          ? 'h-24 pointer-events-none select-none border-dashed border-stone-300'
-                          : 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]'
-                      }`}
-                    >
-                      {!isPartiallyVisible && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleTrackClick(product.id, product.name); }}
-                          id={`track-alert-${product.id}`}
-                          className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
-                            isTracked
-                              ? 'border-alert-200 text-alert-600 bg-alert-50 hover:bg-alert-100/50'
-                              : 'border-ink-200 text-ink-600 bg-ink-50 hover:bg-ink-100/50'
-                          }`}
-                        >
-                          {isTracked ? 'Remove from list' : 'Add to list'}
-                        </button>
-                      )}
-
-                      <div className="flex p-5 gap-5">
-                        <div className="flex flex-col gap-2 items-center flex-shrink-0">
-                          <div className="w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden select-none">
-                            <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                          </div>
-
-                          {!isPartiallyVisible && (
-                            <div className="flex items-center gap-1 bg-stone-50 border border-stone-100 rounded-lg px-2 py-1 max-w-[96px] justify-center">
-                              <span className="text-[9px] font-extrabold text-stone-400 uppercase tracking-wider mr-0.5">At:</span>
-                              <div className="flex -space-x-1.5 overflow-hidden">
-                                {dealsList.map((deal) => {
-                                  const meta = getStoreLogoMeta(deal.store);
-                                  return (
-                                    <div
-                                      key={deal.store}
-                                      title={getStoreDisplayName(deal.store)}
-                                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black border border-white select-none shadow-xs ${meta.bg} ${meta.text}`}
-                                    >
-                                      {meta.short}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex-grow flex flex-col justify-between py-1 pr-24">
-                          <div>
-                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                              {product.brand}
-                            </span>
-                            <h3 className="font-bold text-base text-stone-900 leading-snug mt-1 font-display">
-                              {product.name}
-                            </h3>
-                          </div>
-
-                          {!isPartiallyVisible && (
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <div className="flex items-baseline gap-1 flex-shrink-0 whitespace-nowrap">
-                                <span className="text-stone-400 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Lowest price:</span>
-                                <span className="text-base font-black text-stone-900 font-mono">
-                                  ${lowestPrice.toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {isPartiallyVisible && (
-                        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-                      )}
-                    </div>
+                      product={product}
+                      price={bestDeal.price}
+                      storeKey={bestDeal.store}
+                      branchOverrides={usePersonalised ? selectedBranches : null}
+                      dealEndsText={bestDeal.isOnSpecial !== false && bestDeal.specialEndDate ? `Deal ends ${formatDealEndDate(bestDeal.specialEndDate)}` : ''}
+                      alsoSpecialStores={alsoSpecialStores}
+                      isTracked={isTracked}
+                      onToggleTrack={() => handleTrackClick(product.id, product.name)}
+                      onActivate={() => onCheckDeal(product, bestDeal.store)}
+                      variant={isPartiallyVisible ? 'peek' : 'full'}
+                    />
                   );
                 })}
               </div>
@@ -1910,39 +2034,35 @@ function SearchTab({
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-stone-400 text-center">
                       Popular Specials Right Now
                     </h3>
-                    <div className="space-y-3">
-                      {popularSpecials.map(({ product, bestDeal }) => (
-                        <div
-                          key={product.id}
-                          onClick={() => onCheckDeal(product, bestDeal.store)}
-                          onKeyDown={handleCardKeyActivate(() => onCheckDeal(product, bestDeal.store))}
-                          role="button"
-                          tabIndex={0}
-                          id={`check-deal-popular-${product.id}`}
-                          aria-label={`Check deals for ${product.name}`}
-                          className="flex items-center gap-3 bg-white border border-stone-200 rounded-2xl p-3 cursor-pointer transition-all duration-150 hover:shadow-md hover:shadow-stone-100 active:scale-[0.99]"
-                        >
-                          <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center select-none">
-                            <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">
-                              {product.brand}
-                            </span>
-                            <h4 className="font-bold text-sm text-stone-900 leading-snug truncate font-display">
-                              {product.name}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <span className="text-sm font-black text-stone-900 font-mono">
-                                ${bestDeal.price.toFixed(2)}
-                              </span>
-                              <span className="text-[9px] font-black uppercase tracking-widest text-ink-700 bg-ink-50 border border-ink-100 rounded-md px-1.5 py-0.5">
-                                {getStoreDisplayName(bestDeal.store)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {popularSpecials.map(({ product, bestDeal }) => {
+                        const isTracked = trackedProductIds.includes(product.id);
+                        // bestDeal here is the *biggest-discount* deal (see
+                        // popularSpecials above), not necessarily the
+                        // cheapest store for this product -- "On special
+                        // at", not "Lowest at", so the label stays accurate.
+                        const alsoSpecialStores = [...new Set(
+                          (product.currentDeals || [])
+                            .filter((d) => d.isOnSpecial !== false && d.store !== bestDeal.store)
+                            .map((d) => d.store)
+                        )];
+                        return (
+                          <ProductCard
+                            key={product.id}
+                            id={`check-deal-popular-${product.id}`}
+                            product={product}
+                            price={bestDeal.price}
+                            storeKey={bestDeal.store}
+                            storeLinePrefix="On special at"
+                            branchOverrides={usePersonalised ? selectedBranches : null}
+                            dealEndsText={bestDeal.isOnSpecial !== false && bestDeal.specialEndDate ? `Deal ends ${formatDealEndDate(bestDeal.specialEndDate)}` : ''}
+                            alsoSpecialStores={alsoSpecialStores}
+                            isTracked={isTracked}
+                            onToggleTrack={isLoggedIn ? () => handleTrackClick(product.id, product.name) : undefined}
+                            onActivate={() => onCheckDeal(product, bestDeal.store)}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2101,95 +2221,20 @@ function SearchTab({
                       )];
 
                       return (
-                        <div
+                        <ProductCard
                           key={`${product.id}-${idx}`}
-                          onClick={() => onCheckDeal(product, bestDeal.store)}
-                          onKeyDown={handleCardKeyActivate(() => onCheckDeal(product, bestDeal.store))}
-                          role="button"
-                          tabIndex={0}
                           id={`check-deal-${product.id}`}
-                          aria-label={`Check deals for ${product.name}`}
-                          className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99] ${
-                            hasActiveSpecial ? 'border-ink-200' : 'border-stone-200'
-                          }`}
-                        >
-                          {/* Row 1: deal-valid date (left) + save/track toggle (right) */}
-                          <div className="flex items-start justify-between px-5 pt-5 gap-3">
-                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                              {bestDeal.isOnSpecial !== false && bestDeal.specialEndDate
-                                ? `Deal ends ${formatDealEndDate(bestDeal.specialEndDate)}`
-                                : ''}
-                            </span>
-                            {isLoggedIn && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleTrackClick(product.id, product.name); }}
-                                id={`track-${product.id}`}
-                                aria-label={isTracked ? 'Remove from list' : 'Add to list'}
-                                title={isTracked ? 'Remove from list' : 'Add to list'}
-                                className={`flex-shrink-0 -m-1.5 p-1.5 rounded-lg transition-colors active:scale-97 cursor-pointer ${
-                                  isTracked ? 'text-alert-600 hover:bg-alert-50' : 'text-ink-600 hover:bg-ink-50'
-                                }`}
-                              >
-                                <Bookmark className={`w-5 h-5 ${isTracked ? 'fill-alert-600' : ''}`} />
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Row 2: product image + title/brand/size */}
-                          <div className="flex gap-4 px-5 pt-3">
-                            <div className="w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden select-none flex-shrink-0">
-                              <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                            </div>
-                            <div className="flex flex-col justify-center min-w-0">
-                              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                                {product.brand}
-                              </span>
-                              <h3 className="font-bold text-base text-stone-900 leading-snug mt-0.5 font-display truncate">
-                                {product.name}
-                              </h3>
-                              {product.unit && (
-                                <span className="text-xs font-medium text-stone-500 mt-0.5">{product.unit}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Row 3: price */}
-                          <div className="px-5 pt-3">
-                            <span className="text-2xl font-black text-stone-900 font-mono">
-                              ${bestDeal.price.toFixed(2)}
-                            </span>
-                          </div>
-
-                          {/* Row 4: lowest-price store callout -- only carries the
-                              card's bottom padding itself when there's no Row 5
-                              (also-on-special badges) coming after it. */}
-                          <div className={`px-5 pt-1 ${alsoSpecialStores.length > 0 ? '' : 'pb-5'}`}>
-                            <span className="text-xs font-bold text-stone-600">
-                              Lowest at {getStoreDisplayName(bestDeal.store)}.
-                            </span>
-                          </div>
-
-                          {/* Row 5: also-on-special-at store badges */}
-                          {alsoSpecialStores.length > 0 && (
-                            <div className="flex items-center gap-2 px-5 pt-3 pb-5 flex-wrap">
-                              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Also on special at:</span>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {alsoSpecialStores.map((store) => {
-                                  const meta = getStoreLogoMeta(store);
-                                  return (
-                                    <div
-                                      key={store}
-                                      title={getStoreDisplayName(store)}
-                                      className={`px-2 py-1 rounded-md text-[9px] font-black select-none ${meta.bg} ${meta.text}`}
-                                    >
-                                      {meta.short}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                          product={product}
+                          price={bestDeal.price}
+                          storeKey={bestDeal.store}
+                          branchOverrides={usePersonalised ? selectedBranches : null}
+                          dealEndsText={bestDeal.isOnSpecial !== false && bestDeal.specialEndDate ? `Deal ends ${formatDealEndDate(bestDeal.specialEndDate)}` : ''}
+                          alsoSpecialStores={alsoSpecialStores}
+                          isTracked={isTracked}
+                          onToggleTrack={isLoggedIn ? () => handleTrackClick(product.id, product.name) : undefined}
+                          onActivate={() => onCheckDeal(product, bestDeal.store)}
+                          emphasizeBorder={hasActiveSpecial}
+                        />
                       );
                     })
                   ) : (
@@ -2609,8 +2654,14 @@ function TrackedTab({
         <div className="space-y-6">
           <div className="space-y-4">
             {myListProducts.map((product, idx) => {
-              const bestDeal = product.currentDeals[0];
-              const storeName = bestDeal ? bestDeal.store : 'Woolworths';
+              // True lowest-price deal for this product -- was previously
+              // just `product.currentDeals[0]` (whatever happened to be
+              // first in the array, not necessarily cheapest), which didn't
+              // matter while this card showed no price at all, but does now
+              // that it's labelled "Lowest at" via the shared ProductCard.
+              const bestDeal = product.currentDeals.reduce((lowest, current) =>
+                current.price < lowest.price ? current : lowest
+              , product.currentDeals[0]);
               const hasWeightAndQuantityOptions = product.id === 'fresh-apples-1kg';
               const isActualWeight = hasWeightAndQuantityOptions
                 ? (purchaseModes[product.id] === 'weight')
@@ -2624,44 +2675,28 @@ function TrackedTab({
               // action to jump to while comparing total list cost anyway.
               const isCardTappable = activeMode === 'deals';
 
+              const alsoSpecialStores = [...new Set(
+                (product.currentDeals || [])
+                  .filter((d) => d.isOnSpecial !== false && d.store !== bestDeal.store)
+                  .map((d) => d.store)
+              )];
+
               return (
-                <div
+                <ProductCard
                   key={`${product.id}-${idx}`}
-                  onClick={isCardTappable ? () => onCheckDeal(product, storeName) : undefined}
-                  onKeyDown={isCardTappable ? handleCardKeyActivate(() => onCheckDeal(product, storeName)) : undefined}
-                  role={isCardTappable ? 'button' : undefined}
-                  tabIndex={isCardTappable ? 0 : undefined}
                   id={`check-deal-${product.id}`}
-                  aria-label={isCardTappable ? `Check deals for ${product.name}` : undefined}
-                  className={`relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 hover:shadow-lg hover:shadow-stone-100 ${
-                    isCardTappable ? 'cursor-pointer active:scale-[0.99]' : ''
-                  }`}
+                  product={product}
+                  price={bestDeal.price}
+                  storeKey={bestDeal.store}
+                  dealEndsText={bestDeal.isOnSpecial !== false && bestDeal.specialEndDate ? `Deal ends ${formatDealEndDate(bestDeal.specialEndDate)}` : ''}
+                  alsoSpecialStores={alsoSpecialStores}
+                  // Every product on this screen is, by definition, already
+                  // in the active list -- isTracked stays true so the icon
+                  // always reads as "tap to remove", never "tap to add".
+                  isTracked={true}
+                  onToggleTrack={() => handleTrackClick(product.id, product.name)}
+                  onActivate={isCardTappable ? () => onCheckDeal(product, bestDeal.store) : undefined}
                 >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleTrackClick(product.id, product.name); }}
-                    id={`track-${product.id}`}
-                    className="absolute top-4 right-4 border border-alert-200 text-alert-600 bg-alert-50 hover:bg-alert-100/50 px-2.5 py-1.5 rounded-lg transition-colors active:scale-97 cursor-pointer text-[10px] font-bold uppercase tracking-wider z-10"
-                  >
-                    Remove from list
-                  </button>
-
-                  <div className="flex p-5 gap-5">
-                    <div className="w-24 h-24 flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden select-none">
-                      <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                    </div>
-
-                    <div className="flex-grow flex flex-col justify-between py-1 pr-24">
-                      <div>
-                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                          {product.brand}
-                        </span>
-                        <h3 className="font-bold text-base text-stone-900 leading-snug mt-1 font-display">
-                          {product.name}
-                        </h3>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Only rendered in "compare" mode now that the "deals"-mode
                       Check Deals button is gone -- previously this wrapper
                       div was unconditional (with the button as its "deals"-
@@ -2732,7 +2767,7 @@ function TrackedTab({
                       </div>
                     </div>
                   )}
-                </div>
+                </ProductCard>
               );
             })}
           </div>
@@ -2969,7 +3004,6 @@ function HistoryTab({
   onRecheck,
   onTrackToggle,
   trackedProductIds,
-  lists = [],
   showSnackbar,
   isLoggedIn = true,
 }) {
@@ -3032,63 +3066,37 @@ function HistoryTab({
             if (!product) return null;
 
             const isTracked = trackedProductIds.includes(item.productId);
-            const bestDeal = product.currentDeals[0];
-            const storeName = bestDeal ? bestDeal.store : 'Woolworths';
+
+            // This card is a historical record of a specific past check --
+            // item.price/item.store is what was actually checked at the
+            // time, not necessarily today's cheapest option, so "Checked
+            // at" (not "Lowest at") keeps the label honest. No deal-ends
+            // date either: the history entry itself doesn't carry one, and
+            // fabricating one from today's live data would misattribute a
+            // current special's end date to a past check. "Also on special
+            // at" badges *do* use live data deliberately -- that's a real,
+            // current fact worth surfacing ("this is also on special
+            // elsewhere right now"), not a claim about the historical check
+            // itself.
+            const alsoSpecialStores = [...new Set(
+              (product.currentDeals || [])
+                .filter((d) => d.isOnSpecial !== false && d.store !== item.store)
+                .map((d) => d.store)
+            )];
 
             return (
-              <div
+              <ProductCard
                 key={`${item.id}-${idx}`}
-                onClick={() => onRecheck(product, item.store)}
-                onKeyDown={handleCardKeyActivate(() => onRecheck(product, item.store))}
-                role="button"
-                tabIndex={0}
                 id={`recheck-btn-${item.id}`}
-                aria-label={`Check deals for ${product.name}`}
-                className="relative bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]"
-              >
-                {isLoggedIn && (() => {
-                  const productLists = lists ? lists.filter(l => l.itemIds.includes(product.id)) : [];
-                  const isInAnyList = productLists.length > 0;
-                  const buttonText = isInAnyList
-                    ? productLists.length === 1
-                      ? `In ${productLists[0].name}`
-                      : `In ${productLists.length} Lists`
-                    : 'Add to list';
-
-                  return (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onTrackToggle(product.id); }}
-                      id={`track-btn-${item.id}`}
-                      className={`absolute top-4 right-4 border px-2.5 py-1.5 rounded-lg transition-all active:scale-95 cursor-pointer text-[10px] font-black uppercase tracking-wider z-10 flex items-center gap-1.5 ${
-                        isInAnyList
-                          ? 'border-ink-200 text-ink-600 bg-ink-50 hover:bg-ink-100/50'
-                          : 'border-stone-200 text-stone-500 hover:text-ink-600 hover:bg-ink-50/50 hover:border-ink-200 bg-white'
-                      }`}
-                    >
-                      <Bookmark className={`w-3 h-3 ${isInAnyList ? 'fill-ink-600 stroke-ink-600' : ''}`} />
-                      {buttonText}
-                    </button>
-                  );
-                })()}
-
-                <div className="flex p-5 gap-5">
-                  <div className="w-24 h-24 flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden select-none">
-                    <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                  </div>
-
-                  <div className="flex-grow flex flex-col justify-between py-1 pr-24">
-                    <div>
-                      <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                        {product.brand}
-                      </span>
-                      <h3 className="font-bold text-base text-stone-900 leading-snug mt-1 font-display">
-                        {product.name}
-                      </h3>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+                product={product}
+                price={item.price}
+                storeKey={item.store}
+                storeLinePrefix="Checked at"
+                alsoSpecialStores={alsoSpecialStores}
+                isTracked={isTracked}
+                onToggleTrack={isLoggedIn ? () => onTrackToggle(product.id) : undefined}
+                onActivate={() => onRecheck(product, item.store)}
+              />
             );
           })}
         </div>
