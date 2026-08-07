@@ -74,6 +74,14 @@
     margin: 0;
   }
   .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+  /* Quick, periodic "blink" on the logo mark: mostly still, with a fast
+     vertical squash near the 96% mark so it reads as a blink rather than a
+     constant pulse. */
+  @keyframes logoBlink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.05); }
+  }
+  .animate-logo-blink { animation: logoBlink 3.5s ease-in-out infinite; transform-origin: 50% 60%; }
   /* Used by the "Filter by Supermarket" pill carousel in full-screen search
      mode -- horizontally scrollable, but no visible scrollbar clutter. */
   .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -95,8 +103,8 @@
     "react-dom": "https://esm.sh/react-dom@18.3.1",
     "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
     "lucide-react": "https://esm.sh/lucide-react@0.383.0?external=react",
-    "motion/react": "https://esm.sh/motion@11.11.17/react?external=react,react-dom",
-    "recharts": "https://esm.sh/recharts@2.12.7?external=react,react-dom"
+    "motion/react": "https://esm.sh/motion/react?bundle&external=react,react-dom",
+    "recharts": "https://esm.sh/recharts@2.12.7?bundle&external=react,react-dom"
   }
 }
 </script>
@@ -114,14 +122,14 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import {
   Search, Bookmark, Bell, History, User, Menu, AlertCircle, Sparkles, BarChart3, X,
   ChevronDown, ArrowUpDown, CheckCircle, Eye, HelpCircle, TrendingDown,
-  Trash2, Store, Plus, Minus, RotateCcw,
+  Trash2, Store, Plus, Minus, RotateCcw, Share2, ArrowUp,
   AlertTriangle, TrendingUp, Flame, Calendar,
   Camera, ShieldAlert, Filter, CheckCircle2, Info,
   ArrowLeft, CircleUser, ChevronUp, ExternalLink,
   Upload, ShieldCheck, Loader2, Play,
   Award,
   Mail, Lock, MapPin, Save, Check, Edit2, EyeOff, CreditCard,
-  Building2, SlidersHorizontal,
+  Building2, SlidersHorizontal, ScanBarcode,
 } from 'lucide-react';
 
 /* ===================== types (erased at runtime) ===================== */
@@ -261,16 +269,6 @@ const FALLBACK_PRODUCTS = [
         wasArtificiallyInflated: false,
         reason: 'Minor Discount',
         explanation: 'A very minor discount of 2% is applied. The historical price has been very stable around $6.50.'
-      },
-      {
-        store: 'FreshChoice',
-        price: 5.50,
-        originalPrice: 6.50,
-        discountPercentage: 15,
-        dealType: 'Real Deal',
-        wasArtificiallyInflated: false,
-        reason: 'Weekly Special',
-        explanation: 'FreshChoice has a genuine 15% discount on these sachets this week.'
       }
     ],
     priceHistory: [
@@ -336,16 +334,6 @@ const FALLBACK_PRODUCTS = [
         wasArtificiallyInflated: false,
         reason: 'Fair Discount',
         explanation: 'A normal retail discount. Standard price is $6.80, so saving $0.60 is fair and true.'
-      },
-      {
-        store: 'FreshChoice',
-        price: 5.50,
-        originalPrice: 6.80,
-        discountPercentage: 19,
-        dealType: 'Real Deal',
-        wasArtificiallyInflated: false,
-        reason: 'Genuine Low Price',
-        explanation: 'FreshChoice is offering a high value genuine discount on this giant breakfast box.'
       }
     ],
     priceHistory: [
@@ -489,11 +477,19 @@ let mockProducts = FALLBACK_PRODUCTS;
 /* ===================== lib/supabase-live.ts ===================== */
 /*
  * Live data layer. Replaces FALLBACK_PRODUCTS with real rows from the
- * Supabase project (current_prices / products / stores / price_history),
- * classified client-side with the same GENUINE/DODGY/MARGINAL/UNKNOWN logic
- * as analyser.py and dodgy_deals_view.sql (the deployed `dodgy_deals` view
- * is stale -- missing columns the checked-in SQL defines and returns zero
- * rows -- so the classifier is ported here instead of querying the view).
+ * Supabase project's `dodgy_deals` view -- current specials, pre-classified
+ * DODGY/GENUINE/MARGINAL/UNKNOWN server-side (see dodgy_deals_view.sql).
+ *
+ * Was: fetched current_prices/products/price_history directly and ran the
+ * DODGY/REAL_SAVER/FAIR/UNKNOWN classifier client-side (classifySpecial()
+ * below), because the deployed view used to be stale -- missing columns,
+ * returning zero rows. Fixed 2026-08-04, extended with display columns
+ * 2026-08-07. Switched over the same day once Jay scoped the app down to
+ * "search/browse current specials, use history only to rank them" (not
+ * full-catalogue browsing) -- the old approach was pulling ~30-40MB/load
+ * (effectively the whole catalogue) to re-derive, client-side, exactly what
+ * this view already computes. See project.md's 2026-08-07 session entries
+ * for the full egress investigation.
  *
  * Uses the public anon key directly, same pattern as matching-dashboard.html
  * (anon key + RLS-scoped SELECT grants; safe to embed, not a secret).
@@ -502,12 +498,17 @@ let mockProducts = FALLBACK_PRODUCTS;
 const SUPABASE_URL = 'https://dlcaxnorkqorrkfxigfg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsY2F4bm9ya3FvcnJrZnhpZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MjU2MzMsImV4cCI6MjA5NTAwMTYzM30.5H3OGOtDD6fq8OpVlBe71HhOAd_mjEh8XnAMa2ykBnc';
 
+// Store pills use lowercase ids ('paknsave'), but real store names carry
+// suffixes/casing that vary ("Woolworths NZ", "Pak'nSave", "New World") --
+// normalize to bare letters and match by substring, not exact equality.
+const normalizeStoreKey = (s) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
+const storeMatchesFilter = (storeName, filter) => filter === 'all' || normalizeStoreKey(storeName).includes(filter);
+
 const STORE_DISPLAY_FALLBACK = {
   newworld: 'New World',
   paknsave: "PAK'nSAVE",
   woolworths: 'Woolworths',
   foursquare: 'Four Square',
-  freshchoice: 'FreshChoice',
   supervalue: 'SuperValue',
 };
 
@@ -579,6 +580,90 @@ async function fetchByIds(path, column, select, ids, chunkSize = 100) {
   return results.flat();
 }
 
+// Client-side cache for the fully-built catalogue (post price_history/
+// classification), keyed in IndexedDB rather than localStorage -- this
+// payload is tens of MB (full products + price_history for every current
+// special) and localStorage's per-origin cap (~5-10MB depending on browser)
+// would silently throw/truncate. IndexedDB has real headroom.
+//
+// Added 2026-08-07: API logs showed the same ~48-page products/price_history
+// fetch loop firing back-to-back with nothing else in between -- consistent
+// with one browser reloading repeatedly during dev, not many distinct
+// visitors -- and burning through the Supabase free tier's 5GB/mo egress
+// cap. Prices only change via the nightly scrape, so a same-browser cache
+// with a TTL well under 24h is safe: on a warm cache hit, this skips the
+// Supabase fetch (and its egress) entirely for that load.
+//
+// CACHE_VERSION: bump this whenever the shape of the cached product objects
+// changes (e.g. classifySpecial's output fields) so old cached shapes don't
+// get served into code that expects new fields -- treated as a miss.
+const CATALOGUE_CACHE_DB = 'dodgy_deals_cache';
+const CATALOGUE_CACHE_STORE = 'catalogue';
+const CATALOGUE_CACHE_KEY = 'live_products';
+const CATALOGUE_CACHE_VERSION = 2; // bumped 2026-08-07: cached shape changed when loadLiveProducts moved to sourcing from the dodgy_deals view (priceHistory is now always [], see loadLiveProducts)
+const CATALOGUE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function openCatalogueCacheDB() {
+  return new Promise((resolve, reject) => {
+    if (!('indexedDB' in window)) { reject(new Error('indexedDB unavailable')); return; }
+    const req = indexedDB.open(CATALOGUE_CACHE_DB, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(CATALOGUE_CACHE_STORE)) {
+        req.result.createObjectStore(CATALOGUE_CACHE_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('indexedDB open failed'));
+  });
+}
+
+// Returns the cached products array if present, version-matched, and within
+// TTL -- otherwise null. Never throws: any failure (blocked storage, private
+// browsing, corrupt record, etc.) is treated as a cache miss so the caller
+// always has a working fallback to the normal network path.
+async function readCatalogueCache() {
+  try {
+    const db = await openCatalogueCacheDB();
+    const record = await new Promise((resolve, reject) => {
+      const tx = db.transaction(CATALOGUE_CACHE_STORE, 'readonly');
+      const req = tx.objectStore(CATALOGUE_CACHE_STORE).get(CATALOGUE_CACHE_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    if (!record) return null;
+    if (record.version !== CATALOGUE_CACHE_VERSION) return null;
+    if (!Array.isArray(record.products) || !record.products.length) return null;
+    if (Date.now() - record.savedAt > CATALOGUE_CACHE_TTL_MS) return null;
+    return record.products;
+  } catch (err) {
+    console.warn('Catalogue cache read skipped:', err);
+    return null;
+  }
+}
+
+// Best-effort write -- failures (quota, blocked storage) are logged and
+// swallowed, never surfaced to the caller. Caching is an optimization, not
+// a requirement for the app to function.
+async function writeCatalogueCache(products) {
+  try {
+    if (!Array.isArray(products) || !products.length) return;
+    const db = await openCatalogueCacheDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(CATALOGUE_CACHE_STORE, 'readwrite');
+      tx.objectStore(CATALOGUE_CACHE_STORE).put(
+        { version: CATALOGUE_CACHE_VERSION, savedAt: Date.now(), products },
+        CATALOGUE_CACHE_KEY
+      );
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (err) {
+    console.warn('Catalogue cache write skipped:', err);
+  }
+}
+
 function median(nums) {
   if (!nums.length) return null;
   const sorted = [...nums].sort((a, b) => a - b);
@@ -587,18 +672,32 @@ function median(nums) {
 }
 
 const LOOKBACK_DAYS = 30;
-const DODGY_THRESHOLD = 5;    // % pre-sale inflation to flag dodgy
-const GENUINE_THRESHOLD = 10; // % saving to count as genuine
-const MARGINAL_THRESHOLD = 3; // % saving floor for "marginal"
+const SEARCH_RESULTS_PAGE_SIZE = 30; // rendering hundreds+ of cards at once freezes the results list
+const DODGY_THRESHOLD = 5;       // % pre-sale inflation to flag dodgy
+const REAL_SAVER_THRESHOLD = 10; // % saving to count as a real saver
+const FAIR_THRESHOLD = 3;        // % saving floor for "fair"
+const SHRINKFLATION_THRESHOLD = 1; // min % the $/unit must actually drop
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Classifies one (product_id, store_id) current special using its own
-// price_history series. Mirrors dodgy_deals_view.sql exactly:
+// price_history series (+ optional $/unit comparative pricing).
 //   normal_price = median of pre-sale prices within the 30-day lookback
 //   inflate_pct  = how much price was pumped in the 7 days before the sale
-//   verdict: UNKNOWN (no history) / DODGY (fake markup) / GENUINE (>=10% off)
-//            / MARGINAL (3-10% off, or nothing better established)
-function classifySpecial(salePrice, historyRows) {
+//   verdict, checked in order: UNKNOWN (no history) / DODGY (fake markup,
+//   shrinkflation, or pump-and-discount) / REAL_SAVER (>=10% off) /
+//   FAIR (3-10% off, or nothing better established)
+// saleUnitPrice/saleUnitLabel are the current special's own $/unit (e.g.
+// 5.00 / "per 1kg"), used only for the shrinkflation check in step 4.
+//
+// NOT CALLED by the live pipeline as of 2026-08-07 -- loadLiveProducts now
+// sources classification straight from the dodgy_deals SQL view (same
+// logic, computed server-side; see dodgy_deals_view.sql), so this never
+// runs in production any more. Kept as the documented reference
+// implementation -- this, dodgy_deals_view.sql, and analyser.py are the
+// three places this formula is meant to stay in sync (see the "IMPORTANT"
+// reference section this repo's project.md keeps updated), and deleting the
+// live JS copy would break that convention even though nothing calls it.
+function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
   const sorted = [...historyRows].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
 
   // Walk backwards while is_special=true to find when the current streak began.
@@ -611,7 +710,7 @@ function classifySpecial(salePrice, historyRows) {
     }
   }
   if (saleStartedAt === null) {
-    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice: null, savingPct: null };
+    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice: null, savingPct: null, saleStartedAt: null };
   }
 
   const preSale = sorted.filter((r) => !r.is_special && new Date(r.scraped_at) < saleStartedAt && r.price != null);
@@ -635,8 +734,22 @@ function classifySpecial(salePrice, historyRows) {
 
   const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : 0;
 
+  // Step 4 -- shrinkflation check. Only runs when both sides have a $/unit
+  // figure under the SAME unit label (exact match: " /kg" is never compared
+  // to "$/100g") -- live coverage is ~16%, so this silently no-ops otherwise.
+  let unitPriceChangePct = null;
+  if (saleUnitPrice != null && saleUnitLabel) {
+    const baselineUnitRows = preSale.filter((r) => r.unit_price != null && r.unit_label === saleUnitLabel);
+    if (baselineUnitRows.length) {
+      const baselineUnitPrice = median(baselineUnitRows.map((r) => r.unit_price));
+      if (baselineUnitPrice) {
+        unitPriceChangePct = ((saleUnitPrice - baselineUnitPrice) / baselineUnitPrice) * 100;
+      }
+    }
+  }
+
   if (normalPrice == null) {
-    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice, savingPct: null };
+    return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice, savingPct: null, saleStartedAt };
   }
   if (salePrice > normalPrice) {
     return {
@@ -644,37 +757,51 @@ function classifySpecial(salePrice, historyRows) {
       reason: `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(2)}) -- fake deal`,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
     };
   }
-  if (inflatePct >= DODGY_THRESHOLD && savingPct < GENUINE_THRESHOLD) {
+  if (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD) {
+    return {
+      verdict: 'DODGY',
+      reason: `Pack size shrank -- the $/unit price barely moved (${unitPriceChangePct >= 0 ? '+' : ''}${unitPriceChangePct.toFixed(1)}%) despite the nominal ${savingPct.toFixed(1)}% saving`,
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
+    };
+  }
+  if (inflatePct >= DODGY_THRESHOLD && savingPct < REAL_SAVER_THRESHOLD) {
     return {
       verdict: 'DODGY',
       reason: `Price was raised ${inflatePct.toFixed(1)}% just before the sale -- you're only saving ${savingPct.toFixed(1)}%`,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
     };
   }
-  if (savingPct >= GENUINE_THRESHOLD) {
+  if (savingPct >= REAL_SAVER_THRESHOLD) {
     return {
-      verdict: 'GENUINE',
+      verdict: 'REAL_SAVER',
       reason: `Saving ${savingPct.toFixed(1)}% vs the recent normal price`,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
     };
   }
-  if (savingPct >= MARGINAL_THRESHOLD) {
+  if (savingPct >= FAIR_THRESHOLD) {
     return {
-      verdict: 'MARGINAL',
+      verdict: 'FAIR',
       reason: `Only a ${savingPct.toFixed(1)}% saving -- barely worth it`,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
     };
   }
   return {
-    verdict: 'MARGINAL',
+    verdict: 'FAIR',
     reason: 'Minimal saving vs normal price',
     normalPrice,
     savingPct: Math.round(savingPct * 10) / 10,
+    saleStartedAt,
   };
 }
 
@@ -738,8 +865,39 @@ function mergeProductMeta(memberMetas) {
   };
 }
 
-const VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', GENUINE: 'Real Deal', MARGINAL: 'Fair Price' };
+const VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', REAL_SAVER: 'Real Deal', FAIR: 'Fair Price' };
 const titleCase = (s) => (s || '').replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Retailers each ship their own top-level category names, so the same aisle
+// shows up under several near-duplicate strings ("Beer & Wine" / "Beer,
+// Cider & Wine" / "Beer, Wine & Cider", "Fruit & Veg" / "Fruit & Vegetables",
+// "Pet" / "Pet Food" / "Pets", etc.) -- left as-is, a category picker ends up
+// with ~40 near-duplicate options. Grouped here into a fixed, shopper-
+// friendly set instead, matched by keyword against the raw string.
+const CATEGORY_GROUPS = [
+  { label: 'Fruit & veg', match: /fruit|veg/i },
+  { label: 'Meat & seafood', match: /meat|seafood|poultry|fish/i },
+  { label: 'Fridge, deli & eggs', match: /fridge|deli|eggs/i },
+  { label: 'Bakery', match: /bakery/i },
+  { label: 'Frozen & chilled', match: /frozen|chilled/i },
+  { label: 'Beer & wine', match: /beer|wine|cider/i },
+  { label: 'Drinks', match: /drink/i },
+  { label: 'Snacks & treats', match: /snack|treat/i },
+  { label: 'Pantry & grocery', match: /pantry|grocery/i },
+  { label: 'Health & household', match: /health|body|household|clean/i },
+  { label: 'Baby & toddler', match: /baby|toddler|child|school/i },
+  { label: 'Pet', match: /\bpet/i },
+];
+const groupCategory = (rawCategory) => {
+  const top = (rawCategory || '').split('>')[0].trim();
+  const group = CATEGORY_GROUPS.find((g) => g.match.test(top));
+  return group ? group.label : (top || 'Other');
+};
+const CATEGORY_SECTIONS = [
+  { title: 'Fresh', categories: ['Fruit & veg', 'Meat & seafood', 'Fridge, deli & eggs', 'Bakery', 'Frozen & chilled'] },
+  { title: 'Grocery & drinks', categories: ['Pantry & grocery', 'Drinks', 'Beer & wine', 'Snacks & treats'] },
+  { title: 'Household & care', categories: ['Health & household', 'Baby & toddler', 'Pet'] },
+];
 
 // Product cards are tappable as a whole (onClick on the card's own <div>)
 // now that the standalone "Check Deals" button has been removed from them.
@@ -915,10 +1073,21 @@ const FALLBACK_PRODUCT_IMAGE = 'https://placehold.co/300x300?text=No+Image';
 // Renders a product's real photo (from products.image_url in Supabase) with
 // a placeholder fallback. Used everywhere a card previously showed a static
 // "Product Image" text box instead of an actual image.
+// Woolworths' CDN serves images at whatever w/h the caller asks for via its
+// `impolicy` query params, but the scraped image_url is pinned at a 65x65
+// thumbnail size -- bumped up here to a real display size instead of
+// stretching a tiny thumbnail. Other retailers' CDNs (fsimg.co.nz) aren't
+// affected since their URLs don't match this host/param shape.
+const upgradeImageQuality = (url) => {
+  if (!url || !url.includes('assets.woolworths.com.au')) return url;
+  return url.replace(/([?&])w=\d+/, '$1w=600').replace(/([?&])h=\d+/, '$1h=600');
+};
+
 function ProductImage({ src, alt, className }) {
+  const upgradedSrc = upgradeImageQuality(src);
   return (
     <img
-      src={src || FALLBACK_PRODUCT_IMAGE}
+      src={upgradedSrc || FALLBACK_PRODUCT_IMAGE}
       alt={alt || 'Product'}
       loading="lazy"
       draggable="false"
@@ -955,7 +1124,6 @@ const getStoreDisplayNameGlobal = (storeKey, branchOverrides) => {
       case 'paknsave': return "PAK'nSAVE";
       case 'newworld': return 'New World';
       case 'foursquare': return 'Four Square';
-      case 'freshchoice': return 'FreshChoice';
       default: return storeKey;
     }
   })();
@@ -965,7 +1133,6 @@ const getStoreDisplayNameGlobal = (storeKey, branchOverrides) => {
     case 'paknsave': return branchOverrides["PAK'nSAVE"] || generic;
     case 'newworld': return branchOverrides['New World'] || generic;
     case 'foursquare': return branchOverrides['Four Square'] || generic;
-    case 'freshchoice': return branchOverrides['FreshChoice'] || generic;
     default: return generic;
   }
 };
@@ -976,14 +1143,12 @@ const getStoreLogoMeta = (storeName) => {
     "PAK'nSAVE": { short: 'PNS', bg: 'bg-amber-500', text: 'text-stone-950' },
     'New World': { short: 'NW', bg: 'bg-rose-600', text: 'text-white' },
     'Four Square': { short: 'FS', bg: 'bg-green-600', text: 'text-white' },
-    'FreshChoice': { short: 'FC', bg: 'bg-sky-600', text: 'text-white' },
   };
   const norm = storeName.toLowerCase().replace(/[^a-z]/g, '');
   if (norm.includes('woolworth')) return STORE_LOGOS['Woolworths'];
   if (norm.includes('paknsave')) return STORE_LOGOS["PAK'nSAVE"];
   if (norm.includes('newworld')) return STORE_LOGOS['New World'];
   if (norm.includes('foursquare')) return STORE_LOGOS['Four Square'];
-  if (norm.includes('freshchoice')) return STORE_LOGOS['FreshChoice'];
   return { short: storeName.substring(0, 2).toUpperCase(), bg: 'bg-stone-600', text: 'text-white' };
 };
 
@@ -1047,6 +1212,10 @@ function ProductCard({
   const isPeek = variant === 'peek';
   const tappable = !isPeek && !!onActivate;
   const storeLabel = getStoreDisplayNameGlobal(storeKey, branchOverrides);
+  const matchedDeal = product.currentDeals && product.currentDeals.find((d) => d.store === storeKey);
+  const isDodgy = matchedDeal && matchedDeal.dealType === 'Dodgy Deal';
+  const isRealSaver = matchedDeal && matchedDeal.dealType === 'Real Deal';
+  const isFairDeal = matchedDeal && matchedDeal.dealType === 'Fair Price';
 
   return (
     <div
@@ -1059,96 +1228,110 @@ function ProductCard({
       className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 ${
         isPeek
           ? 'h-24 pointer-events-none select-none border-dashed border-stone-300'
-          : `${emphasizeBorder ? 'border-ink-200' : 'border-stone-200'} ${tappable ? 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]' : ''}`
+          : `${isDodgy ? 'border-alert-300' : isRealSaver ? 'border-fair-300' : isFairDeal ? 'border-dodgy-300' : emphasizeBorder ? 'border-ink-200' : 'border-stone-200'} ${tappable ? 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]' : ''}`
       }`}
     >
-      {/* Row 1: deal-ends date (left) + save/track toggle (right) */}
-      <div className="flex items-start justify-between px-5 pt-5 gap-3">
-        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-          {dealEndsText}
-        </span>
-        {/* Peek cards are meant to be a fully inert preview -- pointer-events-none
-            on the outer container already blocks mouse clicks, but that alone
-            doesn't stop keyboard Tab focus or a synthetic .click(), so the
-            button itself has to be omitted here too, not just visually hidden. */}
-        {!isPeek && onToggleTrack && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleTrack(); }}
-            id={`track-${id}`}
-            aria-label={isTracked ? 'Remove from list' : 'Add to list'}
-            title={isTracked ? 'Remove from list' : 'Add to list'}
-            className={`flex-shrink-0 -m-1.5 p-1.5 rounded-lg transition-colors active:scale-97 cursor-pointer ${
-              isTracked ? 'text-alert-600 hover:bg-alert-50' : 'text-ink-600 hover:bg-ink-50'
-            }`}
-          >
-            {isTracked ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-          </button>
-        )}
-      </div>
+      {/* Peek cards are meant to be a fully inert preview -- pointer-events-none
+          on the outer container already blocks mouse clicks, but that alone
+          doesn't stop keyboard Tab focus or a synthetic .click(), so the
+          button itself has to be omitted here too, not just visually hidden. */}
+      {!isPeek && onToggleTrack && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleTrack(); }}
+          id={`track-${id}`}
+          aria-label={isTracked ? 'Remove from list' : 'Add to list'}
+          title={isTracked ? 'Remove from list' : 'Add to list'}
+          className={`absolute top-3 right-3 z-10 p-1.5 rounded-lg transition-colors active:scale-97 cursor-pointer ${
+            isTracked ? 'text-alert-600 hover:bg-alert-50' : 'text-ink-600 hover:bg-ink-50'
+          }`}
+        >
+          {isTracked ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+        </button>
+      )}
 
-      {/* Row 2: product image + title/brand/size */}
-      <div className="flex gap-4 px-5 pt-3">
-        <div className="w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden select-none flex-shrink-0">
+      {/* Row 2: product image + title/brand/size, with the save/track toggle
+          aligned to the title's top line and pinned to the card's right edge. */}
+      <div className="flex gap-4 px-5 pt-5">
+        <div className="w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden select-none flex-shrink-0">
           <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
         </div>
-        <div className="flex flex-col justify-center min-w-0">
-          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+        <div className="flex flex-col justify-center min-w-0 flex-1 pr-9">
+          <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">
             {product.brand}
           </span>
-          <h3 className="font-bold text-base text-stone-900 leading-snug mt-0.5 font-display truncate">
+          <h3 className="font-bold text-base text-stone-900 leading-snug mt-0.5 font-display line-clamp-2">
             {product.name}
           </h3>
           {product.unit && (
             <span className="text-xs font-medium text-stone-500 mt-0.5">{product.unit}</span>
           )}
-        </div>
-      </div>
-
-      {/* Row 3: price */}
-      <div className="px-5 pt-3">
-        <span className="text-2xl font-black text-stone-900 font-mono">
-          ${price.toFixed(2)}
-        </span>
-      </div>
-
-      {/* Row 4: store callout. Bottom padding (pb-5) only belongs here when
-          this is genuinely the card's last row -- not when Row 5 is coming,
-          and not when the caller passed extra `children` content (e.g.
-          TrackedTab's compare-mode weight/quantity controls) that supplies
-          its own trailing padding instead. */}
-      <div className={`px-5 pt-1 ${alsoSpecialStores.length === 0 && !children ? 'pb-5' : ''}`}>
-        <span className="text-xs font-bold text-stone-600">
-          {storeLinePrefix} {storeLabel}.
-        </span>
-      </div>
-
-      {/* Row 5: also-on-special-at store badges -- same trailing-padding
-          logic as Row 4 above. */}
-      {alsoSpecialStores.length > 0 && (
-        <div className={`flex items-center gap-2 px-5 pt-3 flex-wrap ${children ? '' : 'pb-5'}`}>
-          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Also on special at:</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {alsoSpecialStores.map((store) => {
-              const meta = getStoreLogoMeta(store);
-              return (
-                <div
-                  key={store}
-                  title={getStoreDisplayNameGlobal(store)}
-                  className={`px-2 py-1 rounded-md text-[9px] font-black select-none ${meta.bg} ${meta.text}`}
-                >
-                  {meta.short}
-                </div>
-              );
-            })}
+          <span className="text-2xl font-black text-stone-900 font-display mt-1.5">
+            ${price.toFixed(2)}
+          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-bold text-stone-600">
+              {storeLinePrefix} {storeLabel}.
+            </span>
           </div>
+          {alsoSpecialStores.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mt-7">
+              <span className="text-[10px] font-bold text-stone-600 tracking-wider">Also on special at:</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {alsoSpecialStores.map((store) => {
+                  const meta = getStoreLogoMeta(store);
+                  return (
+                    <div
+                      key={store}
+                      title={getStoreDisplayNameGlobal(store)}
+                      className={`px-2 py-1 rounded-md text-[9px] font-black select-none ${meta.bg} ${meta.text}`}
+                    >
+                      {meta.short}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* This spacer only supplies the card's bottom padding when nothing
+          else (caller children) will supply it instead -- the also-on-
+          special-at badges now live in the title column above. */}
+      <div className={!children ? 'pb-5' : ''} />
 
       {/* Optional extra content below the standard 5 rows -- currently only
           used by TrackedTab's My List card for its compare-mode weight/
           quantity controls, which need to live inside the same card but
           aren't part of the shared wireframe layout itself. */}
       {children}
+
+      {isDodgy && !isPeek && (
+        <span className="absolute bottom-5 right-3 z-10 bg-alert-600 text-white text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider select-none shadow-xs">
+          Dodgy
+        </span>
+      )}
+
+      {isRealSaver && !isPeek && (
+        <span className="absolute bottom-5 right-3 z-10 bg-fair-600 text-white text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider select-none shadow-xs">
+          Real
+        </span>
+      )}
+
+      {isFairDeal && !isPeek && (
+        <span className="absolute bottom-5 right-3 z-10 bg-dodgy-600 text-white text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider select-none shadow-xs">
+          Fair
+        </span>
+      )}
+
+      {!isPeek && (() => {
+        const meta = getStoreLogoMeta(storeKey);
+        return (
+          <span className={`absolute bottom-5 left-3 z-10 px-2 py-1 rounded-md text-[9px] font-black select-none shadow-xs ${meta.bg} ${meta.text}`}>
+            {meta.short}
+          </span>
+        );
+      })()}
 
       {isPeek && (
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
@@ -1157,107 +1340,66 @@ function ProductCard({
   );
 }
 
-// Builds full product cards (metadata + classified deals + price history)
-// for one page's worth of match-groups. Kept separate from the pagination
-// loop below so each page only fetches products/price_history for the
-// group members actually in that page, not the whole live set at once.
-async function buildProductCardsForGroups(pageGroups, storeNameById) {
-  const allProductIds = [...new Set(pageGroups.flatMap(([, rows]) => rows.map((r) => r.product_id)))];
-  const [productRows, historyRows] = await Promise.all([
-    fetchByIds('products', 'id', 'id,name,brand,category,image_url,unit_size', allProductIds),
-    fetchByIds('price_history', 'product_id', 'product_id,store_id,price,is_special,scraped_at', allProductIds),
-  ]);
+// Maps the dodgy_deals SQL view's verdict vocabulary (DODGY/GENUINE/
+// MARGINAL/UNKNOWN) onto the same dealType/short-reason strings the old
+// client-side classifySpecial() produced (DODGY/REAL_SAVER/FAIR/UNKNOWN) --
+// GENUINE<->REAL_SAVER and MARGINAL<->FAIR are the same concepts, just
+// named differently between the two implementations (verified: same
+// thresholds, saving_pct >=10 / >=3, see dodgy_deals_view.sql). Every
+// downstream consumer (ProductCard badges, search results, HISTORY_DEAL_TYPE
+// in the "All Checks" tab) keys off these exact output strings, so this
+// mapping keeps them working unchanged even though the source of the
+// verdict moved from the client to the view.
+const VIEW_VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', GENUINE: 'Real Deal', MARGINAL: 'Fair Price' };
+const VIEW_VERDICT_SHORT_REASON = { DODGY: 'Artificial Discount (Was-Is Trap)', GENUINE: 'Genuine Sale', UNKNOWN: 'Not Enough History' };
 
-  const productById = new Map(productRows.map((p) => [p.id, p]));
-  const historyByPair = new Map();
-  for (const row of historyRows) {
-    const key = `${row.product_id}::${row.store_id}`;
-    if (!historyByPair.has(key)) historyByPair.set(key, []);
-    historyByPair.get(key).push(row);
-  }
-  const storeName = (id) => storeNameById.get(id) || STORE_DISPLAY_FALLBACK[id] || titleCase(id);
-
+// Builds full product cards straight from dodgy_deals view rows -- no
+// separate products/price_history fetch, no client-side classification.
+// The view already computed verdict/saving_pct/reason server-side (see
+// dodgy_deals_view.sql) and already joins product_name/brand/category/
+// image_url/unit_size/store_name, so this is just reshaping rows into the
+// card shape the UI expects, then grouping into cross-store match groups.
+function buildProductCardsFromSpecials(groupEntries) {
   const products = [];
-  for (const [groupId, rows] of pageGroups) {
-    const memberIds = [...new Set(rows.map((r) => r.product_id))];
-    const meta = mergeProductMeta(memberIds.map((id) => productById.get(id)));
+  for (const [groupId, rows] of groupEntries) {
+    const meta = mergeProductMeta(rows.map((r) => ({
+      name: r.product_name, brand: r.brand, category: r.category, image_url: r.image_url, unit_size: r.unit_size,
+    })));
     if (!meta.name) continue;
 
-    const currentDeals = [];
-    const priceHistory = [];
-    const normalPrices = [];
-
-    for (const row of rows) {
-      const pairHistory = historyByPair.get(`${row.product_id}::${row.store_id}`) || [];
-
-      if (row.is_special) {
-        // Actively promoted special -- run it through the real DODGY/
-        // GENUINE/MARGINAL/UNKNOWN classifier, same as before.
-        const verdict = classifySpecial(row.price, pairHistory);
-        if (verdict.verdict !== 'UNKNOWN') {
-          if (verdict.normalPrice != null) normalPrices.push(verdict.normalPrice);
-          currentDeals.push({
-            store: storeName(row.store_id),
-            price: row.price,
-            originalPrice: verdict.normalPrice ?? row.was_price ?? row.price,
-            discountPercentage: Math.max(0, Math.round(verdict.savingPct ?? 0)),
-            dealType: VERDICT_TO_DEAL_TYPE[verdict.verdict],
-            wasArtificiallyInflated: verdict.verdict === 'DODGY',
-            reason: verdict.verdict === 'DODGY' ? 'Artificial Discount (Was-Is Trap)' : verdict.verdict === 'GENUINE' ? 'Genuine Sale' : 'Standard Special',
-            explanation: verdict.reason,
-            isOnSpecial: true,
-            // Retailer-advertised end date for this special, when the
-            // source actually supplied one (see the 2026-07-29 migration --
-            // there's no matching advertised *start* date in the schema, so
-            // this can only ever show "ends", never a full date range).
-            specialEndDate: row.special_end_date || null,
-          });
-        }
-        // UNKNOWN (no usable history) still falls through with no deal
-        // entry for this store -- unchanged behaviour from before.
-      } else {
-        // Not currently on special -- no verdict to render (there's no
-        // "deal" to judge), but the item still belongs in the catalogue so
-        // it's browsable/searchable and its price history is visible.
-        currentDeals.push({
-          store: storeName(row.store_id),
-          price: row.price,
-          originalPrice: row.price,
-          discountPercentage: 0,
-          dealType: 'Fair Price',
-          wasArtificiallyInflated: false,
-          reason: 'Regular Price',
-          explanation: 'Not currently on special -- this is the regular shelf price.',
-          isOnSpecial: false,
-        });
-      }
-
-      for (const h of pairHistory) {
-        priceHistory.push({
-          date: new Date(h.scraped_at).toLocaleDateString('en-NZ', { month: 'short', day: '2-digit' }),
-          price: h.price,
-          isPromo: h.is_special,
-          store: storeName(row.store_id),
-        });
-      }
-    }
-
-    if (!currentDeals.length) continue; // no usable row in this group (e.g. only UNKNOWN specials, no plain price)
+    const currentDeals = rows.map((row) => ({
+      store: row.store_name || STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
+      price: row.sale_price,
+      originalPrice: row.normal_price ?? row.was_price ?? row.sale_price,
+      discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
+      dealType: row.verdict === 'UNKNOWN' ? 'Unverified Deal' : VIEW_VERDICT_TO_DEAL_TYPE[row.verdict],
+      wasArtificiallyInflated: row.verdict === 'DODGY',
+      reason: VIEW_VERDICT_SHORT_REASON[row.verdict] || 'Standard Special',
+      explanation: row.reason,
+      isOnSpecial: true,
+      // When this special began (from the view's sale_start CTE) -- used by
+      // the Trending tab to surface only recently-started genuine savings,
+      // not specials that have been running for months.
+      saleStartedAt: row.sale_started_at || null,
+      // Retailer-advertised end date for this special, when the source
+      // actually supplied one.
+      specialEndDate: row.special_end_date || null,
+    }));
 
     // The identity-matching pipeline occasionally links two distinct
     // retailer catalogue rows from the *same* store into one match group
-    // (a known upstream data-quality quirk, not something to silently
-    // trust) -- e.g. two separate Pak'nSave product rows both canonical-
-    // linked to the same Woolworths item. The UI (and its React keys)
-    // assumes one deal per store per card, so collapse to the best
-    // (lowest) price per store here rather than showing contradictory
-    // duplicate rows for the same shop.
+    // (a known upstream data-quality quirk) -- collapse to the best
+    // (lowest) price per store rather than showing contradictory duplicate
+    // rows for the same shop.
     const bestDealByStore = new Map();
     for (const deal of currentDeals) {
       const existing = bestDealByStore.get(deal.store);
       if (!existing || deal.price < existing.price) bestDealByStore.set(deal.store, deal);
     }
     const dedupedDeals = [...bestDealByStore.values()];
+    if (!dedupedDeals.length) continue;
+
+    const normalPrices = rows.map((r) => r.normal_price).filter((p) => p != null);
 
     products.push({
       id: groupId,
@@ -1265,71 +1407,97 @@ async function buildProductCardsForGroups(pageGroups, storeNameById) {
       name: titleCase(meta.name),
       category: meta.category || 'Grocery',
       image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
-      standardPrice: normalPrices.length ? Math.min(...normalPrices) : Math.min(...rows.map((r) => r.price)),
+      standardPrice: normalPrices.length ? Math.min(...normalPrices) : Math.min(...rows.map((r) => r.sale_price)),
       unit: meta.unit_size || '',
       currentDeals: dedupedDeals,
-      priceHistory,
+      // No raw time-series any more -- nothing in the UI renders one (the
+      // per-store bar chart and pricing-stats table both read aggregate
+      // originalPrice/normal_price, not a day-by-day series; confirmed by
+      // reading getRealAveragePrice/getPricingStatsForStore before this
+      // change). dodgy_deals' normal_price already *is* that aggregate.
+      priceHistory: [],
       description: '',
     });
   }
   return products;
 }
 
-// Groups per page, not products -- a group can span several product_ids
-// (real cross-store matches), so this keeps each page's products/
-// price_history fetch bounded regardless of total catalogue size.
-const GROUPS_PER_PAGE = 250;
+// Small on-demand lookup for products NOT covered by the specials-only
+// dataset above -- specifically, tracked/list items that have rolled off
+// special (see TrackedTab's lapsed-tracking hydration). No price_history
+// involved (nothing renders a raw series, see note above) -- builds the
+// same 'Fair Price'/non-special card shape the old full-catalogue fetch
+// used to produce for regular-priced rows, just fetched lazily for a
+// specific handful of ids instead of eagerly for the whole catalogue.
+// Simplification: looks up each id as its own single-store card rather
+// than reconstructing its full original cross-store match group (that
+// would need a reverse index over the union-find groups built once during
+// loadLiveProducts and not persisted) -- real data, just possibly missing
+// a second store's row if the id was part of a multi-store group. Flagged
+// for Jay; fine for the common case of one tracked listing at one store.
+async function fetchNonSpecialProductCards(productIds) {
+  const ids = [...new Set(productIds)].filter(Boolean);
+  if (!ids.length) return [];
+  const [priceRows, productRows] = await Promise.all([
+    fetchByIds('current_prices', 'product_id', 'product_id,store_id,price', ids),
+    fetchByIds('products', 'id', 'id,name,brand,category,image_url,unit_size', ids),
+  ]);
+  const productById = new Map(productRows.map((p) => [p.id, p]));
 
-// Loads EVERY current-priced item (no cap, no is_special filter -- per
-// 2026-07-10 discussion: users should be able to find any item the
-// supermarkets stock, not just ones currently on special, so they can see
-// an item's price history even when it isn't discounted right now),
-// grouped into real cross-store match groups, and streams results back in
-// pages via `onUpdate(cumulativeProductsSoFar)` so the app can render the
-// first page immediately and keep filling in the rest in the background
-// rather than blocking on one giant fetch. Groups with more distinct real
-// stores AND an active special are processed first so the richest,
-// most-actionable comparisons show up in the earliest, fastest-rendering
-// page; plain (non-special) items still load, just later.
+  return priceRows.map((row) => {
+    const meta = productById.get(row.product_id);
+    if (!meta || !meta.name) return null;
+    return {
+      id: row.product_id,
+      brand: titleCase(meta.brand) || 'Unbranded',
+      name: titleCase(meta.name),
+      category: meta.category || 'Grocery',
+      image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
+      standardPrice: row.price,
+      unit: meta.unit_size || '',
+      currentDeals: [{
+        store: STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
+        price: row.price,
+        originalPrice: row.price,
+        discountPercentage: 0,
+        dealType: 'Fair Price',
+        wasArtificiallyInflated: false,
+        reason: 'Regular Price',
+        explanation: 'Not currently on special -- this is the regular shelf price.',
+        isOnSpecial: false,
+      }],
+      priceHistory: [],
+      description: '',
+    };
+  }).filter(Boolean);
+}
+
+// Loads current specials only -- per the 2026-08-07 scope decision with
+// Jay, the app searches/browses current specials, using history purely to
+// rank them (dodgy/fair/genuine), not full-catalogue browsing. Sourced
+// entirely from the dodgy_deals view (~6,200 rows, already classified and
+// joined against products/stores server-side) grouped into real cross-store
+// match groups via the same union-find matchIndex as before. Replaces the
+// old current_prices + products + price_history three-table fetch
+// (~30-40MB/load, effectively the whole catalogue every time) with one
+// ~6,200-row query -- no more per-page pagination loop needed, the whole
+// specials set is small enough to load in one shot.
 async function loadLiveProducts(onUpdate) {
-  const [allCurrentPrices, storeRows, matchIndex] = await Promise.all([
-    fetchAllRows('current_prices?select=product_id,store_id,price,was_price,is_special,special_label,special_end_date'),
-    fetchAllRows('stores?select=id,name'),
+  const [specialRows, matchIndex] = await Promise.all([
+    fetchAllRows('dodgy_deals?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason'),
     buildMatchIndex(),
   ]);
-  if (!allCurrentPrices.length) return [];
-  const storeNameById = new Map(storeRows.map((s) => [s.id, s.name]));
+  if (!specialRows.length) return [];
 
   const byGroup = new Map();
-  for (const row of allCurrentPrices) {
+  for (const row of specialRows) {
     const groupId = matchIndex.find(row.product_id);
     if (!byGroup.has(groupId)) byGroup.set(groupId, []);
     byGroup.get(groupId).push(row);
   }
 
-  // Groups with an active special first (most immediately useful), then
-  // richest (most real cross-store) comparisons, product-count as a stable
-  // tiebreaker so page contents are reproducible run to run. Plain
-  // (non-special) groups still load, just in later pages.
-  const groups = [...byGroup.entries()].sort((a, b) => {
-    const specialA = a[1].some((r) => r.is_special) ? 1 : 0;
-    const specialB = b[1].some((r) => r.is_special) ? 1 : 0;
-    const storesA = new Set(a[1].map((r) => r.store_id)).size;
-    const storesB = new Set(b[1].map((r) => r.store_id)).size;
-    return specialB - specialA || storesB - storesA || b[1].length - a[1].length;
-  });
-
-  const allProducts = [];
-  for (let i = 0; i < groups.length; i += GROUPS_PER_PAGE) {
-    const page = groups.slice(i, i + GROUPS_PER_PAGE);
-    const pageProducts = await buildProductCardsForGroups(page, storeNameById);
-    allProducts.push(...pageProducts);
-    if (onUpdate) onUpdate(allProducts.slice());
-    // Yield to the event loop between pages so the UI thread isn't blocked
-    // and already-rendered pages stay interactive while the rest loads.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-
+  const allProducts = buildProductCardsFromSpecials([...byGroup.entries()]);
+  if (onUpdate) onUpdate(allProducts);
   return allProducts;
 }
 
@@ -1404,24 +1572,20 @@ function AppHeader({
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-white flex justify-between items-center w-full px-6 h-16 border-b border-stone-200 shadow-xs flex-shrink-0">
+    <header className="sticky top-0 z-40 bg-stone-50 flex justify-between items-center w-full px-6 h-16 flex-shrink-0">
       <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {onBack ? (
             <button
               onClick={onBack}
               id={backButtonId}
-              className="p-1.5 -ml-2 rounded-full hover:bg-stone-100 text-stone-700 transition-colors cursor-pointer"
+              className="p-1.5 -ml-2 rounded-full hover:bg-stone-100 text-stone-700 transition-colors cursor-pointer flex-shrink-0"
               aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-          ) : (
-            <div className="w-7 h-7 bg-ink-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-lg shadow-ink-100">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-          )}
-          <span className="font-black text-xl tracking-tighter text-stone-900 uppercase font-display">{title}.</span>
+          ) : null}
+          <span className="font-black text-base tracking-tighter text-stone-900 font-display truncate max-w-[70%]">{title}</span>
         </div>
         <div className="flex items-center gap-3 relative">
           {showCloseButton ? (
@@ -1431,19 +1595,28 @@ function AppHeader({
             >
               <X className="w-5 h-5" />
             </button>
-          ) : (
+          ) : isLoggedIn ? (
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               id="global-header-profile-btn"
-              className={`p-2 transition-all duration-150 ease-in-out rounded-lg cursor-pointer relative ${
-                isUserMenuOpen || isProfileHighlighted ? 'bg-ink-50 text-ink-600' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-50'
+              className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center text-base font-black text-white bg-fair-600 transition-all duration-150 ease-in-out ${
+                isUserMenuOpen || isProfileHighlighted ? 'ring-2 ring-ink-200' : ''
               }`}
             >
-              <User className="w-5 h-5" />
+              S
+            </button>
+          ) : (
+            <button
+              onClick={onOpenLogin}
+              id="global-header-profile-btn"
+              aria-label="Log in or create an account"
+              className="w-8 h-8 rounded-full cursor-pointer flex items-center justify-center text-stone-500 bg-stone-100 hover:bg-stone-200 transition-colors duration-150 ease-in-out"
+            >
+              <CircleUser className="w-5 h-5" />
             </button>
           )}
 
-          {isUserMenuOpen && (
+          {isUserMenuOpen && isLoggedIn && (
             <>
               <div
                 className="fixed inset-0 z-40 bg-transparent"
@@ -1526,12 +1699,132 @@ function SearchTab({
   setSelectedStores,
   sortBy,
   setSortBy,
+  isAllDealsExpanded,
+  setIsAllDealsExpanded,
+  homeTab,
+  setHomeTab,
+  storeFilter,
+  setStoreFilter,
+  categoryFilter,
+  setCategoryFilter,
+  homeSortBy,
+  setHomeSortBy,
   onNavigateToSettings,
   onOpenScanner,
+  onOpenLogin,
   isLoggedIn = true,
   productsVersion = 0,
+  startInSearchMode = false,
 }) {
-  const [isAllDealsExpanded, setIsAllDealsExpanded] = React.useState(false);
+  // Shown in the full-screen search view before the user has typed 3+
+  // characters (the "Keep typing..." state) so there's something to browse
+  // rather than a dead end -- the biggest current specials across the whole
+  // live catalogue, ranked by discount, same "best deal per product" idea
+  // used by the results list below.
+  const popularSpecials = React.useMemo(() => {
+    const dealMatchesSelectedStores = (deal) => {
+      if (selectedStores.includes('all')) return true;
+      return selectedStores.some((selected) => storeMatchesFilter(deal.store, selected));
+    };
+    return mockProducts
+      .map((product) => {
+        const specialDeals = (product.currentDeals || []).filter((d) => d.isOnSpecial !== false && dealMatchesSelectedStores(d));
+        if (specialDeals.length === 0) return null;
+        const bestDeal = specialDeals.reduce((best, d) =>
+          (d.discountPercentage || 0) > (best.discountPercentage || 0) ? d : best
+        , specialDeals[0]);
+        return { product, bestDeal };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.bestDeal.discountPercentage || 0) - (a.bestDeal.discountPercentage || 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productsVersion, selectedStores]);
+  const [popularSortBy, setPopularSortBy] = React.useState('discount');
+  const [popularTab, setPopularTab] = React.useState('specials');
+  const [popularCategoryFilter, setPopularCategoryFilter] = React.useState([]);
+  const [resultsCategoryFilter, setResultsCategoryFilter] = React.useState([]);
+  const [categorySheetTarget, setCategorySheetTarget] = React.useState(null);
+  const activeCategoryFilter = categorySheetTarget === 'results' ? resultsCategoryFilter : popularCategoryFilter;
+  const setActiveCategoryFilter = categorySheetTarget === 'results' ? setResultsCategoryFilter : setPopularCategoryFilter;
+  const toggleActiveCategory = (cat) => {
+    setActiveCategoryFilter((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
+  };
+  const togglePopularCategory = (cat) => {
+    setPopularCategoryFilter((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
+  };
+  const sortedPopularSpecials = React.useMemo(() => {
+    const filtered = popularSpecials.filter(({ product, bestDeal }) =>
+      (popularTab !== 'dodgy' || bestDeal.dealType === 'Dodgy Deal') &&
+      (popularCategoryFilter.length === 0 || popularCategoryFilter.includes(groupCategory(product.category)))
+    );
+    const sorted = [...filtered];
+    if (popularTab === 'dodgy') {
+      if (popularSortBy === 'recent') {
+        sorted.sort((a, b) => new Date(b.bestDeal.saleStartedAt || 0) - new Date(a.bestDeal.saleStartedAt || 0));
+      } else if (popularSortBy === 'price-desc') {
+        sorted.sort((a, b) => b.bestDeal.price - a.bestDeal.price);
+      } else if (popularSortBy === 'price-asc') {
+        sorted.sort((a, b) => a.bestDeal.price - b.bestDeal.price);
+      }
+    } else if (popularSortBy === 'dodgy') {
+      sorted.sort((a, b) => (b.bestDeal.dealType === 'Dodgy Deal' ? 1 : 0) - (a.bestDeal.dealType === 'Dodgy Deal' ? 1 : 0));
+    }
+    return sorted;
+  }, [popularSpecials, popularSortBy, popularTab, popularCategoryFilter]);
+  const [isPopularExpanded, setIsPopularExpanded] = React.useState(false);
+  const POPULAR_PAGE_SIZE = popularTab === 'dodgy' ? 24 : 6;
+  const visiblePopularSpecials = isPopularExpanded ? sortedPopularSpecials : sortedPopularSpecials.slice(0, POPULAR_PAGE_SIZE);
+
+  const [railSortBy, setRailSortBy] = React.useState('discount');
+  const railProducts = React.useMemo(() => {
+    if (homeTab === 'related') {
+      return popularSpecials
+        .filter(({ product, bestDeal }) => storeMatchesFilter(bestDeal.store, storeFilter) && (categoryFilter === 'all' || groupCategory(product.category) === categoryFilter))
+        .map(({ product, bestDeal }) => ({ product, bestDeal }));
+    }
+    // Trending = genuine, real-money-saving deals that started within the
+    // last 7 days -- not just anything on special. saleStartedAt is missing
+    // on FALLBACK_PRODUCTS demo data (no live history to derive it from),
+    // so those still pass.
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const isRecentRealDeal = (d) =>
+      d.dealType === 'Real Deal' && (!d.saleStartedAt || new Date(d.saleStartedAt).getTime() >= weekAgo);
+    return mockProducts
+      .filter((product) => (categoryFilter === 'all' || groupCategory(product.category) === categoryFilter) && (product.currentDeals || []).some((d) => isRecentRealDeal(d) && storeMatchesFilter(d.store, storeFilter)))
+      .map((product) => ({
+        product,
+        bestDeal: product.currentDeals
+          .filter((d) => isRecentRealDeal(d) && storeMatchesFilter(d.store, storeFilter))
+          .reduce((best, d) => (d.price < best.price ? d : best)),
+      }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeTab, popularSpecials, productsVersion, storeFilter, categoryFilter]);
+  // Cap the rendered list -- Trending/Related can have thousands of matches
+  // against the live catalogue with no filter applied, and rendering every
+  // ProductCard at once freezes the tab. Sort by biggest discount (or
+  // dodgy-first) and only render a page at a time. Memoized -- this used to
+  // resort/refilter a multi-thousand-item array inline on every render,
+  // including renders triggered elsewhere in the app (like opening the
+  // deal-assessment modal), which is what was freezing the UI on tap.
+  const sortedRailProducts = React.useMemo(() => {
+    return [...railProducts].sort((a, b) => {
+      if (railSortBy === 'dodgy') {
+        const aDodgy = a.bestDeal.dealType === 'Dodgy Deal' ? 1 : 0;
+        const bDodgy = b.bestDeal.dealType === 'Dodgy Deal' ? 1 : 0;
+        if (bDodgy !== aDodgy) return bDodgy - aDodgy;
+      }
+      return (b.bestDeal.discountPercentage || 0) - (a.bestDeal.discountPercentage || 0);
+    });
+  }, [railProducts, railSortBy]);
+  const homeCategories = React.useMemo(
+    () => [...new Set(mockProducts.map((p) => groupCategory(p.category)).filter(Boolean))].sort(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [productsVersion]
+  );
+
+  React.useEffect(() => {
+    setIsAllDealsExpanded(false);
+  }, [homeTab, storeFilter, categoryFilter]);
 
   // Full-screen search view -- opens as soon as the search bar is tapped
   // (onFocus, see renderSearchBar below) or as soon as a character is typed.
@@ -1543,8 +1836,8 @@ function SearchTab({
   // closing search instead of just clearing the text typed so far. Native
   // search screens keep you in the full-screen view (showing "Keep
   // typing...") until you explicitly back out.
-  const [isSearchActive, setIsSearchActive] = React.useState(false);
-  const [priceFilter, setPriceFilter] = React.useState('all');
+  const [isSearchActive, setIsSearchActive] = React.useState(() => startInSearchMode);
+  const [priceFilter, setPriceFilter] = React.useState('specials');
 
   const [usePersonalised, setUsePersonalised] = React.useState(() => {
     return localStorage.getItem('use_personalised_settings') === 'true';
@@ -1557,14 +1850,13 @@ function SearchTab({
       "PAK'nSAVE": "PAK'nSAVE Mt Albert",
       'New World': 'New World Victoria Park',
       'Four Square': 'Four Square Ellerslie',
-      'FreshChoice': 'FreshChoice Half Moon Bay',
     };
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
           const loaded = {};
-          ['Woolworths', "PAK'nSAVE", 'New World', 'Four Square', 'FreshChoice'].forEach(brand => {
+          ['Woolworths', "PAK'nSAVE", 'New World', 'Four Square'].forEach(brand => {
             loaded[brand] = parsed[brand] || defaults[brand];
           });
           return loaded;
@@ -1583,6 +1875,10 @@ function SearchTab({
   // typing pauses -- previously it ran synchronously on every single
   // keystroke, which is what caused the noticeable suggestion lag on mobile.
   const [debouncedQuery, setDebouncedQuery] = React.useState(activeSearchQuery);
+  const [isSearchResultsExpanded, setIsSearchResultsExpanded] = React.useState(false);
+  React.useEffect(() => {
+    setIsSearchResultsExpanded(false);
+  }, [debouncedQuery, selectedStores, sortBy, priceFilter]);
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(activeSearchQuery), 150);
     return () => clearTimeout(timer);
@@ -1630,22 +1926,21 @@ function SearchTab({
       if (selectedStores.includes('all')) {
         return product.currentDeals.length > 0;
       }
-      return product.currentDeals.some((deal) => {
-        const normalizedDealStore = deal.store.toLowerCase().replace(/[^a-z]/g, '');
-        return selectedStores.some((selected) => {
-          const normalizedSelectedStore = selected.toLowerCase().replace(/[^a-z]/g, '');
-          return normalizedDealStore === normalizedSelectedStore;
-        });
-      });
+      return product.currentDeals.some((deal) => selectedStores.some((selected) => storeMatchesFilter(deal.store, selected)));
     });
 
-    // Keep price status as a simple product-level filter. Products with at
-    // least one promotional current price are "On special"; the remainder
-    // are "Normal price" items.
+    // The results screen only ever shows on-special items now (browsing
+    // regular-priced items lives in the plain catalogue search, not this
+    // deals-focused list) -- "All specials" vs "Dodgy" narrows to just the
+    // deals flagged dodgy by the classifier.
     const matched = matchedByStore.filter((product) => {
-      if (priceFilter === 'all') return true;
       const hasSpecial = product.currentDeals.some((deal) => deal.isOnSpecial !== false);
-      return priceFilter === 'special' ? hasSpecial : !hasSpecial;
+      if (!hasSpecial) return false;
+      if (priceFilter === 'dodgy') {
+        if (!product.currentDeals.some((deal) => deal.dealType === 'Dodgy Deal')) return false;
+      }
+      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(product.category))) return false;
+      return true;
     });
 
     const getBestPrice = (p) => Math.min(...p.currentDeals.map((d) => d.price));
@@ -1678,33 +1973,12 @@ function SearchTab({
       })
       .map((x) => x.product);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productsVersion, debouncedQuery, selectedStores, sortBy, priceFilter]);
+  }, [productsVersion, debouncedQuery, selectedStores, sortBy, priceFilter, resultsCategoryFilter]);
 
   // Unique count of retailers offering these deals
   const totalRetailersCount = new Set(
     sortedProducts.flatMap((p) => p.currentDeals.map((d) => d.store))
   ).size;
-
-  // Shown in the full-screen search view before the user has typed 3+
-  // characters (the "Keep typing..." state) so there's something to browse
-  // rather than a dead end -- the biggest current specials across the whole
-  // live catalogue, ranked by discount, same "best deal per product" idea
-  // used by the results list below.
-  const popularSpecials = React.useMemo(() => {
-    return mockProducts
-      .map((product) => {
-        const specialDeals = (product.currentDeals || []).filter((d) => d.isOnSpecial !== false);
-        if (specialDeals.length === 0) return null;
-        const bestDeal = specialDeals.reduce((best, d) =>
-          (d.discountPercentage || 0) > (best.discountPercentage || 0) ? d : best
-        , specialDeals[0]);
-        return { product, bestDeal };
-      })
-      .filter(Boolean)
-      .sort((a, b) => (b.bestDeal.discountPercentage || 0) - (a.bestDeal.discountPercentage || 0))
-      .slice(0, 6);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productsVersion]);
 
   // No more explicit "Search" submit button (it's been replaced by the
   // barcode-scan button below) -- results now live-filter as the user
@@ -1726,10 +2000,17 @@ function SearchTab({
   // Closes the full-screen search view entirely (back arrow, and the
   // dedicated close button in the full-screen bar) -- resets the query too,
   // same as leaving a native search screen.
+  // Dedicated close button in the full-screen bar just drops focus/keyboard
+  // -- it stays on the search screen. Exiting the screen entirely is the
+  // back arrow's job (handleClearSearch below).
+  const handleBlurSearchInput = () => {
+    document.getElementById('search-input')?.blur();
+  };
+
   const handleClearSearch = () => {
     setSearchInputValue('');
     setActiveSearchQuery('');
-    setPriceFilter('all');
+    setPriceFilter('specials');
     setIsSearchActive(false);
     showSnackbar('Cleared search results');
   };
@@ -1796,14 +2077,20 @@ function SearchTab({
   const renderSearchBar = (autoFocus, isFullScreen) => (
     <form
       onSubmit={handleSearchFormSubmit}
-      className="flex items-center bg-white rounded-xl pl-4 pr-2 py-2 border border-stone-200 focus-within:border-ink-600 focus-within:ring-2 focus-within:ring-ink-100 transition-all shadow-xs"
+      className={`flex items-center rounded-full transition-all ${
+        isFullScreen
+          ? 'bg-ink-50 pl-5 pr-2 py-2 focus-within:ring-2 focus-within:ring-ink-200'
+          : 'bg-white pl-5 pr-2 py-2.5 border border-stone-300 focus-within:ring-2 focus-within:ring-ink-200'
+      }`}
     >
-      <Search className="text-stone-400 w-5 h-5 mr-3 flex-shrink-0" />
+      <Search className={`w-5 h-5 mr-3 flex-shrink-0 ${isFullScreen ? 'text-stone-400' : 'text-stone-400'}`} />
       <input
         id="search-input"
         autoFocus={autoFocus}
-        className="bg-transparent border-none focus:outline-none w-full text-sm font-bold text-stone-900 placeholder:text-stone-400 tracking-wider h-10"
-        placeholder="Search for products..."
+        className={`bg-transparent border-none focus:outline-none w-full text-sm font-medium font-sans h-10 ${
+          isFullScreen ? 'text-stone-500 placeholder:text-stone-400' : 'text-stone-500 placeholder:text-stone-400'
+        }`}
+        placeholder="Search for supermarket products"
         type="text"
         value={searchInputValue}
         onChange={handleSearchInputChange}
@@ -1816,7 +2103,7 @@ function SearchTab({
           id="clear-search-btn"
           title="Clear search"
           aria-label="Clear search"
-          className="text-[10px] font-black uppercase tracking-widest text-ink-600 hover:text-ink-800 px-2 py-1 rounded-lg hover:bg-ink-50 cursor-pointer flex-shrink-0 whitespace-nowrap"
+          className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg cursor-pointer flex-shrink-0 whitespace-nowrap text-ink-600 hover:text-ink-800 hover:bg-ink-100`}
           type="button"
         >
           Clear
@@ -1825,11 +2112,11 @@ function SearchTab({
       {isFullScreen ? (
         <button
           type="button"
-          onClick={handleClearSearch}
+          onClick={handleBlurSearchInput}
           id="close-search-fullscreen-btn"
-          title="Close search"
-          aria-label="Close search"
-          className="ml-2 text-stone-500 bg-stone-100 hover:bg-stone-200 p-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-stone-200 flex items-center justify-center"
+          title="Dismiss keyboard"
+          aria-label="Dismiss keyboard"
+          className="ml-2 text-stone-700 bg-stone-200 hover:bg-stone-300 p-2.5 rounded-full cursor-pointer transition-colors flex-shrink-0 border border-stone-300 flex items-center justify-center"
         >
           <X className="w-4 h-4" />
         </button>
@@ -1840,9 +2127,9 @@ function SearchTab({
           id="scan-barcode-btn"
           title="Scan a barcode"
           aria-label="Scan a barcode"
-          className="ml-2 text-ink-600 bg-ink-50 hover:bg-ink-100 p-2.5 rounded-lg cursor-pointer transition-colors flex-shrink-0 border border-ink-100 flex items-center justify-center"
+          className="ml-2 text-ink-600 bg-white hover:bg-stone-50 border border-ink-100 p-2.5 rounded-full cursor-pointer transition-colors flex-shrink-0 flex items-center justify-center"
         >
-          <Camera className="w-4 h-4" />
+          <ScanBarcode className="w-5 h-5" />
         </button>
       )}
     </form>
@@ -1850,28 +2137,68 @@ function SearchTab({
 
   return (
     <div className="space-y-6">
-      {/* Short description shown BEFORE a search is conducted */}
+      {/* Persistent Search Bar */}
       {!isSearchActive && (
-        <div className="space-y-4 text-center py-4">
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-ink-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-lg">
-              <Sparkles className="w-6 h-6 text-white transform -rotate-45" />
-            </div>
+        <section className="sticky top-16 z-30 -mx-4 -mt-4 px-6 pt-3 pb-4 bg-white space-y-1.5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <img src="../assets/logo-ink.svg" alt="" className="w-9 h-9 flex-shrink-0 animate-logo-blink" />
+            <span className="text-sm text-stone-600">Spot if today's deals are dodgy</span>
           </div>
-          <div className="space-y-2 max-w-sm mx-auto">
-            <h2 className="text-3xl font-black tracking-tighter text-stone-900 font-display">
-              DODGY DEAL
-            </h2>
-            <p className="text-xs text-stone-500 font-medium leading-relaxed">
-              An app that allows you to search and compare for sales across the main supermarkets in Aotearoa, New Zealand.
-            </p>
-          </div>
+          {renderSearchBar(false, false)}
+        </section>
+      )}
+
+      {/* Global supermarket filter -- narrows every home rail (Your List,
+          Related, Latest) to a single store, or 'all' for no filtering. */}
+      {!isSearchActive && (
+        <div className="flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar -mx-4 px-4">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'woolworths', label: 'Woolworths' },
+            { id: 'paknsave', label: "Pak'nSave" },
+            { id: 'newworld', label: 'New World' },
+            { id: 'foursquare', label: 'Four Square' },
+          ].map((store) => {
+            const meta = store.id === 'all' ? { bg: 'bg-stone-900', text: 'text-white' } : getStoreLogoMeta(store.id);
+            return (
+              <button
+                key={store.id}
+                type="button"
+                onClick={() => setStoreFilter(store.id)}
+                className={`flex-shrink-0 whitespace-nowrap px-3 py-2 text-[10px] font-bold tracking-wider rounded-xl border transition-all duration-150 cursor-pointer ${
+                  storeFilter === store.id
+                    ? `${meta.bg} border-transparent ${meta.text} shadow-xs`
+                    : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                }`}
+              >
+                {store.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Persistent Search Bar */}
+
+
+      {/* Home tabs -- switch which product rail is shown below the search bar. */}
       {!isSearchActive && (
-        <section className="relative">{renderSearchBar(false, false)}</section>
+        <div className="flex items-center gap-1 bg-stone-100 rounded-xl p-1">
+          {[
+            { id: 'latest', label: 'Trending' },
+            { id: 'your-list', label: 'My List' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setHomeTab(tab.id)}
+              className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer ${
+                homeTab === tab.id ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Guest empty state -- signed-out users have no "Your Items on Special"
@@ -1879,53 +2206,89 @@ function SearchTab({
           list-membership content), so without this the home screen would
           just show the tagline and search bar with nothing guiding a guest
           toward what to do next. */}
-      {!isSearchActive && !isLoggedIn && (
+      {!isSearchActive && !isLoggedIn && homeTab === 'your-list' && (
         <div className="text-center py-10 px-6 space-y-3 bg-white border border-dashed border-stone-200 rounded-3xl">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-ink-50 border border-ink-100 flex items-center justify-center">
-            <Search className="w-6 h-6 text-ink-600" />
-          </div>
           <p className="text-sm font-bold text-stone-700 leading-relaxed max-w-xs mx-auto">
-            Search your favourite brands or shopping items, we will scan prices across all NZ supermarkets for the best price, or check if a deal is dodgy
+            You need to create an account or log in to use My List
           </p>
+          <button
+            id="search-tab-login-btn"
+            onClick={onOpenLogin}
+            className="bg-stone-900 hover:bg-ink-600 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer active:scale-95 shadow-md shadow-stone-200"
+          >
+            Log in or create an account
+          </button>
         </div>
       )}
 
       {/* Generic Specials Alert - Highlight items on sale in user's lists.
           Gated behind login since it surfaces "your list" membership, which
           doesn't exist for a signed-out/guest browser. */}
-      {!isSearchActive && isLoggedIn && (() => {
+      {!isSearchActive && isLoggedIn && homeTab === 'your-list' && (() => {
         // Collect all product IDs in any list
         const allListProductIds = Array.from(new Set(lists.flatMap((l) => l.itemIds)));
 
         const listItemsOnSale = mockProducts.filter((p) => {
           const isInList = allListProductIds.includes(p.id);
+          const matchesCategory = categoryFilter === 'all' || groupCategory(p.category) === categoryFilter;
           // isOnSpecial is undefined on FALLBACK_PRODUCTS mock deals (all
           // treated as active deals, unchanged) but explicitly false on
           // live regular-priced rows -- only real specials belong in this
           // "on sale" widget, browse-all items show up via search instead.
           const hasActiveSpecial =
-            p.currentDeals && p.currentDeals.some((d) => d.isOnSpecial !== false);
-          return isInList && hasActiveSpecial;
+            p.currentDeals && p.currentDeals.some((d) => d.isOnSpecial !== false && storeMatchesFilter(d.store, storeFilter));
+          return isInList && matchesCategory && hasActiveSpecial;
         });
 
         if (listItemsOnSale.length === 0) return null;
 
-        const displayedItems = isAllDealsExpanded
-          ? listItemsOnSale
-          : listItemsOnSale.slice(0, listItemsOnSale.length > 2 ? 3 : 2);
+        const isDealDodgy = (p) => (p.currentDeals || []).some((d) => d.dealType === 'Dodgy Deal');
+        const sortItems = (items, getPrice) => {
+          const sorted = [...items];
+          if (homeSortBy === 'price-asc') sorted.sort((a, b) => getPrice(a) - getPrice(b));
+          else if (homeSortBy === 'price-desc') sorted.sort((a, b) => getPrice(b) - getPrice(a));
+          else if (homeSortBy === 'dodgy') sorted.sort((a, b) => (isDealDodgy(b) ? 1 : 0) - (isDealDodgy(a) ? 1 : 0));
+          return sorted;
+        };
+
+        const displayedItems = sortItems(
+          listItemsOnSale,
+          (p) => p.currentDeals.reduce((best, d) => (d.price < best.price ? d : best)).price
+        );
 
         return (
           <div className="space-y-4">
             <div className="space-y-1 pb-1 text-center">
-              <h3 className="text-lg font-black tracking-tight text-stone-900 font-display uppercase">
-                Your Items on Special
+              <h3 className="text-lg font-black tracking-tight text-stone-900 font-display">
+                Current specials in your lists
               </h3>
               <p className="text-xs text-stone-500 font-semibold">
-                {listItemsOnSale.length} {listItemsOnSale.length === 1 ? 'item' : 'items'} from your lists are currently on sale
+                Tap any item to check if the deal is dodgy.
               </p>
             </div>
 
-            <div className="bg-stone-100/80 border border-stone-200 rounded-3xl p-4.5 md:p-5 space-y-4 shadow-sm shadow-stone-100/50">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-stone-500">
+                  {listItemsOnSale.length} {listItemsOnSale.length === 1 ? 'item' : 'items'}
+                </span>
+                <div className="relative inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-white border border-stone-200 rounded-lg px-2.5 py-1.5">
+                  <span>Sort</span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <select
+                    value={homeSortBy}
+                    onChange={(e) => setHomeSortBy(e.target.value)}
+                    aria-label="Sort"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  >
+                    <option value="recent">Most recent</option>
+                    <option value="price-asc">Price low to high</option>
+                    <option value="price-desc">Price high to low</option>
+                    <option value="dodgy">Dodgy first</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 gap-4">
                 {displayedItems.map((product, idx) => {
                   const isTracked = trackedProductIds.includes(product.id);
@@ -1933,7 +2296,7 @@ function SearchTab({
                     d.price < best.price ? d : best
                   , product.currentDeals[0]);
 
-                  const isPartiallyVisible = !isAllDealsExpanded && idx === 2;
+                  const isPartiallyVisible = false;
 
                   const alsoSpecialStores = [...new Set(
                     (product.currentDeals || [])
@@ -1959,18 +2322,78 @@ function SearchTab({
                   );
                 })}
               </div>
+            </div>
+          </div>
+        );
+      })()}
 
-              {listItemsOnSale.length > 2 && (
-                <div className="flex justify-center pt-1 pb-1">
-                  <button
-                    onClick={() => setIsAllDealsExpanded(!isAllDealsExpanded)}
-                    className="text-xs font-black uppercase tracking-widest text-ink-600 hover:text-ink-800 transition-colors py-2 px-4 border border-ink-100 bg-ink-50/50 hover:bg-ink-50 rounded-xl cursor-pointer"
-                  >
-                    {isAllDealsExpanded ? 'see less' : 'see all'}
-                  </button>
-                </div>
+      {!isSearchActive && homeTab !== 'your-list' && (() => {
+        if (railProducts.length === 0) return null;
+        const RAIL_PAGE_SIZE = 24;
+        const visibleRailProducts = isAllDealsExpanded ? sortedRailProducts : sortedRailProducts.slice(0, RAIL_PAGE_SIZE);
+
+        return (
+          <div className="space-y-4">
+            <div className="space-y-1 pb-1 text-center">
+              <h3 className="text-lg font-black tracking-tight text-stone-900 font-display">
+                {homeTab === 'related' ? 'Specials related to your lists' : 'Trending real savings this week'}
+              </h3>
+              {homeTab !== 'related' && (
+                <p className="text-xs text-stone-500 font-semibold">
+                  Items we have confirmed are real saver deals.
+                </p>
               )}
             </div>
+            <div className="flex justify-end">
+              <div className="relative inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-white border border-stone-200 rounded-lg px-2.5 py-1.5">
+                <span>Sort</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+                <select
+                  value={railSortBy}
+                  onChange={(e) => setRailSortBy(e.target.value)}
+                  aria-label="Sort"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                >
+                  <option value="discount">Biggest discount</option>
+                  <option value="dodgy">Dodgy first</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              {visibleRailProducts.map(({ product, bestDeal }) => {
+                const isTracked = trackedProductIds.includes(product.id);
+                const alsoSpecialStores = [...new Set(
+                  (product.currentDeals || [])
+                    .filter((d) => d.isOnSpecial !== false && d.store !== bestDeal.store)
+                    .map((d) => d.store)
+                )];
+                return (
+                  <ProductCard
+                    key={`${homeTab}-${product.id}`}
+                    id={`check-deal-${homeTab}-${product.id}`}
+                    product={product}
+                    price={bestDeal.price}
+                    storeKey={bestDeal.store}
+                    storeLinePrefix={homeTab === 'related' ? 'On special at' : 'Lowest at'}
+                    branchOverrides={usePersonalised ? selectedBranches : null}
+                    dealEndsText={bestDeal.isOnSpecial !== false && bestDeal.specialEndDate ? `Deal ends ${formatDealEndDate(bestDeal.specialEndDate)}` : ''}
+                    alsoSpecialStores={alsoSpecialStores}
+                    isTracked={isLoggedIn ? isTracked : false}
+                    onToggleTrack={isLoggedIn ? () => handleTrackClick(product.id, product.name) : onOpenLogin}
+                    onActivate={() => onCheckDeal(product, bestDeal.store)}
+                  />
+                );
+              })}
+            </div>
+            {sortedRailProducts.length > RAIL_PAGE_SIZE && !isAllDealsExpanded && (
+              <button
+                type="button"
+                onClick={() => setIsAllDealsExpanded(true)}
+                className="w-full py-3 text-xs font-black uppercase tracking-widest text-ink-600 hover:text-ink-800 bg-white border border-stone-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Show all {sortedRailProducts.length} deals
+              </button>
+            )}
           </div>
         );
       })()}
@@ -2019,23 +2442,104 @@ function SearchTab({
           <div className="flex-1 overflow-y-auto px-4 pb-5 space-y-6">
             {activeSearchQuery.trim().length < 3 ? (
               <div className="space-y-8">
-                <div className="text-center py-8 space-y-2">
-                  <Search className="w-10 h-10 text-stone-300 mx-auto" />
-                  <p className="font-bold text-stone-500 uppercase tracking-widest text-[10px]">
-                    Keep typing...
-                  </p>
-                  <p className="text-xs text-stone-400">
-                    Enter at least 3 characters to see suggested items
-                  </p>
+                {activeSearchQuery.length > 0 && (
+                  <div className="text-center py-4 space-y-1.5">
+                    <img src="../assets/logo-ink.svg" alt="" className="w-10 h-10 mx-auto animate-logo-blink" />
+                    <p className="font-bold text-stone-500 uppercase tracking-widest text-[10px]">
+                      Keep typing...
+                    </p>
+                    <p className="text-xs text-stone-400">
+                      Enter at least 3 characters to see suggested items
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1 bg-stone-100 rounded-xl p-1 mt-4">
+                  {[
+                    { id: 'specials', label: 'All specials' },
+                    { id: 'dodgy', label: 'Dodgy' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => { setPopularTab(tab.id); setPopularSortBy(tab.id === 'dodgy' ? 'recent' : 'discount'); setIsPopularExpanded(false); }}
+                      className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer ${
+                        popularTab === tab.id ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-700'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
 
-                {popularSpecials.length > 0 && (
+                <div className="flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'woolworths', label: 'Woolworths' },
+                    { id: 'paknsave', label: "Pak'nSave" },
+                    { id: 'newworld', label: 'New World' },
+                    { id: 'foursquare', label: 'Four Square' },
+                  ].map((store) => {
+                    const isSelected = selectedStores.includes(store.id);
+                    const meta = store.id === 'all' ? { bg: 'bg-stone-900', text: 'text-white' } : getStoreLogoMeta(store.id);
+                    return (
+                      <button
+                        key={store.id}
+                        onClick={() => handleStoreToggle(store.id)}
+                        className={`flex-shrink-0 whitespace-nowrap px-3 py-2 text-[10px] font-bold tracking-wider rounded-xl border transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? `${meta.bg} border-transparent ${meta.text} shadow-xs`
+                            : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                        }`}
+                      >
+                        {store.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {sortedPopularSpecials.length > 0 ? (
                   <div className="space-y-3">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-stone-400 text-center">
-                      Popular Specials Right Now
-                    </h3>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-[10px] font-black tracking-widest text-stone-400">
+                        {popularTab === 'dodgy' ? 'Dodgy deals now' : 'Popular specials now'}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCategorySheetTarget('popular')}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-stone-50 transition-colors"
+                        >
+                          <span>{popularCategoryFilter.length === 0 ? 'Categories' : `Categories (${popularCategoryFilter.length})`}</span>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="relative inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-white border border-stone-200 rounded-lg px-2.5 py-1.5">
+                          <span>Sort</span>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          <select
+                            value={popularSortBy}
+                            onChange={(e) => setPopularSortBy(e.target.value)}
+                            aria-label="Sort"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          >
+                            {popularTab === 'dodgy' ? (
+                              <>
+                                <option value="recent">Most recent</option>
+                                <option value="price-desc">Highest price</option>
+                                <option value="price-asc">Lowest price</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="discount">Biggest discount</option>
+                                <option value="dodgy">Dodgy first</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                     <div className="space-y-4">
-                      {popularSpecials.map(({ product, bestDeal }) => {
+                      {visiblePopularSpecials.map(({ product, bestDeal }) => {
                         const isTracked = trackedProductIds.includes(product.id);
                         // bestDeal here is the *biggest-discount* deal (see
                         // popularSpecials above), not necessarily the
@@ -2064,16 +2568,32 @@ function SearchTab({
                         );
                       })}
                     </div>
+                    {sortedPopularSpecials.length > POPULAR_PAGE_SIZE && !isPopularExpanded && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPopularExpanded(true)}
+                        className="w-full py-3 text-xs font-black uppercase tracking-widest text-ink-600 hover:text-ink-800 bg-white border border-stone-200 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Show all {sortedPopularSpecials.length} deals
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 space-y-1">
+                    <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+                      {popularTab === 'dodgy' ? 'No dodgy deals found right now' : 'No specials found right now'}
+                    </p>
+                    <p className="text-xs text-stone-400">Try widening the supermarket filter above.</p>
                   </div>
                 )}
               </div>
             ) : (
               <>
                 <section className="text-center space-y-2 pt-5">
-                  <h2 id="search-title" className="text-3xl font-black tracking-tighter text-stone-900 leading-none font-display">
+                  <h2 id="search-title" className="text-xl font-black tracking-tighter text-stone-900 leading-none font-display">
                     Results for '{activeSearchQuery || 'all'}'
                   </h2>
-                  <p id="search-subtitle" className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+                  <p id="search-subtitle" className="text-xs font-bold text-stone-400 tracking-wide">
                     {sortedProducts.length} {sortedProducts.length === 1 ? 'item' : 'items'} found · {totalRetailersCount} {totalRetailersCount === 1 ? 'retailer' : 'retailers'}
                   </p>
                 </section>
@@ -2084,34 +2604,48 @@ function SearchTab({
                     Splitting the filter block and the product grid into separate <section>s (the previous version) meant the pills unstuck the
                     moment that small filter block scrolled past, i.e. as soon as the product cards came into view -- exactly the reported bug. */}
                 <section className="flex flex-col gap-4">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-stone-400 block">
-                      Filter by price:
-                    </label>
-                    <div className="flex flex-nowrap gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1">
-                      {[
-                        { id: 'special', label: 'On special' },
-                        { id: 'normal', label: 'Normal price' },
-                        { id: 'all', label: 'All' },
-                      ].map((filter) => {
-                        const isSelected = priceFilter === filter.id;
-                        return (
-                          <button
-                            key={filter.id}
-                            type="button"
-                            id={`price-filter-${filter.id}`}
-                            aria-pressed={isSelected}
-                            onClick={() => setPriceFilter(filter.id)}
-                            className={`flex-shrink-0 whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all duration-150 cursor-pointer ${
-                              isSelected
-                                ? 'bg-ink-600 border-ink-600 text-white shadow-xs'
-                                : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
-                            }`}
-                          >
-                            {filter.label}
-                          </button>
-                        );
-                      })}
+                  <div className="flex items-center gap-1 bg-stone-100 rounded-xl p-1">
+                    {[
+                      { id: 'specials', label: 'All specials' },
+                      { id: 'dodgy', label: 'Dodgy' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        id={`price-filter-${tab.id}`}
+                        aria-pressed={priceFilter === tab.id}
+                        onClick={() => setPriceFilter(tab.id)}
+                        className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer ${
+                          priceFilter === tab.id ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-700'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCategorySheetTarget('results')}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-stone-50 transition-colors"
+                    >
+                      <span>{resultsCategoryFilter.length === 0 ? 'Categories' : `Categories (${resultsCategoryFilter.length})`}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="relative inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-white border border-stone-200 rounded-lg px-2.5 py-1.5">
+                      <span>Sort</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        aria-label="Sort"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      >
+                        <option value="cheapest">Cheapest</option>
+                        <option value="discount">Biggest discount</option>
+                        <option value="dodgy-rating">Dodgy rating</option>
+                      </select>
                     </div>
                   </div>
 
@@ -2131,7 +2665,6 @@ function SearchTab({
                         { id: 'paknsave', label: getStoreDisplayName('paknsave') },
                         { id: 'newworld', label: getStoreDisplayName('newworld') },
                         { id: 'foursquare', label: getStoreDisplayName('foursquare') },
-                        { id: 'freshchoice', label: getStoreDisplayName('freshchoice') },
                       ].map((store) => {
                         const isSelected = selectedStores.includes(store.id);
                         return (
@@ -2151,53 +2684,25 @@ function SearchTab({
                       })}
                     </div>
 
-                    <div className="flex items-center justify-between pt-1.5 border-t border-stone-100 flex-wrap gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          id="use-personalised-settings"
-                          checked={usePersonalised}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setUsePersonalised(checked);
-                            localStorage.setItem('use_personalised_settings', String(checked));
-                            if (checked) {
-                              showSnackbar('Switched to personalised store branches');
-                            } else {
-                              showSnackbar('Switched to generic supermarket filters');
-                            }
-                          }}
-                          className="w-4 h-4 text-ink-600 border-stone-300 rounded focus:ring-ink-500 cursor-pointer accent-ink-600"
-                        />
-                        <label
-                          htmlFor="use-personalised-settings"
-                          className="text-xs font-bold text-stone-600 uppercase tracking-wider cursor-pointer select-none"
-                        >
-                          Use personalised store settings
-                        </label>
-                      </div>
-                      {usePersonalised && onNavigateToSettings && (
+                    {usePersonalised && onNavigateToSettings && (
+                      <div className="flex items-center justify-end pt-1.5 border-t border-stone-100 flex-wrap gap-2">
                         <button
                           onClick={onNavigateToSettings}
                           className="text-ink-600 hover:text-ink-800 hover:underline text-xs font-black uppercase tracking-wider cursor-pointer transition-colors"
                         >
                           Change
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                   <div className="space-y-4">
                   {sortedProducts.length > 0 ? (
-                    sortedProducts.map((product, idx) => {
+                    (isSearchResultsExpanded ? sortedProducts : sortedProducts.slice(0, SEARCH_RESULTS_PAGE_SIZE)).map((product, idx) => {
                       const isTracked = trackedProductIds.includes(product.id);
 
                       const applicableDeals = product.currentDeals.filter((deal) => {
                         if (selectedStores.includes('all')) return true;
-                        const normalizedDealStore = deal.store.toLowerCase().replace(/[^a-z]/g, '');
-                        return selectedStores.some(selected => {
-                          const normalizedSelected = selected.toLowerCase().replace(/[^a-z]/g, '');
-                          return normalizedDealStore === normalizedSelected;
-                        });
+                        return selectedStores.some((selected) => storeMatchesFilter(deal.store, selected));
                       });
                       const hasActiveSpecial = applicableDeals.some((deal) => deal.isOnSpecial !== false);
 
@@ -2254,11 +2759,98 @@ function SearchTab({
                       </p>
                     </div>
                   )}
+                  {sortedProducts.length > SEARCH_RESULTS_PAGE_SIZE && !isSearchResultsExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSearchResultsExpanded(true)}
+                      className="w-full py-3 text-xs font-black uppercase tracking-widest text-ink-600 hover:text-ink-800 bg-white border border-stone-200 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Show all {sortedProducts.length} items
+                    </button>
+                  )}
                   </div>
                 </section>
               </>
             )}
           </div>
+          {categorySheetTarget !== null && (
+            <div className="fixed inset-0 z-[60] flex items-end justify-center">
+              <div
+                className="absolute inset-0 bg-stone-900/40"
+                onClick={() => setCategorySheetTarget(null)}
+              />
+              <div className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[70vh] flex flex-col">
+                <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between flex-shrink-0">
+                  <h3 className="text-sm font-black text-stone-900 tracking-tight font-display">Categories</h3>
+                  <div className="flex items-center gap-1">
+                    {activeCategoryFilter.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCategoryFilter([])}
+                        className="text-xs font-bold text-ink-600 hover:text-ink-800 hover:underline cursor-pointer px-2 py-1"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setCategorySheetTarget(null)}
+                      aria-label="Close"
+                      className="p-1.5 rounded-full hover:bg-stone-100 text-stone-500 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-y-auto px-5 py-4 space-y-5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter([])}
+                    className={`px-3 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
+                      activeCategoryFilter.length === 0 ? 'bg-ink-600 border-ink-600 text-white' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    All categories
+                  </button>
+                  {CATEGORY_SECTIONS.map((section) => {
+                    const sectionCats = section.categories.filter((c) => homeCategories.includes(c));
+                    if (!sectionCats.length) return null;
+                    return (
+                      <div key={section.title} className="space-y-2">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-stone-400">{section.title}</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {sectionCats.map((cat) => {
+                            const isSelected = activeCategoryFilter.includes(cat);
+                            return (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => toggleActiveCategory(cat)}
+                                className={`px-3 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
+                                  isSelected ? 'bg-ink-600 border-ink-600 text-white' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="px-5 py-3 border-t border-stone-100 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setCategorySheetTarget(null)}
+                    className="w-full bg-stone-900 hover:bg-ink-600 text-white font-black text-xs py-3 rounded-xl uppercase tracking-widest transition-colors cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
       </AnimatePresence>
@@ -2346,14 +2938,47 @@ function TrackedTab({
     });
   };
 
-  const myListProducts = mockProducts.filter((p) => trackedProductIds.includes(p.id));
+  // Tracked items that have rolled off special no longer have a row in
+  // mockProducts (sourced only from current specials, see loadLiveProducts).
+  // Per Jay: tracking must survive that -- the item should stay in the
+  // list, just flagged as not currently on special. Lazily hydrate exactly
+  // those missing ids (fetchNonSpecialProductCards), not the whole
+  // catalogue, and cache results locally so re-renders don't re-fetch.
+  const [lapsedTrackedProducts, setLapsedTrackedProducts] = React.useState({});
+  React.useEffect(() => {
+    const missingIds = trackedProductIds.filter(
+      (id) => !mockProducts.some((p) => p.id === id) && !lapsedTrackedProducts[id]
+    );
+    if (!missingIds.length) return;
+    let cancelled = false;
+    fetchNonSpecialProductCards(missingIds)
+      .then((fetched) => {
+        if (cancelled || !fetched.length) return;
+        setLapsedTrackedProducts((prev) => {
+          const next = { ...prev };
+          for (const p of fetched) next[p.id] = p;
+          return next;
+        });
+      })
+      .catch((err) => console.warn('Failed to load lapsed tracked products:', err));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackedProductIds, lapsedTrackedProducts]);
+
+  const myListProducts = [
+    ...mockProducts.filter((p) => trackedProductIds.includes(p.id)),
+    ...trackedProductIds
+      .filter((id) => !mockProducts.some((p) => p.id === id))
+      .map((id) => lapsedTrackedProducts[id])
+      .filter(Boolean),
+  ];
 
   const handleTrackClick = (productId, name) => {
     onTrackToggle(productId);
     showSnackbar(`Removed ${name} from list`);
   };
 
-  const stores = ["PAK'nSAVE", 'Woolworths', 'FreshChoice', 'New World', 'Four Square'];
+  const stores = ["PAK'nSAVE", 'Woolworths', 'New World', 'Four Square'];
 
   const getProductPriceForStore = (product, store) => {
     const deal = product.currentDeals.find((d) => d.store === store);
@@ -2371,8 +2996,6 @@ function TrackedTab({
         return Math.round(product.standardPrice * 0.98 * 100) / 100;
       case 'Four Square':
         return Math.round(product.standardPrice * 1.06 * 100) / 100;
-      case 'FreshChoice':
-        return Math.round(product.standardPrice * 1.02 * 100) / 100;
       case 'Woolworths':
       default:
         return product.standardPrice;
@@ -2899,9 +3522,7 @@ function AlertsTab({
     <div className="space-y-6 pb-20">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-ink-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-md">
-            <Bell className="w-3.5 h-3.5 text-white transform -rotate-45" />
-          </div>
+          <Bell className="w-5 h-5 text-ink-600" />
           <h3 className="text-2xl font-black text-stone-900 tracking-tighter font-display">Price Alerts Log</h3>
         </div>
         {alerts.length > 0 && (
@@ -3148,16 +3769,17 @@ function ProfileTab({ stats, history, isLoggedIn = true, onOpenLogin }) {
     { name: 'New World', key: 'New World' },
     { name: 'Woolworths', key: 'Woolworths' },
     { name: "PAK'nSave", key: "PAK'nSAVE" },
-    { name: 'FreshChoice', key: 'FreshChoice' },
     { name: 'Four Square', key: 'Four Square' },
   ];
 
   const storeStats = allSupermarkets.map(({ name, key }) => {
-    const storeHistory = history.filter((h) => h.store === key);
-    const storeReal = storeHistory.filter(
-      (h) => h.dealType === 'Real Saver' || h.dealType === 'Real Deal'
-    ).length;
-    const storeDodgy = storeHistory.filter((h) => h.dealType === 'Dodgy Deal').length;
+    const storeHistory = history.filter((h) => normalizeStoreKey(h.store).includes(normalizeStoreKey(key)));
+    const storeReal = new Set(
+      storeHistory.filter((h) => h.dealType === 'Real Saver' || h.dealType === 'Real Deal').map((h) => h.productId)
+    ).size;
+    const storeDodgy = new Set(
+      storeHistory.filter((h) => h.dealType === 'Dodgy Deal').map((h) => h.productId)
+    ).size;
 
     return {
       name,
@@ -3169,6 +3791,7 @@ function ProfileTab({ stats, history, isLoggedIn = true, onOpenLogin }) {
   return (
     <div className="space-y-6 pb-20 max-w-md mx-auto animate-fade-in px-4">
       <div className="text-center py-2">
+        <img src="../assets/logo-ink.svg" alt="" className="w-12 h-12 mx-auto mb-2 animate-logo-blink" />
         <h3 className="text-lg font-black text-stone-900 font-display tracking-tight">
           This is how Dodgy Deals works for you
         </h3>
@@ -3180,7 +3803,7 @@ function ProfileTab({ stats, history, isLoggedIn = true, onOpenLogin }) {
           <div className="grid grid-cols-3 divide-x divide-stone-100 text-center">
             <div className="flex flex-col justify-between px-1">
               <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest leading-tight block min-h-[32px] flex items-center justify-center">
-                Total Deals Checked
+                Items Added to Lists
               </span>
               <span className="text-2xl sm:text-3xl font-black text-stone-900 font-display tabular-nums mt-2">
                 {stats.totalChecked}
@@ -3205,39 +3828,39 @@ function ProfileTab({ stats, history, isLoggedIn = true, onOpenLogin }) {
               </span>
             </div>
           </div>
+        </div>
 
-          <div className="space-y-4 pt-4 border-t border-stone-100">
-            <h4 className="text-[11px] font-black text-stone-400 uppercase tracking-widest">
-              Break down by supermarket
-            </h4>
+        <div className="bg-white border border-stone-100 rounded-2xl p-5 shadow-xs hover:border-stone-200 transition-all space-y-4">
+          <h4 className="text-sm font-black text-stone-900">
+            Break down by supermarket
+          </h4>
 
-            <div className="grid grid-cols-12 gap-2 pb-1 text-[10px] font-black text-stone-400 uppercase tracking-wider border-b border-stone-100">
-              <span className="col-span-6">Supermarket</span>
-              <span className="col-span-3 text-center">Real Savers</span>
-              <span className="col-span-3 text-center">Dodgy Deals</span>
-            </div>
+          <div className="grid grid-cols-12 gap-2 pb-1 text-xs font-black text-stone-400 border-b border-stone-100">
+            <span className="col-span-6">Supermarket</span>
+            <span className="col-span-3 text-center">Real savers</span>
+            <span className="col-span-3 text-center">Dodgy deals</span>
+          </div>
 
-            <div className="space-y-2">
-              {storeStats.map((store) => {
-                return (
-                  <div key={store.name} className="grid grid-cols-12 gap-2 items-center py-1 border-b border-stone-50 last:border-0">
-                    <span className="col-span-6 text-xs font-bold text-stone-800 font-display">
-                      {store.name}
+          <div className="space-y-2">
+            {storeStats.map((store) => {
+              return (
+                <div key={store.name} className="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-stone-50 last:border-0">
+                  <span className="col-span-6 text-sm font-bold text-stone-800 font-display">
+                    {store.name}
+                  </span>
+                  <div className="col-span-3 text-center">
+                    <span className="text-sm font-black text-fair-600 bg-fair-50 px-2.5 py-0.5 rounded-md inline-block min-w-[32px] tabular-nums">
+                      {store.real}
                     </span>
-                    <div className="col-span-3 text-center">
-                      <span className="text-xs font-black text-fair-600 bg-fair-50 px-2.5 py-0.5 rounded-md inline-block min-w-[32px] tabular-nums">
-                        {store.real}
-                      </span>
-                    </div>
-                    <div className="col-span-3 text-center">
-                      <span className="text-xs font-black text-alert-600 bg-alert-50 px-2.5 py-0.5 rounded-md inline-block min-w-[32px] tabular-nums">
-                        {store.dodgy}
-                      </span>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="col-span-3 text-center">
+                    <span className="text-sm font-black text-alert-600 bg-alert-50 px-2.5 py-0.5 rounded-md inline-block min-w-[32px] tabular-nums">
+                      {store.dodgy}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -3325,8 +3948,9 @@ function LoginPage({ onLogin, onSkip, onBack }) {
         </button>
       )}
       <div className="max-w-md w-full mx-auto text-center pt-8">
-        <h1 className="text-3xl font-black text-stone-900 tracking-widest uppercase">
-          DODGY DEAL
+        <img src="../assets/logo-ink.svg" alt="" className="w-12 h-12 mx-auto mb-2 animate-logo-blink" />
+        <h1 className="text-3xl font-black text-stone-900 tracking-widest">
+          Dodgy Deal
         </h1>
         <p className="text-xs text-stone-500 font-medium mt-3 leading-relaxed max-w-sm mx-auto">
           Compare prices across supermarkets to instantly assess whether that special is a real saver or a dodgy offer.
@@ -3335,8 +3959,8 @@ function LoginPage({ onLogin, onSkip, onBack }) {
 
       <div className="max-w-md w-full mx-auto bg-white border border-stone-200 rounded-3xl p-8 shadow-xl shadow-stone-100/40 space-y-6 my-auto">
         <div className="text-center space-y-1">
-          <h2 className="text-xl font-black text-stone-900 uppercase tracking-wider font-display">
-            {isSignUp ? 'Sign up' : 'Log In'}
+          <h2 className="text-xl font-black text-stone-900 tracking-wider font-display">
+            {isSignUp ? 'Sign up' : 'Log in'}
           </h2>
           <p className="text-[11px] text-stone-500 font-semibold">
             {isSignUp ? 'Create your Dodgy Deal account' : 'Welcome back to Dodgy Deal'}
@@ -3642,8 +4266,6 @@ const getStoreProductUrl = (store, productName) => {
       return `https://www.newworld.co.nz/shop/search?q=${encoded}`;
     case 'Four Square':
       return `https://www.foursquare.co.nz/shop/search?q=${encoded}`;
-    case 'FreshChoice':
-      return `https://www.freshchoice.co.nz/shop/search?q=${encoded}`;
     default:
       return `https://www.google.com/search?q=${encoded}`;
   }
@@ -3652,23 +4274,47 @@ const getStoreProductUrl = (store, productName) => {
 const getStoreLogoMetaModal = (storeName) => {
   const STORE_LOGOS = {
     'Woolworths': { short: 'WW', bg: 'bg-emerald-600', text: 'text-white' },
-    "PAK'nSAVE": { short: 'PNS', bg: 'bg-amber-500', text: 'text-stone-950' },
+    "PAK'nSAVE": { short: 'PNS', bg: 'bg-amber-600', text: 'text-stone-950' },
     'New World': { short: 'NW', bg: 'bg-rose-600', text: 'text-white' },
     'Four Square': { short: 'FS', bg: 'bg-green-600', text: 'text-white' },
-    'FreshChoice': { short: 'FC', bg: 'bg-sky-600', text: 'text-white' },
   };
   const norm = storeName.toLowerCase().replace(/[^a-z]/g, '');
   if (norm.includes('woolworth')) return STORE_LOGOS['Woolworths'];
   if (norm.includes('paknsave')) return STORE_LOGOS["PAK'nSAVE"];
   if (norm.includes('newworld')) return STORE_LOGOS['New World'];
   if (norm.includes('foursquare')) return STORE_LOGOS['Four Square'];
-  if (norm.includes('freshchoice')) return STORE_LOGOS['FreshChoice'];
   return { short: storeName.substring(0, 2).toUpperCase(), bg: 'bg-stone-600', text: 'text-white' };
+};
+
+const STORE_TICK_COLORS = { WW: '#059669', PNS: '#f59e0b', NW: '#e11d48', FS: '#16a34a' };
+const STORE_TICK_TEXT_COLORS = { WW: '#ffffff', PNS: '#1c1917', NW: '#ffffff', FS: '#ffffff' };
+const StoreAxisTick = ({ x, y, payload }) => {
+  const bg = STORE_TICK_COLORS[payload.value] || '#78716c';
+  const textColor = STORE_TICK_TEXT_COLORS[payload.value] || '#ffffff';
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <rect x={-14} y={4} width={28} height={16} rx={4} fill={bg} />
+      <text x={0} y={12} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight={800} fill={textColor}>{payload.value}</text>
+    </g>
+  );
+};
+
+const OrangeBarShape = (props) => {
+  const { x, y, width, height, payload, fill } = props;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} />
+      {payload.isBestPrice && height > 0 && (
+        <circle cx={x + width / 2} cy={y} r={6} fill="#16a34a" stroke="#ffffff" strokeWidth={2} />
+      )}
+    </g>
+  );
 };
 
 function DealModal({
   isOpen,
   onClose,
+  onOpenSearch,
   product,
   dealStore,
   onTrackToggle,
@@ -3680,10 +4326,20 @@ function DealModal({
   onNavigateToManageAccount,
   onNavigateToLogin,
   onLogout,
+  onNavigateToTab,
 }) {
   if (!product || !dealStore) return null;
 
-  const deal = product.currentDeals.find((d) => d.store === dealStore);
+  // Real store names carry branch suffixes/casing that vary ("Woolworths NZ",
+  // "Pak'nSave" vs "PAK'nSAVE") -- exact `d.store === store` comparisons
+  // against the canonical storesList strings below silently miss those,
+  // which was producing a different "cheapest" store here than what the
+  // search card (which doesn't do an exact-string lookup) showed for the
+  // same product. Normalize both sides the same way storeMatchesFilter does.
+  const findDealForStore = (deals, store) =>
+    (deals || []).find((d) => normalizeStoreKey(d.store).includes(normalizeStoreKey(store)));
+
+  const deal = findDealForStore(product.currentDeals, dealStore);
   if (!deal) return null;
 
   // Real per-store "today" price -- from currentDeals only, which (since
@@ -3692,7 +4348,7 @@ function DealModal({
   // has no entry, this item genuinely isn't tracked there, and null lets
   // callers drop it instead of guessing a price.
   const getRealPriceToday = (store) => {
-    const activeDeal = product.currentDeals.find((d) => d.store === store);
+    const activeDeal = findDealForStore(product.currentDeals, store);
     return activeDeal ? activeDeal.price : null;
   };
 
@@ -3702,48 +4358,54 @@ function DealModal({
   // price for an active special, or the flat real regular price otherwise.
   // Not a fabricated multiplier, not a hardcoded 3-point "90 day" average.
   const getRealAveragePrice = (store) => {
-    const activeDeal = product.currentDeals.find((d) => d.store === store);
+    const activeDeal = findDealForStore(product.currentDeals, store);
     return activeDeal ? activeDeal.originalPrice : null;
   };
 
-  const storesList = ['Woolworths', "PAK'nSAVE", 'New World', 'Four Square', 'FreshChoice'];
+  const storesList = ['Woolworths', "PAK'nSAVE", 'New World', 'Four Square'];
 
-  const barChartData = storesList
-    .map((store) => {
-      const current = getRealPriceToday(store);
-      const avg = getRealAveragePrice(store);
-      if (current == null || avg == null) return null; // no real data for this store -- skip, don't fabricate a bar
+  const barChartData = React.useMemo(() => {
+    const rows = storesList
+      .map((store) => {
+        const current = getRealPriceToday(store);
+        const avg = getRealAveragePrice(store);
+        if (current == null || avg == null) return null; // no real data for this store -- skip, don't fabricate a bar
 
-      const shortNames = {
-        'Woolworths': 'WW',
-        "PAK'nSAVE": 'PNS',
-        'New World': 'NW',
-        'Four Square': 'FS',
-        'FreshChoice': 'FC',
-      };
+        const shortNames = {
+          'Woolworths': 'WW',
+          "PAK'nSAVE": 'PNS',
+          'New World': 'NW',
+          'Four Square': 'FS',
+        };
 
-      const orangeUnder = current < avg ? current : 0;
-      const blueBody = current < avg ? (avg - current) : avg;
-      const orangeOver = current >= avg ? (current - avg) : 0;
+        const orangeUnder = current < avg ? current : 0;
+        const blueBody = current < avg ? (avg - current) : avg;
+        const orangeOver = current >= avg ? (current - avg) : 0;
 
-      return {
-        name: shortNames[store] || store,
-        storeName: store,
-        currentPrice: current,
-        averagePrice: avg,
-        orangeUnder,
-        blueBody,
-        orangeOver,
-      };
-    })
-    .filter(Boolean);
+        return {
+          name: shortNames[store] || store,
+          storeName: store,
+          currentPrice: current,
+          averagePrice: avg,
+          orangeUnder,
+          blueBody,
+          orangeOver,
+        };
+      })
+      .filter(Boolean);
+    const minCurrent = rows.length ? Math.min(...rows.map((r) => r.currentPrice)) : null;
+    return rows.map((r) => ({ ...r, isBestPrice: r.currentPrice === minCurrent }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product, dealStore]);
 
-  const rankingList = storesList
-    .map((store) => ({ store, price: getRealPriceToday(store) }))
-    .filter((item) => item.price != null)
-    .sort((a, b) => a.price - b.price);
+  const rankingList = React.useMemo(() => {
+    return storesList
+      .map((store) => ({ store, price: getRealPriceToday(store) }))
+      .filter((item) => item.price != null)
+      .sort((a, b) => a.price - b.price);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product, dealStore]);
 
-  const [showPricingDetails, setShowPricingDetails] = React.useState(false);
   const [currentView, setCurrentView] = React.useState('assessment');
   const [selectedStores, setSelectedStores] = React.useState(['all']);
 
@@ -3758,14 +4420,13 @@ function DealModal({
       "PAK'nSAVE": "PAK'nSAVE Mt Albert",
       'New World': 'New World Victoria Park',
       'Four Square': 'Four Square Ellerslie',
-      'FreshChoice': 'FreshChoice Half Moon Bay',
     };
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
           const loaded = {};
-          ['Woolworths', "PAK'nSAVE", 'New World', 'Four Square', 'FreshChoice'].forEach(brand => {
+          ['Woolworths', "PAK'nSAVE", 'New World', 'Four Square'].forEach(brand => {
             loaded[brand] = parsed[brand] || defaults[brand];
           });
           return loaded;
@@ -3784,7 +4445,6 @@ function DealModal({
         case 'paknsave': return selectedBranches["PAK'nSAVE"] || "PAK'nSAVE";
         case 'newworld': return selectedBranches['New World'] || 'New World';
         case 'foursquare': return selectedBranches['Four Square'] || 'Four Square';
-        case 'freshchoice': return selectedBranches['FreshChoice'] || 'FreshChoice';
         default: return storeKey;
       }
     }
@@ -3793,7 +4453,6 @@ function DealModal({
       case 'paknsave': return "PAK'nSAVE";
       case 'newworld': return 'New World';
       case 'foursquare': return 'Four Square';
-      case 'freshchoice': return 'FreshChoice';
       default: return storeKey;
     }
   };
@@ -3821,7 +4480,6 @@ function DealModal({
 
   React.useEffect(() => {
     if (!isOpen) {
-      setShowPricingDetails(false);
       setCurrentView('assessment');
       setSelectedStores(['all']);
     } else {
@@ -3844,50 +4502,64 @@ function DealModal({
   // quiet fabrication this app exists to catch, not commit. Returns null
   // when there's genuinely no data, so the caller can drop the option
   // instead of inventing one.
-  const getRealProductPriceForStore = (p, store) => {
-    const activeDeal = p.currentDeals.find((d) => d.store === store);
-    if (activeDeal) return activeDeal.price;
+  let alternativeProducts = React.useMemo(() => {
+    // Prefer an exact category-string match first (tightest, since two
+    // items sharing the exact raw category are almost always genuinely
+    // comparable); only widen to the normalized category bucket
+    // (groupCategory, used elsewhere for the category filter) when that
+    // yields nothing, since the buckets are broad (e.g. "Pantry & grocery")
+    // and can match hundreds of live-catalogue items.
+    const exactMatch = mockProducts.filter((p) => p.id !== product.id && p.category === product.category && p.category);
+    const categoryPool = exactMatch.length > 0
+      ? exactMatch
+      : mockProducts.filter((p) => p.id !== product.id && groupCategory(p.category) === groupCategory(product.category));
 
-    const historyForStore = p.priceHistory.filter((h) => h.store === store);
-    if (historyForStore.length > 0) {
-      return historyForStore[historyForStore.length - 1].price;
-    }
+    // Category alone still lumps unrelated product types together within
+    // the same aisle (e.g. every "Pantry" item). Narrow further to items
+    // that share a real product-type word with this product's own name
+    // (e.g. "coffee", "biscuits") -- same tokenizer the search bar uses,
+    // ignoring short/numeric tokens (pack sizes, "500ml") that would
+    // otherwise match almost anything. Falls back to the category pool if
+    // nothing shares a word, so a genuinely unique item still gets options.
+    const nameTokens = new Set(tokenizeForFuzzy(product.name).filter((t) => t.length >= 4 && !/^\d/.test(t)));
+    if (nameTokens.size === 0) return categoryPool;
+    const nameMatched = categoryPool.filter((p) => tokenizeForFuzzy(p.name).some((t) => nameTokens.has(t)));
+    return nameMatched.length > 0 ? nameMatched : categoryPool;
+  }, [product]);
 
-    return null;
-  };
+  // Scans every same-category product across all 4 stores -- kept in a
+  // memo (like sortedRailProducts/sortedProducts elsewhere in this file) so
+  // it only reruns when the underlying deal actually changes, not on every
+  // unrelated re-render this modal gets (view switches, background
+  // liveProductsTick bumps) -- that unmemoized full-catalogue rescan on
+  // every render was what froze the UI on tap.
+  const allCheaperAlternativeOptions = React.useMemo(() => {
+    return alternativeProducts
+      .flatMap((p) => {
+        return storesList.map((store) => {
+          const activeDeal = p.currentDeals.find((d) => normalizeStoreKey(d.store).includes(normalizeStoreKey(store)) && d.isOnSpecial !== false);
+          if (!activeDeal) return null;
+          return {
+            product: p,
+            store,
+            price: activeDeal.price,
+            saving: deal.price - activeDeal.price,
+          };
+        });
+      })
+      .filter((item) => item != null && item.price < deal.price);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alternativeProducts, deal.price]);
 
-  let alternativeProducts = mockProducts.filter(
-    (p) => p.category === product.category && p.id !== product.id
-  );
-
-  if (alternativeProducts.length === 0) {
-    alternativeProducts = mockProducts.filter((p) => p.id !== product.id);
-  }
-
-  const allCheaperAlternativeOptions = alternativeProducts
-    .flatMap((p) => {
-      return storesList.map((store) => {
-        const price = getRealProductPriceForStore(p, store);
-        return {
-          product: p,
-          store,
-          price,
-          saving: price != null ? deal.price - price : null,
-        };
-      });
-    })
-    .filter((item) => item.price != null && item.price < deal.price);
-
-  const cheaperAlternatives = allCheaperAlternativeOptions
-    .filter((item) => {
-      if (selectedStores.includes('all')) return true;
-      const normalizedStore = item.store.toLowerCase().replace(/[^a-z]/g, '');
-      return selectedStores.some((selected) => {
-        const normalizedSelected = selected.toLowerCase().replace(/[^a-z]/g, '');
-        return normalizedStore === normalizedSelected;
-      });
-    })
-    .sort((a, b) => b.saving - a.saving);
+  const cheaperAlternatives = React.useMemo(() => {
+    return allCheaperAlternativeOptions
+      .filter((item) => {
+        if (selectedStores.includes('all')) return true;
+        return selectedStores.some((selected) => storeMatchesFilter(item.store, selected));
+      })
+      .sort((a, b) => b.saving - a.saving)
+      .slice(0, 20);
+  }, [allCheaperAlternativeOptions, selectedStores]);
 
   // Real min/max/avg from actual observed prices for this store -- every
   // real price_history row plus today's real currentDeals price if it
@@ -3899,24 +4571,40 @@ function DealModal({
   // null when there's genuinely no real data for that store, so the
   // caller can omit the row instead of showing a guessed range.
   const getPricingStatsForStore = (store) => {
-    const historyForStore = product.priceHistory.filter((h) => h.store === store);
-    const prices = historyForStore.map((h) => h.price);
+    const historyForStore = product.priceHistory.filter((h) => normalizeStoreKey(h.store).includes(normalizeStoreKey(store)));
+    const regularPrices = historyForStore.filter((h) => !h.isPromo).map((h) => h.price);
+    const specialPrices = historyForStore.filter((h) => h.isPromo).map((h) => h.price);
     // Only add today's currentDeals price as a fallback when price_history
     // has nothing for this store at all -- price_history's own latest row
     // is usually the same as today's currentDeals price already, so adding
     // it unconditionally would double-count today and skew the average.
-    if (!prices.length) {
-      const activeDeal = product.currentDeals.find((d) => d.store === store);
-      if (activeDeal) prices.push(activeDeal.price);
+    if (!regularPrices.length && !specialPrices.length) {
+      const activeDeal = findDealForStore(product.currentDeals, store);
+      if (activeDeal) {
+        (activeDeal.isOnSpecial !== false ? specialPrices : regularPrices).push(activeDeal.price);
+      }
     }
-    if (!prices.length) return null;
+    if (!regularPrices.length && !specialPrices.length) return null;
+
+    const range = (prices) => (prices.length ? { min: Math.min(...prices), max: Math.max(...prices) } : null);
 
     return {
-      min: Math.min(...prices),
-      max: Math.max(...prices),
-      avg: prices.reduce((a, b) => a + b, 0) / prices.length,
+      regular: range(regularPrices),
+      special: range(specialPrices),
     };
   };
+
+  const pricingStatsRows = React.useMemo(() => {
+    return ['New World', 'Woolworths', "PAK'nSAVE", 'Four Square']
+      .map((storeName) => ({ storeName, stats: getPricingStatsForStore(storeName) }))
+      .filter((row) => row.stats != null)
+      .sort((a, b) => {
+        const cheapestA = a.stats.special ? a.stats.special.min : a.stats.regular.min;
+        const cheapestB = b.stats.special ? b.stats.special.min : b.stats.regular.min;
+        return cheapestA - cheapestB;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
 
   // deal.dealType is already the real verdict -- classifySpecial() computed
   // it at load time from actual price_history (DODGY/GENUINE/MARGINAL via
@@ -3936,13 +4624,13 @@ function DealModal({
   let verdictBorderClass = '';
 
   if (deal.isOnSpecial === false) {
-    // Browsing a plain, non-special item -- there's no "deal" to judge as
-    // dodgy/genuine/fair, so show a neutral price-history state instead of
-    // a verdict that implies a promotion exists.
-    verdict = 'Regular Price';
-    verdictColorClass = 'text-stone-700';
-    verdictBgClass = 'bg-stone-50';
-    verdictBorderClass = 'border-stone-200';
+    // Browsing a plain, non-special item -- no discount game is being played,
+    // so it lands in the same "Fair Deal" bucket the formula uses for a
+    // no-dodgy-signal price, rather than a 4th state outside Dodgy/Fair/Real Saver.
+    verdict = 'Fair Deal';
+    verdictColorClass = 'text-dodgy-900';
+    verdictBgClass = 'bg-dodgy-50';
+    verdictBorderClass = 'border-dodgy-200';
   } else {
     verdict = HISTORY_DEAL_TYPE[deal.dealType] || 'Fair Deal';
     if (verdict === 'Real Saver') {
@@ -3955,7 +4643,7 @@ function DealModal({
       verdictBorderClass = 'border-alert-200';
     } else {
       verdict = 'Fair Deal';
-      verdictColorClass = 'text-dodgy-800';
+      verdictColorClass = 'text-dodgy-900';
       verdictBgClass = 'bg-dodgy-50';
       verdictBorderClass = 'border-dodgy-200';
     }
@@ -3996,7 +4684,7 @@ function DealModal({
                 onLogout={onLogout}
               />
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-12">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-24">
                 <div className={`p-6 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} flex flex-col items-center text-center space-y-4 shadow-xs`}>
                   <h2 className={`text-2xl font-black tracking-tight font-display ${verdictColorClass}`}>
                     {verdict}
@@ -4007,7 +4695,7 @@ function DealModal({
                       <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-extrabold text-stone-900 text-sm leading-snug truncate">
+                      <h3 className="font-extrabold text-stone-900 text-sm leading-snug break-words">
                         {product.name}
                       </h3>
                       <p className="text-xs text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
@@ -4032,65 +4720,6 @@ function DealModal({
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-stone-400 block">
-                    Filter Alternatives by Supermarket:
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { id: 'all', label: 'All Supermarkets' },
-                      { id: 'woolworths', label: getStoreDisplayName('woolworths') },
-                      { id: 'paknsave', label: getStoreDisplayName('paknsave') },
-                      { id: 'newworld', label: getStoreDisplayName('newworld') },
-                      { id: 'foursquare', label: getStoreDisplayName('foursquare') },
-                      { id: 'freshchoice', label: getStoreDisplayName('freshchoice') },
-                    ].map((store) => {
-                      const isSelected = selectedStores.includes(store.id);
-                      return (
-                        <button
-                          key={store.id}
-                          onClick={() => handleStoreToggle(store.id)}
-                          className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
-                            isSelected
-                              ? 'bg-stone-900 border-stone-900 text-white shadow-xs'
-                              : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
-                          }`}
-                        >
-                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-ink-400 animate-pulse" />}
-                          {store.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1.5 border-t border-stone-100 flex-wrap gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        id="use-personalised-settings-modal"
-                        checked={usePersonalised}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setUsePersonalised(checked);
-                          localStorage.setItem('use_personalised_settings', String(checked));
-                        }}
-                        className="w-4 h-4 text-ink-600 border-stone-300 rounded focus:ring-ink-500 cursor-pointer accent-ink-600"
-                      />
-                      <label
-                        htmlFor="use-personalised-settings-modal"
-                        className="text-xs font-bold text-stone-600 uppercase tracking-wider cursor-pointer select-none"
-                      >
-                        Use personalised store settings
-                      </label>
-                    </div>
-                    {usePersonalised && onNavigateToSettings && (
-                      <button
-                        onClick={onNavigateToSettings}
-                        className="text-ink-600 hover:text-ink-800 hover:underline text-xs font-black uppercase tracking-wider cursor-pointer transition-colors"
-                      >
-                        Change
-                      </button>
-                    )}
-                  </div>
                 </div>
 
                 {cheaperAlternatives.length === 0 ? (
@@ -4105,47 +4734,29 @@ function DealModal({
                       return (
                         <div
                           key={`${altProd.id}-${altStore}`}
-                          className="relative bg-white border border-stone-200/80 rounded-2xl p-5 flex flex-col gap-4 shadow-xs hover:border-stone-300 transition-all"
+                          className="relative bg-white border border-stone-200/80 rounded-2xl pt-7 px-5 pb-5 flex flex-col gap-4 shadow-xs hover:border-stone-300 transition-all"
                         >
                           {isLoggedIn && (
                             <button
                               onClick={() => onTrackToggle(altProd.id)}
-                              className={`absolute top-4 right-4 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider z-10 transition-colors active:scale-97 cursor-pointer ${
-                                isAltTracked
-                                  ? 'border-alert-200 text-alert-600 bg-alert-50 hover:bg-alert-100/50'
-                                  : 'border-ink-200 text-ink-600 bg-ink-50 hover:bg-ink-100/50'
+                              aria-label={isAltTracked ? 'Remove from list' : 'Add to list'}
+                              title={isAltTracked ? 'Remove from list' : 'Add to list'}
+                              className={`absolute top-4 right-4 p-1.5 rounded-lg z-10 transition-colors active:scale-97 cursor-pointer ${
+                                isAltTracked ? 'text-alert-600 hover:bg-alert-50' : 'text-ink-600 hover:bg-ink-50'
                               }`}
                             >
-                              {isAltTracked ? 'Remove' : 'Add to list'}
+                              {isAltTracked ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                             </button>
                           )}
 
                           <div className="flex gap-5">
                             <div className="flex flex-col gap-2 items-center flex-shrink-0">
-                              <div className="w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden select-none">
+                              <div className="w-28 h-28 rounded-xl flex items-center justify-center overflow-hidden select-none">
                                 <ProductImage src={altProd.image} alt={altProd.name} className="w-full h-full object-contain" />
                               </div>
-
-                              {(() => {
-                                const meta = getStoreLogoMetaModal(altStore);
-                                return (
-                                  <div className="flex items-center gap-1 bg-stone-50 border border-stone-100 rounded-lg px-2 py-1 max-w-[96px] justify-center">
-                                    <span className="text-[9px] font-extrabold text-stone-400 uppercase tracking-wider mr-0.5">At:</span>
-                                    <div className="flex -space-x-1.5 overflow-hidden">
-                                      <div
-                                        key={altStore}
-                                        title={getStoreDisplayName(altStore)}
-                                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black border border-white select-none shadow-xs ${meta.bg} ${meta.text}`}
-                                      >
-                                        {meta.short}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
                             </div>
 
-                            <div className="flex-grow flex flex-col justify-between py-1 pr-24 min-w-0">
+                            <div className="flex-grow flex flex-col justify-between py-1 pr-10 min-w-0">
                               <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-wider text-ink-600">
                                   {altProd.brand} · {altProd.unit}
@@ -4154,29 +4765,37 @@ function DealModal({
                                   {altProd.name}
                                 </h3>
                                 <div className="mt-2">
-                                  <span className="inline-block bg-fair-50 text-fair-700 font-extrabold text-[10px] px-2.5 py-0.5 rounded-md uppercase tracking-wider border border-fair-100/50">
-                                    Save ${saving.toFixed(2)} compared to original item checked
+                                  <span className="inline-block bg-fair-50 text-fair-800 font-semibold text-xs px-2.5 py-2 rounded-md tracking-wider border border-fair-100/50">
+                                    Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
                                   </span>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-3 flex-wrap mt-3.5">
                                 <div className="flex items-baseline gap-1 flex-shrink-0 whitespace-nowrap">
-                                  <span className="text-stone-400 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Lowest price:</span>
-                                  <span className="text-base font-black text-stone-900 font-mono">
+                                  <span className="text-stone-400 text-[10px] font-bold tracking-wider whitespace-nowrap">Lowest price:</span>
+                                  <span className="text-base font-black text-stone-900 font-display">
                                     ${altPrice.toFixed(2)}
                                   </span>
                                 </div>
+                                {(() => {
+                                  const meta = getStoreLogoMetaModal(altStore);
+                                  return (
+                                    <span className={`px-2 py-1 rounded-md text-[9px] font-black select-none ${meta.bg} ${meta.text}`}>
+                                      {meta.short}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
 
-                          <div className="border-t border-stone-100 pt-3">
+                          <div className="pt-3">
                             <a
                               href={getStoreProductUrl(altStore, altProd.name)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full bg-stone-900 hover:bg-stone-800 text-white font-black text-[11px] py-3 px-4 rounded-xl shadow-xs transition-all uppercase tracking-wider flex items-center justify-center cursor-pointer text-center"
+                              className="w-full bg-white hover:bg-stone-50 text-stone-700 font-semibold text-[12px] py-2.5 px-4 rounded-xl border border-stone-200 transition-all flex items-center justify-center cursor-pointer text-center"
                             >
                               Go to {getStoreDisplayName(altStore)}
                             </a>
@@ -4191,7 +4810,7 @@ function DealModal({
           ) : (
             <>
               <AppHeader
-                title="Dodgy Deal"
+                title={product.name}
                 onBack={onClose}
                 backButtonId="close-modal-btn"
                 isLoggedIn={isLoggedIn}
@@ -4201,226 +4820,371 @@ function DealModal({
                 onOpenLogin={onNavigateToLogin}
                 onLogout={onLogout}
               />
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-24">
+                <div
+                  onClick={onOpenSearch}
+                  className="flex items-center bg-white pl-5 pr-2 py-2.5 border border-stone-300 rounded-full cursor-pointer"
+                >
+                  <Search className="w-5 h-5 mr-3 flex-shrink-0 text-stone-400" />
+                  <span className="flex-1 text-sm font-medium text-stone-400">Search for supermarket products</span>
+                  <span className="ml-2 text-ink-600 bg-white border border-ink-100 p-2.5 rounded-full flex-shrink-0 flex items-center justify-center">
+                    <ScanBarcode className="w-5 h-5" />
+                  </span>
+                </div>
 
                 {verdict === 'Dodgy Deal' ? (
-                  <div className={`p-6 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} flex flex-col items-center text-center space-y-4 shadow-xs`}>
-                    <h2 className={`text-2xl font-black tracking-tight font-display ${verdictColorClass}`}>
-                      {verdict}
-                    </h2>
+                  <div className={`p-5 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} text-left space-y-5 shadow-xs`}>
+                    <div className="flex items-center justify-between">
+                      <h2 className={`text-xl font-black tracking-tight font-display ${verdictColorClass}`}>
+                        {verdict}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({ title: product.name, url: window.location.href }).catch(() => {});
+                          } else if (navigator.clipboard) {
+                            navigator.clipboard.writeText(window.location.href).catch(() => {});
+                          }
+                        }}
+                        aria-label="Share"
+                        className="text-stone-500 hover:text-stone-700 transition-colors cursor-pointer"
+                      >
+                        <Share2 className="w-[18px] h-[18px]" />
+                      </button>
+                    </div>
 
-                    <div className="text-sm font-semibold text-alert-700/95 leading-relaxed max-w-sm space-y-1">
-                      <p>The lowest price is offered by {cheapestStoreItem.store}.</p>
-                      <p>
-                        <strong>However</strong>, {cheapestDiscountPct === 0
+                    <div className="flex items-start gap-4">
+                      <div className="w-24 h-24 flex-shrink-0 rounded-lg bg-white flex items-center justify-center overflow-hidden select-none">
+                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-extrabold text-stone-900 text-base leading-snug break-words">
+                          {product.name}
+                        </h3>
+                        <p className="text-sm text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
+                          {product.unit}
+                        </p>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-stone-500">ea</span>
+                        </div>
+                        <p className={`text-sm font-bold mt-0.5 ${getStoreLogoMetaModal(dealStore).bg.replace('bg-', 'text-')}`}>at {dealStore}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-black text-base text-stone-900 mb-1">Dodgy discount special</h4>
+                      <p className="text-sm text-stone-600 leading-relaxed">
+                        The lowest genuine price is offered by {cheapestStoreItem.store}. However, {cheapestDiscountPct === 0
                           ? 'this price is equal to the recent normal price.'
                           : `this price is ${Math.abs(cheapestDiscountPct)}% ${cheapestDiscountPct > 0 ? 'lower' : 'higher'} than the recent normal price${cheapestAveragePrice != null ? ` ($${cheapestAveragePrice.toFixed(2)})` : ''}.`}
                       </p>
                     </div>
 
-                    <div className="bg-white border border-alert-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                      <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
-                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-extrabold text-stone-900 text-sm leading-snug truncate">
-                          {product.name}
-                        </h3>
-                        <p className="text-xs text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
-                          {product.brand} · {product.unit}
-                        </p>
-                        <div className="flex items-baseline gap-2 mt-1.5 flex-wrap">
-                          <span className="text-sm font-black text-stone-900">
-                            ${deal.price.toFixed(2)}
-                          </span>
-                          <span className="text-[10px] font-semibold text-stone-500">
-                            at {dealStore}
-                          </span>
-                        </div>
+                    <a
+                      href={getStoreProductUrl(cheapestStoreItem.store, product.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center border border-alert-700 text-alert-800 font-black text-[13px] py-3 px-4 rounded-full transition-all hover:bg-white/50 cursor-pointer"
+                    >
+                      View at {cheapestStoreItem.store}
+                    </a>
+
+                    {(() => {
+                      const visibleRanking = rankingList.filter((item) => {
+                        const dealForStore = findDealForStore(product.currentDeals, item.store);
+                        return dealForStore && dealForStore.isOnSpecial !== false;
+                      });
+                      if (visibleRanking.length < 2) return null;
+                      return (
+                    <div>
+                      <h4 className="font-black text-sm text-stone-900 pb-2 mb-1 border-b border-alert-100">Price ranking</h4>
+                      <div>
+                        {visibleRanking.map((item, idx, arr) => {
+                          const dealForStore = findDealForStore(product.currentDeals, item.store);
+                          const isOnSale = dealForStore ? dealForStore.isOnSpecial !== false : false;
+                          const isCheapest = idx === 0;
+                          return (
+                            <div key={item.store} className={`flex items-center gap-2 py-2.5 ${idx < arr.length - 1 ? 'border-b border-alert-100' : ''}`}>
+                              {isCheapest ? (
+                                <Check className="w-4 h-4 text-fair-600 flex-shrink-0" strokeWidth={3} />
+                              ) : (
+                                <ArrowUp className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.5} />
+                              )}
+                              <span className={`text-sm flex-1 flex items-center gap-1.5 ${isCheapest ? 'font-extrabold text-fair-700' : 'font-semibold text-stone-600'}`}>
+                                {item.store}
+                                {isCheapest && (
+                                  <span className="bg-fair-600 text-white font-black text-[8px] px-1.5 py-0.5 rounded-[4px] tracking-widest uppercase">Best</span>
+                                )}
+                              </span>
+                              <span className={`text-xs text-center w-24 ${isOnSale ? 'italic font-bold' : 'font-semibold'} ${isCheapest ? 'text-fair-700' : 'text-stone-500'}`}>{isOnSale ? 'Special' : 'Regular price'}</span>
+                              <span className={`text-sm text-right ${isCheapest ? 'font-bold text-fair-700' : 'font-semibold text-stone-600'}`}>${item.price.toFixed(2)} ea</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
+                      );
+                    })()}
 
-                    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm mt-2">
-                      <a
-                        href={getStoreProductUrl(cheapestStoreItem.store, product.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 bg-alert-600 hover:bg-alert-700 active:bg-alert-800 text-white font-black text-[11px] py-3 px-4 rounded-xl shadow-xs transition-all uppercase tracking-wider flex items-center justify-center cursor-pointer border border-alert-700/40"
-                      >
-                        Go to {cheapestStoreItem.store}
-                      </a>
-
+                    {cheaperAlternatives.length > 0 && (
+                    <div>
+                      <h4 className="font-black text-sm text-stone-900 mb-1">Cheaper alternatives available</h4>
+                      <p className="text-sm text-stone-600 mb-3">See other cheaper alternatives on special</p>
                       <button
                         onClick={() => setCurrentView('cheaper-alternatives')}
-                        className="flex-1 bg-white hover:bg-stone-50 text-stone-800 font-black text-[11px] py-3 px-4 rounded-xl shadow-xs transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border border-stone-200"
+                        className="w-full flex items-center justify-center gap-2 text-center border border-alert-700 text-alert-800 font-black text-[13px] py-3 px-4 rounded-full transition-all hover:bg-white/50 cursor-pointer"
                       >
-                        See Cheaper Options
+                        <span>See cheaper options</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-fair-600 text-white text-[11px] font-black">
+                          {cheaperAlternatives.length}
+                        </span>
                       </button>
                     </div>
+                    )}
                   </div>
                 ) : verdict === 'Fair Deal' ? (
-                  <div className={`p-6 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} flex flex-col items-center text-center space-y-4 shadow-xs`}>
-                    <h2 className={`text-2xl font-black tracking-tight font-display ${verdictColorClass}`}>
-                      {verdict}
-                    </h2>
-
-                    <div className="text-sm font-semibold text-dodgy-700/95 leading-relaxed max-w-sm space-y-1">
-                      <p>The lowest price is offered by {cheapestStoreItem.store}.</p>
-                      <p>{cheapestDiscountPct === 0 ? 'This price is equal to the recent normal price.' : `This price is ${Math.abs(cheapestDiscountPct)}% ${cheapestDiscountPct > 0 ? 'lower' : 'higher'} than the recent normal price.`}</p>
-                    </div>
-
-                    <div className="bg-white border border-dodgy-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                      <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
-                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-extrabold text-stone-900 text-sm leading-snug truncate">
-                          {product.name}
-                        </h3>
-                        <p className="text-xs text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
-                          {product.brand} · {product.unit}
-                        </p>
-                        <div className="flex items-baseline gap-2 mt-1.5 flex-wrap">
-                          <span className="text-sm font-black text-stone-900">
-                            ${deal.price.toFixed(2)}
-                          </span>
-                          <span className="text-[10px] font-semibold text-stone-500">
-                            at {dealStore}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm mt-2">
-                      <a
-                        href={getStoreProductUrl(cheapestStoreItem.store, product.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 bg-dodgy-600 hover:bg-dodgy-700 active:bg-dodgy-800 text-white font-black text-[11px] py-3 px-4 rounded-xl shadow-xs transition-all uppercase tracking-wider flex items-center justify-center cursor-pointer border border-dodgy-700/40"
-                      >
-                        Go to {cheapestStoreItem.store}
-                      </a>
-
+                  <div className={`p-5 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} text-left space-y-5 shadow-xs`}>
+                    <div className="flex items-center justify-between">
+                      <h2 className={`text-xl font-black tracking-tight font-display ${verdictColorClass}`}>
+                        {verdict}
+                      </h2>
                       <button
-                        onClick={() => setCurrentView('cheaper-alternatives')}
-                        className="flex-1 bg-white hover:bg-stone-50 text-stone-800 font-black text-[11px] py-3 px-4 rounded-xl shadow-xs transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border border-stone-200"
+                        type="button"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({ title: product.name, url: window.location.href }).catch(() => {});
+                          } else if (navigator.clipboard) {
+                            navigator.clipboard.writeText(window.location.href).catch(() => {});
+                          }
+                        }}
+                        aria-label="Share"
+                        className="text-stone-500 hover:text-stone-700 transition-colors cursor-pointer"
                       >
-                        See Cheaper Options
+                        <Share2 className="w-[18px] h-[18px]" />
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <div className={`p-6 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} flex flex-col items-center text-center space-y-4 shadow-xs`}>
-                    <h2 className={`text-2xl font-black tracking-tight font-display ${verdictColorClass}`}>
-                      {verdict}
-                    </h2>
 
-                    <div className="text-sm font-semibold text-fair-700/95 leading-relaxed max-w-sm space-y-1">
-                      <p>The lowest price is offered by {cheapestStoreItem.store}.</p>
-                      <p>This price is {cheapestDiscountPct}% lower than the recent normal price.</p>
-                    </div>
-
-                    <div className="bg-white border border-fair-200/60 rounded-xl p-4 flex items-center gap-4 w-full max-w-sm text-left">
-                      <div className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center overflow-hidden select-none">
+                    <div className="flex items-start gap-4">
+                      <div className="w-24 h-24 flex-shrink-0 rounded-lg bg-white flex items-center justify-center overflow-hidden select-none">
                         <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-extrabold text-stone-900 text-sm leading-snug truncate">
+                        <h3 className="font-extrabold text-stone-900 text-base leading-snug break-words">
                           {product.name}
                         </h3>
-                        <p className="text-xs text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
-                          {product.brand} · {product.unit}
+                        <p className="text-sm text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
+                          {product.unit}
                         </p>
-                        <div className="flex items-baseline gap-2 mt-1.5 flex-wrap">
-                          <span className="text-sm font-black text-stone-900">
-                            ${deal.price.toFixed(2)}
-                          </span>
-                          <span className="text-[10px] font-semibold text-stone-500">
-                            at {dealStore}
-                          </span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-stone-500">ea</span>
                         </div>
+                        <p className={`text-sm font-bold mt-0.5 ${getStoreLogoMetaModal(cheapestStoreItem.store).bg.replace('bg-', 'text-')}`}>Lowest at {cheapestStoreItem.store}</p>
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 w-full max-w-sm mt-2">
-                      <a
-                        href={getStoreProductUrl(cheapestStoreItem.store, product.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full bg-fair-600 hover:bg-fair-700 active:bg-fair-800 text-white font-black text-[11px] py-3 px-4 rounded-xl shadow-xs transition-all uppercase tracking-wider flex items-center justify-center cursor-pointer border border-fair-700/40"
-                      >
-                        Go to {cheapestStoreItem.store}
-                      </a>
+                    <div>
+                      <h4 className="font-black text-base text-stone-900 mb-1">
+                        {cheapestDiscountPct === 0 ? 'No real savings' : `${Math.abs(cheapestDiscountPct)}% off the recent normal price`}
+                      </h4>
+                      <p className="text-sm text-stone-600 leading-relaxed">
+                        {cheapestDiscountPct === 0
+                          ? `This on special price is about the same as the recent normal price${cheapestAveragePrice != null ? ` ($${cheapestAveragePrice.toFixed(2)})` : ''}.`
+                          : `This price is ${Math.abs(cheapestDiscountPct)}% lower than the recent normal price${cheapestAveragePrice != null ? ` ($${cheapestAveragePrice.toFixed(2)})` : ''} at ${cheapestStoreItem.store}.`}
+                      </p>
                     </div>
+
+                    <a
+                      href={getStoreProductUrl(cheapestStoreItem.store, product.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center border border-dodgy-700 text-dodgy-800 font-black text-[13px] py-3 px-4 rounded-full transition-all hover:bg-white/50 cursor-pointer"
+                    >
+                      View at {cheapestStoreItem.store}
+                    </a>
+
+                    {(() => {
+                      const visibleRanking = rankingList.filter((item) => {
+                        const dealForStore = findDealForStore(product.currentDeals, item.store);
+                        return dealForStore && dealForStore.isOnSpecial !== false;
+                      });
+                      if (visibleRanking.length < 2) return null;
+                      return (
+                    <div>
+                      <h4 className="font-black text-sm text-stone-900 pb-2 mb-1 border-b border-dodgy-100">Price ranking</h4>
+                      <div>
+                        {visibleRanking.map((item, idx, arr) => {
+                          const dealForStore = findDealForStore(product.currentDeals, item.store);
+                          const isOnSale = dealForStore ? dealForStore.isOnSpecial !== false : false;
+                          const isCheapest = idx === 0;
+                          return (
+                            <div key={item.store} className={`flex items-center gap-2 py-2.5 ${idx < arr.length - 1 ? 'border-b border-dodgy-100' : ''}`}>
+                              {isCheapest ? (
+                                <Check className="w-4 h-4 text-fair-600 flex-shrink-0" strokeWidth={3} />
+                              ) : (
+                                <ArrowUp className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.5} />
+                              )}
+                              <span className={`text-sm flex-1 flex items-center gap-1.5 ${isCheapest ? 'font-extrabold text-fair-700' : 'font-semibold text-stone-600'}`}>
+                                {item.store}
+                                {isCheapest && (
+                                  <span className="bg-fair-600 text-white font-black text-[8px] px-1.5 py-0.5 rounded-[4px] tracking-widest uppercase">Best</span>
+                                )}
+                              </span>
+                              <span className={`text-xs text-center w-24 ${isOnSale ? 'italic font-bold' : 'font-semibold'} ${isCheapest ? 'text-fair-700' : 'text-stone-500'}`}>{isOnSale ? 'Special' : 'Regular price'}</span>
+                              <span className={`text-sm text-right ${isCheapest ? 'font-bold text-fair-700' : 'font-semibold text-stone-600'}`}>${item.price.toFixed(2)} ea</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                      );
+                    })()}
+
+                    {cheaperAlternatives.length > 0 && (
+                    <div>
+                      <h4 className="font-black text-sm text-stone-900 mb-1">Cheaper alternatives available</h4>
+                      <p className="text-sm text-stone-600 mb-3">See other cheaper alternatives on special</p>
+                      <button
+                        onClick={() => setCurrentView('cheaper-alternatives')}
+                        className="w-full flex items-center justify-center gap-2 text-center border border-dodgy-700 text-dodgy-800 font-black text-[13px] py-3 px-4 rounded-full transition-all hover:bg-white/50 cursor-pointer"
+                      >
+                        <span>See cheaper options</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-fair-600 text-white text-[11px] font-black">
+                          {cheaperAlternatives.length}
+                        </span>
+                      </button>
+                    </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={`p-5 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} text-left space-y-5 shadow-xs`}>
+                    <div className="flex items-center justify-between">
+                      <h2 className={`text-xl font-black tracking-tight font-display ${verdictColorClass}`}>
+                        {verdict}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({ title: product.name, url: window.location.href }).catch(() => {});
+                          } else if (navigator.clipboard) {
+                            navigator.clipboard.writeText(window.location.href).catch(() => {});
+                          }
+                        }}
+                        aria-label="Share"
+                        className="text-stone-500 hover:text-stone-700 transition-colors cursor-pointer"
+                      >
+                        <Share2 className="w-[18px] h-[18px]" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                      <div className="w-24 h-24 flex-shrink-0 rounded-lg bg-white flex items-center justify-center overflow-hidden select-none">
+                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-extrabold text-stone-900 text-base leading-snug break-words">
+                          {product.name}
+                        </h3>
+                        <p className="text-sm text-stone-400 mt-0.5 font-bold uppercase tracking-wider">
+                          {product.unit}
+                        </p>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-stone-500">ea</span>
+                        </div>
+                        <p className={`text-sm font-bold mt-0.5 ${getStoreLogoMetaModal(cheapestStoreItem.store).bg.replace('bg-', 'text-')}`}>Lowest at {cheapestStoreItem.store}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-black text-base text-stone-900 mb-1">{cheapestDiscountPct}% off the recent normal price</h4>
+                      <p className="text-sm text-stone-600 leading-relaxed">This price is a genuine saving compared to the recent normal price at {cheapestStoreItem.store}.</p>
+                    </div>
+
+                    <a
+                      href={getStoreProductUrl(cheapestStoreItem.store, product.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center border border-fair-700 text-fair-800 font-black text-[13px] py-3 px-4 rounded-full transition-all hover:bg-white/50 cursor-pointer"
+                    >
+                      View at {cheapestStoreItem.store}
+                    </a>
+
+                    {(() => {
+                      const visibleRanking = rankingList.filter((item) => {
+                        const dealForStore = findDealForStore(product.currentDeals, item.store);
+                        return dealForStore && dealForStore.isOnSpecial !== false;
+                      });
+                      if (visibleRanking.length < 2) return null;
+                      return (
+                    <div>
+                      <h4 className="font-black text-sm text-stone-900 pb-2 mb-1 border-b border-fair-100">Price ranking</h4>
+                      <div>
+                        {visibleRanking.map((item, idx, arr) => {
+                          const dealForStore = findDealForStore(product.currentDeals, item.store);
+                          const isOnSale = dealForStore ? dealForStore.isOnSpecial !== false : false;
+                          const isCheapest = idx === 0;
+                          return (
+                            <div key={item.store} className={`flex items-center gap-2 py-2.5 ${idx < arr.length - 1 ? 'border-b border-fair-100' : ''}`}>
+                              {isCheapest ? (
+                                <Check className="w-4 h-4 text-fair-600 flex-shrink-0" strokeWidth={3} />
+                              ) : (
+                                <ArrowUp className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.5} />
+                              )}
+                              <span className={`text-sm flex-1 flex items-center gap-1.5 ${isCheapest ? 'font-extrabold text-fair-700' : 'font-semibold text-stone-600'}`}>
+                                {item.store}
+                                {isCheapest && (
+                                  <span className="bg-fair-600 text-white font-black text-[8px] px-1.5 py-0.5 rounded-[4px] tracking-widest uppercase">Best</span>
+                                )}
+                              </span>
+                              <span className={`text-xs text-center w-24 ${isOnSale ? 'italic font-bold' : 'font-semibold'} ${isCheapest ? 'text-fair-700' : 'text-stone-500'}`}>{isOnSale ? 'Special' : 'Regular price'}</span>
+                              <span className={`text-sm text-right ${isCheapest ? 'font-bold text-fair-700' : 'font-semibold text-stone-600'}`}>${item.price.toFixed(2)} ea</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                      );
+                    })()}
                   </div>
                 )}
 
                 <div className="space-y-3">
-                  <h4 className="text-lg font-black text-stone-900 tracking-tight font-display">
-                    Cheapest Price Today
-                  </h4>
-                  <div className="bg-white border border-stone-200/80 rounded-2xl overflow-hidden shadow-xs">
-                    {rankingList.map((item, idx) => {
-                      const isBest = idx === 0;
-                      const isChecked = item.store === dealStore;
-                      return (
-                        <div
-                          key={item.store}
-                          className={`flex items-center justify-between px-5 py-4 transition-colors ${
-                            isBest ? 'bg-fair-50/40' : 'bg-white'
-                          } ${idx < rankingList.length - 1 ? 'border-b border-stone-100' : ''}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Store className={`w-5 h-5 ${isBest ? 'text-fair-600' : 'text-stone-400'}`} />
-                            <div className="flex items-center gap-2">
-                              <span className={`text-sm font-bold ${isChecked ? 'text-stone-900 font-extrabold' : 'text-stone-700'}`}>
-                                {item.store}
-                              </span>
-                              {isBest && (
-                                <span className="bg-fair-600 text-white font-black text-[8px] px-2 py-0.5 rounded-[4px] tracking-widest uppercase">
-                                  Best
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className={`text-base font-black tabular-nums ${isBest ? 'text-fair-700' : 'text-stone-900'}`}>
-                              ${item.price.toFixed(2)}
-                            </span>
-                            {isBest && (
-                              <span className="block text-[9px] text-fair-600 font-bold tracking-tight">
-                                Cheapest today
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
                   <div>
                     <h4 className="text-lg font-black text-stone-900 tracking-tight font-display">
-                      Current Price vs Recent Normal, By Store
+                      Current Special vs Recent prices by store
                     </h4>
                     <div className="text-xs text-stone-500 leading-relaxed mt-1 space-y-0.5">
-                      <p>Ink = average price. Dodgy Yellow = current price.</p>
-                      <p>Yellow above ink means current price higher than average.</p>
-                      <p>Yellow within ink means current price lower than average.</p>
+                      <p>Ink = average price. Green = current price.</p>
+                      <p>Green above ink means current price higher than average.</p>
+                      <p>Green within ink means current price lower than average.</p>
                     </div>
+                    {(() => {
+                      const differing = barChartData.filter((d) => d.currentPrice !== d.averagePrice);
+                      if (differing.length === 0) return (
+                        <p className="text-xs font-bold text-stone-600 mt-2">All shown supermarkets are currently priced at their recent average.</p>
+                      );
+                      return (
+                        <p className="text-xs font-bold text-fair-700 mt-2">
+                          {differing.length} of {barChartData.length} supermarket{barChartData.length === 1 ? '' : 's'} currently {differing.length === 1 ? 'differs' : 'differ'} from its recent average price.
+                        </p>
+                      );
+                    })()}
                   </div>
 
                   <div className="bg-white border border-stone-200/80 rounded-2xl p-5 shadow-xs space-y-4">
                     <div className="flex items-center justify-end">
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-ink-600">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#171710]" />
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-ink-600">
+                          <span className="w-2 h-2 rounded-full bg-[#171710]" />
                           <span>Average Price</span>
                         </div>
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-dodgy-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#e2c560]" />
-                          <span>Current Price</span>
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-fair-700">
+                          <span className="w-2 h-2 rounded-full bg-[#16a34a]" />
+                          <span>Current special price</span>
                         </div>
                       </div>
                     </div>
@@ -4429,8 +5193,8 @@ function DealModal({
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} />
-                          <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} domain={[0, 'auto']} />
+                          <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} tick={<StoreAxisTick />} />
+                          <YAxis stroke="#57534e" fontSize={11} fontWeight={700} tickLine={false} domain={[0, 'auto']} tickFormatter={(v) => `$${v}`} />
                           <Tooltip
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
@@ -4468,50 +5232,40 @@ function DealModal({
                               return null;
                             }}
                           />
-                          <Bar dataKey="orangeUnder" stackId="a" fill="#e2c560" barSize={20} />
+                          <Bar dataKey="orangeUnder" stackId="a" fill="#16a34a" barSize={20} shape={<OrangeBarShape />} />
                           <Bar dataKey="blueBody" stackId="a" fill="#171710" barSize={20} />
-                          <Bar dataKey="orangeOver" stackId="a" fill="#e2c560" barSize={20} />
+                          <Bar dataKey="orangeOver" stackId="a" fill="#16a34a" barSize={20} shape={<OrangeBarShape />} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
 
-                    <div className="pt-2 border-t border-stone-100 flex flex-col items-center">
-                      <button
-                        onClick={() => setShowPricingDetails(!showPricingDetails)}
-                        className="text-xs font-extrabold uppercase tracking-widest text-ink-600 hover:text-ink-800 transition-colors flex items-center gap-1.5 cursor-pointer py-2 px-4 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-100"
-                      >
-                        <span>{showPricingDetails ? 'Hide pricing details' : 'See pricing details'}</span>
-                        {showPricingDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
-
-                      {showPricingDetails && (
-                        <div className="w-full mt-4 overflow-x-auto rounded-xl border border-stone-200/80">
-                          <table className="w-full border-collapse text-left text-xs">
-                            <thead className="bg-stone-50 border-b border-stone-200/80 text-[10px] font-black uppercase tracking-wider text-stone-400">
-                              <tr>
-                                <th className="py-3 px-4">Supermarket</th>
-                                <th className="py-3 px-4 text-right">Min Price</th>
-                                <th className="py-3 px-4 text-right">Max Price</th>
-                                <th className="py-3 px-4 text-right">Avg. Price</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-stone-100 font-bold text-stone-700">
-                              {['New World', 'Woolworths', "PAK'nSAVE", 'Four Square', 'FreshChoice'].map((storeName) => {
-                                const stats = getPricingStatsForStore(storeName);
-                                if (!stats) return null; // no real data for this store -- omit rather than guess
-                                return (
-                                  <tr key={storeName} className="hover:bg-stone-50/50 transition-colors">
-                                    <td className="py-2.5 px-4 text-stone-900">{storeName}</td>
-                                    <td className="py-2.5 px-4 text-right font-mono text-stone-500">${stats.min.toFixed(2)}</td>
-                                    <td className="py-2.5 px-4 text-right font-mono text-stone-500">${stats.max.toFixed(2)}</td>
-                                    <td className="py-2.5 px-4 text-right font-mono text-ink-600">${stats.avg.toFixed(2)}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                    <div className="pt-2 border-t border-stone-100">
+                      <div className="w-full mt-4 overflow-x-auto rounded-xl border border-stone-200/80">
+                        <table className="w-full border-collapse text-left text-xs">
+                          <thead className="bg-stone-50 border-b border-stone-200/80 text-[10px] font-black tracking-wider text-stone-500">
+                            <tr>
+                              <th className="py-3 px-4">Supermarket</th>
+                              <th className="py-3 px-4 text-right">Regular min</th>
+                              <th className="py-3 px-4 text-right">Regular max</th>
+                              <th className="py-3 px-4 text-right">Special min</th>
+                              <th className="py-3 px-4 text-right">Special max</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-stone-100 font-bold text-stone-700">
+                            {pricingStatsRows.map(({ storeName, stats }) => {
+                              return (
+                                <tr key={storeName} className="hover:bg-stone-50/50 transition-colors">
+                                  <td className="py-2.5 px-4 text-stone-900">{storeName}</td>
+                                  <td className="py-2.5 px-4 text-right font-mono text-stone-500">{stats.regular ? `$${stats.regular.min.toFixed(2)}` : '—'}</td>
+                                  <td className="py-2.5 px-4 text-right font-mono text-stone-500">{stats.regular ? `$${stats.regular.max.toFixed(2)}` : '—'}</td>
+                                  <td className="py-2.5 px-4 text-right font-mono text-fair-700">{stats.special ? `$${stats.special.min.toFixed(2)}` : '—'}</td>
+                                  <td className="py-2.5 px-4 text-right font-mono text-fair-700">{stats.special ? `$${stats.special.max.toFixed(2)}` : '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4529,6 +5283,39 @@ function DealModal({
                 </div>
               )}
             </>
+          )}
+
+          {onNavigateToTab && (
+            <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 flex justify-around items-center px-4 py-2.5 bg-white border-t border-stone-200 shadow-md">
+              <button
+                onClick={() => onNavigateToTab('search')}
+                className="flex flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95 cursor-pointer text-stone-400 hover:text-stone-600"
+              >
+                <Search className="w-5 h-5" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.12em] mt-1">Check deals</span>
+              </button>
+              <button
+                onClick={() => onNavigateToTab('saved')}
+                className="flex flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95 cursor-pointer text-stone-400 hover:text-stone-600"
+              >
+                <Bookmark className="w-5 h-5" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.12em] mt-1">My List</span>
+              </button>
+              <button
+                onClick={() => onNavigateToTab('history')}
+                className="flex flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95 cursor-pointer text-stone-400 hover:text-stone-600"
+              >
+                <History className="w-5 h-5" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.12em] mt-1">All Checks</span>
+              </button>
+              <button
+                onClick={() => onNavigateToTab('profile')}
+                className="flex flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95 cursor-pointer text-stone-400 hover:text-stone-600"
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.12em] mt-1">Deal stats</span>
+              </button>
+            </nav>
           )}
         </motion.div>
       )}
@@ -4595,9 +5382,7 @@ function ScannerModal({ isOpen, onClose, onSearchForItem }) {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 bg-ink-600 rounded-[2px] transform rotate-45 flex items-center justify-center shadow-md">
-                  <Camera className="w-3 h-3 text-white transform -rotate-45" />
-                </div>
+                <Camera className="w-4 h-4 text-ink-600" />
                 <h3 className="font-bold text-base text-stone-900 uppercase tracking-wider font-display">Price Tag Scanner</h3>
               </div>
               <button
@@ -5638,14 +6423,6 @@ const BRANCHES_BY_BRAND = {
     'Four Square Hataitai',
     'Four Square Redcliffs',
     'Four Square Akaroa'
-  ],
-  'FreshChoice': [
-    'FreshChoice Half Moon Bay',
-    'FreshChoice Epsom',
-    'FreshChoice Merivale',
-    'FreshChoice Prebbleton',
-    'FreshChoice Parklands',
-    'FreshChoice Barrington'
   ]
 };
 
@@ -5673,12 +6450,6 @@ const BRAND_METADATA = {
     text: 'text-green-800',
     border: 'border-green-100/80',
     accent: 'green'
-  },
-  'FreshChoice': {
-    bg: 'bg-sky-50',
-    text: 'text-sky-700',
-    border: 'border-sky-100/80',
-    accent: 'sky'
   }
 };
 
@@ -5723,8 +6494,7 @@ function SettingsTab({ onBack, showSnackbar }) {
     'Woolworths': '',
     "PAK'nSAVE": '',
     'New World': '',
-    'Four Square': '',
-    'FreshChoice': ''
+    'Four Square': ''
   });
 
   const inputRef = useRef(null);
@@ -5755,8 +6525,7 @@ function SettingsTab({ onBack, showSnackbar }) {
       'Woolworths': '',
       "PAK'nSAVE": '',
       'New World': '',
-      'Four Square': '',
-      'FreshChoice': ''
+      'Four Square': ''
     });
     setActiveChangeBrand(null);
   };
@@ -5972,6 +6741,10 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [hasEnteredApp, setHasEnteredApp] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [currentTab, setCurrentTab] = useState('search');
+  const [startInSearchMode, setStartInSearchMode] = useState(false);
+  useEffect(() => {
+    if (startInSearchMode) setStartInSearchMode(false);
+  }, [startInSearchMode]);
   const [previousTab, setPreviousTab] = useState('search');
   const [lastExternalTab, setLastExternalTab] = useState('search');
   const [selectedListId, setSelectedListId] = useState(null);
@@ -5999,6 +6772,11 @@ function App() {
   const [activeSearchQuery, setActiveSearchQuery] = useState('');
   const [selectedStores, setSelectedStores] = useState(['all']);
   const [sortBy, setSortBy] = useState('cheapest');
+  const [isAllDealsExpanded, setIsAllDealsExpanded] = useState(false);
+  const [homeTab, setHomeTab] = useState('your-list');
+  const [storeFilter, setStoreFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [homeSortBy, setHomeSortBy] = useState('recent');
 
   const [history, setHistory] = useState(() => buildSeedHistory(mockProducts));
 
@@ -6199,9 +6977,9 @@ function App() {
   };
 
   const stats = {
-    totalChecked: history.length,
-    realSavers: history.filter((h) => h.dealType === 'Real Saver' || h.dealType === 'Real Deal').length,
-    dodgySpotted: history.filter((h) => h.dealType === 'Dodgy Deal').length,
+    totalChecked: new Set(lists.flatMap((l) => l.itemIds)).size,
+    realSavers: new Set(history.filter((h) => h.dealType === 'Real Saver' || h.dealType === 'Real Deal').map((h) => h.productId)).size,
+    dodgySpotted: new Set(history.filter((h) => h.dealType === 'Dodgy Deal').map((h) => h.productId)).size,
     moneySaved: history.reduce((sum, h) => {
       const product = mockProducts.find((p) => p.id === h.productId);
       if (product) {
@@ -6225,7 +7003,7 @@ function App() {
   const getHeaderTitle = () => {
     switch (currentTab) {
       case 'search':
-        return 'Dodgy Deal';
+        return isLoggedIn ? `Kia ora, ${(localStorage.getItem('user_name') || 'there').split(' ')[0]}` : 'Dodgy Deal';
       case 'saved':
         return 'My List';
       case 'alerts':
@@ -6285,6 +7063,13 @@ function App() {
                 setCurrentTab('search');
               }
             }}
+            onOpenSearch={() => {
+              setIsDealModalOpen(false);
+              setSearchInputValue('');
+              setActiveSearchQuery('');
+              setStartInSearchMode(true);
+              setCurrentTab('search');
+            }}
             product={selectedProduct}
             dealStore={selectedStore}
             onTrackToggle={handleTrackToggle}
@@ -6312,6 +7097,11 @@ function App() {
             onLogout={() => {
               setIsDealModalOpen(false);
               handleLogout();
+            }}
+            onNavigateToTab={(tab) => {
+              setIsDealModalOpen(false);
+              if (tab === 'saved') setSelectedListId(null);
+              setCurrentTab(tab);
             }}
           />
           {renderListSelectorModal()}
@@ -6350,6 +7140,7 @@ function App() {
           {currentTab === 'search' && (
             <SearchTab
               onCheckDeal={handleCheckDeal}
+              startInSearchMode={startInSearchMode}
               onTrackToggle={handleTrackToggle}
               trackedProductIds={trackedProductIds}
               lists={lists}
@@ -6362,8 +7153,19 @@ function App() {
               setSelectedStores={setSelectedStores}
               sortBy={sortBy}
               setSortBy={setSortBy}
+              isAllDealsExpanded={isAllDealsExpanded}
+              setIsAllDealsExpanded={setIsAllDealsExpanded}
+              homeTab={homeTab}
+              setHomeTab={setHomeTab}
+              storeFilter={storeFilter}
+              setStoreFilter={setStoreFilter}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              homeSortBy={homeSortBy}
+              setHomeSortBy={setHomeSortBy}
               onNavigateToSettings={() => setCurrentTab('settings')}
               onOpenScanner={() => setIsScannerOpen(true)}
+              onOpenLogin={handleOpenLogin}
               isLoggedIn={isLoggedIn}
               productsVersion={liveProductsTick}
             />
@@ -6504,6 +7306,18 @@ function App() {
 /* ===================== boot ===================== */
 
 (async () => {
+  // Cache check first (see readCatalogueCache above) -- a warm hit (same
+  // browser, within CATALOGUE_CACHE_TTL_MS) skips the Supabase fetch
+  // entirely, no egress spent this load. Any miss/error falls through to
+  // the normal network path below unchanged.
+  const cachedProducts = await readCatalogueCache();
+  if (cachedProducts) {
+    mockProducts = cachedProducts;
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+    return;
+  }
+
   // loadLiveProducts streams results page by page instead of loading the
   // whole live catalogue before anything can render. We only block the
   // *first* render on the first page landing (or on the whole load
@@ -6529,6 +7343,11 @@ function App() {
     if (!sawAnyPage && !finalProducts.length) {
       console.warn('Supabase returned no usable current specials -- falling back to demo data.');
     }
+    // Cache the fully-loaded catalogue for the next same-browser load. Only
+    // caches on a genuine completed load with real rows -- writeCatalogueCache
+    // itself also guards against empty arrays, this check just avoids the
+    // pointless attempt when we already know it's empty.
+    if (finalProducts.length) writeCatalogueCache(finalProducts);
     return finalProducts;
   });
 
