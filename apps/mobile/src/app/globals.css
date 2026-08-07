@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens ported from the Stitch UI design system (see project.md,
+ * "Stitch UI Design — Screen Inventory"). Material 3 tokens, mobile-first.
+ * Keep these in sync with apps/marketing's globals.css if the marketing
+ * site reuses brand colors.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Stitch brand palette */
+  --color-brand-primary: #006948; /* primary green */
+  --color-brand-secondary: #4648d4; /* secondary indigo */
+  --color-brand-error: #ba1a1a; /* error red */
+  --color-brand-tertiary: #825100; /* tertiary amber */
+
+  /* Verdict colors — DODGY / REAL_SAVER / FAIR / UNKNOWN, see
+     packages/shared/src/classify.ts for the logic these map to */
+  --color-verdict-dodgy: var(--color-brand-error);
+  --color-verdict-real-saver: var(--color-brand-primary);
+  --color-verdict-fair: #6b6b6b;
+  --color-verdict-unknown: #9e9e9e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-primary: var(--color-brand-primary);
+  --color-brand-secondary: var(--color-brand-secondary);
+  --color-brand-error: var(--color-brand-error);
+  --color-brand-tertiary: var(--color-brand-tertiary);
+  --color-verdict-dodgy: var(--color-verdict-dodgy);
+  --color-verdict-real-saver: var(--color-verdict-real-saver);
+  --color-verdict-fair: var(--color-verdict-fair);
+  --color-verdict-unknown: var(--color-verdict-unknown);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  /* Mobile-only surface — apps/marketing is the desktop-only counterpart. */
+  max-width: 480px;
+  margin: 0 auto;
+}

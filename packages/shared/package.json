@@ -1,0 +1,22 @@
+{
+  "name": "@dodgey-deals/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-agnostic logic shared by apps/mobile and apps/marketing: deal classification, Supabase client, and domain types. Canonical classifySpecial() port from Prototype/index.html — keep in sync with dodgy_deals_view.sql and analyser.py per project.md.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test --experimental-strip-types src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}

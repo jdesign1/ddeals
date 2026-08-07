@@ -1,0 +1,26 @@
+{
+  "name": "@dodgey-deals/native-shell",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor wrapper for the iOS/Android apps. Loads apps/mobile's deployed Vercel URL remotely (see capacitor.config.ts) rather than bundling a static export — see project.md 'Native iOS/Android App' plan for why. Holds no app logic of its own.",
+  "scripts": {
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "add:ios": "cap add ios",
+    "add:android": "cap add android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
