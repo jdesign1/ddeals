@@ -12,6 +12,7 @@ import {
   type CurrentDeal,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
+import AddToListButton from "@/components/AddToListButton";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -20,9 +21,10 @@ import { supabaseConfig } from "@/lib/config";
  * project.md's "IMPORTANT ACTIVE PLAN — Native iOS/Android App" for status.
  *
  * Deliberate simplifications vs. the Stitch mock, flagged here rather than
- * faked: no per-card "+" add-to-list FAB (Lists/S1 not built yet, nothing
- * real to add to) and no bottom "$X this week — View List" savings bar
- * (same reason — depends on unbuilt list state).
+ * faked: per-card "+" add-to-list FAB now wired (2026-08-08, once S1/lists
+ * existed — see AddToListButton.tsx) but no bottom "$X this week — View
+ * List" savings bar yet (needs a cross-list "this week" aggregate, not
+ * built).
  *
  * Each card here is one (product, store) deal, not a merged cross-store
  * product card — matches the Stitch design's store-filterable single-deal
@@ -182,6 +184,7 @@ function DealCard({ product, deal }: { product: ProductCard; deal: CurrentDeal }
             {isTrueSpecial ? "True Special" : "Dodgy Deal"}
           </span>
         )}
+        <AddToListButton productId={product.id} />
       </div>
       <div className="flex flex-col gap-0.5 p-3">
         <span className="text-[11px] font-semibold text-stone-500">{deal.store}</span>

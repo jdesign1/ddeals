@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type Session, type User } from "@supabase/supabase-js";
 
 /**
  * Framework-agnostic Supabase client factory. Callers pass their own env
@@ -17,4 +17,4 @@ export function createSupabaseClient(url: string, key: string): SupabaseClient {
   return createClient(url, key);
 }
 
-export type { SupabaseClient };
+export type { SupabaseClient, Session, User };
