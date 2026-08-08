@@ -176,35 +176,41 @@ const EMPTY_SUMMARY: ListSummary = {
 };
 
 /**
- * Computes an S1 list card's numbers from real `current_prices`/
- * `dodgy_deals` data — no stored/cached totals, recomputed from live prices
- * every time the list is loaded (matches this app's "no mock data" rule and
- * means totals never go stale between scrapes).
+ * Shared price/deal lookups for one or more lists' worth of product ids.
+ * Split out from `computeListSummary` (2026-08-08, egress pass) so a
+ * caller with MULTIPLE lists -- like S1's own list grid -- can fetch this
+ * ONCE for the union of every list's product ids instead of once per list.
+ * Before this split, a user with N lists that shared even one product
+ * triggered N separate `current_prices`/`dodgy_deals` round trips that
+ * re-fetched overlapping rows -- real, avoidable egress on a free-tier
+ * project, and pure waste since the data doesn't differ per list.
  */
-export async function computeListSummary(
-  config: SupabaseRestConfig,
-  items: ListItemRow[]
-): Promise<ListSummary> {
-  if (!items.length) return EMPTY_SUMMARY;
+export interface ListPriceLookups {
+  cheapestByProduct: Map<string, CurrentPriceLookupRow>;
+  dealByProductStore: Map<string, DodgyDealsLookupRow>;
+  storesByProduct: Map<string, Set<string>>;
+  priceAtStore: Map<string, number>;
+  allStoreIds: Set<string>;
+}
 
-  const productIds = [...new Set(items.map((i) => i.product_id))];
-  const quantityByProduct = new Map(items.map((i) => [i.product_id, i.quantity]));
+const EMPTY_LOOKUPS: ListPriceLookups = {
+  cheapestByProduct: new Map(),
+  dealByProductStore: new Map(),
+  storesByProduct: new Map(),
+  priceAtStore: new Map(),
+  allStoreIds: new Set(),
+};
+
+export async function fetchListPriceLookups(
+  config: SupabaseRestConfig,
+  productIds: string[]
+): Promise<ListPriceLookups> {
+  const ids = [...new Set(productIds)];
+  if (!ids.length) return EMPTY_LOOKUPS;
 
   const [priceRows, dealRows] = await Promise.all([
-    fetchByIds<CurrentPriceLookupRow>(
-      config,
-      "current_prices",
-      "product_id",
-      "product_id,store_id,price,is_special",
-      productIds
-    ),
-    fetchByIds<DodgyDealsLookupRow>(
-      config,
-      "dodgy_deals",
-      "product_id",
-      "product_id,store_id,verdict,normal_price",
-      productIds
-    ),
+    fetchByIds<CurrentPriceLookupRow>(config, "current_prices", "product_id", "product_id,store_id,price,is_special", ids),
+    fetchByIds<DodgyDealsLookupRow>(config, "dodgy_deals", "product_id", "product_id,store_id,verdict,normal_price", ids),
   ]);
 
   // Cheapest current price per product, across any store.
@@ -219,6 +225,26 @@ export async function computeListSummary(
   // special, not just "some store somewhere has this on special".
   const dealByProductStore = new Map<string, DodgyDealsLookupRow>();
   for (const row of dealRows) dealByProductStore.set(`${row.product_id}:${row.store_id}`, row);
+
+  const storesByProduct = new Map<string, Set<string>>();
+  const priceAtStore = new Map<string, number>(); // `${productId}:${storeId}` -> price
+  for (const row of priceRows) {
+    if (!storesByProduct.has(row.product_id)) storesByProduct.set(row.product_id, new Set());
+    storesByProduct.get(row.product_id)!.add(row.store_id);
+    priceAtStore.set(`${row.product_id}:${row.store_id}`, row.price);
+  }
+  const allStoreIds = new Set(priceRows.map((r) => r.store_id));
+
+  return { cheapestByProduct, dealByProductStore, storesByProduct, priceAtStore, allStoreIds };
+}
+
+/** Pure -- no network calls -- computes one list's summary from lookups already fetched (possibly shared across several lists via `fetchListPriceLookups`). */
+export function computeListSummaryFromLookups(items: ListItemRow[], lookups: ListPriceLookups): ListSummary {
+  if (!items.length) return EMPTY_SUMMARY;
+
+  const productIds = [...new Set(items.map((i) => i.product_id))];
+  const quantityByProduct = new Map(items.map((i) => [i.product_id, i.quantity]));
+  const { cheapestByProduct, dealByProductStore, storesByProduct, priceAtStore, allStoreIds } = lookups;
 
   let totalPrice = 0;
   let baselineTotal = 0;
@@ -244,15 +270,11 @@ export async function computeListSummary(
     }
   }
 
-  // Best single-store total: only for stores with a price on every item.
-  const storesByProduct = new Map<string, Set<string>>();
-  const priceAtStore = new Map<string, number>(); // `${productId}:${storeId}` -> price
-  for (const row of priceRows) {
-    if (!storesByProduct.has(row.product_id)) storesByProduct.set(row.product_id, new Set());
-    storesByProduct.get(row.product_id)!.add(row.store_id);
-    priceAtStore.set(`${row.product_id}:${row.store_id}`, row.price);
-  }
-  const allStoreIds = new Set(priceRows.map((r) => r.store_id));
+  // Best single-store total: only for stores with a price on every item in
+  // THIS list. `storesByProduct`/`priceAtStore`/`allStoreIds` may contain
+  // other lists' products too when lookups came from `fetchListPriceLookups`
+  // over a multi-list union -- harmless, since every lookup here is keyed by
+  // this list's own `productIds`, never iterated broadly.
   let bestPriceStore: ListSummary["bestPriceStore"] = null;
   for (const storeId of allStoreIds) {
     const coversEveryItem = productIds.every((pid) => storesByProduct.get(pid)?.has(storeId));
@@ -274,4 +296,21 @@ export async function computeListSummary(
     savingsAmount: Math.max(0, Math.round((baselineTotal - totalPrice) * 100) / 100),
     hasVerifiedSpecial,
   };
+}
+
+/**
+ * Convenience single-list wrapper over `fetchListPriceLookups` +
+ * `computeListSummaryFromLookups`, for callers with just one list (e.g. a
+ * detail view). S1's own list grid does NOT use this -- it fetches lookups
+ * once for all lists and calls `computeListSummaryFromLookups` directly per
+ * list, see `apps/mobile/src/app/lists/page.tsx`.
+ */
+export async function computeListSummary(
+  config: SupabaseRestConfig,
+  items: ListItemRow[]
+): Promise<ListSummary> {
+  if (!items.length) return EMPTY_SUMMARY;
+  const productIds = items.map((i) => i.product_id);
+  const lookups = await fetchListPriceLookups(config, productIds);
+  return computeListSummaryFromLookups(items, lookups);
 }

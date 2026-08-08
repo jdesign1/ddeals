@@ -7,7 +7,8 @@ import {
   createList,
   deleteList,
   fetchItemsForLists,
-  computeListSummary,
+  fetchListPriceLookups,
+  computeListSummaryFromLookups,
   type ListRow,
   type ListItemRow,
   type ListSummary,
@@ -61,15 +62,18 @@ export default function ListsPage() {
       grouped.get(item.list_id)!.push(item);
     }
 
-    const summaryEntries = await Promise.all(
-      rows.map(async (list) => {
-        const listItems = grouped.get(list.id) ?? [];
-        const summary = await computeListSummary(supabaseConfig, listItems);
-        return [list.id, summary] as const;
-      })
+    // Egress pass (2026-08-08): one current_prices/dodgy_deals fetch for the
+    // UNION of every list's product ids, not one fetch per list --
+    // previously a user with several lists sharing even one product paid
+    // for that product's rows N times over. computeListSummaryFromLookups
+    // is pure (no network calls), so building each list's summary from the
+    // shared lookups below costs nothing extra per list.
+    const lookups = await fetchListPriceLookups(supabaseConfig, items.map((i) => i.product_id));
+    const summaries = new Map<string, ListSummary>(
+      rows.map((list) => [list.id, computeListSummaryFromLookups(grouped.get(list.id) ?? [], lookups)])
     );
 
-    return { rows, grouped, summaries: new Map(summaryEntries) };
+    return { rows, grouped, summaries };
   }, []);
 
   useEffect(() => {

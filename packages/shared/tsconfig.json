@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    // "DOM" added 2026-08-08 alongside catalogue-cache.ts's IndexedDB
+    // usage -- this package's code runs in the browser (client components
+    // in apps/mobile), so IDBDatabase/indexedDB etc. are legitimate types
+    // here, guarded at runtime via `typeof indexedDB === "undefined"`.
+    "lib": ["ES2022", "DOM"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "types": ["node"],

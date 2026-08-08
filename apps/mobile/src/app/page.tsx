@@ -82,6 +82,15 @@ export default function HomePage() {
   const [homeTab, setHomeTab] = useState<"trending" | "my-list">("trending");
 
   const [myListProductIds, setMyListProductIds] = useState<Set<string> | null>(null);
+  // Which user (or null for signed-out) `myListProductIds` was last loaded
+  // for -- NOT the same guard as "is myListProductIds non-null", because an
+  // account switch (sign out, sign in as someone else) without a full page
+  // reload would otherwise leave the *previous* user's product ids sitting
+  // in state with nothing to invalidate them. Caught this on review before
+  // it shipped: MyListSection happens to gate on `signedIn` first so a
+  // signed-out render never leaked the stale data, but a same-session
+  // account switch would have shown the wrong user's "on special" items.
+  const [myListLoadedForUserId, setMyListLoadedForUserId] = useState<string | null>(null);
   const [myListError, setMyListError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,11 +111,21 @@ export default function HomePage() {
   }, []);
 
   // Real cross-reference against the caller's own lists, same query S1's
-  // list cards run. No setState call is ever written directly in the effect
-  // body (react-hooks/set-state-in-effect flags that, including a plain
-  // early-return branch) -- both the "no user" and "fetch for this user"
-  // paths run through the same load()/.then() chain below, mirroring /lists.
+  // list cards run. Egress-conscious on purpose (2026-08-08): only fetches
+  // once the My List tab is actually opened, and only once per (tab,
+  // user) combination after that -- Home used to fetch this unconditionally
+  // on every mount regardless of which tab was showing, which meant a
+  // Trending-only visit still pulled the user's lists/items for nothing.
+  // Guarded on `myListLoadedForUserId === (user?.id ?? null)` rather than
+  // "is myListProductIds non-null" so an account switch invalidates the
+  // guard and refetches, instead of showing a stale previous user's data.
+  // A plain early return here (the guard-clause branch) never calls
+  // setState directly, so it doesn't trip react-hooks/set-state-in-effect
+  // -- only the "actually fetch for this user" path runs through the
+  // load()/.then() chain, mirroring /lists.
   useEffect(() => {
+    const currentUserId = user?.id ?? null;
+    if (homeTab !== "my-list" || myListLoadedForUserId === currentUserId) return;
     let cancelled = false;
     const load = async (): Promise<Set<string> | null> => {
       if (!user) return null;
@@ -119,6 +138,7 @@ export default function HomePage() {
       .then((ids) => {
         if (cancelled) return;
         setMyListProductIds(ids);
+        setMyListLoadedForUserId(currentUserId);
         setMyListError(null);
       })
       .catch((err: unknown) => {
@@ -127,13 +147,16 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, homeTab, myListLoadedForUserId]);
 
   // Derived, not stored state: avoids a separate "start loading" setState in
   // the effect above (which would trip the same lint rule) and can't drift
   // from what the effect is actually doing the way a manually-toggled
-  // boolean could.
-  const myListLoading = !!user && myListProductIds === null && !myListError;
+  // boolean could. Checked against `myListLoadedForUserId`, not
+  // `myListProductIds === null` -- during an account switch, the previous
+  // user's non-null `myListProductIds` would otherwise read as "not
+  // loading" for a moment while the new fetch is still in flight.
+  const myListLoading = !!user && myListLoadedForUserId !== user.id && !myListError;
 
   const availableStoreKeys = useMemo(() => {
     const present = new Set<string>();

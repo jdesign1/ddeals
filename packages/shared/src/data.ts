@@ -5,14 +5,15 @@
  *
  * Source functions ported 1:1: `fetchAllRows`, `fetchByIds`, `buildMatchIndex`,
  * `mergeProductMeta`, `buildProductCardsFromSpecials`, `fetchNonSpecialProductCards`,
- * `loadLiveProducts`. Deliberately NOT ported yet: the IndexedDB catalogue
- * cache layer (`CATALOGUE_CACHE_*`) — a persistent, cross-session,
- * same-browser egress-saving optimization, still just a follow-up, not a
- * correctness gap. Separately, `loadLiveProducts()` DOES now have its own
- * short-TTL in-memory request cache (added 2026-08-08, see its own doc
- * comment) — that one *is* a correctness fix (real production 500s traced
- * to concurrent callers), not the same thing as the still-unported
- * IndexedDB layer.
+ * `loadLiveProducts`. Now includes both of the prototype's egress-saving
+ * layers: the persistent, cross-session IndexedDB catalogue cache
+ * (`catalogue-cache.ts`, ported 2026-08-08 after Jay asked specifically
+ * about egress efficiency) AND `loadLiveProducts()`'s own short-TTL
+ * in-memory request cache (added the same day, for a different reason --
+ * real production 500s traced to concurrent callers, see its own doc
+ * comment). The two compose: IndexedDB avoids re-fetching across page
+ * loads/sessions, the in-memory layer avoids re-fetching across
+ * *simultaneous* callers within one session when IndexedDB itself misses.
  *
  * Uses raw REST fetch against PostgREST (same pattern as the prototype),
  * not the `@supabase/supabase-js` client — kept consistent with the proven
@@ -21,6 +22,8 @@
  * Keep in sync with `Prototype/index.html` (source of truth) whenever the
  * view shape or grouping logic changes there.
  */
+
+import { readCatalogueCache, writeCatalogueCache } from "./catalogue-cache.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -383,7 +386,7 @@ export const __liveProductsCache = new Map<string, LiveProductsCacheEntry>();
  */
 const LIVE_PRODUCTS_CACHE_TTL_MS = 30_000;
 
-export function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
+function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const cacheKey = `${config.url}::${config.anonKey}`;
   const now = Date.now();
   const cached = __liveProductsCache.get(cacheKey);
@@ -405,6 +408,33 @@ export function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCar
     }
   );
   return promise;
+}
+
+/**
+ * 2026-08-08: layered on top of the in-memory dedup above after Jay asked
+ * specifically about egress efficiency -- checks the persistent, cross-
+ * session IndexedDB cache (`catalogue-cache.ts`, a direct port of
+ * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
+ * browser, within its 1-hour TTL) skips the network fetch entirely --
+ * `dodgy_deals` AND `buildMatchIndex()`'s two paginated fetches, not just
+ * one of them. Only on a miss does this fall through to the in-memory
+ * dedup + real network fetch, then best-effort writes the result back to
+ * IndexedDB for the next load. The write is NOT awaited (matches the
+ * prototype's own fire-and-forget pattern) -- `writeCatalogueCache` never
+ * throws, so there's nothing useful to await for.
+ *
+ * This is every current caller of live specials data in apps/mobile
+ * (Home and Specials both call this one function, nothing calls
+ * `loadLiveProductsUncached`/`loadLiveProductsDeduped` directly) -- fixing
+ * it here covers every page, not just the two that exist today.
+ */
+export async function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
+  const cached = await readCatalogueCache();
+  if (cached) return cached;
+
+  const fresh = await loadLiveProductsDeduped(config);
+  if (fresh.length) writeCatalogueCache(fresh);
+  return fresh;
 }
 
 interface CurrentPriceRow {

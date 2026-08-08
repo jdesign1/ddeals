@@ -1,4 +1,10 @@
-import { test } from "node:test";
+// Real IndexedDB (fake-indexeddb), not mocked out -- needed because
+// loadLiveProducts() now checks the persistent catalogue cache (see
+// catalogue-cache.ts) before ever touching the network. Imported first so
+// `global.indexedDB` exists before data.ts's import of catalogue-cache.ts
+// evaluates its own `typeof indexedDB === "undefined"` guard.
+import "fake-indexeddb/auto";
+import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   mergeProductMeta,
@@ -9,8 +15,19 @@ import {
   loadLiveProducts,
   __liveProductsCache,
   type DodgyDealsRow,
+  type ProductCard,
   type SupabaseRestConfig,
 } from "./data.ts";
+import { readCatalogueCache, writeCatalogueCache, __clearCatalogueCacheForTests } from "./catalogue-cache.ts";
+
+// The persistent IndexedDB cache (unlike __liveProductsCache) isn't scoped
+// per-config -- it's one global "the live catalogue" entry, matching how
+// the real app only ever talks to one Supabase project. Every test below
+// must start from a clean IndexedDB cache or an earlier test's write would
+// silently short-circuit a later test's network-call assertions.
+beforeEach(async () => {
+  await __clearCatalogueCacheForTests();
+});
 
 // ---- mergeProductMeta ----
 
@@ -211,5 +228,108 @@ test("loadLiveProducts: a failed fetch is not cached, so the next caller gets a 
     assert.equal(__liveProductsCache.has(`${config.url}::${config.anonKey}`), false, "failed fetch should not remain cached");
   } finally {
     globalThis.fetch = original;
+  }
+});
+
+// ---- loadLiveProducts <-> persistent IndexedDB catalogue cache ----
+// Added 2026-08-08 after Jay asked specifically about egress efficiency.
+// These prove the actual integration (loadLiveProducts really consults
+// and populates the IndexedDB layer), not just that catalogue-cache.ts's
+// own functions work in isolation (see catalogue-cache.test.ts for that).
+
+function fakeProductCard(id: string): ProductCard {
+  return {
+    id,
+    brand: "Test Brand",
+    name: `Product ${id}`,
+    category: "Pantry",
+    image: "https://example.com/img.jpg",
+    standardPrice: 5,
+    unit: "500g",
+    currentDeals: [],
+    priceHistory: [],
+    description: "",
+  };
+}
+
+const SAMPLE_DODGY_DEALS_ROW: DodgyDealsRow = {
+  product_id: "prod-1",
+  store_id: "woolworths",
+  product_name: "Anchor Butter",
+  brand: "Anchor",
+  category: "Fridge",
+  store_name: "Woolworths NZ",
+  sale_price: 5,
+  normal_price: 7,
+  saving_pct: 28.6,
+  special_label: null,
+  was_price: 7,
+  special_end_date: null,
+  image_url: "https://example.com/img.jpg",
+  unit_size: "500g",
+  sale_started_at: "2026-08-01T00:00:00Z",
+  verdict: "GENUINE",
+  reason: "Saving 28.6% vs recent normal price",
+};
+
+function installFetchStubWithOneRealRow(): { calls: string[]; restore: () => void } {
+  const calls: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    const body = url.includes("dodgy_deals") ? [SAMPLE_DODGY_DEALS_ROW] : [];
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => body,
+    } as unknown as Response;
+  }) as typeof fetch;
+  return {
+    calls,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+test("loadLiveProducts: a warm IndexedDB cache hit skips the network fetch entirely", async () => {
+  const cachedProducts = [fakeProductCard("p1"), fakeProductCard("p2")];
+  await writeCatalogueCache(cachedProducts);
+
+  const original = globalThis.fetch;
+  let fetchWasCalled = false;
+  globalThis.fetch = (async () => {
+    fetchWasCalled = true;
+    throw new Error("network should not be reached on a warm IndexedDB cache hit");
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(fakeConfig("warm-hit"));
+    assert.deepEqual(result, cachedProducts);
+    assert.equal(fetchWasCalled, false, "expected loadLiveProducts to skip the network fetch entirely");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: on a cache miss, the fetched result is written to IndexedDB for the next load", async () => {
+  const { calls, restore } = installFetchStubWithOneRealRow();
+  try {
+    const config = fakeConfig("writeback");
+    const result = await loadLiveProducts(config);
+    assert.equal(result.length, 1, "expected one product card built from the one real dodgy_deals row");
+    assert.equal(calls.length, 3, "expected the normal 3-call network pipeline on a cache miss");
+
+    // writeCatalogueCache is fire-and-forget inside loadLiveProducts (not
+    // awaited, matching the prototype's own pattern) -- give it a couple of
+    // microtask turns to actually finish its IndexedDB write before checking.
+    await Promise.resolve();
+    await Promise.resolve();
+    const nowCached = await readCatalogueCache();
+    assert.deepEqual(nowCached, result, "expected the fetched result to now be served from IndexedDB");
+  } finally {
+    restore();
   }
 });
