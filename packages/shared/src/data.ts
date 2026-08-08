@@ -6,8 +6,13 @@
  * Source functions ported 1:1: `fetchAllRows`, `fetchByIds`, `buildMatchIndex`,
  * `mergeProductMeta`, `buildProductCardsFromSpecials`, `fetchNonSpecialProductCards`,
  * `loadLiveProducts`. Deliberately NOT ported yet: the IndexedDB catalogue
- * cache layer (`CATALOGUE_CACHE_*`) — a same-browser egress-saving
- * optimization, not core logic. Flagged as a follow-up, not a correctness gap.
+ * cache layer (`CATALOGUE_CACHE_*`) — a persistent, cross-session,
+ * same-browser egress-saving optimization, still just a follow-up, not a
+ * correctness gap. Separately, `loadLiveProducts()` DOES now have its own
+ * short-TTL in-memory request cache (added 2026-08-08, see its own doc
+ * comment) — that one *is* a correctness fix (real production 500s traced
+ * to concurrent callers), not the same thing as the still-unported
+ * IndexedDB layer.
  *
  * Uses raw REST fetch against PostgREST (same pattern as the prototype),
  * not the `@supabase/supabase-js` client — kept consistent with the proven
@@ -318,7 +323,7 @@ export function buildProductCardsFromSpecials(
  * full-catalogue browsing. Sourced entirely from the `dodgy_deals` view,
  * grouped into real cross-store match groups via the union-find matchIndex.
  */
-export async function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
+async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const [specialRows, matchIndex] = await Promise.all([
     fetchAllRows<DodgyDealsRow>(
       config,
@@ -336,6 +341,70 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
   }
 
   return buildProductCardsFromSpecials([...byGroup.entries()]);
+}
+
+interface LiveProductsCacheEntry {
+  promise: Promise<ProductCard[]>;
+  resolvedAt: number | null;
+}
+
+/** Exported for tests only, not part of the public API surface. */
+export const __liveProductsCache = new Map<string, LiveProductsCacheEntry>();
+
+/**
+ * 2026-08-08: added after real production 500s were traced (via Supabase's
+ * own API + Postgres logs, not guessed) to `canceling statement due to
+ * statement timeout` cascades on `dodgy_deals`/`products`/
+ * `app_comparable_family_links`, all clustered in one burst of concurrent
+ * paginated requests. Root cause: `loadLiveProducts()` fires a full
+ * multi-page fetch pipeline (this table's paginated rows + the separate
+ * `buildMatchIndex()` paginated fetches) EVERY time it's called, and once
+ * both Home and Specials called it independently on the same load (plus
+ * React Strict Mode double-invoking effects in dev), several full pipelines
+ * ran concurrently against the same free-tier Postgres instance.
+ *
+ * Fix: a short-TTL, in-memory, per-`(url, anonKey)` cache of the *promise*
+ * itself, not just the resolved value -- so callers that overlap while a
+ * fetch is still in flight (the exact failure pattern observed) share that
+ * one in-flight request instead of each starting their own. `TTL = 30s`:
+ * long enough to collapse simultaneous mounts/tab-switches/Strict-Mode
+ * double-invokes into one fetch, short enough that this stays a
+ * reliability fix, not a second stale-data layer -- the specials dataset
+ * only changes via the nightly scrape, so 30s of staleness is
+ * imperceptible, and this is explicitly NOT the persistent
+ * cross-session IndexedDB cache flagged as a follow-up elsewhere in this
+ * file's top comment (that's still not built; this is a narrower,
+ * session-lifetime request dedup aimed specifically at the measured
+ * concurrency bug, not a general caching layer).
+ *
+ * A failed fetch is never cached (removed from the map in the `.catch`
+ * below) so a real outage doesn't get "cached" as permanently broken --
+ * the next caller gets a clean retry.
+ */
+const LIVE_PRODUCTS_CACHE_TTL_MS = 30_000;
+
+export function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
+  const cacheKey = `${config.url}::${config.anonKey}`;
+  const now = Date.now();
+  const cached = __liveProductsCache.get(cacheKey);
+  if (cached && (cached.resolvedAt === null || now - cached.resolvedAt < LIVE_PRODUCTS_CACHE_TTL_MS)) {
+    return cached.promise;
+  }
+
+  const promise = loadLiveProductsUncached(config);
+  const entry: LiveProductsCacheEntry = { promise, resolvedAt: null };
+  __liveProductsCache.set(cacheKey, entry);
+  promise.then(
+    () => {
+      entry.resolvedAt = Date.now();
+    },
+    () => {
+      // Don't cache failures -- only evict if this is still the current
+      // entry for the key (a newer call may have already replaced it).
+      if (__liveProductsCache.get(cacheKey) === entry) __liveProductsCache.delete(cacheKey);
+    }
+  );
+  return promise;
 }
 
 interface CurrentPriceRow {

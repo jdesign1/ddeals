@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import { ScanBarcode, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ScanBarcode } from "lucide-react";
 import {
   loadLiveProducts,
   normalizeStoreKey,
@@ -12,7 +11,8 @@ import {
   type CurrentDeal,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
-import AddToListButton from "@/components/AddToListButton";
+import DealCard from "@/components/DealCard";
+import FilterPill from "@/components/FilterPill";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -126,76 +126,4 @@ export default function SpecialsPage() {
 
 function displayNameForKey(key: string): string {
   return STORE_DISPLAY_FALLBACK[key] || key;
-}
-
-function FilterPill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold"
-      style={
-        active
-          ? { backgroundColor: "var(--color-brand-primary)", borderColor: "var(--color-brand-primary)", color: "white" }
-          : { borderColor: "#eeeae1", color: "#57534e" }
-      }
-    >
-      {label}
-    </button>
-  );
-}
-
-function DealCard({ product, deal }: { product: ProductCard; deal: CurrentDeal }) {
-  const isTrueSpecial = deal.dealType === "Real Deal";
-  const isDodgy = deal.dealType === "Dodgy Deal";
-  const showWasPrice = deal.originalPrice > deal.price;
-
-  return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white">
-      <div className="relative aspect-square w-full bg-stone-100">
-        <Image
-          src={product.image}
-          alt={product.name}
-          fill
-          sizes="(max-width: 480px) 50vw, 240px"
-          className="object-contain p-3"
-          unoptimized
-        />
-        {(isTrueSpecial || isDodgy) && (
-          <span
-            className="absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white"
-            style={{
-              backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
-            }}
-          >
-            {isTrueSpecial ? (
-              <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-            ) : (
-              <ShieldAlert className="h-3 w-3" aria-hidden="true" />
-            )}
-            {isTrueSpecial ? "True Special" : "Dodgy Deal"}
-          </span>
-        )}
-        <AddToListButton productId={product.id} />
-      </div>
-      <div className="flex flex-col gap-0.5 p-3">
-        <span className="text-[11px] font-semibold text-stone-500">{deal.store}</span>
-        <span className="line-clamp-2 text-sm font-semibold text-stone-900">{product.name}</span>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-          {showWasPrice && (
-            <span className="text-xs text-stone-400 line-through">${deal.originalPrice.toFixed(2)}</span>
-          )}
-        </div>
-      </div>
-    </article>
-  );
 }
