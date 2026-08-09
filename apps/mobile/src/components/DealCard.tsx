@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ShieldCheck, ShieldAlert } from "lucide-react";
 import type { ProductCard, CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
@@ -11,14 +12,31 @@ import AddToListButton from "@/components/AddToListButton";
  * card instead of a second hand-built copy drifting from it — this project
  * already has a documented history of card layouts drifting across screens
  * (see Prototype/index.html's own shared ProductCard component comment).
+ *
+ * Tappable as a whole (2026-08-09) -- navigates to `/deal/[id]/[store]`,
+ * same as ProductListCard.tsx; see that component's doc comment.
  */
 export default function DealCard({ product, deal }: { product: ProductCard; deal: CurrentDeal }) {
+  const router = useRouter();
   const isTrueSpecial = deal.dealType === "Real Deal";
   const isDodgy = deal.dealType === "Dodgy Deal";
   const showWasPrice = deal.originalPrice > deal.price;
 
+  const goToDeal = () => router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white">
+    <article
+      onClick={goToDeal}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToDeal();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white"
+    >
       <div className="relative aspect-square w-full bg-stone-100">
         <Image
           src={product.image}

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { AuthProvider } from "@/lib/auth-context";
+import { HeaderOverrideProvider } from "@/lib/header-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,9 +38,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="h-dvh flex flex-col overflow-hidden">
         <AuthProvider>
-          <AppHeader />
-          <div className="flex-1 overflow-y-auto">{children}</div>
-          <BottomNav />
+          <HeaderOverrideProvider>
+            <AppHeader />
+            <div className="flex-1 overflow-y-auto">{children}</div>
+            <BottomNav />
+          </HeaderOverrideProvider>
         </AuthProvider>
       </body>
     </html>

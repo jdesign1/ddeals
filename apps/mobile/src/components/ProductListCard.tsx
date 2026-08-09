@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
@@ -29,11 +30,15 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
  *    real equivalent here -- /specials already established this as the
  *    app's one real "save" affordance, so this reuses it rather than
  *    inventing a second, different-looking save interaction on Home.
- *  - No `onActivate` (tap-to-open) -- the prototype's tap target opens its
- *    Check Deal / DealModal screen, which doesn't exist in apps/mobile yet.
- *    Cards render as static (no hover/active affordance, no role="button"),
- *    matching how the prototype's own API already treats "no onActivate
- *    passed" (e.g. TrackedTab's compare-mode cards).
+ *  - Tap-to-open *is* wired now (added 2026-08-09): the whole card
+ *    navigates to `/deal/[id]/[store]`, the real-route port of the
+ *    prototype's Check Deal / DealModal screen (see that route's own doc
+ *    comment). Matches the prototype's "cards tappable as a whole" pattern
+ *    (`handleCardKeyActivate` in index.html) -- `role="button"`/
+ *    `tabIndex={0}`/Enter-or-Space activation, same as a real button gets
+ *    for free. `AddToListButton`'s own trigger already calls
+ *    `stopPropagation()`, so tapping it opens the list picker instead of
+ *    also navigating.
  */
 
 export interface ProductListCardProps {
@@ -51,15 +56,27 @@ export default function ProductListCard({
   storeLinePrefix = "Lowest at",
   alsoSpecialStores = [],
 }: ProductListCardProps) {
+  const router = useRouter();
   const isDodgy = deal.dealType === "Dodgy Deal";
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const storeMeta = getStoreLogoMeta(deal.store);
 
+  const goToDeal = () => router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-200 ${
+      onClick={goToDeal}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToDeal();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-200 ${
         isDodgy ? "border-alert-300" : isRealSaver ? "border-fair-300" : isFairDeal ? "border-dodgy-300" : "border-stone-200"
       }`}
     >

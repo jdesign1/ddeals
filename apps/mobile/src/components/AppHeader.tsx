@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleUser } from "lucide-react";
+import { ArrowLeft, CircleUser } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useHeaderOverride } from "@/lib/header-context";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -28,10 +29,17 @@ import { useAuth } from "@/lib/auth-context";
  *    leftover from its mock data, never actually wired to the signed-in
  *    user's name). This version computes the initial from the real
  *    Supabase user instead, since a real user is available here.
- *  - `onBack`/back-arrow support and the `showCloseButton` variant (used by
- *    the prototype for its manage-account/settings/how-it-works sub-pages)
- *    aren't ported — nothing in apps/mobile pushes a sub-page over this
- *    header yet. Can be added back if/when a screen needs it.
+ *  - The `showCloseButton` variant (used by the prototype for its
+ *    manage-account/settings/how-it-works sub-pages) isn't ported — those
+ *    sub-pages don't exist in apps/mobile yet.
+ *  - `onBack`/back-arrow support *is* ported (added 2026-08-09 for the deal-
+ *    assessment page), but not as a prop — since this header is mounted
+ *    once in layout.tsx above the router outlet, pages instead publish an
+ *    override via `usePageHeader()` (see lib/header-context.tsx), which
+ *    this component reads back out. Matches Prototype/index.html's own
+ *    comment (line ~1569) that the account menu/avatar stays visible even
+ *    on a back-button screen, rather than DealModal rendering a separate
+ *    header of its own.
  */
 
 const ROUTE_TITLES: Record<string, string> = {
@@ -50,6 +58,7 @@ function greetingName(user: { email?: string | null; user_metadata?: Record<stri
 export default function AppHeader() {
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
+  const { override } = useHeaderOverride();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -75,8 +84,9 @@ export default function AppHeader() {
     setIsMenuOpen(false);
   }
 
-  const title =
-    pathname === "/"
+  const title = override
+    ? override.title
+    : pathname === "/"
       ? user
         ? `Kia ora, ${greetingName(user)}`
         : "Dodgy Deal"
@@ -86,9 +96,20 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full flex-shrink-0 items-center justify-between bg-stone-50 px-6">
-      <span className="max-w-[70%] truncate font-display text-base font-black tracking-tighter text-ink-900">
-        {title}
-      </span>
+      <div className="flex min-w-0 items-center gap-2">
+        {override && (
+          <button
+            onClick={override.onBack}
+            aria-label="Back"
+            className="-ml-1.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
+        <span className="max-w-[70%] truncate font-display text-base font-black tracking-tighter text-ink-900">
+          {title}
+        </span>
+      </div>
 
       <div ref={menuRef} className="relative flex items-center gap-3">
         {loading ? null : user ? (
