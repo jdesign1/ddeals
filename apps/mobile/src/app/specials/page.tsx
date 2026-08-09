@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ScanBarcode } from "lucide-react";
 import {
   loadLiveProducts,
-  normalizeStoreKey,
   storeMatchesFilter,
+  deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
   type ProductCard,
   type CurrentDeal,
@@ -36,8 +36,6 @@ interface FlatDeal {
   product: ProductCard;
   deal: CurrentDeal;
 }
-
-const STORE_PILL_ORDER = ["newworld", "paknsave", "woolworths", "foursquare", "supervalue"];
 
 export default function SpecialsPage() {
   const [products, setProducts] = useState<ProductCard[]>([]);
@@ -72,10 +70,14 @@ export default function SpecialsPage() {
     return all.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
   }, [products]);
 
-  const availableStoreKeys = useMemo(() => {
-    const present = new Set(flatDeals.map((d) => normalizeStoreKey(d.deal.store)));
-    return STORE_PILL_ORDER.filter((key) => present.has(key));
-  }, [flatDeals]);
+  // deriveAvailableStoreKeys (packages/shared/src/data.ts) — was a local
+  // `present.has(key)` exact-match check until this session's full-screen
+  // search refactor folded it into the shared helper; that exact-match form
+  // had the same live bug page.tsx's own version was fixed for on
+  // 2026-08-09 (Woolworths' real store_name is "Woolworths NZ", which
+  // normalizes to "woolworthsnz", never exactly "woolworths"), just never
+  // separately caught here. Substring `.includes()` match fixes it.
+  const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
 
   const filteredDeals = useMemo(
     () => flatDeals.filter(({ deal }) => storeMatchesFilter(deal.store, storeFilter)),

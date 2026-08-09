@@ -6,8 +6,8 @@ import Image from "next/image";
 import { ChevronDown, ScanBarcode, Search } from "lucide-react";
 import {
   loadLiveProducts,
-  normalizeStoreKey,
   storeMatchesFilter,
+  deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
   type ProductCard,
   type CurrentDeal,
@@ -20,6 +20,7 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
 import ProductListCard from "@/components/ProductListCard";
 import ScannerModal from "@/components/ScannerModal";
 import LoadingMascot from "@/components/LoadingMascot";
+import FullScreenSearch from "@/components/FullScreenSearch";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -47,11 +48,13 @@ import LoadingMascot from "@/components/LoadingMascot";
  *    prototype's full-catalogue search — this app's data layer stopped
  *    fetching the full catalogue client-side back in the 2026-08-07
  *    "specials-only" rearchitecture, so a true full-catalogue search isn't
- *    available without a bigger, separate change to the data layer. Search
- *    also stays inline below the sticky header rather than the prototype's
- *    full-screen search overlay (with its pre-3-character Popular/Dodgy
- *    tabs and category sheet) — that overlay is a substantially separate
- *    screen or two of its own UI, not just this Home screen's styling.
+ *    available without a bigger, separate change to the data layer.
+ *  - The full-screen search overlay itself (2026-08-09,
+ *    components/FullScreenSearch.tsx) IS now ported — this file's own doc
+ *    comment used to flag it as "a substantially separate screen or two of
+ *    its own UI, not just this Home screen's styling" and leave it unbuilt;
+ *    that's no longer true, see FullScreenSearch.tsx's own doc comment for
+ *    what it covers and what's still simplified within it.
  *  - "My List" cross-references the caller's real lists (via lists.ts)
  *    against the live specials feed for items currently on special — this
  *    is the same real query S1's list cards use, not a guess.
@@ -67,10 +70,11 @@ import LoadingMascot from "@/components/LoadingMascot";
  *    doesn't fetch, and a second price-direction option didn't seem worth
  *    the extra control for what's usually a short list. Flagged rather
  *    than faked with a no-op "recent" option.
- *  - The scanner's "Search for This Item" hands off to this screen's real
- *    (inline, non-full-screen) search bar by focusing it, rather than the
- *    prototype's full-screen search view — same handoff intent, adapted to
- *    the search UI that actually exists here.
+ *  - The scanner's "Search for This Item" focuses the inline search bar
+ *    (`searchInputRef`), whose own `onFocus` opens the full-screen overlay
+ *    — same real handoff the prototype's scanner does now, not an adapted
+ *    substitute (see ScannerModal.tsx's own doc comment, updated 2026-08-09
+ *    to match).
  */
 
 interface FlatDeal {
@@ -106,7 +110,6 @@ function sortDeals(deals: FlatDeal[], sortBy: SortBy): FlatDeal[] {
   return sorted;
 }
 
-const STORE_PILL_ORDER = ["newworld", "paknsave", "woolworths", "foursquare", "supervalue"];
 const TRENDING_PAGE_SIZE = 12;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -128,6 +131,12 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
+  // Opens the full-screen search overlay (components/FullScreenSearch.tsx)
+  // -- ported from Prototype/index.html's `isSearchActive`: set true as
+  // soon as the search bar is focused or typed into, cleared only by the
+  // overlay's own back arrow (see the `onClose` handler passed to
+  // FullScreenSearch below), never just by the query going back to empty.
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const [storeFilter, setStoreFilter] = useState("all");
   const [homeTab, setHomeTab] = useState<"trending" | "my-list">("trending");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -213,39 +222,13 @@ export default function HomePage() {
   // loading" for a moment while the new fetch is still in flight.
   const myListLoading = !!user && myListLoadedForUserId !== user.id && !myListError;
 
-  const availableStoreKeys = useMemo(() => {
-    // Substring match (not exact `.has()`), matching storeMatchesFilter's own
-    // semantics -- the DB stores Woolworths' deals under the store name
-    // "Woolworths NZ", which normalizes to "woolworthsnz", not "woolworths",
-    // so an exact-equality check silently dropped the Woolworths pill even
-    // though its deals filter correctly once selected. Found live (2026-08-09)
-    // after Jay reported the pill missing.
-    const present = new Set<string>();
-    for (const product of products) {
-      for (const deal of product.currentDeals) present.add(normalizeStoreKey(deal.store));
-    }
-    return STORE_PILL_ORDER.filter((key) => [...present].some((p) => p.includes(key)));
-  }, [products]);
-
-  const trimmedQuery = searchInput.trim();
-  const isSearching = trimmedQuery.length >= 2;
-
-  const searchResults = useMemo<FlatDeal[]>(() => {
-    if (!isSearching) return [];
-    const q = trimmedQuery.toLowerCase();
-    const all: FlatDeal[] = [];
-    for (const product of products) {
-      const matchesText =
-        product.name.toLowerCase().includes(q) ||
-        product.brand.toLowerCase().includes(q) ||
-        product.category.toLowerCase().includes(q);
-      if (!matchesText) continue;
-      for (const deal of product.currentDeals) {
-        if (storeMatchesFilter(deal.store, storeFilter)) all.push({ product, deal });
-      }
-    }
-    return all.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
-  }, [products, isSearching, trimmedQuery, storeFilter]);
+  // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
+  // session (2026-08-09, full-screen search build) from this exact inline
+  // memo (originally fixed live the same day after Jay reported the
+  // Woolworths pill missing -- see that fix's own history in project.md),
+  // now shared with /specials and the new full-screen search view instead
+  // of each keeping its own copy.
+  const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
 
   const trendingDeals = useMemo<FlatDeal[]>(() => {
     const isRecentRealDeal = (d: CurrentDeal) =>
@@ -299,51 +282,60 @@ export default function HomePage() {
           `-mt-4` on the search bar cancels out <main>'s own `gap-4` for
           just this one pair, removing the visual gap above the search bar
           without losing gap-4's spacing everywhere else <main> uses it. */}
-      <div className="bg-white px-5 pt-2 pb-1.5">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="" width={36} height={36} className="h-9 w-9 flex-shrink-0 animate-logo-blink" />
-          <span className="text-sm text-stone-600">Spot if today&rsquo;s deals are dodgy</span>
+      {!isSearchActive && (
+        <div className="bg-white px-5 pt-2 pb-1.5">
+          <div className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="" width={36} height={36} className="h-9 w-9 flex-shrink-0 animate-logo-blink" />
+            <span className="text-sm text-stone-600">Spot if today&rsquo;s deals are dodgy</span>
+          </div>
         </div>
-      </div>
-      <div className="sticky top-0 z-20 -mt-4 bg-white px-5 py-2">
-        <form
-          onSubmit={(e) => e.preventDefault()}
-          className="flex items-center rounded-full border border-stone-300 bg-white py-2.5 pl-5 pr-2 focus-within:ring-2 focus-within:ring-ink-200"
-        >
-          <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
-          <input
-            id="search-input"
-            ref={searchInputRef}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search current specials"
-            className="h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
-            enterKeyHint="search"
-          />
-          {searchInput && (
-            <button
-              onClick={() => setSearchInput("")}
-              id="clear-search-btn"
-              title="Clear search"
-              aria-label="Clear search"
-              type="button"
-              className="flex-shrink-0 cursor-pointer whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest text-ink-600 hover:bg-ink-100 hover:text-ink-800"
-            >
-              Clear
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsScannerOpen(true)}
-            id="scan-barcode-btn"
-            title="Scan a barcode"
-            aria-label="Scan a barcode"
-            className="ml-2 flex flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink-100 bg-white p-2.5 text-ink-600 transition-colors hover:bg-stone-50"
+      )}
+      {!isSearchActive && (
+        <div className="sticky top-0 z-20 -mt-4 bg-white px-5 py-2">
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="flex items-center rounded-full border border-stone-300 bg-white py-2.5 pl-5 pr-2 focus-within:ring-2 focus-within:ring-ink-200"
           >
-            <ScanBarcode className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </form>
-      </div>
+            <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
+            <input
+              id="search-input"
+              ref={searchInputRef}
+              value={searchInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchInput(value);
+                if (value.length > 0) setIsSearchActive(true);
+              }}
+              onFocus={() => setIsSearchActive(true)}
+              placeholder="Search current specials"
+              className="h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
+              enterKeyHint="search"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput("")}
+                id="clear-search-btn"
+                title="Clear search"
+                aria-label="Clear search"
+                type="button"
+                className="flex-shrink-0 cursor-pointer whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest text-ink-600 hover:bg-ink-100 hover:text-ink-800"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(true)}
+              id="scan-barcode-btn"
+              title="Scan a barcode"
+              aria-label="Scan a barcode"
+              className="ml-2 flex flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink-100 bg-white p-2.5 text-ink-600 transition-colors hover:bg-stone-50"
+            >
+              <ScanBarcode className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </form>
+        </div>
+      )}
 
       <ScannerModal
         isOpen={isScannerOpen}
@@ -351,73 +343,61 @@ export default function HomePage() {
         onSearchForItem={() => searchInputRef.current?.focus()}
       />
 
+      <FullScreenSearch
+        isOpen={isSearchActive}
+        products={products}
+        loading={loadingProducts}
+        error={error}
+        query={searchInput}
+        onQueryChange={setSearchInput}
+        onClose={() => {
+          setSearchInput("");
+          setIsSearchActive(false);
+        }}
+      />
+
       {/* Store filter pills -- ported from Prototype/index.html's global
           supermarket filter (per-store brand colors via getStoreLogoMeta
           when active, matching the same badges used on ProductListCard). */}
-      <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto px-5 pb-1">
-        <button
-          type="button"
-          onClick={() => setStoreFilter("all")}
-          className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
-            storeFilter === "all" ? "border-transparent bg-stone-900 text-white shadow-xs" : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-          }`}
-        >
-          All
-        </button>
-        {availableStoreKeys.map((key) => {
-          const label = STORE_DISPLAY_FALLBACK[key] || key;
-          const meta = getStoreLogoMeta(label);
-          const active = storeFilter === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStoreFilter(key)}
-              className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
-                active ? `border-transparent ${meta.bg} ${meta.text} shadow-xs` : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {!isSearchActive && (
+        <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto px-5 pb-1">
+          <button
+            type="button"
+            onClick={() => setStoreFilter("all")}
+            className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
+              storeFilter === "all" ? "border-transparent bg-stone-900 text-white shadow-xs" : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+            }`}
+          >
+            All
+          </button>
+          {availableStoreKeys.map((key) => {
+            const label = STORE_DISPLAY_FALLBACK[key] || key;
+            const meta = getStoreLogoMeta(label);
+            const active = storeFilter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStoreFilter(key)}
+                className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
+                  active ? `border-transparent ${meta.bg} ${meta.text} shadow-xs` : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      <LoadingMascot loading={loadingProducts} label="Loading specials…" />
-      {error && (
+      {!isSearchActive && <LoadingMascot loading={loadingProducts} label="Loading specials…" />}
+      {!isSearchActive && error && (
         <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>
           {error}
         </p>
       )}
 
-      {!loadingProducts && !error && isSearching && (
-        <section className="flex flex-col gap-3 px-5">
-          <div className="space-y-2 pt-1 text-center">
-            <h2 className="font-display text-xl font-black tracking-tighter leading-none text-stone-900">
-              Results for &lsquo;{trimmedQuery}&rsquo;
-            </h2>
-            <p className="text-xs font-bold tracking-wide text-stone-400">
-              {searchResults.length} {searchResults.length === 1 ? "item" : "items"} found · current specials only
-            </p>
-          </div>
-          {searchResults.length === 0 ? (
-            <p className="text-sm text-stone-500">No current specials match that search.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {searchResults.map(({ product, deal }) => (
-                <ProductListCard
-                  key={`${product.id}-${deal.store}`}
-                  product={product}
-                  deal={deal}
-                  alsoSpecialStores={alsoSpecialStores(product, deal.store)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {!loadingProducts && !error && !isSearching && (
+      {!isSearchActive && !loadingProducts && !error && (
         <>
           <div className="mx-5 flex items-center gap-1 rounded-xl bg-stone-100 p-1">
             {(["trending", "my-list"] as const).map((tab) => (

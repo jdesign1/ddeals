@@ -535,3 +535,32 @@ export const normalizeStoreKey = (s: string | null | undefined): string =>
 
 export const storeMatchesFilter = (storeName: string, filter: string): boolean =>
   filter === "all" || normalizeStoreKey(storeName).includes(filter);
+
+/**
+ * Canonical store-pill order + "which of these are actually present in this
+ * product list" — extracted (2026-08-09, full-screen search session) from
+ * page.tsx's own inline `availableStoreKeys` memo (2026-08-09 Woolworths
+ * pill-visibility fix, see project.md) so `/specials`, Home, and the new
+ * full-screen search view share one copy instead of three separately
+ * drifting ones. Substring match (`.includes`), NOT exact `.has()` — the DB
+ * stores Woolworths' deals under "Woolworths NZ" (confirmed live via
+ * `execute_sql`, 2026-08-09), which `normalizeStoreKey` turns into
+ * "woolworthsnz", not "woolworths". Doing this extraction surfaced that
+ * `specials/page.tsx`'s own pre-existing `present.has(key)` check had
+ * exactly this exact-match bug independently (never fixed alongside Home's
+ * own version of it) — its Woolworths filter pill was silently missing
+ * there too until this refactor folded it into the shared, substring-
+ * matching version.
+ */
+export const STORE_PILL_ORDER = ["newworld", "paknsave", "woolworths", "foursquare", "supervalue"];
+
+export function deriveAvailableStoreKeys(
+  products: ProductCard[],
+  order: string[] = STORE_PILL_ORDER
+): string[] {
+  const present = new Set<string>();
+  for (const product of products) {
+    for (const deal of product.currentDeals) present.add(normalizeStoreKey(deal.store));
+  }
+  return order.filter((key) => [...present].some((p) => p.includes(key)));
+}
