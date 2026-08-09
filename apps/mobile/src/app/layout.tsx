@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Manrope } from "next/font/google";
+import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
@@ -14,6 +15,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Prototype/index.html's "Dodgy Deal · Mobile UI Kit" uses Manrope for
+// display/heading text (its Tailwind config's `font-display`), which
+// AppHeader's title reuses here — see globals.css's `--font-display` token.
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["500", "700", "800"],
+});
+
 export const metadata: Metadata = {
   title: "Dodgy Deal",
   description: "Real savings vs dodgy fake discounts, across NZ supermarkets.",
@@ -23,10 +33,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="h-dvh flex flex-col overflow-hidden">
         <AuthProvider>
+          <AppHeader />
           <div className="flex-1 overflow-y-auto">{children}</div>
           <BottomNav />
         </AuthProvider>

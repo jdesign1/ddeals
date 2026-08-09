@@ -22,6 +22,59 @@
   --color-verdict-real-saver: var(--color-brand-primary);
   --color-verdict-fair: #6b6b6b;
   --color-verdict-unknown: #9e9e9e;
+
+  /* "Dodgy Deal · Mobile UI Kit" tokens (Claude Design artifact,
+     2026-08-04 session — see project.md), ported verbatim from
+     Prototype/index.html's `tailwind.config` so components copied from the
+     prototype (AppHeader, the search bar) can reuse its exact class names
+     (bg-ink-50, ring-ink-200, bg-fair-600, text-alert-600, etc.) instead of
+     approximating them. The rest of apps/mobile still runs on the Stitch
+     tokens above — this is additive, not a site-wide re-theme. */
+  --color-paper: #faf8f4;
+  --color-ink-50: #f6f5f3;
+  --color-ink-100: #eae7e2;
+  --color-ink-200: #d5d1c8;
+  --color-ink-300: #b7b0a3;
+  --color-ink-400: #928a79;
+  --color-ink-500: #6d6455;
+  --color-ink-600: #171710;
+  --color-ink-700: #141410;
+  --color-ink-800: #100f0c;
+  --color-ink-900: #0c0b09;
+  --color-ink-950: #060605;
+  --color-fair-50: #f5fbf6;
+  --color-fair-100: #d2efda;
+  --color-fair-200: #b2e4bf;
+  --color-fair-300: #96daa7;
+  --color-fair-400: #7dd193;
+  --color-fair-500: #6ccb85;
+  --color-fair-600: #56a26a;
+  --color-fair-700: #4a8c5c;
+  --color-fair-800: #417a50;
+  --color-fair-900: #386a45;
+  --color-fair-950: #315b3c;
+  --color-dodgy-50: #fdfbf4;
+  --color-dodgy-100: #f6edcf;
+  --color-dodgy-200: #f0e1ac;
+  --color-dodgy-300: #ead58d;
+  --color-dodgy-400: #e5cc72;
+  --color-dodgy-500: #e2c560;
+  --color-dodgy-600: #b59d4d;
+  --color-dodgy-700: #9c8842;
+  --color-dodgy-800: #88763a;
+  --color-dodgy-900: #766732;
+  --color-dodgy-950: #66592b;
+  --color-alert-50: #fbf3f4;
+  --color-alert-100: #edcbce;
+  --color-alert-200: #e0a5ab;
+  --color-alert-300: #d5848b;
+  --color-alert-400: #cb6770;
+  --color-alert-500: #c4535d;
+  --color-alert-600: #9d424a;
+  --color-alert-700: #873940;
+  --color-alert-800: #763238;
+  --color-alert-900: #662b31;
+  --color-alert-950: #58252a;
 }
 
 @theme inline {
@@ -37,6 +90,53 @@
   --color-verdict-unknown: var(--color-verdict-unknown);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-manrope);
+
+  --color-paper: var(--color-paper);
+  --color-ink-50: var(--color-ink-50);
+  --color-ink-100: var(--color-ink-100);
+  --color-ink-200: var(--color-ink-200);
+  --color-ink-300: var(--color-ink-300);
+  --color-ink-400: var(--color-ink-400);
+  --color-ink-500: var(--color-ink-500);
+  --color-ink-600: var(--color-ink-600);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-950: var(--color-ink-950);
+  --color-fair-50: var(--color-fair-50);
+  --color-fair-100: var(--color-fair-100);
+  --color-fair-200: var(--color-fair-200);
+  --color-fair-300: var(--color-fair-300);
+  --color-fair-400: var(--color-fair-400);
+  --color-fair-500: var(--color-fair-500);
+  --color-fair-600: var(--color-fair-600);
+  --color-fair-700: var(--color-fair-700);
+  --color-fair-800: var(--color-fair-800);
+  --color-fair-900: var(--color-fair-900);
+  --color-fair-950: var(--color-fair-950);
+  --color-dodgy-50: var(--color-dodgy-50);
+  --color-dodgy-100: var(--color-dodgy-100);
+  --color-dodgy-200: var(--color-dodgy-200);
+  --color-dodgy-300: var(--color-dodgy-300);
+  --color-dodgy-400: var(--color-dodgy-400);
+  --color-dodgy-500: var(--color-dodgy-500);
+  --color-dodgy-600: var(--color-dodgy-600);
+  --color-dodgy-700: var(--color-dodgy-700);
+  --color-dodgy-800: var(--color-dodgy-800);
+  --color-dodgy-900: var(--color-dodgy-900);
+  --color-dodgy-950: var(--color-dodgy-950);
+  --color-alert-50: var(--color-alert-50);
+  --color-alert-100: var(--color-alert-100);
+  --color-alert-200: var(--color-alert-200);
+  --color-alert-300: var(--color-alert-300);
+  --color-alert-400: var(--color-alert-400);
+  --color-alert-500: var(--color-alert-500);
+  --color-alert-600: var(--color-alert-600);
+  --color-alert-700: var(--color-alert-700);
+  --color-alert-800: var(--color-alert-800);
+  --color-alert-900: var(--color-alert-900);
+  --color-alert-950: var(--color-alert-950);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,4 +153,77 @@ body {
   /* Mobile-only surface — apps/marketing is the desktop-only counterpart. */
   max-width: 480px;
   margin: 0 auto;
+}
+
+/* Ported from Prototype/index.html verbatim (search bar + top nav port,
+   2026-08-08). Mobile WebKit (iOS Safari/Chrome) auto-zooms the whole page
+   on focus of any input whose computed font-size is under 16px — the
+   search bar's Tailwind text-sm class is 14px, so #search-input's ID
+   specificity overrides it here without disabling pinch-zoom globally via
+   the viewport meta (which would be an accessibility regression). */
+#search-input {
+  font-size: 16px;
+}
+
+/* Used by the store-filter pill row -- horizontally scrollable, but no
+   visible scrollbar clutter. Ported verbatim from Prototype/index.html. */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Quick, periodic "blink" on the header logo mark: mostly still, with a
+   fast vertical squash near the 96% mark so it reads as a blink rather
+   than a constant pulse. Ported verbatim from Prototype/index.html. */
+@keyframes logoBlink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.05);
+  }
+}
+.animate-logo-blink {
+  animation: logoBlink 3.5s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+
+/* AppHeader's account-menu dropdown. Ported verbatim from
+   Prototype/index.html's `tailwind.config` fadeIn keyframes/animation. */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Loading-state mascot (components/LoadingMascot.tsx, 2026-08-09): the
+   mascot mark turns to face left/right in a loop, pausing briefly at each
+   side rather than spinning continuously, so it reads as "looking around"
+   while something loads instead of a generic spinner. */
+@keyframes mascotTurn {
+  0%,
+  38% {
+    transform: scaleX(1);
+  }
+  50%,
+  88% {
+    transform: scaleX(-1);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+.animate-mascot-turn {
+  animation: mascotTurn 1.8s ease-in-out infinite;
 }

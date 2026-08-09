@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import AuthPanel from "@/components/AuthPanel";
+import LoadingMascot from "@/components/LoadingMascot";
 
 /**
  * S1 — My Lists, per project.md's Stitch screen inventory. First real
@@ -186,7 +187,7 @@ export default function ListsPage() {
         </p>
       )}
 
-      {loadingLists && <p className="px-5 text-sm text-stone-500">Loading your lists…</p>}
+      <LoadingMascot loading={loadingLists} label="Loading your lists…" />
 
       {!loadingLists && lists.length === 0 && (
         <p className="px-5 text-sm text-stone-500">

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X } from "lucide-react";
+import Image from "next/image";
+import { ChevronDown, ScanBarcode, Search } from "lucide-react";
 import {
   loadLiveProducts,
   normalizeStoreKey,
@@ -15,8 +16,10 @@ import { fetchUserLists, fetchItemsForLists } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
-import DealCard from "@/components/DealCard";
-import FilterPill from "@/components/FilterPill";
+import { getStoreLogoMeta } from "@/lib/store-meta";
+import ProductListCard from "@/components/ProductListCard";
+import ScannerModal from "@/components/ScannerModal";
+import LoadingMascot from "@/components/LoadingMascot";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -26,10 +29,14 @@ import FilterPill from "@/components/FilterPill";
  * (confirmed in project.md), so unlike S1/S8 this isn't a design port —
  * it's a functional port of the prototype's actual behaviour, rebuilt
  * against this app's current specials-only data layer + real Lists.
+ * Styling/layout of every component below (search bar, store pills, tabs,
+ * section headers, sort controls, product cards) is copied class-for-class
+ * from the prototype's "Dodgy Deal · Mobile UI Kit" restyle (project.md,
+ * 2026-08-04 session) — see ProductListCard.tsx and AppHeader.tsx for the
+ * same treatment of the shared card and global nav bar.
  *
  * Deliberate differences from the prototype, flagged rather than silently
  * dropped:
- *  - No barcode scanner (no camera integration exists in apps/mobile yet).
  *  - No branch/store personalisation, no category filter chips, no
  *    guest-vs-account gating nuance beyond "log in to see My List" — the
  *    prototype's version of this screen carries a lot of settings state
@@ -40,7 +47,11 @@ import FilterPill from "@/components/FilterPill";
  *    prototype's full-catalogue search — this app's data layer stopped
  *    fetching the full catalogue client-side back in the 2026-08-07
  *    "specials-only" rearchitecture, so a true full-catalogue search isn't
- *    available without a bigger, separate change to the data layer.
+ *    available without a bigger, separate change to the data layer. Search
+ *    also stays inline below the sticky header rather than the prototype's
+ *    full-screen search overlay (with its pre-3-character Popular/Dodgy
+ *    tabs and category sheet) — that overlay is a substantially separate
+ *    screen or two of its own UI, not just this Home screen's styling.
  *  - "My List" cross-references the caller's real lists (via lists.ts)
  *    against the live specials feed for items currently on special — this
  *    is the same real query S1's list cards use, not a guess.
@@ -49,11 +60,50 @@ import FilterPill from "@/components/FilterPill";
  *    reasoning as "on special in your list" but for *any* store carrying
  *    something similar to a listed item, which doesn't exist as a query
  *    against this data layer yet.
+ *  - My List's sort control offers the same 2 options as Trending's
+ *    (Biggest discount / Dodgy first) rather than the prototype's 4-option
+ *    version (which adds "Most recent" and "Price low/high") — "Most
+ *    recent" would need a list-item-added timestamp this data layer
+ *    doesn't fetch, and a second price-direction option didn't seem worth
+ *    the extra control for what's usually a short list. Flagged rather
+ *    than faked with a no-op "recent" option.
+ *  - The scanner's "Search for This Item" hands off to this screen's real
+ *    (inline, non-full-screen) search bar by focusing it, rather than the
+ *    prototype's full-screen search view — same handoff intent, adapted to
+ *    the search UI that actually exists here.
  */
 
 interface FlatDeal {
   product: ProductCard;
   deal: CurrentDeal;
+}
+
+type SortBy = "discount" | "dodgy";
+
+/** Ported from Prototype/index.html's `ProductCard` call sites: other
+ * stores (besides the one this card is already showing) currently running
+ * a real special on the same product, for the "Also on special at:" row. */
+function alsoSpecialStores(product: ProductCard, shownStore: string): string[] {
+  const seen = new Set<string>();
+  for (const deal of product.currentDeals) {
+    if (deal.isOnSpecial !== false && deal.store !== shownStore) seen.add(deal.store);
+  }
+  return [...seen];
+}
+
+/** Ported from Prototype/index.html's rail sort control (`railSortBy`
+ * discount/dodgy options) — "Dodgy first" is a legitimate no-op on
+ * Trending specifically, since that rail is already filtered to confirmed
+ * Real Deal entries only (see its own subtitle); it isn't wired to lie
+ * about anything, it just has nothing to reorder there. */
+function sortDeals(deals: FlatDeal[], sortBy: SortBy): FlatDeal[] {
+  const sorted = [...deals];
+  if (sortBy === "dodgy") {
+    sorted.sort((a, b) => (b.deal.dealType === "Dodgy Deal" ? 1 : 0) - (a.deal.dealType === "Dodgy Deal" ? 1 : 0));
+  } else {
+    sorted.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
+  }
+  return sorted;
 }
 
 const STORE_PILL_ORDER = ["newworld", "paknsave", "woolworths", "foursquare", "supervalue"];
@@ -80,6 +130,11 @@ export default function HomePage() {
   const [searchInput, setSearchInput] = useState("");
   const [storeFilter, setStoreFilter] = useState("all");
   const [homeTab, setHomeTab] = useState<"trending" | "my-list">("trending");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isTrendingExpanded, setIsTrendingExpanded] = useState(false);
+  const [trendingSortBy, setTrendingSortBy] = useState<SortBy>("discount");
+  const [myListSortBy, setMyListSortBy] = useState<SortBy>("discount");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [myListProductIds, setMyListProductIds] = useState<Set<string> | null>(null);
   // Which user (or null for signed-out) `myListProductIds` was last loaded
@@ -159,11 +214,17 @@ export default function HomePage() {
   const myListLoading = !!user && myListLoadedForUserId !== user.id && !myListError;
 
   const availableStoreKeys = useMemo(() => {
+    // Substring match (not exact `.has()`), matching storeMatchesFilter's own
+    // semantics -- the DB stores Woolworths' deals under the store name
+    // "Woolworths NZ", which normalizes to "woolworthsnz", not "woolworths",
+    // so an exact-equality check silently dropped the Woolworths pill even
+    // though its deals filter correctly once selected. Found live (2026-08-09)
+    // after Jay reported the pill missing.
     const present = new Set<string>();
     for (const product of products) {
       for (const deal of product.currentDeals) present.add(normalizeStoreKey(deal.store));
     }
-    return STORE_PILL_ORDER.filter((key) => present.has(key));
+    return STORE_PILL_ORDER.filter((key) => [...present].some((p) => p.includes(key)));
   }, [products]);
 
   const trimmedQuery = searchInput.trim();
@@ -217,40 +278,112 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col gap-4 pb-6">
-      <header className="sticky top-0 z-20 flex flex-col gap-2 bg-white px-5 pt-6 pb-3">
+      {/* Ported from Prototype/index.html's SearchTab persistent header +
+          `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
+          restyle session) -- logo/tagline row + pill search form. Split into
+          two blocks (2026-08-09): only the search bar itself docks to the
+          top on scroll -- the mascot/tagline row is a normal, non-sticky
+          block that scrolls away, per Jay's explicit ask not to have the
+          tagline dock alongside the search bar.
+          Placeholder copy stays "Search current specials" rather than the
+          prototype's "Search for supermarket products" since this search
+          only runs over the specials-only dataset loaded here, not the
+          prototype's full catalogue -- see this file's doc comment for
+          why. */}
+      {/* Tagline row and the sticky search bar are two direct <main>
+          children (NOT wrapped together) -- a sticky element can only stay
+          stuck within the bounds of its own containing block, and a shared
+          wrapper here would confine it to that wrapper's own (short)
+          height instead of the full page, breaking sticky entirely once
+          scrolled past it (caught live in Jay's browser, 2026-08-09).
+          `-mt-4` on the search bar cancels out <main>'s own `gap-4` for
+          just this one pair, removing the visual gap above the search bar
+          without losing gap-4's spacing everywhere else <main> uses it. */}
+      <div className="bg-white px-5 pt-2 pb-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-black tracking-tight text-stone-900">Dodgy Deal</span>
-          <span className="text-xs text-stone-500">Spot if today&rsquo;s deals are dodgy</span>
+          <Image src="/logo.svg" alt="" width={36} height={36} className="h-9 w-9 flex-shrink-0 animate-logo-blink" />
+          <span className="text-sm text-stone-600">Spot if today&rsquo;s deals are dodgy</span>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 focus-within:ring-2" style={{ ["--tw-ring-color" as string]: "var(--color-brand-primary)" }}>
-          <Search className="h-4 w-4 shrink-0 text-stone-400" aria-hidden="true" />
+      </div>
+      <div className="sticky top-0 z-20 -mt-4 bg-white px-5 py-2">
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          className="flex items-center rounded-full border border-stone-300 bg-white py-2.5 pl-5 pr-2 focus-within:ring-2 focus-within:ring-ink-200"
+        >
+          <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
           <input
+            id="search-input"
+            ref={searchInputRef}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search current specials"
-            className="w-full bg-transparent text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none"
+            className="h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
+            enterKeyHint="search"
           />
           {searchInput && (
-            <button onClick={() => setSearchInput("")} aria-label="Clear search" className="shrink-0 text-stone-400">
-              <X className="h-4 w-4" aria-hidden="true" />
+            <button
+              onClick={() => setSearchInput("")}
+              id="clear-search-btn"
+              title="Clear search"
+              aria-label="Clear search"
+              type="button"
+              className="flex-shrink-0 cursor-pointer whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest text-ink-600 hover:bg-ink-100 hover:text-ink-800"
+            >
+              Clear
             </button>
           )}
-        </div>
-      </header>
-
-      <div className="flex gap-2 overflow-x-auto px-5 pb-1">
-        <FilterPill label="All Stores" active={storeFilter === "all"} onClick={() => setStoreFilter("all")} />
-        {availableStoreKeys.map((key) => (
-          <FilterPill
-            key={key}
-            label={STORE_DISPLAY_FALLBACK[key] || key}
-            active={storeFilter === key}
-            onClick={() => setStoreFilter(key)}
-          />
-        ))}
+          <button
+            type="button"
+            onClick={() => setIsScannerOpen(true)}
+            id="scan-barcode-btn"
+            title="Scan a barcode"
+            aria-label="Scan a barcode"
+            className="ml-2 flex flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink-100 bg-white p-2.5 text-ink-600 transition-colors hover:bg-stone-50"
+          >
+            <ScanBarcode className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </form>
       </div>
 
-      {loadingProducts && <p className="px-5 text-sm text-stone-500">Loading specials…</p>}
+      <ScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onSearchForItem={() => searchInputRef.current?.focus()}
+      />
+
+      {/* Store filter pills -- ported from Prototype/index.html's global
+          supermarket filter (per-store brand colors via getStoreLogoMeta
+          when active, matching the same badges used on ProductListCard). */}
+      <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto px-5 pb-1">
+        <button
+          type="button"
+          onClick={() => setStoreFilter("all")}
+          className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
+            storeFilter === "all" ? "border-transparent bg-stone-900 text-white shadow-xs" : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+          }`}
+        >
+          All
+        </button>
+        {availableStoreKeys.map((key) => {
+          const label = STORE_DISPLAY_FALLBACK[key] || key;
+          const meta = getStoreLogoMeta(label);
+          const active = storeFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStoreFilter(key)}
+              className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
+                active ? `border-transparent ${meta.bg} ${meta.text} shadow-xs` : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      <LoadingMascot loading={loadingProducts} label="Loading specials…" />
       {error && (
         <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>
           {error}
@@ -258,17 +391,26 @@ export default function HomePage() {
       )}
 
       {!loadingProducts && !error && isSearching && (
-        <section className="flex flex-col gap-3">
-          <p className="px-5 text-xs font-semibold text-stone-500">
-            {searchResults.length} result{searchResults.length === 1 ? "" : "s"} for &ldquo;{trimmedQuery}&rdquo;{" "}
-            <span className="text-stone-400">(current specials only)</span>
-          </p>
+        <section className="flex flex-col gap-3 px-5">
+          <div className="space-y-2 pt-1 text-center">
+            <h2 className="font-display text-xl font-black tracking-tighter leading-none text-stone-900">
+              Results for &lsquo;{trimmedQuery}&rsquo;
+            </h2>
+            <p className="text-xs font-bold tracking-wide text-stone-400">
+              {searchResults.length} {searchResults.length === 1 ? "item" : "items"} found · current specials only
+            </p>
+          </div>
           {searchResults.length === 0 ? (
-            <p className="px-5 text-sm text-stone-500">No current specials match that search.</p>
+            <p className="text-sm text-stone-500">No current specials match that search.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 px-5">
+            <div className="grid grid-cols-1 gap-4">
               {searchResults.map(({ product, deal }) => (
-                <DealCard key={`${product.id}-${deal.store}`} product={product} deal={deal} />
+                <ProductListCard
+                  key={`${product.id}-${deal.store}`}
+                  product={product}
+                  deal={deal}
+                  alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                />
               ))}
             </div>
           )}
@@ -282,12 +424,9 @@ export default function HomePage() {
               <button
                 key={tab}
                 onClick={() => setHomeTab(tab)}
-                className="flex-1 rounded-lg py-2 text-xs font-bold transition-colors"
-                style={
-                  homeTab === tab
-                    ? { backgroundColor: "white", color: "#1c1917", boxShadow: "0 1px 2px rgba(0,0,0,0.08)" }
-                    : { color: "#78716c" }
-                }
+                className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors ${
+                  homeTab === tab ? "bg-white text-stone-900 shadow-xs" : "text-stone-500 hover:text-stone-700"
+                }`}
               >
                 {tab === "trending" ? "Trending" : "My List"}
               </button>
@@ -295,7 +434,13 @@ export default function HomePage() {
           </div>
 
           {homeTab === "trending" && (
-            <TrendingSection deals={trendingDeals.slice(0, TRENDING_PAGE_SIZE)} hasMore={trendingDeals.length > TRENDING_PAGE_SIZE} />
+            <TrendingSection
+              deals={trendingDeals}
+              sortBy={trendingSortBy}
+              onSortByChange={setTrendingSortBy}
+              isExpanded={isTrendingExpanded}
+              onExpand={() => setIsTrendingExpanded(true)}
+            />
           )}
 
           {homeTab === "my-list" && (
@@ -305,6 +450,8 @@ export default function HomePage() {
               loading={myListLoading}
               error={myListError}
               deals={myListDeals}
+              sortBy={myListSortBy}
+              onSortByChange={setMyListSortBy}
             />
           )}
         </>
@@ -313,26 +460,77 @@ export default function HomePage() {
   );
 }
 
-function TrendingSection({ deals, hasMore }: { deals: FlatDeal[]; hasMore: boolean }) {
+/** Ported from Prototype/index.html's "Sort" control (the pill next to each
+ * rail's heading -- a `<select>` visually hidden but stretched over a
+ * styled label+chevron, so it keeps native picker behaviour). */
+function SortDropdown({ value, onChange }: { value: SortBy; onChange: (value: SortBy) => void }) {
   return (
-    <section className="flex flex-col gap-3">
-      <div className="px-5 text-center">
-        <h2 className="text-lg font-black tracking-tight text-stone-900">Trending real savings this week</h2>
+    <div className="relative inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600">
+      <span>Sort</span>
+      <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SortBy)}
+        aria-label="Sort"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      >
+        <option value="discount">Biggest discount</option>
+        <option value="dodgy">Dodgy first</option>
+      </select>
+    </div>
+  );
+}
+
+function TrendingSection({
+  deals,
+  sortBy,
+  onSortByChange,
+  isExpanded,
+  onExpand,
+}: {
+  deals: FlatDeal[];
+  sortBy: SortBy;
+  onSortByChange: (value: SortBy) => void;
+  isExpanded: boolean;
+  onExpand: () => void;
+}) {
+  const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
+  const visible = isExpanded ? sorted : sorted.slice(0, TRENDING_PAGE_SIZE);
+
+  return (
+    <section className="flex flex-col gap-4 px-5">
+      <div className="space-y-1 pb-1 text-center">
+        <h3 className="font-display text-lg font-black tracking-tight text-stone-900">Trending real savings this week</h3>
         <p className="text-xs font-semibold text-stone-500">Items we&rsquo;ve confirmed are real saver deals.</p>
       </div>
       {deals.length === 0 ? (
-        <p className="px-5 text-sm text-stone-500">No confirmed real-saver deals started in the last week.</p>
+        <p className="text-sm text-stone-500">No confirmed real-saver deals started in the last week.</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 px-5">
-            {deals.map(({ product, deal }) => (
-              <DealCard key={`${product.id}-${deal.store}`} product={product} deal={deal} />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-stone-500">
+              {sorted.length} {sorted.length === 1 ? "item" : "items"}
+            </span>
+            <SortDropdown value={sortBy} onChange={onSortByChange} />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {visible.map(({ product, deal }) => (
+              <ProductListCard
+                key={`${product.id}-${deal.store}`}
+                product={product}
+                deal={deal}
+                alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+              />
             ))}
           </div>
-          {hasMore && (
-            <Link href="/specials" className="mx-5 text-center text-xs font-semibold underline" style={{ color: "var(--color-brand-primary)" }}>
-              View all Specials
-            </Link>
+          {sorted.length > TRENDING_PAGE_SIZE && !isExpanded && (
+            <button
+              type="button"
+              onClick={onExpand}
+              className="w-full cursor-pointer rounded-xl border border-stone-200 bg-white py-3 text-xs font-black uppercase tracking-widest text-ink-600 transition-colors hover:text-ink-800"
+            >
+              Show all {sorted.length} deals
+            </button>
           )}
         </>
       )}
@@ -346,13 +544,19 @@ function MyListSection({
   loading,
   error,
   deals,
+  sortBy,
+  onSortByChange,
 }: {
   authLoading: boolean;
   signedIn: boolean;
   loading: boolean;
   error: string | null;
   deals: FlatDeal[];
+  sortBy: SortBy;
+  onSortByChange: (value: SortBy) => void;
 }) {
+  const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
+
   if (authLoading) return <p className="px-5 text-sm text-stone-500">Loading…</p>;
 
   if (!signedIn) {
@@ -376,13 +580,13 @@ function MyListSection({
   if (error) return <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>{error}</p>;
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="px-5 text-center">
-        <h2 className="text-lg font-black tracking-tight text-stone-900">Current specials in your lists</h2>
-        <p className="text-xs font-semibold text-stone-500">Tap any item to see it on Specials.</p>
+    <section className="flex flex-col gap-4 px-5">
+      <div className="space-y-1 pb-1 text-center">
+        <h3 className="font-display text-lg font-black tracking-tight text-stone-900">Current specials in your lists</h3>
+        <p className="text-xs font-semibold text-stone-500">Items from your lists currently on special.</p>
       </div>
-      {deals.length === 0 ? (
-        <p className="px-5 text-sm text-stone-500">
+      {sorted.length === 0 ? (
+        <p className="text-sm text-stone-500">
           Nothing in your lists is currently on special — check{" "}
           <Link href="/lists" className="underline" style={{ color: "var(--color-brand-primary)" }}>
             My Lists
@@ -390,11 +594,25 @@ function MyListSection({
           .
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 px-5">
-          {deals.map(({ product, deal }) => (
-            <DealCard key={`${product.id}-${deal.store}`} product={product} deal={deal} />
-          ))}
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-stone-500">
+              {sorted.length} {sorted.length === 1 ? "item" : "items"}
+            </span>
+            <SortDropdown value={sortBy} onChange={onSortByChange} />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {sorted.map(({ product, deal }) => (
+              <ProductListCard
+                key={`${product.id}-${deal.store}`}
+                product={product}
+                deal={deal}
+                storeLinePrefix="On special at"
+                alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </section>
   );

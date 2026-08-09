@@ -13,6 +13,7 @@ import {
 import { supabaseConfig } from "@/lib/config";
 import DealCard from "@/components/DealCard";
 import FilterPill from "@/components/FilterPill";
+import LoadingMascot from "@/components/LoadingMascot";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -100,7 +101,7 @@ export default function SpecialsPage() {
         ))}
       </div>
 
-      {loading && <p className="px-5 text-sm text-stone-500">Loading specials…</p>}
+      <LoadingMascot loading={loading} label="Loading specials…" />
       {error && (
         <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>
           {error}

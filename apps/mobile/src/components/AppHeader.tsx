@@ -1,0 +1,132 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { CircleUser } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+
+/**
+ * Shared global top nav bar — ported from Prototype/index.html's
+ * `AppHeader` (see project.md, "Restyled the prototype to the new 'Dodgy
+ * Deal · Mobile UI Kit' design system", 2026-08-04). The prototype renders
+ * one `AppHeader` above every tab's content so the profile icon/menu always
+ * sits in the same place; this does the same job here, mounted once in
+ * `layout.tsx` above `{children}` rather than per-page.
+ *
+ * Markup/classes (sticky h-16 bar, avatar circle, dropdown menu shape) are
+ * copied as closely as this app's actual routes allow. Deliberate
+ * differences from the prototype, flagged rather than silently dropped:
+ *  - The prototype's menu has "How Dodgy Deal works" / "Manage Account" /
+ *    "Store Settings" items navigating to tabs that only exist in the
+ *    prototype's own state machine. None of those screens exist in
+ *    apps/mobile yet, so rather than link to pages that don't exist, the
+ *    menu here only offers what's real: log out (signed in) or a link to
+ *    /lists, the one page with a working login form (signed out) — same
+ *    pattern AddToListButton.tsx already uses for its own "log in" links.
+ *  - The prototype's avatar circle is hardcoded to the letter "S" (a
+ *    leftover from its mock data, never actually wired to the signed-in
+ *    user's name). This version computes the initial from the real
+ *    Supabase user instead, since a real user is available here.
+ *  - `onBack`/back-arrow support and the `showCloseButton` variant (used by
+ *    the prototype for its manage-account/settings/how-it-works sub-pages)
+ *    aren't ported — nothing in apps/mobile pushes a sub-page over this
+ *    header yet. Can be added back if/when a screen needs it.
+ */
+
+const ROUTE_TITLES: Record<string, string> = {
+  "/lists": "My List",
+  "/specials": "Specials",
+  "/me": "Me",
+};
+
+function greetingName(user: { email?: string | null; user_metadata?: Record<string, unknown> }): string {
+  const metaName = user.user_metadata?.full_name;
+  const source = (typeof metaName === "string" && metaName) || user.email || "";
+  const first = source.split(/[\s@]/)[0];
+  return first || "there";
+}
+
+export default function AppHeader() {
+  const pathname = usePathname();
+  const { user, loading, signOut } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [isMenuOpen]);
+
+  // Close the menu on route change so it doesn't stay open across
+  // navigation. Adjusted during render (React's documented escape hatch for
+  // "state that depends on a prop changing") rather than in a useEffect --
+  // an effect calling setState synchronously on every dependency change
+  // trips react-hooks/set-state-in-effect, which this codebase otherwise
+  // keeps clean (see page.tsx's lazy useState comment for the same pattern
+  // used elsewhere in this app).
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    setIsMenuOpen(false);
+  }
+
+  const title =
+    pathname === "/"
+      ? user
+        ? `Kia ora, ${greetingName(user)}`
+        : "Dodgy Deal"
+      : ROUTE_TITLES[pathname] || "Dodgy Deal";
+
+  const avatarInitial = user ? greetingName(user).charAt(0).toUpperCase() : null;
+
+  return (
+    <header className="sticky top-0 z-40 flex h-16 w-full flex-shrink-0 items-center justify-between bg-stone-50 px-6">
+      <span className="max-w-[70%] truncate font-display text-base font-black tracking-tighter text-ink-900">
+        {title}
+      </span>
+
+      <div ref={menuRef} className="relative flex items-center gap-3">
+        {loading ? null : user ? (
+          <button
+            onClick={() => setIsMenuOpen((open) => !open)}
+            id="global-header-profile-btn"
+            aria-label="Account menu"
+            className={`flex h-8 w-8 items-center justify-center rounded-full bg-fair-600 text-base font-black text-white transition-all duration-150 ease-in-out ${
+              isMenuOpen ? "ring-2 ring-ink-200" : ""
+            }`}
+          >
+            {avatarInitial}
+          </button>
+        ) : (
+          <Link
+            href="/lists"
+            id="global-header-profile-btn"
+            aria-label="Log in or create an account"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-stone-500 transition-colors duration-150 ease-in-out hover:bg-stone-200"
+          >
+            <CircleUser className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        )}
+
+        {isMenuOpen && user && (
+          <div className="absolute right-0 top-12 z-50 w-48 rounded-2xl border border-stone-200 bg-white py-2 shadow-xl animate-fadeIn">
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                signOut();
+              }}
+              className="block w-full cursor-pointer px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-alert-600 transition-colors hover:bg-alert-50 hover:text-alert-700"
+            >
+              Log Out
+            </button>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}

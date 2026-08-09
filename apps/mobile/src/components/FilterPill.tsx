@@ -14,7 +14,7 @@ export default function FilterPill({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold"
+      className="shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold"
       style={
         active
           ? { backgroundColor: "var(--color-brand-primary)", borderColor: "var(--color-brand-primary)", color: "white" }

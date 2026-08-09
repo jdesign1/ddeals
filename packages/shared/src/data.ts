@@ -118,10 +118,11 @@ export const titleCase = (s: string | null | undefined): string =>
  */
 export async function fetchAllRows<T = Record<string, unknown>>(
   config: SupabaseRestConfig,
-  path: string
+  path: string,
+  pageSize = 1000
 ): Promise<T[]> {
-  const page = 1000;
-  const MAX_PAGES = 100; // safety cap: 100k rows
+  const page = pageSize;
+  const MAX_PAGES = 100; // safety cap: MAX_PAGES * pageSize rows (100k at the default 1000/page)
 
   const fetchPage = async (start: number, extraHeaders?: Record<string, string>) => {
     const res = await fetch(`${config.url}/rest/v1/${path}`, {
@@ -328,9 +329,29 @@ export function buildProductCardsFromSpecials(
  */
 async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const [specialRows, matchIndex] = await Promise.all([
+    // 2026-08-09: production 500s on this exact query traced (via Supabase API
+    // + Postgres logs, not guessed) to `canceling statement due to statement
+    // timeout` on `dodgy_deals`. Root cause: `dodgy_deals` is a plain (not
+    // materialized) view with an expensive CTE chain -- a window function
+    // over the *entire* price_history table plus several joins/sorts -- that
+    // measured ~3s per execution standalone. Because it's a view, PostgREST
+    // recomputes the whole thing from scratch for *every page*, and
+    // fetchAllRows's default 1000-row page size meant one Home-tab load fired
+    // ~9 concurrent full recomputes of that 3s query (for ~9k current-special
+    // rows) via its Promise.all page fan-out. That 9x concurrent DB load is
+    // what pushed individual executions past the 2min statement_timeout,
+    // producing the intermittent 500s (interleaved with 200s/206s from
+    // whichever concurrent copies finished in time) seen in the API logs.
+    // Fix: request one page large enough to cover the current row count
+    // (~9k, checked via Supabase MCP) so this fetch runs the view ONCE
+    // instead of ~9 times concurrently. Doesn't touch the view itself --
+    // the 30s in-flight request cache above still collapses same-session
+    // overlapping callers on top of this. See project.md (2026-08-09 entry)
+    // for the full diagnosis.
     fetchAllRows<DodgyDealsRow>(
       config,
-      "dodgy_deals?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason"
+      "dodgy_deals?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason",
+      20000
     ),
     buildMatchIndex(config),
   ]);
