@@ -39,6 +39,9 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
  *    for free. `AddToListButton`'s own trigger already calls
  *    `stopPropagation()`, so tapping it opens the list picker instead of
  *    also navigating.
+ *  - `onNavigate` (added 2026-08-09, fixing a real bug: cards were
+ *    unselectable from inside FullScreenSearch) fires right before the
+ *    `router.push` above -- see its own doc comment on the prop.
  */
 
 export interface ProductListCardProps {
@@ -48,6 +51,15 @@ export interface ProductListCardProps {
   storeLinePrefix?: string;
   /** Other stores (raw store names) also running a special on this product right now. */
   alsoSpecialStores?: string[];
+  /** Called right before navigating to the deal page -- lets a caller that
+   * renders this card inside its own always-mounted fixed overlay (e.g.
+   * FullScreenSearch, 2026-08-09) close itself first. Without this, tapping
+   * a card while the overlay is open still navigates underneath it, but the
+   * overlay (z-50, `fixed inset-0`) keeps covering the whole viewport, so
+   * the screen never visibly changes -- looks exactly like the tap did
+   * nothing. Optional and a no-op for callers with nothing covering the
+   * page (Home's own Trending/My List sections, /specials). */
+  onNavigate?: () => void;
 }
 
 export default function ProductListCard({
@@ -55,6 +67,7 @@ export default function ProductListCard({
   deal,
   storeLinePrefix = "Lowest at",
   alsoSpecialStores = [],
+  onNavigate,
 }: ProductListCardProps) {
   const router = useRouter();
   const isDodgy = deal.dealType === "Dodgy Deal";
@@ -63,7 +76,10 @@ export default function ProductListCard({
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const storeMeta = getStoreLogoMeta(deal.store);
 
-  const goToDeal = () => router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+  const goToDeal = () => {
+    onNavigate?.();
+    router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+  };
 
   return (
     <div

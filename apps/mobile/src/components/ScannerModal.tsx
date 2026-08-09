@@ -16,11 +16,14 @@ import { Camera, Upload, X } from "lucide-react";
  * user off to the real search flow to look the item up. That's still true
  * here — apps/mobile has no barcode/OCR pipeline either — so this is a
  * faithful, not simplified, port: same capture-then-search behaviour, same
- * markup/classes. `onSearchForItem` focuses Home's inline search bar, whose
- * own `onFocus` now opens the real full-screen search overlay
- * (components/FullScreenSearch.tsx, added 2026-08-09) — this hand-off now
- * matches the prototype's own scanner-to-full-screen-search behaviour
- * exactly, no longer a simplified inline-only substitute.
+ * markup/classes. `onSearchForItem` closes the scanner and opens the real
+ * full-screen search overlay directly (components/FullScreenSearch.tsx,
+ * added 2026-08-09) — mounted once globally in layout.tsx now
+ * (components/GlobalOverlays.tsx), alongside this modal, both driven by
+ * `lib/search-context.tsx` — matches the prototype's own
+ * scanner-to-full-screen-search hand-off, no longer a simplified
+ * inline-only substitute, and no longer needs a DOM `.focus()` hack to get
+ * there since it's not tied to Home's own local state anymore.
  */
 export default function ScannerModal({
   isOpen,

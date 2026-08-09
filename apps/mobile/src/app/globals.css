@@ -158,10 +158,19 @@ body {
 /* Ported from Prototype/index.html verbatim (search bar + top nav port,
    2026-08-08). Mobile WebKit (iOS Safari/Chrome) auto-zooms the whole page
    on focus of any input whose computed font-size is under 16px — the
-   search bar's Tailwind text-sm class is 14px, so #search-input's ID
-   specificity overrides it here without disabling pinch-zoom globally via
-   the viewport meta (which would be an accessibility regression). */
-#search-input {
+   search bar's Tailwind text-sm class is 14px, so this rule's specificity
+   overrides it here without disabling pinch-zoom globally via the viewport
+   meta (which would be an accessibility regression).
+   A class, not `#search-input` by id (changed 2026-08-09): Home's own
+   inline search bar and the full-screen search overlay's bar are two
+   separate <input> elements that both need this fix, and during the
+   overlay's ~200ms close animation (AnimatePresence exit) both are
+   briefly mounted at once -- two elements sharing one id at the same time
+   is invalid HTML/a real (if minor) bug, caught in peer review. A shared
+   class has no such uniqueness requirement, so both inputs keep their own
+   distinct ids (search-input / full-search-input) for anything else that
+   might target them, while this rule targets both via the class alone. */
+.mobile-zoom-safe-input {
   font-size: 16px;
 }
 

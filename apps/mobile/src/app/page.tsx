@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown, ScanBarcode, Search } from "lucide-react";
 import {
-  loadLiveProducts,
   storeMatchesFilter,
   deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
@@ -13,14 +12,12 @@ import {
   type CurrentDeal,
 } from "@dodgey-deals/shared";
 import { fetchUserLists, fetchItemsForLists } from "@dodgey-deals/shared";
-import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
+import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
-import { getStoreLogoMeta } from "@/lib/store-meta";
 import ProductListCard from "@/components/ProductListCard";
-import ScannerModal from "@/components/ScannerModal";
 import LoadingMascot from "@/components/LoadingMascot";
-import FullScreenSearch from "@/components/FullScreenSearch";
+import StorePill from "@/components/StorePill";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -54,7 +51,12 @@ import FullScreenSearch from "@/components/FullScreenSearch";
  *    comment used to flag it as "a substantially separate screen or two of
  *    its own UI, not just this Home screen's styling" and leave it unbuilt;
  *    that's no longer true, see FullScreenSearch.tsx's own doc comment for
- *    what it covers and what's still simplified within it.
+ *    what it covers and what's still simplified within it. As of the same
+ *    day's later session, the overlay (and the live `products` fetch that
+ *    feeds both it and this page's own Trending/My List rails) is global
+ *    state via `lib/search-context.tsx` — mounted once in `layout.tsx`, not
+ *    owned by this page — so tapping the search bar/icon from any other
+ *    screen opens the same overlay, not just from here.
  *  - "My List" cross-references the caller's real lists (via lists.ts)
  *    against the live specials feed for items currently on special — this
  *    is the same real query S1's list cards use, not a guess.
@@ -70,11 +72,11 @@ import FullScreenSearch from "@/components/FullScreenSearch";
  *    doesn't fetch, and a second price-direction option didn't seem worth
  *    the extra control for what's usually a short list. Flagged rather
  *    than faked with a no-op "recent" option.
- *  - The scanner's "Search for This Item" focuses the inline search bar
- *    (`searchInputRef`), whose own `onFocus` opens the full-screen overlay
- *    — same real handoff the prototype's scanner does now, not an adapted
- *    substitute (see ScannerModal.tsx's own doc comment, updated 2026-08-09
- *    to match).
+ *  - The scanner's "Search for This Item" now closes the scanner and opens
+ *    the full-screen overlay directly via `useSearch()` (no DOM `.focus()`
+ *    hand-off needed once both live in the same global context) — see
+ *    `components/GlobalOverlays.tsx` and `ScannerModal.tsx`'s own doc
+ *    comment, both updated 2026-08-09 to match.
  */
 
 interface FlatDeal {
@@ -115,6 +117,15 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
+  // `products`/`loadingProducts`/`error` and the search bar's own
+  // query/active state now come from the global `SearchProvider`
+  // (lib/search-context.tsx, 2026-08-09) instead of a local fetch + local
+  // state -- Home used to run its own `loadLiveProducts` call independent
+  // of the (previously Home-only) full-screen overlay; both now share one
+  // fetch, and the overlay itself is reachable from any screen, not just
+  // this one. Home still owns everything below that's genuinely specific
+  // to it (Trending/My List rails, their own sort/expand state).
+  const { products, loadingProducts, error, query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch, openScanner } = useSearch();
 
   // Computed once via a lazy useState initializer (React's documented escape
   // hatch for a one-time impure call), not inline in useMemo -- calling
@@ -126,24 +137,11 @@ export default function HomePage() {
   const [now] = useState(() => Date.now());
   const weekAgo = now - SEVEN_DAYS_MS;
 
-  const [products, setProducts] = useState<ProductCard[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [searchInput, setSearchInput] = useState("");
-  // Opens the full-screen search overlay (components/FullScreenSearch.tsx)
-  // -- ported from Prototype/index.html's `isSearchActive`: set true as
-  // soon as the search bar is focused or typed into, cleared only by the
-  // overlay's own back arrow (see the `onClose` handler passed to
-  // FullScreenSearch below), never just by the query going back to empty.
-  const [isSearchActive, setIsSearchActive] = useState(false);
   const [storeFilter, setStoreFilter] = useState("all");
   const [homeTab, setHomeTab] = useState<"trending" | "my-list">("trending");
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isTrendingExpanded, setIsTrendingExpanded] = useState(false);
   const [trendingSortBy, setTrendingSortBy] = useState<SortBy>("discount");
   const [myListSortBy, setMyListSortBy] = useState<SortBy>("discount");
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [myListProductIds, setMyListProductIds] = useState<Set<string> | null>(null);
   // Which user (or null for signed-out) `myListProductIds` was last loaded
@@ -156,23 +154,6 @@ export default function HomePage() {
   // account switch would have shown the wrong user's "on special" items.
   const [myListLoadedForUserId, setMyListLoadedForUserId] = useState<string | null>(null);
   const [myListError, setMyListError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadLiveProducts(supabaseConfig)
-      .then((result) => {
-        if (!cancelled) setProducts(result);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load specials");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingProducts(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Real cross-reference against the caller's own lists, same query S1's
   // list cards run. Egress-conscious on purpose (2026-08-08): only fetches
@@ -299,16 +280,15 @@ export default function HomePage() {
             <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
             <input
               id="search-input"
-              ref={searchInputRef}
               value={searchInput}
               onChange={(e) => {
                 const value = e.target.value;
                 setSearchInput(value);
-                if (value.length > 0) setIsSearchActive(true);
+                if (value.length > 0) openSearch();
               }}
-              onFocus={() => setIsSearchActive(true)}
+              onFocus={openSearch}
               placeholder="Search current specials"
-              className="h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
+              className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
               enterKeyHint="search"
             />
             {searchInput && (
@@ -325,7 +305,7 @@ export default function HomePage() {
             )}
             <button
               type="button"
-              onClick={() => setIsScannerOpen(true)}
+              onClick={openScanner}
               id="scan-barcode-btn"
               title="Scan a barcode"
               aria-label="Scan a barcode"
@@ -337,56 +317,22 @@ export default function HomePage() {
         </div>
       )}
 
-      <ScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onSearchForItem={() => searchInputRef.current?.focus()}
-      />
-
-      <FullScreenSearch
-        isOpen={isSearchActive}
-        products={products}
-        loading={loadingProducts}
-        error={error}
-        query={searchInput}
-        onQueryChange={setSearchInput}
-        onClose={() => {
-          setSearchInput("");
-          setIsSearchActive(false);
-        }}
-      />
-
       {/* Store filter pills -- ported from Prototype/index.html's global
-          supermarket filter (per-store brand colors via getStoreLogoMeta
-          when active, matching the same badges used on ProductListCard). */}
+          supermarket filter. `StorePill` (extracted 2026-08-09) is the same
+          component the full-screen search overlay's own store pills now
+          use, per Jay's ask for visual parity between the two. */}
       {!isSearchActive && (
         <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto px-5 pb-1">
-          <button
-            type="button"
-            onClick={() => setStoreFilter("all")}
-            className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
-              storeFilter === "all" ? "border-transparent bg-stone-900 text-white shadow-xs" : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-            }`}
-          >
-            All
-          </button>
-          {availableStoreKeys.map((key) => {
-            const label = STORE_DISPLAY_FALLBACK[key] || key;
-            const meta = getStoreLogoMeta(label);
-            const active = storeFilter === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStoreFilter(key)}
-                className={`flex-shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold tracking-wider transition-all duration-150 ${
-                  active ? `border-transparent ${meta.bg} ${meta.text} shadow-xs` : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+          <StorePill storeKey="all" label="All" active={storeFilter === "all"} onClick={() => setStoreFilter("all")} />
+          {availableStoreKeys.map((key) => (
+            <StorePill
+              key={key}
+              storeKey={key}
+              label={STORE_DISPLAY_FALLBACK[key] || key}
+              active={storeFilter === key}
+              onClick={() => setStoreFilter(key)}
+            />
+          ))}
         </div>
       )}
 

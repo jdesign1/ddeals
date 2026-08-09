@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, ArrowLeft, ChevronDown, Search, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronDown, ScanBarcode, Search, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
-import {
-  STORE_DISPLAY_FALLBACK,
-  storeMatchesFilter,
-  deriveAvailableStoreKeys,
-  groupCategory,
-} from "@dodgey-deals/shared";
+import { STORE_DISPLAY_FALLBACK, storeMatchesFilter, deriveAvailableStoreKeys, groupCategory } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
-import { getStoreLogoMeta } from "@/lib/store-meta";
+import StorePill from "@/components/StorePill";
+import { useSearch } from "@/lib/search-context";
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -21,56 +17,75 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
  * ~2416-2871: the persistent full-screen bar, the pre-3-character
  * "Popular specials now" / "Dodgy deals now" browse view with its own
  * store/category/sort controls, and the post-3-character "Results for
- * '...'" list with the same controls). Opens as soon as Home's search bar
- * is focused or typed into (see page.tsx's `renderSearchBar`-equivalent
- * wiring), matching the prototype's own "opens on focus" behaviour and
- * superseding the 2026-08-09 Home-tab session's decision to keep search
- * inline — that session explicitly flagged the full-screen overlay as "a
- * substantially separate screen or two of its own UI, not just this Home
- * screen's styling" and left it unbuilt; this is that screen.
+ * '...'" list with the same controls). Opens as soon as the search bar (or
+ * the global search icon in AppHeader) is focused/tapped on ANY screen, not
+ * just Home — see `lib/search-context.tsx`.
  *
- * Always mounted (like ScannerModal.tsx), not conditionally instantiated,
- * so `selectedStores`/`sortBy`/tab/category state persists across
- * open-close cycles the same way it does in the prototype — there,
- * `SearchTab` itself never unmounts (the "active" view is just a JSX
- * branch), so this mirrors that by keeping the component alive and only
- * animating the overlay's opacity via `isOpen`.
+ * Mounted exactly once, globally, in `layout.tsx` via
+ * `components/GlobalOverlays.tsx` (2026-08-09) — reads every bit of its
+ * state from `useSearch()` (products/loading/error, query, isActive/
+ * close/openScanner) instead of taking props, matching how `AppHeader`
+ * already reaches into `useAuth()`/`useHeaderOverride()` directly rather
+ * than being prop-driven from `layout.tsx`. An earlier version of this
+ * file was mounted only inside Home's own `page.tsx` and took all of this
+ * as props — moved globally, per Jay's ask, so the overlay is reachable
+ * from `/specials`, `/lists`, `/me`, not just `/`.
+ *
+ * Not conditionally instantiated (stays mounted even while closed, like
+ * `ScannerModal.tsx`), so `selectedStores`/`sortBy`/tab/category state
+ * persists across open-close cycles the same way it does in the prototype
+ * — there, `SearchTab` itself never unmounts (the "active" view is just a
+ * JSX branch), so this mirrors that by keeping the component alive and
+ * only animating the overlay's opacity via `isActive`.
  *
  * Deliberate differences from the prototype, flagged rather than silently
  * dropped:
  *  - No debounced query (the prototype's 150ms debounce exists because it
  *    re-scans a ~12.7k-item live catalogue on every keystroke; this app's
  *    search runs over the same already-loaded, specials-only `products`
- *    array Home's inline search already used, typically a few hundred to
- *    low thousands of rows, cheap enough to filter synchronously).
+ *    array, typically a few hundred to low thousands of rows, cheap enough
+ *    to filter synchronously).
  *  - No typo-tolerant fuzzy fallback (`isFuzzyProductMatch` /
  *    `levenshteinDistance` in the prototype) -- whole-word/substring
  *    relevance ranking is ported (category > name > brand > substring), the
  *    Levenshtein typo-correction tier is not; a meaningful chunk of extra
  *    code for a nicety that matters most on the prototype's much larger
- *    catalogue, and Home's existing inline search never had it either.
+ *    catalogue, and this app's search never had it either.
  *  - No branch personalisation (`usePersonalised`/`selectedBranches`) --
  *    same simplification page.tsx's own doc comment already established;
  *    store labels come from `STORE_DISPLAY_FALLBACK` directly.
  *  - Store filter pills are derived from the live `products` prop via
  *    `deriveAvailableStoreKeys` (only shows stores that actually have
  *    current specials, including SuperValue if it ever does) rather than
- *    the prototype's hardcoded 4-store list -- matches this app's own
- *    established convention (page.tsx's Home store row, /specials' pill
- *    row), not a prototype behaviour being dropped. Selected-state color
- *    still matches the prototype exactly per-section, not uniformly: the
- *    pre-3-character browse pills use per-store brand color
- *    (`getStoreLogoMeta`, same as page.tsx's own Home row -- ported from
- *    Prototype/index.html:2497-2511, fixed after peer review caught an
- *    earlier draft using flat black here), while the post-3-character
- *    results pills stay flat black/`bg-stone-900` when selected, because
- *    that's genuinely what the prototype does differently in that one
- *    section too (Prototype/index.html:2689-2694).
+ *    the prototype's hardcoded 4-store list. Both pill rows (pre- and
+ *    post-3-character) now render via the shared `StorePill` component
+ *    (2026-08-09, per Jay's explicit ask for "the same component pills as
+ *    on home page") -- the prototype actually styles its two rows
+ *    differently (per-store brand color pre-3-char vs. flat black +
+ *    uppercase + a selected-dot indicator post-3-char, Prototype/
+ *    index.html:2497-2511 vs. 2689-2694), but this intentionally unifies
+ *    both to Home's own look instead, superseding that prototype asymmetry
+ *    on Jay's direct instruction rather than by accident.
+ *  - The full-screen bar's trailing button is a scan-barcode button
+ *    (`openScanner`), not the prototype's dismiss-keyboard X -- also a
+ *    direct, deliberate override of the prototype (whose own comment
+ *    reasoned the scan button "only makes sense on the home bar"); Jay
+ *    asked for it back here specifically, so tapping it opens the same
+ *    `ScannerModal` Home's bar does, layered on top of this overlay rather
+ *    than replacing it.
  *  - "Popular specials now" ranks by *discount* (prototype's own
  *    `popularSpecials` picks the biggest-discount deal per product); the
  *    post-3-character results list ranks by *cheapest applicable price*
  *    (prototype's `sortedProducts`) -- both intentionally ported exactly as
  *    asymmetric as the prototype has them, not "fixed" to be consistent.
+ *  - The post-3-character results section's Categories/Sort controls sit
+ *    directly above the results grid (2026-08-09, per Jay's ask to match
+ *    "the home page" -- see TrendingSection/MyListSection in page.tsx,
+ *    both put their own count+Sort row immediately above their grid), not
+ *    up near the tabs the way the prototype places them
+ *    (Prototype/index.html:2642-2665, well above the store-pill row). The
+ *    "Filter by Supermarket:" label the prototype prints above its pill
+ *    row is also dropped entirely, per the same ask.
  *  - Product cards reuse this app's real `ProductListCard` (already the
  *    ported version of the prototype's shared `ProductCard`, per its own
  *    doc comment) instead of re-porting a second copy here.
@@ -158,28 +173,8 @@ function alsoSpecialStoresForPopular(product: ProductCardData, shownDeal: Curren
   return [...new Set(product.currentDeals.filter((d) => d.isOnSpecial !== false && d.store !== shownDeal.store).map((d) => d.store))];
 }
 
-export interface FullScreenSearchProps {
-  isOpen: boolean;
-  products: ProductCardData[];
-  loading: boolean;
-  error: string | null;
-  query: string;
-  onQueryChange: (value: string) => void;
-  /** Back arrow / dedicated close button -- clears the query and exits the
-   * overlay, same as the prototype's `handleClearSearch`. */
-  onClose: () => void;
-}
-
-export default function FullScreenSearch({
-  isOpen,
-  products,
-  loading,
-  error,
-  query,
-  onQueryChange,
-  onClose,
-}: FullScreenSearchProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+export default function FullScreenSearch() {
+  const { products, loadingProducts: loading, error, query, setQuery, isActive: isOpen, closeSearch, openScanner } = useSearch();
 
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("cheapest");
@@ -313,14 +308,53 @@ export default function FullScreenSearch({
   );
   const visibleSearchResults = isSearchResultsExpanded ? sortedProducts : sortedProducts.slice(0, SEARCH_RESULTS_PAGE_SIZE);
 
-  const handleClearText = () => onQueryChange("");
-  const handleDismissKeyboard = () => inputRef.current?.blur();
+  const handleClearText = () => setQuery("");
   const handleBack = () => {
     setPriceFilter("specials");
-    onClose();
+    closeSearch();
   };
 
   const getStoreDisplayName = (key: string) => STORE_DISPLAY_FALLBACK[key] || key;
+
+  /** Shared "Categories" button + "Sort" dropdown row, used above both the
+   * pre-3-char popular list and the post-3-char results grid -- factored out
+   * once both were repositioned to sit directly above their own list
+   * (2026-08-09), since they're now structurally identical apart from which
+   * state/options they bind to. */
+  const renderCategoriesAndSort = (
+    categoryFilter: string[],
+    onOpenCategorySheet: () => void,
+    sortValue: string,
+    onSortChange: (value: string) => void,
+    sortOptions: { value: string; label: string }[]
+  ) => (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onOpenCategorySheet}
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600 transition-colors hover:bg-stone-50"
+      >
+        <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
+        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      <div className="relative inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600">
+        <span>Sort</span>
+        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+        <select
+          value={sortValue}
+          onChange={(e) => onSortChange(e.target.value)}
+          aria-label="Sort"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        >
+          {sortOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 
   return (
     <AnimatePresence>
@@ -330,11 +364,23 @@ export default function FullScreenSearch({
           // comment on this exact animation: a `transform` on any ancestor
           // of the sticky pill row below breaks `position: sticky` for it in
           // every browser, so this deliberately stays a plain fade.
+          // No `max-w-md`/`mx-auto` cap (2026-08-09 fix, per Jay's "full
+          // screen search is less width than the viewport" report): `body`
+          // in globals.css is itself capped at `max-width: 480px` and
+          // centered, but that only constrains normal-flow content --
+          // `position: fixed` is positioned against the real browser
+          // viewport regardless of `body`'s own box, so a *second*,
+          // slightly different cap here (`max-w-md` = 448px) just produced
+          // a visibly narrower, off-by-32px column instead of true
+          // edge-to-edge full-viewport coverage. Plain `inset-0` with no
+          // width cap is simplest and matches "full screen" literally: it
+          // fills the entire viewport on any window size, not just up to
+          // whatever the app's own mobile-emulation column happens to be.
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="fixed inset-0 z-50 mx-auto flex w-full max-w-md flex-col bg-stone-50"
+          className="fixed inset-0 z-50 flex flex-col bg-stone-50"
         >
           <div className="flex flex-shrink-0 items-center gap-2 border-b border-stone-200 bg-white px-4 pb-3 pt-4 shadow-xs">
             <button
@@ -349,14 +395,13 @@ export default function FullScreenSearch({
             <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 items-center rounded-full bg-ink-50 py-2 pl-5 pr-2 transition-all focus-within:ring-2 focus-within:ring-ink-200">
               <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
               <input
-                id="search-input"
-                ref={inputRef}
+                id="full-search-input"
                 autoFocus
-                className="h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
+                className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-400 focus:outline-none"
                 placeholder="Search for supermarket products"
                 type="text"
                 value={query}
-                onChange={(e) => onQueryChange(e.target.value)}
+                onChange={(e) => setQuery(e.target.value)}
                 enterKeyHint="search"
               />
               {query && (
@@ -371,15 +416,19 @@ export default function FullScreenSearch({
                   Clear
                 </button>
               )}
+              {/* Scan-barcode button, not the prototype's dismiss-keyboard X
+                  -- deliberate override per Jay's ask, see this file's doc
+                  comment. Same classes as Home's own scan button
+                  (page.tsx's `scan-barcode-btn`) for visual consistency. */}
               <button
                 type="button"
-                onClick={handleDismissKeyboard}
-                id="close-search-fullscreen-btn"
-                title="Dismiss keyboard"
-                aria-label="Dismiss keyboard"
-                className="ml-2 flex flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-300 bg-stone-200 p-2.5 text-stone-700 transition-colors hover:bg-stone-300"
+                onClick={openScanner}
+                id="scan-barcode-btn"
+                title="Scan a barcode"
+                aria-label="Scan a barcode"
+                className="ml-2 flex flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink-100 bg-white p-2.5 text-ink-600 transition-colors hover:bg-stone-50"
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <ScanBarcode className="h-5 w-5" aria-hidden="true" />
               </button>
             </form>
           </div>
@@ -426,33 +475,18 @@ export default function FullScreenSearch({
                   ))}
                 </div>
 
+                {/* StorePill -- same component as Home's own store row
+                    (text-xs, per-store brand color), per Jay's ask. */}
                 <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
-                  {storeOptions.map((store) => {
-                    const isSelected = selectedStores.includes(store.id);
-                    // Per-store brand color when selected -- ported from
-                    // Prototype/index.html:2497-2511 (this exact pre-3-char
-                    // pill row uses `getStoreLogoMeta`, not a flat black
-                    // selected state), matching the same treatment page.tsx's
-                    // own Home store-filter row already uses. An earlier
-                    // draft of this file used a flat bg-stone-900 here
-                    // (correct for the *results* pill row further down,
-                    // which the prototype really does render in flat black --
-                    // see Prototype/index.html:2689-2694 -- but wrong for
-                    // this one); caught in peer review, fixed here.
-                    const meta = store.id === "all" ? { bg: "bg-stone-900", text: "text-white" } : getStoreLogoMeta(store.id);
-                    return (
-                      <button
-                        key={store.id}
-                        type="button"
-                        onClick={() => handleStoreToggle(store.id)}
-                        className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-[10px] font-bold tracking-wider transition-all duration-150 ${
-                          isSelected ? `border-transparent ${meta.bg} ${meta.text} shadow-xs` : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-                        }`}
-                      >
-                        {store.label}
-                      </button>
-                    );
-                  })}
+                  {storeOptions.map((store) => (
+                    <StorePill
+                      key={store.id}
+                      storeKey={store.id}
+                      label={store.label}
+                      active={selectedStores.includes(store.id)}
+                      onClick={() => handleStoreToggle(store.id)}
+                    />
+                  ))}
                 </div>
 
                 {sortedPopularSpecials.length > 0 ? (
@@ -461,39 +495,22 @@ export default function FullScreenSearch({
                       <h3 className="text-[10px] font-black tracking-widest text-stone-400">
                         {popularTab === "dodgy" ? "Dodgy deals now" : "Popular specials now"}
                       </h3>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCategorySheetTarget("popular")}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600 transition-colors hover:bg-stone-50"
-                        >
-                          <span>{popularCategoryFilter.length === 0 ? "Categories" : `Categories (${popularCategoryFilter.length})`}</span>
-                          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
-                        <div className="relative inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600">
-                          <span>Sort</span>
-                          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-                          <select
-                            value={popularSortBy}
-                            onChange={(e) => setPopularSortBy(e.target.value as PopularSortBy)}
-                            aria-label="Sort"
-                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                          >
-                            {popularTab === "dodgy" ? (
-                              <>
-                                <option value="recent">Most recent</option>
-                                <option value="price-desc">Highest price</option>
-                                <option value="price-asc">Lowest price</option>
-                              </>
-                            ) : (
-                              <>
-                                <option value="discount">Biggest discount</option>
-                                <option value="dodgy">Dodgy first</option>
-                              </>
-                            )}
-                          </select>
-                        </div>
-                      </div>
+                      {renderCategoriesAndSort(
+                        popularCategoryFilter,
+                        () => setCategorySheetTarget("popular"),
+                        popularSortBy,
+                        (v) => setPopularSortBy(v as PopularSortBy),
+                        popularTab === "dodgy"
+                          ? [
+                              { value: "recent", label: "Most recent" },
+                              { value: "price-desc", label: "Highest price" },
+                              { value: "price-asc", label: "Lowest price" },
+                            ]
+                          : [
+                              { value: "discount", label: "Biggest discount" },
+                              { value: "dodgy", label: "Dodgy first" },
+                            ]
+                      )}
                     </div>
                     <div className="space-y-4">
                       {visiblePopularSpecials.map(({ product, bestDeal }) => (
@@ -503,6 +520,7 @@ export default function FullScreenSearch({
                           deal={bestDeal}
                           storeLinePrefix="On special at"
                           alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal)}
+                          onNavigate={closeSearch}
                         />
                       ))}
                     </div>
@@ -566,55 +584,47 @@ export default function FullScreenSearch({
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCategorySheetTarget("results")}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600 transition-colors hover:bg-stone-50"
-                    >
-                      <span>{resultsCategoryFilter.length === 0 ? "Categories" : `Categories (${resultsCategoryFilter.length})`}</span>
-                      <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                    <div className="relative inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold text-stone-600">
-                      <span>Sort</span>
-                      <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-                      <select
-                        value={resultsSortBy}
-                        onChange={(e) => setResultsSortBy(e.target.value as ResultsSortBy)}
-                        aria-label="Sort"
-                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                      >
-                        <option value="cheapest">Cheapest</option>
-                        <option value="discount">Biggest discount</option>
-                        <option value="dodgy-rating">Dodgy rating</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Filter by Supermarket:</label>
-
                   {/* Sticky within this <section> (not the whole scroll
                       container) so it docks directly under the pinned search
-                      bar once the heading above scrolls past -- ported
-                      verbatim from Prototype/index.html. */}
+                      bar once the tabs above scroll past. Same `StorePill`
+                      component as Home's row + the pre-3-char row above
+                      (2026-08-09) -- previously its own uppercase/dot-
+                      indicator variant, per Jay's ask for one consistent
+                      pill look across the whole screen. */}
                   <div className="sticky top-0 z-20 -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto border-b border-stone-200 bg-stone-50 px-5 pb-2 pt-1 hide-scrollbar">
-                    {storeOptions.map((store) => {
-                      const isSelected = selectedStores.includes(store.id);
-                      const label = store.id === "all" ? "All Supermarkets" : getStoreDisplayName(store.id);
-                      return (
-                        <button
-                          key={store.id}
-                          type="button"
-                          onClick={() => handleStoreToggle(store.id)}
-                          className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all duration-150 ${
-                            isSelected ? "border-stone-900 bg-stone-900 text-white shadow-xs" : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-                          }`}
-                        >
-                          {isSelected && <span className="h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-ink-400" />}
-                          {label}
-                        </button>
-                      );
-                    })}
+                    {storeOptions.map((store) => (
+                      <StorePill
+                        key={store.id}
+                        storeKey={store.id}
+                        label={store.label}
+                        active={selectedStores.includes(store.id)}
+                        onClick={() => handleStoreToggle(store.id)}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Categories + Sort now sit directly above the results
+                      grid (2026-08-09, per Jay's ask to match the home
+                      page's own count+Sort placement -- see
+                      TrendingSection/MyListSection in page.tsx), not up near
+                      the tabs. The prototype's "Filter by Supermarket:"
+                      label that used to sit above the pill row is dropped
+                      entirely, also per Jay's ask. */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-stone-500">
+                      {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"}
+                    </span>
+                    {renderCategoriesAndSort(
+                      resultsCategoryFilter,
+                      () => setCategorySheetTarget("results"),
+                      resultsSortBy,
+                      (v) => setResultsSortBy(v as ResultsSortBy),
+                      [
+                        { value: "cheapest", label: "Cheapest" },
+                        { value: "discount", label: "Biggest discount" },
+                        { value: "dodgy-rating", label: "Dodgy rating" },
+                      ]
+                    )}
                   </div>
 
                   <div className="space-y-4">
@@ -627,6 +637,7 @@ export default function FullScreenSearch({
                             product={product}
                             deal={bestDeal}
                             alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores)}
+                            onNavigate={closeSearch}
                           />
                         );
                       })
@@ -644,7 +655,7 @@ export default function FullScreenSearch({
                         </p>
                         <p className="text-xs text-stone-400">
                           {!selectedStores.includes("all")
-                            ? "Try selecting 'All Supermarkets' or search for another item."
+                            ? "Try selecting 'All' or search for another item."
                             : 'Try searching for "milk", "bread" or "eggs"'}
                         </p>
                       </div>

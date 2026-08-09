@@ -24,6 +24,7 @@ import {
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
+import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { usePageHeader } from "@/lib/header-context";
@@ -54,11 +55,15 @@ import FilterPill from "@/components/FilterPill";
  *    this app exists to catch, not commit. Flagged in project.md as a
  *    follow-up (would need a small targeted `price_history` fetch scoped to
  *    just this product/store, not a bigger architecture change).
- *  - The top "Search for supermarket products" bar navigates to Home
- *    (`/`) instead of opening the prototype's in-place search overlay —
- *    that overlay is tightly coupled to Home's own search input state
- *    (`ScannerModal`'s `onSearchForItem` just focuses Home's search box);
- *    reusing it here would mean duplicating that state on this page too.
+ *  - The top "Search for supermarket products" bar opens the real
+ *    full-screen search overlay via `useSearch()` (`lib/search-context.tsx`,
+ *    2026-08-09) — it used to just navigate to Home (`/`) instead, back
+ *    when the overlay was tightly coupled to Home's own local search
+ *    state; that's no longer true now that search is global, so this was
+ *    updated to match (caught in peer review as a stale spot the
+ *    2026-08-09 global-search refactor missed). Its scan icon is its own
+ *    independently-tappable button (`openScanner()`), not just a decorative
+ *    `<span>` inside the search button.
  *  - "Add to List" is always shown (no `isTracked`-based hide) and opens
  *    the same real multi-list picker `AddToListButton` uses elsewhere in
  *    this app, not the prototype's single-boolean localStorage toggle,
@@ -95,6 +100,7 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { openSearch, openScanner } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
@@ -299,16 +305,25 @@ export default function DealAssessmentPage() {
   return (
     <div className="flex flex-col">
     <div className="flex-1 space-y-6 p-6">
-      <Link
-        href="/"
-        className="flex items-center rounded-full border border-stone-300 bg-white py-2.5 pl-5 pr-2 text-sm font-medium text-stone-400"
-      >
-        <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
-        <span className="flex-1">Search for supermarket products</span>
-        <span className="ml-2 flex flex-shrink-0 items-center justify-center rounded-full border border-ink-100 bg-white p-2.5 text-ink-600">
+      <div className="flex items-center rounded-full border border-stone-300 bg-white py-2.5 pl-5 pr-2 text-sm font-medium text-stone-400">
+        <button
+          type="button"
+          onClick={openSearch}
+          className="flex flex-1 cursor-pointer items-center text-left"
+        >
+          <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
+          <span className="flex-1">Search for supermarket products</span>
+        </button>
+        <button
+          type="button"
+          onClick={openScanner}
+          title="Scan a barcode"
+          aria-label="Scan a barcode"
+          className="ml-2 flex flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink-100 bg-white p-2.5 text-ink-600 transition-colors hover:bg-stone-50"
+        >
           <ScanBarcode className="h-5 w-5" aria-hidden="true" />
-        </span>
-      </Link>
+        </button>
+      </div>
 
       <div className={`space-y-5 rounded-2xl border p-5 text-left shadow-xs ${verdictBorderClass} ${verdictBgClass}`}>
         <div className="flex items-center justify-between">

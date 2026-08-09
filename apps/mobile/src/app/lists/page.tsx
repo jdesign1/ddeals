@@ -35,6 +35,18 @@ import LoadingMascot from "@/components/LoadingMascot";
  *    Synergy needs a 2-store-split optimizer that doesn't exist). Omitted
  *    rather than shown with fabricated numbers.
  *  - share/more-vert menu (S7) isn't built -- only a direct delete action.
+ *
+ * Restyled 2026-08-09 (Jay: "improve designs") -- the create-list
+ * form/button and `ListCard`'s badges were still on the older plain/Stitch
+ * look (`rounded-full` `var(--color-brand-primary)` pills, no focus rings)
+ * this app has mostly moved on from; brought in line with the
+ * `bg-stone-900`/`hover:bg-ink-600` CTA + `ink-*` focus-ring conventions
+ * Home/AppHeader/AuthPanel now use. Also fixed a real, previously
+ * unnoticed color inconsistency: "SAVED"/"Verified Special" here used
+ * `var(--color-brand-primary)` (#006948, the older Stitch green) while
+ * every other "genuine/real savings" indicator in the app (ProductListCard's
+ * "Real" badge) uses the `fair-600` token (#56a26a) -- two different greens
+ * meaning the same thing. Both now use `fair-600`.
  */
 export default function ListsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -159,8 +171,11 @@ export default function ListsPage() {
     <main className="flex flex-col gap-4 pb-6">
       <header className="flex items-center justify-between px-5 pt-6">
         <h1 className="text-2xl font-extrabold text-stone-900">My Lists</h1>
-        <button onClick={() => signOut()} className="text-xs font-semibold text-stone-500 underline">
-          Log out
+        <button
+          onClick={() => signOut()}
+          className="cursor-pointer text-xs font-black uppercase tracking-wider text-alert-600 transition-colors hover:text-alert-700"
+        >
+          Log Out
         </button>
       </header>
 
@@ -169,13 +184,12 @@ export default function ListsPage() {
           value={newListName}
           onChange={(e) => setNewListName(e.target.value)}
           placeholder="New list name"
-          className="flex-1 rounded-full border border-stone-300 px-4 py-2.5 text-sm"
+          className="flex-1 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ink-200"
         />
         <button
           type="submit"
           disabled={creating || !newListName.trim()}
-          className="shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-brand-primary)" }}
+          className="shrink-0 cursor-pointer rounded-xl bg-stone-900 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {creating ? "Creating…" : "Create New List"}
         </button>
@@ -190,9 +204,12 @@ export default function ListsPage() {
       <LoadingMascot loading={loadingLists} label="Loading your lists…" />
 
       {!loadingLists && lists.length === 0 && (
-        <p className="px-5 text-sm text-stone-500">
-          No lists yet — create one above, or tap the + on a Specials card to start one.
-        </p>
+        <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
+          <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
+          <p className="max-w-xs px-4 text-xs text-stone-500">
+            Create one above, or tap the + on a Specials card to start one.
+          </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-3 px-5">
@@ -244,10 +261,7 @@ function ListCard({
         <>
           <div className="flex flex-wrap items-center gap-2">
             {summary.hasSavingsData && summary.savingsAmount > 0 ? (
-              <span
-                className="rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
-                style={{ backgroundColor: "var(--color-brand-primary)" }}
-              >
+              <span className="rounded-full bg-fair-600 px-2.5 py-1 text-[11px] font-bold text-white">
                 -${summary.savingsAmount.toFixed(2)} SAVED
               </span>
             ) : (
@@ -256,10 +270,7 @@ function ListCard({
               </span>
             )}
             {summary.hasVerifiedSpecial && (
-              <span
-                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
-                style={{ backgroundColor: "var(--color-verdict-real-saver)" }}
-              >
+              <span className="flex items-center gap-1 rounded-full bg-fair-600 px-2.5 py-1 text-[11px] font-bold text-white">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                 Verified Special
               </span>
