@@ -55,6 +55,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/lists": "My List",
   "/specials": "Specials",
   "/me": "Me",
+  "/history": "All Checks",
 };
 
 function greetingName(user: { email?: string | null; user_metadata?: Record<string, unknown> }): string {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -21,6 +21,7 @@ import {
   findDealForStore,
   normalizeStoreKey,
   DEAL_DETAIL_STORES_LIST,
+  logDealCheck,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
@@ -72,8 +73,15 @@ import ErrorState from "@/components/ErrorState";
  *    header comment for the same reasoning).
  *  - The bottom tab bar is this app's real, persistent `BottomNav`
  *    (mounted globally in layout.tsx), not the prototype's own
- *    Check-deals/My-List/All-Checks/Deal-stats nav (that tab set doesn't
- *    exist here; Home/Lists/Specials/Me does, and stays visible instead).
+ *    Check-deals/My-List/All-Checks/Deal-stats nav -- that exact tab set
+ *    doesn't exist here, but as of 2026-08-11 "All Checks"/"Deal Stats"
+ *    themselves DO (`/history`, `/me`), reached from Me rather than their
+ *    own bottom-nav tabs (Jay's call, see project.md).
+ *  - Every real, signed-in (non-fake-session) visit to this page logs a
+ *    `deal_checks` row (2026-08-11) -- see the `logDealCheck` effect below
+ *    and `packages/shared/src/deal-checks.ts`'s own header comment. Not in
+ *    the prototype, which appends to a local `history` array on the same
+ *    "Check Deals" tap instead (no backend at all there).
  */
 
 const STORES_FOR_TOGGLE = DEAL_DETAIL_STORES_LIST;
@@ -100,7 +108,7 @@ const STORE_TEXT_COLOR: Record<string, string> = {
 export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isFakeSession } = useAuth();
   const { openSearch, openScanner, returnToSearch, resumeAfterDealBack, clearDealNavigationPending } = useSearch();
 
   // Clears the globally-mounted nav-transition `<PageLoader>` (see
@@ -151,6 +159,32 @@ export default function DealAssessmentPage() {
 
   const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
+
+  // Logs this view to `deal_checks` (2026-08-11, backs the ported "All
+  // Checks"/"Deal Stats" screens -- see packages/shared/src/deal-checks.ts's
+  // own header comment) the first time `product`/`deal` both resolve for a
+  // real, signed-in session. `loggedCheckRef` guards against re-firing on
+  // every subsequent render this effect's dependencies happen to touch
+  // (e.g. `retry` re-fetching `products`) -- one page visit is one check,
+  // not one check per re-render. Gated on `!isFakeSession` for the same
+  // reason `lists/page.tsx`'s create/delete are (2026-08-11 session,
+  // project.md) -- a fake session has no real Supabase JWT at all, so this
+  // insert would just fail its RLS `WITH CHECK` silently-to-the-user every
+  // time; skipped outright rather than let it throw into the void. Fire-
+  // and-forget from this page's own point of view -- a failed write here
+  // shouldn't block or degrade the deal-assessment UI itself, which is why
+  // this doesn't feed into `loadError`/any visible state, just a console
+  // warning if it fails.
+  const loggedCheckRef = useRef(false);
+  useEffect(() => {
+    if (loggedCheckRef.current || !user || isFakeSession || !product || !deal) return;
+    loggedCheckRef.current = true;
+    logDealCheck(getSupabaseClient(), user.id, product.id, deal.store, deal.price, deal.originalPrice, deal.dealType).catch(
+      (err: unknown) => {
+        console.warn("logDealCheck failed:", err instanceof Error ? err.message : err);
+      }
+    );
+  }, [user, isFakeSession, product, deal]);
 
   const [currentView, setCurrentView] = useState<"assessment" | "cheaper-alternatives">("assessment");
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
