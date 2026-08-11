@@ -144,25 +144,25 @@ export default function ProductListCard({
         </div>
       </div>
 
-      <div className="pb-5" />
+      <div className="pb-2" />
 
       {isDodgy && (
-        <span className="absolute bottom-5 right-3 z-10 select-none rounded-md bg-alert-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
+        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-alert-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
           Dodgy
         </span>
       )}
       {isRealSaver && (
-        <span className="absolute bottom-5 right-3 z-10 select-none rounded-md bg-fair-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
+        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-fair-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
           Real
         </span>
       )}
       {isFairDeal && (
-        <span className="absolute bottom-5 right-3 z-10 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
+        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
           Fair
         </span>
       )}
       <span
-        className={`absolute bottom-5 left-3 z-10 select-none rounded-md px-2 py-1 text-[9px] font-black shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
+        className={`absolute bottom-2 left-3 z-10 select-none rounded-md px-2 py-1 text-[9px] font-black shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
       >
         {storeMeta.short}
       </span>

@@ -83,19 +83,9 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
               )}
 
               <div className="relative flex flex-col-reverse" style={{ width: barWidth, height: chartHeight }}>
-                {orangeUnder > 0 && (
-                  <div className="relative w-full bg-[#16a34a]" style={{ height: underPx }}>
-                    {row.isBestPrice && (
-                      <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-white bg-[#16a34a]" />
-                    )}
-                  </div>
-                )}
+                {orangeUnder > 0 && <div className="w-full bg-[#16a34a]" style={{ height: underPx }} />}
                 <div className="w-full bg-[#171710]" style={{ height: bodyPx }} />
-                {orangeOver > 0 && (
-                  <div className="relative w-full bg-[#16a34a]" style={{ height: overPx }}>
-                    <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-white bg-[#16a34a]" />
-                  </div>
-                )}
+                {orangeOver > 0 && <div className="w-full bg-[#16a34a]" style={{ height: overPx }} />}
               </div>
 
               <span
@@ -112,4 +102,6 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
   );
 }
 
-const STORE_TICK_COLORS: Record<string, string> = { WW: "#059669", PNS: "#f59e0b", NW: "#e11d48", FS: "#16a34a" };
+// PNS darkened from #f59e0b (amber-500) -> #d97706 (amber-600), matching
+// store-meta.ts's own bg-amber-600 (2026-08-11, per Jay's ask).
+const STORE_TICK_COLORS: Record<string, string> = { WW: "#059669", PNS: "#d97706", NW: "#e11d48", FS: "#16a34a" };

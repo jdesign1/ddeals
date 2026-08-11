@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScanBarcode } from "lucide-react";
 import {
   loadLiveProducts,
@@ -14,6 +14,7 @@ import { supabaseConfig } from "@/lib/config";
 import DealCard from "@/components/DealCard";
 import FilterPill from "@/components/FilterPill";
 import LoadingMascot from "@/components/LoadingMascot";
+import ErrorState from "@/components/ErrorState";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -42,6 +43,21 @@ export default function SpecialsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [storeFilter, setStoreFilter] = useState("all");
+  // Bumped by the ErrorState's Try Again button to re-run the effect below --
+  // same plain-counter retry pattern as search-context.tsx's `retryTick`
+  // (2026-08-11, added alongside this for the same "no retry existed
+  // anywhere" gap).
+  const [retryTick, setRetryTick] = useState(0);
+  // Resets `loading`/`error` here (an event handler, not the effect body --
+  // setting state synchronously inside the effect itself trips this
+  // project's react-hooks/set-state-in-effect rule) before bumping
+  // `retryTick`, so the ErrorState/LoadingMascot swap the instant Try Again
+  // is tapped rather than waiting a frame for the effect to notice.
+  const retry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setRetryTick((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +74,7 @@ export default function SpecialsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryTick]);
 
   const flatDeals = useMemo<FlatDeal[]>(() => {
     const all: FlatDeal[] = [];
@@ -104,11 +120,7 @@ export default function SpecialsPage() {
       </div>
 
       <LoadingMascot loading={loading} label="Loading specials…" />
-      {error && (
-        <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>
-          {error}
-        </p>
-      )}
+      {error && <ErrorState message="Couldn't load specials." detail={error} onRetry={retry} />}
 
       {!loading && !error && filteredDeals.length === 0 && (
         <p className="px-5 text-sm text-stone-500">

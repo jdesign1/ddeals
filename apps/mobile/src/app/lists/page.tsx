@@ -18,6 +18,7 @@ import { getSupabaseClient } from "@/lib/supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import AuthPanel from "@/components/AuthPanel";
 import LoadingMascot from "@/components/LoadingMascot";
+import ErrorState from "@/components/ErrorState";
 
 /**
  * S1 — My Lists, per project.md's Stitch screen inventory. First real
@@ -49,7 +50,7 @@ import LoadingMascot from "@/components/LoadingMascot";
  * meaning the same thing. Both now use `fair-600`.
  */
 export default function ListsPage() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, isFakeSession, loading: authLoading, signOut } = useAuth();
   const [lists, setLists] = useState<ListRow[]>([]);
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [summaries, setSummaries] = useState<Map<string, ListSummary>>(new Map());
@@ -111,22 +112,47 @@ export default function ListsPage() {
     };
   }, [user, loadListsData]);
 
-  // Used by the handlers below (not effects), so calling setState directly is fine.
+  // Used by the handlers below (not effects), so calling setState directly is
+  // fine. Also the ErrorState retry action (2026-08-11) -- toggles
+  // `loadingLists` around the fetch (caught in peer review: without this,
+  // Try Again refetched correctly but left the error card sitting there
+  // motionless with no feedback, unlike every other retry added this
+  // session) so `LoadingMascot` reappears the same way it does on the
+  // initial load, for create/delete's own reload() calls too, not just retry.
   async function reload() {
+    setLoadingLists(true);
+    setError(null);
     try {
       const { rows, grouped, summaries } = await loadListsData();
       setLists(rows);
       setItemsByList(grouped);
       setSummaries(summaries);
-      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load lists");
+    } finally {
+      setLoadingLists(false);
     }
   }
 
+  // Fake-login guard (2026-08-11, root cause of Jay's reported
+  // `createList: new row violates row-level security policy for table
+  // "lists"`): `isFakeSession` (auth-context.tsx) never touches the real
+  // Supabase client's session -- there's no real JWT, so `lists`' INSERT
+  // policy (`WITH CHECK (auth.uid() = user_id)`, confirmed live via
+  // `execute_sql`, correct and unchanged) always rejects it, since an
+  // unauthenticated request has no `auth.uid()` at all to match. That's
+  // long-documented, working-as-designed behavior for reads (fetchUserLists
+  // silently returns zero rows under RLS, no error) -- but writes throw a
+  // real Postgres error instead of failing quietly, and this screen let that
+  // raw RLS message reach Jay rather than the friendly "test mode" framing
+  // every other fake-session-aware surface (AppHeader's banner,
+  // AuthPanel's own button) already uses. Short-circuits before the network
+  // call entirely (not just after a failure) since it can never succeed;
+  // the Create/Delete buttons below are also disabled outright so the
+  // no-op path isn't reachable by mistake.
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !newListName.trim()) return;
+    if (!user || !newListName.trim() || isFakeSession) return;
     setCreating(true);
     setError(null);
     try {
@@ -141,6 +167,7 @@ export default function ListsPage() {
   }
 
   async function handleDelete(listId: string) {
+    if (isFakeSession) return;
     try {
       await deleteList(getSupabaseClient(), listId);
       await reload();
@@ -179,16 +206,30 @@ export default function ListsPage() {
         </button>
       </header>
 
+      {isFakeSession && (
+        // Same amber "dev tool" language/styling as AuthPanel.tsx's own
+        // fake-login button, so the two read as one consistent test-mode
+        // language rather than two different ad-hoc warnings.
+        <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Test Mode</p>
+          <p className="text-xs leading-relaxed text-amber-700">
+            This is a simulated login for design testing, not a real account — creating or deleting lists is
+            disabled here since there&rsquo;s no real account for it to save to.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={handleCreate} className="flex gap-2 px-5">
         <input
           value={newListName}
           onChange={(e) => setNewListName(e.target.value)}
           placeholder="New list name"
-          className="flex-1 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ink-200"
+          disabled={isFakeSession}
+          className="flex-1 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400"
         />
         <button
           type="submit"
-          disabled={creating || !newListName.trim()}
+          disabled={creating || !newListName.trim() || isFakeSession}
           className="shrink-0 cursor-pointer rounded-xl bg-stone-900 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {creating ? "Creating…" : "Create New List"}
@@ -196,9 +237,13 @@ export default function ListsPage() {
       </form>
 
       {error && (
-        <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>
-          {error}
-        </p>
+        // `reload()` is the same refetch handlers below already call after a
+        // successful create/delete -- reused here as the retry action so a
+        // failed load, create, or delete all recover the same way: re-sync
+        // from the server rather than re-attempting the specific mutation
+        // that failed (which `error` alone doesn't carry enough
+        // information to safely redo).
+        <ErrorState message="Something went wrong with your lists." detail={error} onRetry={() => reload()} />
       )}
 
       <LoadingMascot loading={loadingLists} label="Loading your lists…" />

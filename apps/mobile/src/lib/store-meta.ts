@@ -20,7 +20,14 @@ export interface StoreLogoMeta {
 
 const STORE_LOGOS: Record<string, StoreLogoMeta> = {
   woolworths: { short: "WW", bg: "bg-emerald-600", text: "text-white" },
-  paknsave: { short: "PNS", bg: "bg-amber-500", text: "text-stone-950" },
+  // Darkened from bg-amber-500 -> bg-amber-600 (2026-08-11, per Jay's ask to
+  // darken PAK'nSAVE's brand yellow a bit) -- kept in the same Tailwind
+  // amber scale, one step down, rather than a bespoke hex, so it stays
+  // consistent with how every other store here picks a plain Tailwind
+  // shade. Mirrored in StoreCompareChart.tsx's STORE_TICK_COLORS and the
+  // deal-assessment page's STORE_TEXT_COLOR map -- both derive their
+  // PAK'nSAVE color from this same bg-amber-600 value, not a separate one.
+  paknsave: { short: "PNS", bg: "bg-amber-600", text: "text-stone-950" },
   newworld: { short: "NW", bg: "bg-rose-600", text: "text-white" },
   foursquare: { short: "FS", bg: "bg-green-600", text: "text-white" },
 };

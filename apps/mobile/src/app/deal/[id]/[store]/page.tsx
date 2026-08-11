@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -28,9 +28,10 @@ import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { usePageHeader } from "@/lib/header-context";
-import LoadingMascot from "@/components/LoadingMascot";
+import PageLoader from "@/components/PageLoader";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import FilterPill from "@/components/FilterPill";
+import ErrorState from "@/components/ErrorState";
 
 /**
  * Deal-assessment page — ported from Prototype/index.html's `DealModal`
@@ -90,7 +91,7 @@ const STORES_FOR_TOGGLE = DEAL_DETAIL_STORES_LIST;
  */
 const STORE_TEXT_COLOR: Record<string, string> = {
   "bg-emerald-600": "text-emerald-600",
-  "bg-amber-500": "text-amber-500",
+  "bg-amber-600": "text-amber-600",
   "bg-rose-600": "text-rose-600",
   "bg-green-600": "text-green-600",
   "bg-stone-600": "text-stone-600",
@@ -100,13 +101,26 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { openSearch, openScanner } = useSearch();
+  const { openSearch, openScanner, returnToSearch, resumeAfterDealBack } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
 
   const [products, setProducts] = useState<ProductCard[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Same plain-counter retry pattern as search-context.tsx/specials/page.tsx
+  // (2026-08-11) -- lets ErrorState's Try Again button re-run the fetch
+  // below instead of leaving "Couldn't load this deal" as a dead end.
+  const [retryTick, setRetryTick] = useState(0);
+  // Resets `loadError` here (an event handler, not the effect body --
+  // setting state synchronously inside the effect itself trips this
+  // project's react-hooks/set-state-in-effect rule) before bumping
+  // `retryTick`, so ErrorState swaps for PageLoader the instant Try Again is
+  // tapped rather than waiting a frame for the effect to notice.
+  const retry = useCallback(() => {
+    setLoadError(null);
+    setRetryTick((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +134,7 @@ export default function DealAssessmentPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryTick]);
 
   const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
@@ -128,7 +142,23 @@ export default function DealAssessmentPage() {
   const [currentView, setCurrentView] = useState<"assessment" | "cheaper-alternatives">("assessment");
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
 
-  const onBack = () => router.back();
+  // Reopens the full-screen search overlay instead of just falling through
+  // to whatever route was underneath it (2026-08-10, per Jay's ask: "land
+  // back on the search results page they began on, with any searched term
+  // or results still in there") -- but only when `returnToSearch` (set by
+  // `FullScreenSearch`'s own card tap, see search-context.tsx) actually
+  // matches THIS deal, not a stale pending return left over from an
+  // earlier, abandoned deal-page visit (e.g. one the user left via
+  // BottomNav instead of this back button). `router.back()` still runs
+  // either way, so the underlying route (Home, /specials, wherever) is
+  // correctly restored for if/when the user closes search normally
+  // afterwards via its own back arrow.
+  const onBack = () => {
+    if (returnToSearch && returnToSearch.productId === productId && returnToSearch.store === dealStore) {
+      resumeAfterDealBack();
+    }
+    router.back();
+  };
   const headerTitle =
     currentView === "cheaper-alternatives"
       ? "Cheaper Alternatives"
@@ -161,35 +191,47 @@ export default function DealAssessmentPage() {
     });
   }
 
+  // `<PageLoader>` is rendered as a sibling on EVERY branch below
+  // (`loading={products === null}`, true only on the "still fetching"
+  // branch) rather than only inside the loading branch itself -- React
+  // reconciles by the rendered tree's shape, not by which `return`
+  // statement produced it, so as long as `<PageLoader>` sits at the same
+  // position (first child of the returned fragment) across every branch,
+  // it's treated as the SAME component instance updating props as
+  // `products`/`product`/`deal` resolve, not unmounted+remounted. That's
+  // what lets it play its exit fade (see its own doc comment) instead of
+  // just vanishing the instant data arrives, without needing to collapse
+  // this file's whole early-return structure into one branching variable.
   if (loadError) {
     return (
-      <div className="flex flex-col items-center gap-3 p-10 text-center">
-        <p className="text-sm font-bold text-alert-700">Couldn&rsquo;t load this deal.</p>
-        <p className="text-xs text-stone-500">{loadError}</p>
-        <Link href="/" className="text-xs font-bold text-ink-600 underline">
-          Back to Home
-        </Link>
-      </div>
+      <>
+        <PageLoader loading={false} />
+        <div className="flex flex-col items-center gap-3 pt-10 text-center">
+          <ErrorState message="Couldn't load this deal." detail={loadError} onRetry={retry} />
+          <Link href="/" className="text-xs font-bold text-ink-600 underline">
+            Back to Home
+          </Link>
+        </div>
+      </>
     );
   }
 
   if (products === null) {
-    return (
-      <div className="flex flex-col items-center gap-4 p-10">
-        <LoadingMascot loading label="Loading deal…" />
-      </div>
-    );
+    return <PageLoader loading />;
   }
 
   if (!product || !deal) {
     return (
-      <div className="flex flex-col items-center gap-3 p-10 text-center">
-        <p className="text-sm font-bold text-stone-700">This deal isn&rsquo;t on special right now.</p>
-        <p className="text-xs text-stone-500">It may have ended, or the link is out of date.</p>
-        <Link href="/" className="text-xs font-bold text-ink-600 underline">
-          Back to Home
-        </Link>
-      </div>
+      <>
+        <PageLoader loading={false} />
+        <div className="flex flex-col items-center gap-3 p-10 text-center">
+          <p className="text-sm font-bold text-stone-700">This deal isn&rsquo;t on special right now.</p>
+          <p className="text-xs text-stone-500">It may have ended, or the link is out of date.</p>
+          <Link href="/" className="text-xs font-bold text-ink-600 underline">
+            Back to Home
+          </Link>
+        </div>
+      </>
     );
   }
 
@@ -214,7 +256,9 @@ export default function DealAssessmentPage() {
 
   if (currentView === "cheaper-alternatives") {
     return (
-      <div className="flex-1 space-y-6 p-6 pb-24">
+      <>
+        <PageLoader loading={false} />
+        <div className="flex-1 space-y-6 p-6 pb-24">
         <div className={`space-y-4 rounded-2xl border p-6 text-center shadow-xs ${verdictBorderClass} ${verdictBgClass}`}>
           <h2 className={`font-display text-2xl font-black tracking-tight ${verdictColorClass}`}>{verdict}</h2>
           <div className="mx-auto flex w-full max-w-sm items-center gap-4 rounded-xl border border-stone-200/60 bg-white p-4 text-left">
@@ -298,12 +342,15 @@ export default function DealAssessmentPage() {
             })}
           </div>
         )}
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="flex flex-col">
+    <>
+      <PageLoader loading={false} />
+      <div className="flex flex-col">
     <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center rounded-full border border-stone-300 bg-white py-2.5 pl-5 pr-2 text-sm font-medium text-stone-400">
         <button
@@ -371,10 +418,21 @@ export default function DealAssessmentPage() {
             <>
               <h4 className="mb-1 text-base font-black text-stone-900">Dodgy discount special</h4>
               <p className="text-sm leading-relaxed text-stone-600">
-                The lowest genuine price is offered by {cheapestStoreItem?.store}. However,{" "}
-                {cheapestDiscountPct === 0
-                  ? "this price is equal to the recent normal price."
-                  : `this price is ${Math.abs(cheapestDiscountPct)}% ${cheapestDiscountPct > 0 ? "lower" : "higher"} than the recent normal price${cheapestAveragePrice != null ? ` ($${cheapestAveragePrice.toFixed(2)})` : ""}.`}
+                The lowest genuine price is offered by {cheapestStoreItem?.store}. However, this price is{" "}
+                {cheapestDiscountPct === 0 ? (
+                  "equal to a recent special price"
+                ) : (
+                  <>
+                    {Math.abs(cheapestDiscountPct)}% {cheapestDiscountPct > 0 ? "lower" : "higher"} than a recent special price
+                  </>
+                )}
+                {cheapestAveragePrice != null && (
+                  <>
+                    {" "}
+                    <strong className="font-extrabold text-stone-800">${cheapestAveragePrice.toFixed(2)}</strong>
+                  </>
+                )}
+                .
               </p>
             </>
           ) : verdict === "Fair Deal" ? (
@@ -383,9 +441,20 @@ export default function DealAssessmentPage() {
                 {cheapestDiscountPct === 0 ? "No real savings" : `${Math.abs(cheapestDiscountPct)}% off the recent normal price`}
               </h4>
               <p className="text-sm leading-relaxed text-stone-600">
-                {cheapestDiscountPct === 0
-                  ? `This on special price is about the same as the recent normal price${cheapestAveragePrice != null ? ` ($${cheapestAveragePrice.toFixed(2)})` : ""}.`
-                  : `This price is ${Math.abs(cheapestDiscountPct)}% lower than the recent normal price${cheapestAveragePrice != null ? ` ($${cheapestAveragePrice.toFixed(2)})` : ""} at ${cheapestStoreItem?.store}.`}
+                {cheapestDiscountPct === 0 ? (
+                  <>This on special price is about the same as a recent special price</>
+                ) : (
+                  <>
+                    This price is {Math.abs(cheapestDiscountPct)}% lower than a recent special price
+                  </>
+                )}
+                {cheapestAveragePrice != null && (
+                  <>
+                    {" "}
+                    <strong className="font-extrabold text-stone-800">${cheapestAveragePrice.toFixed(2)}</strong>
+                  </>
+                )}
+                {cheapestDiscountPct === 0 ? "." : ` at ${cheapestStoreItem?.store}.`}
               </p>
             </>
           ) : (
@@ -497,6 +566,7 @@ export default function DealAssessmentPage() {
 
       <AddToListBar productId={product.id} isLoggedIn={!!user} />
     </div>
+    </>
   );
 }
 

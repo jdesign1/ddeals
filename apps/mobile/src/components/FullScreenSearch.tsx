@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowLeft, ChevronDown, ScanBarcode, Search, X } from "lucide-react";
@@ -8,6 +8,7 @@ import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/
 import { STORE_DISPLAY_FALLBACK, storeMatchesFilter, deriveAvailableStoreKeys, groupCategory } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
+import ErrorState from "@/components/ErrorState";
 import StorePill from "@/components/StorePill";
 import { useSearch } from "@/lib/search-context";
 
@@ -174,16 +175,50 @@ function alsoSpecialStoresForPopular(product: ProductCardData, shownDeal: Curren
 }
 
 export default function FullScreenSearch() {
-  const { products, loadingProducts: loading, error, query, setQuery, isActive: isOpen, closeSearch, openScanner } = useSearch();
+  const {
+    products,
+    loadingProducts: loading,
+    error,
+    retry,
+    query,
+    setQuery,
+    isActive: isOpen,
+    closeSearch,
+    pauseForDealNavigation,
+    openScanner,
+  } = useSearch();
+
+  // Scroll position (2026-08-10, per Jay's ask to keep it across a
+  // deal-page detour): the scrollable results container below unmounts
+  // each time the overlay closes (`AnimatePresence` removing the
+  // `motion.div`, see its own comment), which resets native `scrollTop` --
+  // this component itself doesn't unmount, though (globally mounted, see
+  // this file's own header comment), so a plain ref here survives that and
+  // lets `restoreScrollOnOpen` below put it back. Tracked continuously via
+  // `onScroll` rather than only captured at deal-navigation time, so it
+  // behaves the same regardless of *why* the overlay closed.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef(0);
+  useLayoutEffect(() => {
+    if (isOpen && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = lastScrollTopRef.current;
+    }
+  }, [isOpen]);
 
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("cheapest");
-  const [priceFilter, setPriceFilter] = useState<PriceFilter>("specials");
+  // Defaults to "dodgy" (2026-08-10, per Jay's ask for the full-screen search
+  // screen to open on the Dodgy tab) -- kept in sync with `popularSortBy`'s
+  // own default below and `handleBack`'s reset value further down.
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>("dodgy");
   const [resultsCategoryFilter, setResultsCategoryFilter] = useState<string[]>([]);
   const [isSearchResultsExpanded, setIsSearchResultsExpanded] = useState(false);
 
-  const [popularTab, setPopularTab] = useState<PopularTab>("specials");
-  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("discount");
+  const [popularTab, setPopularTab] = useState<PopularTab>("dodgy");
+  // "recent" to match the tab-click handler below, which sets this same
+  // sort whenever the Dodgy tab is selected -- keeps the initial render
+  // consistent with what clicking the (now-default) tab would produce.
+  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("recent");
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
   const [isPopularExpanded, setIsPopularExpanded] = useState(false);
 
@@ -310,7 +345,10 @@ export default function FullScreenSearch() {
 
   const handleClearText = () => setQuery("");
   const handleBack = () => {
-    setPriceFilter("specials");
+    // Reset to "dodgy" (the new default, see the state declaration above),
+    // not "specials" -- keeps the reset value in sync with what the screen
+    // opens on.
+    setPriceFilter("dodgy");
     closeSearch();
   };
 
@@ -433,12 +471,23 @@ export default function FullScreenSearch() {
             </form>
           </div>
 
-          <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-5">
+          <div
+            ref={scrollContainerRef}
+            onScroll={(e) => {
+              lastScrollTopRef.current = e.currentTarget.scrollTop;
+            }}
+            className="flex-1 space-y-6 overflow-y-auto px-5 pb-5"
+          >
             <LoadingMascot loading={loading} label="Loading specials…" />
             {error && (
-              <p className="pt-4 text-sm" style={{ color: "var(--color-brand-error)" }}>
-                {error}
-              </p>
+              // `-mx-5` cancels this scroll container's own `px-5` before
+              // ErrorState re-applies its own `mx-5` -- same cancel/reapply
+              // pattern this file's pill rows already use (see their own
+              // comment above) -- so the card sits at the same inset as it
+              // does everywhere else ErrorState is used, not double-indented.
+              <div className="-mx-5 pt-4">
+                <ErrorState message="Couldn't load specials." detail={error} onRetry={retry} />
+              </div>
             )}
 
             {!loading && !error && trimmedQuery.length < 3 && (
@@ -454,8 +503,8 @@ export default function FullScreenSearch() {
                 <div className="mt-4 flex items-center gap-1 rounded-xl bg-stone-100 p-1">
                   {(
                     [
-                      { id: "specials", label: "All specials" },
                       { id: "dodgy", label: "Dodgy" },
+                      { id: "specials", label: "All specials" },
                     ] as { id: PopularTab; label: string }[]
                   ).map((tab) => (
                     <button
@@ -476,8 +525,15 @@ export default function FullScreenSearch() {
                 </div>
 
                 {/* StorePill -- same component as Home's own store row
-                    (text-xs, per-store brand color), per Jay's ask. */}
-                <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
+                    (text-xs, per-store brand color), per Jay's ask.
+                    `-mx-5 px-5` cancels this scroll container's own px-5 so
+                    the row bleeds to the true viewport edge (scrollable
+                    overflow visibly extends off-screen) instead of stopping
+                    20px short of it -- same treatment the results section's
+                    sticky pill row below already has, and how Home's own
+                    row does it (its parent has no horizontal padding at
+                    all, so its own px-5 already reaches the edge). */}
+                <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
                   {storeOptions.map((store) => (
                     <StorePill
                       key={store.id}
@@ -492,8 +548,17 @@ export default function FullScreenSearch() {
                 {sortedPopularSpecials.length > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-[10px] font-black tracking-widest text-stone-400">
-                        {popularTab === "dodgy" ? "Dodgy deals now" : "Popular specials now"}
+                      {/* Was a static "Dodgy deals now" / "Popular specials
+                          now" label -- now shows the live count (matches
+                          `sortedPopularSpecials.length`, the same number the
+                          "Show all N deals" button below counts), set in
+                          `font-display` (the Manrope brand display face used
+                          elsewhere for headings, e.g. the "Results for..."
+                          heading below, vs. this label's previous default
+                          `font-sans`/Geist), and darkened from
+                          `text-stone-400` to `text-stone-500` per Jay's ask. */}
+                      <h3 className="font-display text-[10px] font-black tracking-widest text-stone-500">
+                        {sortedPopularSpecials.length} {popularTab === "dodgy" ? "dodgy specials" : "specials"} found
                       </h3>
                       {renderCategoriesAndSort(
                         popularCategoryFilter,
@@ -520,7 +585,7 @@ export default function FullScreenSearch() {
                           deal={bestDeal}
                           storeLinePrefix="On special at"
                           alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal)}
-                          onNavigate={closeSearch}
+                          onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                         />
                       ))}
                     </div>
@@ -565,8 +630,8 @@ export default function FullScreenSearch() {
                   <div className="flex items-center gap-1 rounded-xl bg-stone-100 p-1">
                     {(
                       [
-                        { id: "specials", label: "All specials" },
                         { id: "dodgy", label: "Dodgy" },
+                        { id: "specials", label: "All specials" },
                       ] as { id: PriceFilter; label: string }[]
                     ).map((tab) => (
                       <button
@@ -637,7 +702,7 @@ export default function FullScreenSearch() {
                             product={product}
                             deal={bestDeal}
                             alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores)}
-                            onNavigate={closeSearch}
+                            onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                           />
                         );
                       })

@@ -17,6 +17,7 @@ import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
+import ErrorState from "@/components/ErrorState";
 import StorePill from "@/components/StorePill";
 
 /**
@@ -125,7 +126,7 @@ export default function HomePage() {
   // fetch, and the overlay itself is reachable from any screen, not just
   // this one. Home still owns everything below that's genuinely specific
   // to it (Trending/My List rails, their own sort/expand state).
-  const { products, loadingProducts, error, query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch, openScanner } = useSearch();
+  const { products, loadingProducts, error, retry: retryProducts, query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch, openScanner } = useSearch();
 
   // Computed once via a lazy useState initializer (React's documented escape
   // hatch for a one-time impure call), not inline in useMemo -- calling
@@ -338,9 +339,7 @@ export default function HomePage() {
 
       {!isSearchActive && <LoadingMascot loading={loadingProducts} label="Loading specials…" />}
       {!isSearchActive && error && (
-        <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>
-          {error}
-        </p>
+        <ErrorState message="Couldn't load today's specials." detail={error} onRetry={retryProducts} />
       )}
 
       {!isSearchActive && !loadingProducts && !error && (
@@ -375,6 +374,17 @@ export default function HomePage() {
               signedIn={!!user}
               loading={myListLoading}
               error={myListError}
+              onRetry={() => {
+                // Resets the "already loaded for this user" guard back to
+                // its pre-fetch state (`null`, same as before any fetch has
+                // ever run for a signed-in user -- see that state's own
+                // initializer above) so the load effect's existing
+                // `myListLoadedForUserId === currentUserId` check reads as
+                // "not loaded yet" and fires again, exactly the normal
+                // first-load path, not a special-cased retry branch.
+                setMyListLoadedForUserId(null);
+                setMyListError(null);
+              }}
               deals={myListDeals}
               sortBy={myListSortBy}
               onSortByChange={setMyListSortBy}
@@ -469,6 +479,7 @@ function MyListSection({
   signedIn,
   loading,
   error,
+  onRetry,
   deals,
   sortBy,
   onSortByChange,
@@ -477,6 +488,7 @@ function MyListSection({
   signedIn: boolean;
   loading: boolean;
   error: string | null;
+  onRetry: () => void;
   deals: FlatDeal[];
   sortBy: SortBy;
   onSortByChange: (value: SortBy) => void;
@@ -503,7 +515,7 @@ function MyListSection({
   }
 
   if (loading) return <p className="px-5 text-sm text-stone-500">Checking your lists for current specials…</p>;
-  if (error) return <p className="px-5 text-sm" style={{ color: "var(--color-brand-error)" }}>{error}</p>;
+  if (error) return <ErrorState message="Couldn't check your lists." detail={error} onRetry={onRetry} />;
 
   return (
     <section className="flex flex-col gap-4 px-5">
