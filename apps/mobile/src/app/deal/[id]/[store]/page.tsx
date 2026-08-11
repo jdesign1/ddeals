@@ -101,7 +101,20 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { openSearch, openScanner, returnToSearch, resumeAfterDealBack } = useSearch();
+  const { openSearch, openScanner, returnToSearch, resumeAfterDealBack, clearDealNavigationPending } = useSearch();
+
+  // Clears the globally-mounted nav-transition `<PageLoader>` (see
+  // `GlobalOverlays.tsx`/`search-context.tsx`'s `isDealNavigationPending`
+  // doc comments) now that THIS page -- the thing that flag exists to cover
+  // the wait for -- has actually mounted and is rendering its own local
+  // `<PageLoader>` below (`products === null` is true on first render, same
+  // tick as this effect gets scheduled), so there's no gap between the two
+  // covers handing off. A no-op, safe to call even when this page was
+  // reached some other way (Home, /specials, a direct link) and the flag
+  // was never set true to begin with.
+  useEffect(() => {
+    clearDealNavigationPending();
+  }, [clearDealNavigationPending]);
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
