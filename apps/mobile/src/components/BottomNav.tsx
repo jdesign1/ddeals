@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, Home, ListChecks, User } from "lucide-react";
+import { BarChart3, History, Home, ListChecks } from "lucide-react";
 import type { ComponentType } from "react";
 
 /**
- * Bottom nav: Home / Lists / All Checks / Me. Originally Home / Lists /
- * Specials / Me per the Stitch screen inventory (project.md, "Stitch UI
- * Design — Screen Inventory"), with Specials (S8) in the third slot.
- * Swapped 2026-08-11, per Jay's ask to match the prototype's own bottom
- * nav (Check deals / My List / All Checks / Deal stats) more closely, now
- * that "All Checks" (`/history`) is a real screen here too (2026-08-11
- * session above) rather than only reachable as a link from `/me`. Icon is
- * `History`, matching the prototype's own bottom-nav icon for this exact
- * tab (`Prototype/index.html` line ~7291).
+ * Bottom nav: Home / Lists / All Checks / Deal stats. Originally Home /
+ * Lists / Specials / Me per the Stitch screen inventory (project.md,
+ * "Stitch UI Design — Screen Inventory"), with Specials (S8) in the third
+ * slot and a plain "Me" label on the fourth. Swapped 2026-08-11, per Jay's
+ * ask to match the prototype's own bottom nav (Check deals / My List / All
+ * Checks / Deal stats) more closely, now that both "All Checks" (`/history`)
+ * and "Deal Stats" (`/me`'s real content) are real screens here too
+ * (2026-08-11 session above), not just a placeholder/a link from it. Route
+ * for the fourth tab stays `/me` -- only the label/icon changed, matching
+ * the prototype's own label for that exact route's content, not a new
+ * route. Icons (`History`, `BarChart3`) match the prototype's own
+ * bottom-nav icons for these two tabs (`Prototype/index.html` lines
+ * ~7291/~7304).
  *
  * `/specials` (S8) still exists as a real route and still has a real
  * Stitch mockup behind it — it's just no longer linked from anywhere in
@@ -30,7 +34,7 @@ const TABS: { href: string; label: string; icon: ComponentType<{ className?: str
   { href: "/", label: "Home", icon: Home },
   { href: "/lists", label: "Lists", icon: ListChecks },
   { href: "/history", label: "All Checks", icon: History },
-  { href: "/me", label: "Me", icon: User },
+  { href: "/me", label: "Deal stats", icon: BarChart3 },
 ];
 
 export default function BottomNav() {

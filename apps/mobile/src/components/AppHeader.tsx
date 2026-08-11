@@ -54,7 +54,11 @@ import { useHeaderOverride } from "@/lib/header-context";
 const ROUTE_TITLES: Record<string, string> = {
   "/lists": "My List",
   "/specials": "Specials",
-  "/me": "Me",
+  // "Deal stats" (2026-08-11), matching BottomNav.tsx's own label change
+  // for this same route -- was "Me". Keeps the sticky top bar and the
+  // bottom-nav tab in agreement rather than showing two different names
+  // for the one screen.
+  "/me": "Deal stats",
   "/history": "All Checks",
 };
 
