@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, CircleUser, Search } from "lucide-react";
+import { ArrowLeft, CircleUser } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
-import { useSearch } from "@/lib/search-context";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -41,15 +40,15 @@ import { useSearch } from "@/lib/search-context";
  *    comment (line ~1569) that the account menu/avatar stays visible even
  *    on a back-button screen, rather than DealModal rendering a separate
  *    header of its own.
- *  - A global search icon (added 2026-08-09, per Jay's ask that tapping the
- *    search bar "from home or any other screen" should open full-screen
- *    search) sits next to the avatar on every route -- opens the same
- *    overlay Home's own inline search bar does, via `useSearch()`
- *    (lib/search-context.tsx). Not in the prototype's own `AppHeader`,
- *    which has no search affordance of its own (its search bar lives only
- *    on the Home/SearchTab screen) -- added here specifically because,
- *    unlike the prototype, this app's other routes (`/specials`, `/lists`,
- *    `/me`) have no search bar of their own to tap.
+ *  - A global search icon lived here next to the avatar from 2026-08-09
+ *    until 2026-08-11 (Jay: "remove the search icon from the top nav bar"),
+ *    removed outright rather than relocated. Worth knowing this reopens a
+ *    gap that icon was specifically added to close: `/specials`, `/lists`,
+ *    and `/me` still have no search bar of their own (only Home's own
+ *    inline bar opens the full-screen search overlay now), so on those
+ *    three routes there's currently no way to reach search at all. Not
+ *    fixed here since Jay didn't ask for a replacement -- flagged as a
+ *    follow-up in case that's an oversight rather than intentional.
  */
 
 const ROUTE_TITLES: Record<string, string> = {
@@ -69,7 +68,6 @@ export default function AppHeader() {
   const pathname = usePathname();
   const { user, loading, signOut, isFakeSession } = useAuth();
   const { override } = useHeaderOverride();
-  const { openSearch } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -147,15 +145,6 @@ export default function AppHeader() {
         </div>
 
         <div ref={menuRef} className="relative flex flex-shrink-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={openSearch}
-            id="global-header-search-btn"
-            aria-label="Search"
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
-          >
-            <Search className="h-5 w-5" aria-hidden="true" />
-          </button>
           {loading ? null : user ? (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}
