@@ -49,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${manrope.variable} h-full bg-stone-50 antialiased`}
     >
       <head>
-        <meta name="theme-color" content="#fafaf9" />
+        <meta name="theme-color" content="#f5f5f4" />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_box,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,search_check_2,warning,workspace_premium&display=block"

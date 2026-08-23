@@ -33,14 +33,14 @@
      background a very subtle grey fill colour") -- this is the `body`
      background below, the base layer every scroll container sits on top
      of (no page sets its own full-page background, confirmed by grepping
-     `apps/mobile/src/app` for one). `#f7f7f5` is the app's slightly darker
-     near-`stone-50` base surface; the lighter `stone-50` utility remains
+     `apps/mobile/src/app` for one). `#f5f5f4` is the app's slightly darker
+     near-`stone-100` base surface; the lighter `stone-50` utility remains
      available for secondary surfaces such as AppHeader's bar and hover
      states.
      Was `#ffffff`, plain Next.js boilerplate default, never intentionally
      chosen. The app stays on this light surface even when the device uses
      dark mode so the mobile browser never reveals a black base layer. */
-  --background: #f7f7f5;
+  --background: #f5f5f4;
   --foreground: #171717;
 
   /* Stitch brand palette. `--color-brand-primary`/`-error` used to be their
@@ -193,11 +193,11 @@
 /* The mobile app intentionally keeps its light surface in every browser
    appearance; the UI is designed around this grey background and light cards. */
 html {
-  background-color: #f7f7f5;
+  background-color: #f5f5f4;
 }
 
 body {
-  background-color: #f7f7f5;
+  background-color: #f5f5f4;
   color: var(--foreground);
   /* Brand Guide v1.0 ("04 — TYPE"): Inter for body/UI copy. This was
      hardcoded to Arial/Helvetica before (2026-08-13 UI tidy-up) -- the
