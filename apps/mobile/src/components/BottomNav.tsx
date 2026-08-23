@@ -155,49 +155,21 @@ type MaterialSymbolName = "check_circle" | "list_alt_add" | "search_check_2" | "
  *
  * Active-tab fill reworked a third time, same day (2026-08-14), per Jay:
  * "Change the bottom nav bar selected states to be a rounded pill around
- * the icon and text, which is the same width across all bottom bar
- * items." This reverses the square-corners-on-the-whole-cell decision from
- * the second 2026-08-13 revision described above, going back toward the
- * FIRST revision's rounded capsule shape -- but this time with a fixed
- * width instead of one sized to each tab's own label, which is what fixes
- * the actual problem that first revision had ("Lists" narrower than "Check
- * deals"): every tab's pill is now the same explicit width regardless of
- * label length, so the inconsistency that motivated the square-corners
- * revision no longer applies, and the rounded shape Jay originally wanted
- * doesn't have to trade it away. The fill/rounding themselves moved from
- * the outer `Link` (still just a plain, unstyled flex-1 layout cell now)
- * down onto the inner `<span>`, which carries a fixed width on every tab,
- * active or not, so layout never shifts when a tab's selected state
- * changes. That fixed width (96px) is a judgment call, not a measured
- * value -- sized for "Check deals" (this tab set's longest label) to
- * comfortably fit at this text size; the inner span's own horizontal
- * padding also narrowed (from the old auto-width version's spacing) to
- * leave that label enough room within the fixed width without the pill
- * reading as oversized around the shorter labels. Worth a visual check on
- * Jay's own device and a tweak either way if any label reads as cramped or
- * the pill as too wide. Outer `py-1.5` + inner `py-2.5` + icon/label sizing
- * are otherwise unchanged, so the 72px/4.5rem total height math above
- * still holds -- only width and horizontal padding moved.
- *
- * Fixed width nudged 96px -> 104px (2026-08-20), per Jay: "make the...
- * selected state black pill slightly wider." Same judgment-call sizing
- * this value already was (see above, "not a measured value") -- a small
- * step (`w-[104px]`, arbitrary value; the next named Tailwind scale step
- * up from `w-24`/96px is `w-28`/112px, a bigger jump than "slightly"
- * called for) rather than a full spacing-scale increment. Still comfortably
- * clears "Check deals" at this text size; every other measurement in the
- * "Active-tab fill reworked a third time" entry above (outer `py-1.5`,
- * inner `py-2.5`, icon/label sizing, the 72px/4.5rem total height) is
- * unaffected -- only this one width value changed.
+ * the icon and text, which is the same width across all bottom bar items."
+ * The rounded fill lives on the inner `<span>`, while each tab remains an
+ * equal, fluid flex cell. The inner span fills its cell instead of using a
+ * hard-coded pixel width, so the four tabs stay equal on narrow iPhones and
+ * never force the navigation outside the browser viewport. The icon/label
+ * remain stacked vertically, so the longest label still fits within the
+ * available cell. Outer `py-1.5` + inner `py-2.5` + icon/label sizing are
+ * otherwise unchanged, so the 72px/4.5rem total height math above still holds.
  *
  * Selection pop-in animation added (2026-08-20, same day), per Jay: "when
  * selected, the black pill animates from smaller initially to large to fit
  * the selected state." Every tab's icon+label wrapper (the `<span>` below)
- * already renders at the same fixed `w-[104px]` size regardless of active
- * state -- only its `bg-ink-900` fill is conditional (see the doc-comment
- * history above) -- so the fill itself, not the layout box around it, is
- * what needed to animate; icon+label position/size were already stable
- * across tab switches before this change and stay that way.
+ * renders at the same fluid cell size regardless of active state -- only its
+ * `bg-ink-900` fill is conditional (see the doc-comment history above) -- so
+ * the fill itself, not the layout box around it, is what needed to animate.
  *
  * Split the fill into its own `motion.span`, absolutely positioned
  * (`absolute inset-0`) behind the icon+label content, mounted/unmounted via
@@ -259,7 +231,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-4 bottom-safe-nav z-40 mx-auto flex w-[calc(100%_-_2rem)] max-w-[448px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10"
+      className="fixed inset-x-4 bottom-safe-nav z-40 mx-auto flex w-auto max-w-[448px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10"
       style={{ zIndex: isSearchActive ? 55 : undefined }}
     >
       {TABS.map(({ href, label, icon }) => {
@@ -272,10 +244,10 @@ export default function BottomNav() {
             onClick={() => {
               if (isSearchActive) closeSearch();
             }}
-            className="flex flex-1 items-center justify-center py-1.5"
+            className="flex min-w-0 flex-1 items-center justify-center py-1.5"
           >
             <span
-              className="relative flex w-[104px] flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 py-2.5 text-[13px] leading-4 font-medium transition-colors"
+              className="bottom-nav-tab relative flex w-full min-w-0 flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full px-0 py-2.5 text-[13px] leading-4 font-medium transition-colors"
               style={{ color: isActive ? "#ffffff" : "#57534e" }}
             >
               {/* initial={false} (2026-08-20, per Jay: "don't animate the

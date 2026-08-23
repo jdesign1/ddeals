@@ -36,9 +36,8 @@
      this app -- AppHeader's bar, the account-menu sheet's hover states --
      so this reuses an existing token rather than introducing a new grey).
      Was `#ffffff`, plain Next.js boilerplate default, never intentionally
-     chosen. The dark-mode override two blocks down (`#0a0a0a`) is
-     untouched -- also unaddressed boilerplate, out of scope here, this
-     app has no other dark-mode-specific styling anywhere. */
+     chosen. The app stays on this light surface even when the device uses
+     dark mode so the mobile browser never reveals a black base layer. */
   --background: #fafaf9;
   --foreground: #171717;
 
@@ -189,11 +188,11 @@
   --color-alert-950: var(--color-alert-950);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* The mobile app intentionally keeps its light surface in every browser
+   appearance; the UI is designed around this grey background and light cards. */
+html {
+  background: var(--background);
+  color-scheme: light;
 }
 
 body {
@@ -481,6 +480,12 @@ body {
 }
 .bottom-safe-nav {
   bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+/* Keep the longest tab label inside its equal-width cell on compact iPhones. */
+@media (max-width: 360px) {
+  .bottom-nav-tab {
+    font-size: 12px;
+  }
 }
 /* Same family, added 2026-08-14 for the /lists create-list FAB
    (app/lists/page.tsx) -- BottomNav's own top edge sits at `5.5rem +
