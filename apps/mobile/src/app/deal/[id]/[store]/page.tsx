@@ -887,7 +887,6 @@ export default function DealAssessmentPage() {
                                   </div>
                                   <div className="mt-3.5 flex flex-wrap items-center gap-3">
                                     <div className="flex flex-shrink-0 items-baseline gap-1 whitespace-nowrap">
-                                      <span className="text-sm font-bold tracking-wider text-stone-500">Lowest price:</span>
                                       <span className="font-display text-base font-black text-stone-900">${altPrice.toFixed(2)}</span>
                                     </div>
                                   </div>

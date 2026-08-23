@@ -821,7 +821,7 @@ export default function FullScreenSearch() {
                 id="full-search-input"
                 autoFocus
                 className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
-                placeholder="Search if today's deals are dodgy"
+                placeholder="Search for a product or brand"
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
