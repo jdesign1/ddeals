@@ -413,7 +413,7 @@ export default function HomePage() {
           than adding a 3rd variant/new prop just for the border -- no page
           needs the two concerns (wrapper fill vs. pill border) decoupled
           today. */}
-      {!isSearchActive && <SearchBar blurred variant="shadow" topSpacing />}
+      {!isSearchActive && <SearchBar blurred variant="shadow" />}
 
       {/* Store filter pills -- ported from Prototype/index.html's global
           supermarket filter. `StorePill` (extracted 2026-08-09) is the same

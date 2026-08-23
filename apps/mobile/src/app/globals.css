@@ -233,6 +233,17 @@ body {
   font-size: 16px;
 }
 
+/* Keep every editable control at the iOS/WebKit no-auto-zoom threshold. The
+   search/history bars opt into the class above explicitly; this broader rule
+   covers account, list, and any future text fields without disabling pinch
+   zoom for the page. File/checkbox/radio controls are excluded because they
+   do not trigger the text-field focus zoom behavior. */
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  font-size: 16px;
+}
+
 /* Used by the store-filter pill row -- horizontally scrollable, but no
    visible scrollbar clutter. Ported verbatim from Prototype/index.html. */
 .hide-scrollbar {

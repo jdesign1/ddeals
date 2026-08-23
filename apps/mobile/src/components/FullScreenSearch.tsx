@@ -947,7 +947,7 @@ export default function FullScreenSearch() {
               }
               lastScrollTopRef.current = scrollTop;
             }}
-            className="flex-1 space-y-6 overflow-y-auto px-5 pb-5"
+            className="flex-1 space-y-6 overflow-y-auto px-5 pb-safe-nav"
           >
             <LoadingMascot loading={loading} />
             {error && (
