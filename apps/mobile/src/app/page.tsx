@@ -865,7 +865,7 @@ function TrendingSection({
                   </button>
                 </div>
               </div>
-              <div className="space-y-5 overflow-y-auto px-5 py-4">
+              <div className="space-y-6 overflow-y-auto px-5 py-4">
                 <button
                   type="button"
                   onClick={() => onCategoryFilterChange([])}

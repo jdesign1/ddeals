@@ -1501,7 +1501,7 @@ export default function FullScreenSearch() {
                       </button>
                     </div>
                   </div>
-                  <div className="space-y-5 overflow-y-auto px-5 py-4">
+                  <div className="space-y-6 overflow-y-auto px-5 py-4">
                     {/* Both chip styles below: border -> shadow-sm,
                         2026-08-21, per Jay: "Update the pills and tabs to
                         have no border lines, and short tight drop shadows
