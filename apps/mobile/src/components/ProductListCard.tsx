@@ -147,7 +147,7 @@ export default function ProductListCard({
           (for badge clearance below), which broke that symmetry by making
           the centered content-plus-spacer block sit visibly higher than
           center. Removed that spacer; the verdict badge (bottom-2 right-3)
-          now just sits within this panel's own bottom `py-6` inset
+          now just sits within this panel's own bottom `py-5` inset
           instead. */}
       <div className="flex w-36 flex-shrink-0 select-none items-center justify-center bg-stone-50 p-4">
         <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl">
@@ -157,11 +157,11 @@ export default function ProductListCard({
             width={112}
             height={112}
             unoptimized
-            className="h-full w-full object-contain"
+            className="h-full w-full object-contain mix-blend-multiply"
           />
         </div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white py-6 pl-4 pr-9">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white py-5 pl-4 pr-9">
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same

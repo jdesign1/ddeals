@@ -33,7 +33,7 @@ type MaterialSymbolName = "check_circle" | "list_alt_add" | "search_check_2" | "
  * `rounded-full`; the inner `<span>` is just an icon+label layout wrapper
  * now, no background/radius of its own. `#6b6b6b` inactive color
  * unchanged, not part of either revision. Padding math (outer `py-1.5` +
- * inner `py-2.5` + `h-5` icon + `gap-1` + `text-[13px] leading-4` label line) still
+ * inner `py-2.5` + `h-5` icon + `gap-1` + `text-[12px] leading-4` label line) still
  * totals 72px/4.5rem -- the exact height `layout.tsx`'s own comment says
  * its scroll-container bottom padding assumes this component renders at,
  * unaffected by either revision since neither touched those values.
@@ -231,7 +231,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-4 bottom-safe-nav z-40 mx-auto flex w-auto max-w-[448px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10"
+      className="fixed inset-x-3 bottom-safe-nav z-40 mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10"
       style={{ zIndex: isSearchActive ? 55 : undefined }}
     >
       {TABS.map(({ href, label, icon }) => {
@@ -247,7 +247,7 @@ export default function BottomNav() {
             className="flex min-w-0 flex-1 items-center justify-center py-1.5"
           >
             <span
-              className="bottom-nav-tab relative flex w-full min-w-0 flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full px-0 py-2.5 text-[13px] leading-4 font-medium transition-colors"
+              className="bottom-nav-tab relative flex w-full min-w-0 flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full px-0 py-2.5 text-[12px] leading-4 font-medium transition-colors"
               style={{ color: isActive ? "#ffffff" : "#57534e" }}
             >
               {/* initial={false} (2026-08-20, per Jay: "don't animate the

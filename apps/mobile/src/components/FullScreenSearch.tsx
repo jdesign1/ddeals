@@ -344,6 +344,11 @@ export default function FullScreenSearch() {
   // the `onScroll` handler and a `setTimeout` callback.
   const toolbarAnimationGuardRef = useRef(false);
   const toolbarAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A StorePill click can reflow the filtered list and emit a synthetic
+  // scroll event. Keep the toolbar visible through that reflow so selecting a
+  // supermarket does not immediately undo the user's scroll-up reveal.
+  const toolbarStoreSelectionGuardRef = useRef(false);
+  const toolbarStoreSelectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setToolbarVisible = (visible: boolean) => {
     // No-op, guard untouched, if the toolbar is already in the requested
     // state (peer review catch, 2026-08-17) -- without this check, every
@@ -367,6 +372,7 @@ export default function FullScreenSearch() {
   useEffect(() => {
     return () => {
       if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
+      if (toolbarStoreSelectionTimeoutRef.current) clearTimeout(toolbarStoreSelectionTimeoutRef.current);
     };
   }, []);
 
@@ -530,6 +536,19 @@ export default function FullScreenSearch() {
   }, [products, selectedStores]);
 
   const handleStoreToggle = (storeId: string) => {
+    const currentScrollTop = scrollContainerRef.current?.scrollTop ?? lastScrollTopRef.current;
+    toolbarScrollAnchorRef.current = currentScrollTop;
+    lastScrollTopRef.current = currentScrollTop;
+    toolbarStoreSelectionGuardRef.current = true;
+    if (toolbarStoreSelectionTimeoutRef.current) clearTimeout(toolbarStoreSelectionTimeoutRef.current);
+    toolbarStoreSelectionTimeoutRef.current = setTimeout(() => {
+      toolbarStoreSelectionGuardRef.current = false;
+      const latestScrollTop = scrollContainerRef.current?.scrollTop ?? lastScrollTopRef.current;
+      toolbarScrollAnchorRef.current = latestScrollTop;
+      lastScrollTopRef.current = latestScrollTop;
+    }, TOOLBAR_TRANSITION_MS + 50);
+    setToolbarVisible(true);
+
     if (storeId === "all") {
       setSelectedStores(["all"]);
       return;
@@ -854,16 +873,16 @@ export default function FullScreenSearch() {
                   per Jay: "In the active search bar state, replace the search
                   icon with the dodgy man icon") -- same `/logo.svg` mark
                   `AppHeader.tsx`/`AuthSheet.tsx` already use for their own
-                  top-left brand mark, at the same `h-5 w-5`/`mr-3` footprint
-                  the `Search` icon it replaces had, so this doesn't shift the
-                  input row's own layout/padding. Scoped to just this bar --
+                  top-left brand mark. Enlarged slightly to 22px while keeping
+                  the existing `mr-3` spacing, so the input row's layout stays
+                  stable. Scoped to just this bar --
                   this is the one search input that's actually on-screen
                   while typing (see the comment above on why `SearchBar.tsx`'s
                   own docked bar is never "active" at the same time this one
                   is); this was `Search`'s only usage in this file, so it's
                   dropped from the `lucide-react` import above rather than
                   left there unused. */}
-              <Image src="/logo.svg" alt="" width={20} height={20} className="mr-3 h-5 w-5 flex-shrink-0" />
+              <Image src="/logo.svg" alt="" width={22} height={22} className="mr-3 h-[22px] w-[22px] flex-shrink-0" />
               <input
                 id="full-search-input"
                 autoFocus
@@ -901,6 +920,11 @@ export default function FullScreenSearch() {
               // comparison starts from a fresh baseline instead of a
               // stale pre-transition one.
               if (toolbarAnimationGuardRef.current) {
+                toolbarScrollAnchorRef.current = scrollTop;
+                lastScrollTopRef.current = scrollTop;
+                return;
+              }
+              if (toolbarStoreSelectionGuardRef.current) {
                 toolbarScrollAnchorRef.current = scrollTop;
                 lastScrollTopRef.current = scrollTop;
                 return;
@@ -1241,7 +1265,7 @@ export default function FullScreenSearch() {
             {!loading && !error && trimmedQuery.length >= 3 && (
               <>
                 <section className="space-y-2 pt-5 text-center">
-                  <h2 id="search-title" className="font-display text-xl font-black leading-none tracking-normal text-stone-900">
+                  <h2 id="search-title" className="font-display text-lg font-black leading-none tracking-normal text-stone-900">
                     Results for &lsquo;{trimmedQuery}&rsquo;
                   </h2>
                   <p id="search-subtitle" className="text-[13px] leading-4 font-bold tracking-wide text-stone-500">

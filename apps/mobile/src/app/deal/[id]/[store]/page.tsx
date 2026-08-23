@@ -854,15 +854,15 @@ export default function DealAssessmentPage() {
                                 content. */}
                             <div className="relative flex min-h-72 flex-col justify-between gap-4 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
                               <AddToListButton productId={altProd.id} />
-                              <div className="flex gap-5">
-                                <div className="flex h-28 w-28 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
+                              <div className="flex gap-4">
+                                <div className="flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
                                   <Image
                                     src={altProd.image}
                                     alt={altProd.name}
-                                    width={112}
-                                    height={112}
+                                    width={96}
+                                    height={96}
                                     unoptimized
-                                    className="h-full w-full object-contain"
+                                    className="h-full w-full object-contain mix-blend-multiply"
                                   />
                                 </div>
                                 <div className="flex min-w-0 flex-grow flex-col justify-between py-1">

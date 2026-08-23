@@ -29,18 +29,18 @@
 :root {
   color-scheme: light;
 
-  /* Very subtle grey, not pure white (2026-08-14, Jay: "give the app base
+  /* Slightly darker subtle grey, not pure white (2026-08-14, Jay: "give the app base
      background a very subtle grey fill colour") -- this is the `body`
      background below, the base layer every scroll container sits on top
      of (no page sets its own full-page background, confirmed by grepping
-     `apps/mobile/src/app` for one). `#fafaf9` is this app's own
-     `stone-50` (Tailwind's default stone scale, already used elsewhere in
-     this app -- AppHeader's bar, the account-menu sheet's hover states --
-     so this reuses an existing token rather than introducing a new grey).
+     `apps/mobile/src/app` for one). `#f7f7f5` is the app's slightly darker
+     near-`stone-50` base surface; the lighter `stone-50` utility remains
+     available for secondary surfaces such as AppHeader's bar and hover
+     states.
      Was `#ffffff`, plain Next.js boilerplate default, never intentionally
      chosen. The app stays on this light surface even when the device uses
      dark mode so the mobile browser never reveals a black base layer. */
-  --background: #fafaf9;
+  --background: #f7f7f5;
   --foreground: #171717;
 
   /* Stitch brand palette. `--color-brand-primary`/`-error` used to be their
@@ -193,11 +193,11 @@
 /* The mobile app intentionally keeps its light surface in every browser
    appearance; the UI is designed around this grey background and light cards. */
 html {
-  background-color: #fafaf9;
+  background-color: #f7f7f5;
 }
 
 body {
-  background-color: #fafaf9;
+  background-color: #f7f7f5;
   color: var(--foreground);
   /* Brand Guide v1.0 ("04 — TYPE"): Inter for body/UI copy. This was
      hardcoded to Arial/Helvetica before (2026-08-13 UI tidy-up) -- the
