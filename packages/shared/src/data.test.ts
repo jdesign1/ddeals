@@ -9,8 +9,10 @@ import assert from "node:assert/strict";
 import {
   mergeProductMeta,
   buildProductCardsFromSpecials,
+  buildMatchIndex,
   normalizeStoreKey,
   storeMatchesFilter,
+  matchesAnySelectedStore,
   titleCase,
   loadLiveProducts,
   __liveProductsCache,
@@ -80,6 +82,16 @@ test("storeMatchesFilter: 'all' matches everything, otherwise substring match on
   assert.equal(storeMatchesFilter("Woolworths NZ", "paknsave"), false);
 });
 
+// Extracted 2026-08-21 from FullScreenSearch.tsx's own local copy (see this
+// function's own doc comment in data.ts) so Home's newly multi-select pill
+// row and the search page's existing one share one tested implementation.
+test("matchesAnySelectedStore: true if the store matches ANY selected filter, or 'all' is selected", () => {
+  assert.equal(matchesAnySelectedStore("Woolworths NZ", ["all"]), true);
+  assert.equal(matchesAnySelectedStore("Woolworths NZ", ["paknsave"]), false);
+  assert.equal(matchesAnySelectedStore("Woolworths NZ", ["paknsave", "woolworths"]), true);
+  assert.equal(matchesAnySelectedStore("Pak'nSave", []), false);
+});
+
 // ---- buildProductCardsFromSpecials ----
 
 function row(overrides: Partial<DodgyDealsRow>): DodgyDealsRow {
@@ -146,10 +158,106 @@ test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'",
   assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
 });
 
+test("buildProductCardsFromSpecials: maps price_history_90d_* columns to ninetyDay* fields", () => {
+  const rows = [
+    row({
+      price_history_90d_low: 4.5,
+      price_history_90d_high: 8.0,
+      price_history_90d_avg: 6.25,
+      price_history_90d_samples: 30,
+      price_history_90d_special_samples: 0, // legitimately 0 ("never on special"), not "missing"
+    }),
+  ];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.ninetyDayLow, 4.5);
+  assert.equal(deal.ninetyDayHigh, 8.0);
+  assert.equal(deal.ninetyDayAvg, 6.25);
+  assert.equal(deal.ninetyDaySamples, 30);
+  assert.equal(deal.ninetyDaySpecialSamples, 0);
+});
+
+test("buildProductCardsFromSpecials: ninetyDay* fields are null when price_history_90d_* is absent from the row (pre-migration/no history)", () => {
+  // Simulates both an un-migrated database (columns simply not requested/
+  // present) and a real NULL price_history_90d_samples (no history in the
+  // 90-day window) -- both surface identically as `undefined` on the row,
+  // which must normalize to `null`, never leak through as `undefined`.
+  const rows = [row({})];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.ninetyDayLow, null);
+  assert.equal(deal.ninetyDayHigh, null);
+  assert.equal(deal.ninetyDayAvg, null);
+  assert.equal(deal.ninetyDaySamples, null);
+  assert.equal(deal.ninetyDaySpecialSamples, null);
+});
+
 test("buildProductCardsFromSpecials: standardPrice falls back to min sale_price when no normal_price exists", () => {
   const rows = [row({ normal_price: null, sale_price: 4 }), row({ normal_price: null, sale_price: 3 })];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
   assert.equal(cards[0].standardPrice, 3);
+});
+
+// ---- buildMatchIndex ----
+// Added 2026-08-20 alongside the fix for "products already on your list
+// still show a Plus icon instead of a tick on Home/Search" (see
+// AddToListButton.tsx and buildMatchIndex's own doc comment for the full
+// trace). Root cause: `find()`'s returned group id becomes `ProductCard.id`,
+// which is exactly what gets written to `list_items.product_id` -- but
+// neither `products` nor `app_comparable_family_links` is fetched with an
+// `ORDER BY`, so nothing guaranteed the same real-world matched group
+// resolved to the same root id on two different fetches. This proves the
+// actual bug -- root id stability across different row-arrival orders --
+// not just that grouping still works.
+
+function installMatchIndexFetchStub(
+  canonicalRows: { id: string; canonical_product_id: string }[],
+  comparableRows: { left_product_id: string; right_product_id: string }[]
+): { restore: () => void } {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    const body = url.includes("app_comparable_family_links") ? comparableRows : canonicalRows;
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => body,
+    } as unknown as Response;
+  }) as typeof fetch;
+  return {
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+test("buildMatchIndex: find() is stable regardless of row fetch order", async () => {
+  // Same 3-product match group (p-b <-> p-c via canonical, p-a <-> p-c via
+  // comparable), fetched in two different row orders -- simulates the DB
+  // returning rows differently across two independent page loads (no
+  // ORDER BY on either query, so this is legal, not a stub artifact).
+  const canonical = [{ id: "p-b", canonical_product_id: "p-c" }];
+  const comparableForward = [{ left_product_id: "p-a", right_product_id: "p-c" }];
+  const comparableReversed = [{ left_product_id: "p-c", right_product_id: "p-a" }];
+
+  const stub1 = installMatchIndexFetchStub(canonical, comparableForward);
+  const indexForward = await buildMatchIndex({ url: "https://fake-order-a.example.com", anonKey: "k" });
+  stub1.restore();
+
+  const stub2 = installMatchIndexFetchStub(canonical, comparableReversed);
+  const indexReversed = await buildMatchIndex({ url: "https://fake-order-b.example.com", anonKey: "k" });
+  stub2.restore();
+
+  // Both orders must resolve every id in the group to the SAME root --
+  // the deterministic "smallest id wins" rule guarantees this regardless
+  // of which union() calls ran first.
+  assert.equal(indexForward.find("p-a"), "p-a");
+  assert.equal(indexForward.find("p-b"), "p-a");
+  assert.equal(indexForward.find("p-c"), "p-a");
+  assert.equal(indexReversed.find("p-a"), "p-a");
+  assert.equal(indexReversed.find("p-b"), "p-a");
+  assert.equal(indexReversed.find("p-c"), "p-a");
 });
 
 // ---- loadLiveProducts request cache ----
@@ -192,8 +300,9 @@ test("loadLiveProducts: concurrent overlapping calls share one in-flight fetch, 
     const config = fakeConfig("concurrent");
     const [a, b] = await Promise.all([loadLiveProducts(config), loadLiveProducts(config)]);
     assert.deepEqual(a, b);
-    // loadLiveProductsUncached makes 3 underlying fetchAllRows calls (dodgy_deals,
-    // products, app_comparable_family_links) -- 2 overlapping loadLiveProducts()
+    // loadLiveProductsUncached makes 3 underlying fetchAllRows calls
+    // (dodgy_deals_cache as of 2026-08-12, products, app_comparable_family_links)
+    // -- 2 overlapping loadLiveProducts()
     // calls sharing one fetch means 3 total, not 6. This is the exact
     // production failure mode: before this cache existed, this would be 6.
     assert.equal(calls.length, 3, `expected 3 underlying fetches for 2 overlapping callers, got ${calls.length}`);

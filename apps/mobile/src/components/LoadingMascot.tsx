@@ -18,10 +18,8 @@ import { useEffect, useState } from "react";
  */
 export default function LoadingMascot({
   loading,
-  label,
 }: {
   loading: boolean;
-  label?: string;
 }) {
   // Stays mounted for one extra tick after `loading` goes false so the
   // opacity transition below has something to animate -- an immediate
@@ -62,7 +60,6 @@ export default function LoadingMascot({
         height={48}
         className="h-12 w-12 flex-shrink-0 animate-mascot-turn"
       />
-      {label && <p className="text-sm text-stone-500">{label}</p>}
     </div>
   );
 }

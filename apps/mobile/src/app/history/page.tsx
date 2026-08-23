@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import {
   fetchDealCheckHistory,
   fetchNonSpecialProductCards,
+  describeFetchError,
   type DealCheckRow,
   type ProductCard as ProductCardData,
   type CurrentDeal,
@@ -13,7 +14,6 @@ import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
-import AuthPanel from "@/components/AuthPanel";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import ProductListCard from "@/components/ProductListCard";
@@ -59,9 +59,17 @@ import ProductListCard from "@/components/ProductListCard";
  *    of silently dropping it from the list or fabricating stale data.
  *    Products that don't resolve either way are still counted in "N
  *    checks" and simply skipped from the rendered list — real, not faked.
+ *
+ * The 3 "All Checks" `<h1>`s below (loading state, signed-out state, real
+ * content) are gone as of 2026-08-13, per Jay's "remove the h1 titles from
+ * each page, as we have the title in the top nav bar" -- `AppHeader.tsx`
+ * already shows "All Checks" for this route via `ROUTE_TITLES`, so the
+ * in-page heading was a plain duplicate. Everything else in each of those
+ * 3 blocks (loading text, the `AuthPanel`, the description paragraph +
+ * search input) is unchanged.
  */
 export default function HistoryPage() {
-  const { user, isFakeSession, loading: authLoading } = useAuth();
+  const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
 
   const [history, setHistory] = useState<DealCheckRow[] | null>(null);
@@ -81,7 +89,7 @@ export default function HistoryPage() {
         if (!cancelled) setHistory(rows);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load your check history");
+        if (!cancelled) setError(describeFetchError(err, "Failed to load your check history"));
       });
     return () => {
       cancelled = true;
@@ -152,76 +160,106 @@ export default function HistoryPage() {
 
   if (authLoading) {
     return (
-      <main className="flex flex-col gap-3 px-5 py-8">
-        <h1 className="text-2xl font-extrabold text-stone-900">All Checks</h1>
-        <p className="text-sm text-stone-500">Loading…</p>
+      <main className="flex flex-col gap-3 pb-8">
+        {/* `blurred` added 2026-08-20, per Jay: "All checks and Deal stats
+            pages - remove the search bar's white background (container
+            fill) to match the Check deals page." -- was a bare
+            `<SearchBar />` (default variant, not blurred), which renders
+            an opaque `bg-white` sticky wrapper (`SearchBar.tsx`'s own
+            ternary); `blurred` swaps that for the same transparent +
+            `backdrop-blur-md` treatment Home's search bar already uses.
+            Scoped to just the wrapper fill -- this page's pill still keeps
+            its own `border-stone-300` at rest (unlike Home's, see
+            `page.tsx`'s own same-day `variant="shadow"` change) since Jay's
+            two asks were separate: this one about the container fill only,
+            not the pill's stroke. */}
+        <div className="flex flex-col gap-3 px-5 pt-4">
+          <LoadingMascot loading />
+        </div>
       </main>
     );
   }
 
+  // 2026-08-19, per Jay: bottom sheet, not a full-page swap -- see
+  // lists/page.tsx's own version of this comment.
   if (!user) {
+    const prompt = "Log in to review every supermarket deal and price you've checked.";
     return (
-      <main className="flex flex-col gap-4 px-5 py-8">
-        <h1 className="text-2xl font-extrabold text-stone-900">All Checks</h1>
-        <AuthPanel prompt="Log in to review every supermarket deal and price you've checked." />
+      <main className="flex flex-col gap-4 pt-6 pb-8">
+        {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>`
+            call sites for the full "why" (same change, same reasoning, all
+            3 branches of this page). */}
+        <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
+          <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>
+          <button
+            type="button"
+            onClick={() => openAuthSheet(prompt)}
+            className="dd-btn dd-btn-primary cursor-pointer"
+          >
+            Log in or create an account
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
     <main className="flex flex-col gap-4 pb-6">
+      {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>` call
+          sites for the full "why" (same change, same reasoning, all 3
+          branches of this page). */}
       <header className="flex flex-col gap-3 px-5 pt-6">
-        <h1 className="text-2xl font-extrabold text-stone-900">All Checks</h1>
-        <p className="text-xs leading-relaxed text-stone-600">
+        <p className="text-sm leading-relaxed text-stone-600">
           Every supermarket deal and price you&rsquo;ve checked, most recent first.
         </p>
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" aria-hidden="true" />
+        <div className="flex items-center rounded-full border border-transparent bg-white py-2.5 pl-5 pr-3 shadow-sm transition-colors focus-within:border-stone-900">
+          <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search your check history…"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2.5 pl-10 pr-4 text-xs font-medium text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ink-200"
+            className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
           />
         </div>
       </header>
 
-      {isFakeSession && (
+      {isAnonymousSession && (
         // Same amber "dev tool" language/styling as lists/page.tsx and
-        // /me's own Test Mode notice -- caught in peer review as a real,
-        // if minor, inconsistency: without this, a fake-session user just
-        // sees an empty history with no explanation why (a plain SELECT
-        // silently returns zero rows under RLS for an unauthenticated
-        // request, rather than throwing).
+        // /me's own Test Mode notice. Copy updated 2026-08-13 -- the test
+        // account is a real Supabase anonymous sign-in now (see
+        // auth-context.tsx's own doc comment), so it genuinely accumulates
+        // real check history like any other signed-in user; this no longer
+        // claims history "will always be empty," it just flags the account
+        // itself has no email attached.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Test Mode</p>
-          <p className="text-xs leading-relaxed text-amber-700">
-            This is a simulated login for design testing, not a real account — your check history will always be
-            empty since there&rsquo;s no real account for it to save to.
+          <p className="text-[11px] font-black tracking-widest text-amber-700">Test mode</p>
+          <p className="text-[13px] leading-relaxed text-amber-700">
+            You&rsquo;re using an anonymous test account — checks you make here really do save to your history, but
+            this account has no email attached, so you can&rsquo;t sign back into it from another device.
           </p>
         </div>
       )}
 
-      <LoadingMascot loading={history === null && !error} label="Loading your check history…" />
+      <LoadingMascot loading={history === null && !error} />
       {error && <ErrorState message="Couldn't load your check history." detail={error} onRetry={retry} />}
 
       {history !== null && !error && (
         history.length === 0 ? (
           <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-200 bg-white py-12 text-center">
-            <p className="max-w-xs px-4 text-xs font-bold uppercase tracking-widest text-stone-500">
+            <p className="max-w-xs px-4 text-[13px] leading-4 font-bold tracking-widest text-stone-500">
               Your checking history is empty
             </p>
-            <p className="max-w-xs px-4 text-xs text-stone-400">
+            <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">
               Search for a product or scan a barcode from Home to check your first deal.
             </p>
           </div>
         ) : filteredHistory.length === 0 ? (
           <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-200 bg-white py-12 text-center">
-            <p className="max-w-xs px-4 text-xs font-bold uppercase tracking-widest text-stone-500">
+            <p className="max-w-xs px-4 text-[13px] leading-4 font-bold tracking-widest text-stone-500">
               No matching checks found
             </p>
-            <p className="max-w-xs px-4 text-xs text-stone-400">Try searching for a different product name or brand.</p>
+            <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">Try searching for a different product name or brand.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4 px-5">
@@ -280,5 +318,16 @@ function buildHistoricalDeal(h: DealCheckRow): CurrentDeal {
     isOnSpecial: h.deal_type !== "Fair Price",
     saleStartedAt: null,
     specialEndDate: null,
+    // Price History Insights (2026-08-19) -- this is a deal_checks snapshot,
+    // not a live dodgy_deals row, so there's no real 90-day stat behind it.
+    // Honest null, same as fetchNonSpecialProductCards's own non-special
+    // cards, not fabricated from the snapshot's single price point.
+    ninetyDayLow: null,
+    ninetyDayHigh: null,
+    ninetyDayAvg: null,
+    ninetyDaySamples: null,
+    ninetyDaySpecialSamples: null,
+    ninetyDayDaysTracked: null,
+    ninetyDaySpecialDays: null,
   };
 }

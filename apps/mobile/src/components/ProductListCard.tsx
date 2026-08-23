@@ -47,7 +47,9 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
 export interface ProductListCardProps {
   product: ProductCardData;
   deal: CurrentDeal;
-  /** Text before the store name, e.g. "Lowest at" / "On special at". */
+  /** Text before the store name, e.g. "Lowest at" / "Special at" (was
+   * "On special at" until 2026-08-17, Jay: "change wording to just
+   * 'special at supermarket', remove the word 'on'"). */
   storeLinePrefix?: string;
   /** Other stores (raw store names) also running a special on this product right now. */
   alsoSpecialStores?: string[];
@@ -75,6 +77,19 @@ export default function ProductListCard({
   const isFairDeal = deal.dealType === "Fair Price";
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const storeMeta = getStoreLogoMeta(deal.store);
+  // `product.brand` already arrives Title Cased from `packages/shared/src/
+  // data.ts` (`titleCase(meta.brand)`) -- this card used to re-render it in
+  // ALL CAPS on top of that via the `uppercase` CSS class below. Per Jay's
+  // "sentence case" ask (2026-08-12), converted to true sentence case here
+  // (first letter capital, rest lowercase) rather than just dropping
+  // `uppercase` and showing the Title Case string as-is, since Title Case
+  // ("Coca Cola") isn't the same thing as sentence case ("Coca cola") --
+  // there's no CSS `text-transform` that produces genuine sentence case
+  // (only `capitalize`, which re-title-cases every word), so this is a
+  // real JS transform, not a class swap.
+  const brandSentenceCase = product.brand
+    ? product.brand.charAt(0).toUpperCase() + product.brand.slice(1).toLowerCase()
+    : product.brand;
 
   const goToDeal = () => {
     onNavigate?.();
@@ -92,77 +107,133 @@ export default function ProductListCard({
       }}
       role="button"
       tabIndex={0}
-      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-200 ${
-        isDodgy ? "border-alert-300" : isRealSaver ? "border-fair-300" : isFairDeal ? "border-dodgy-300" : "border-stone-200"
-      }`}
+      // No border, `shadow-sm` instead (2026-08-15, Jay: "Make all product
+      // item cards have no border, and the same tight drop shadow used on
+      // the Lists page saved lists cards" -- same `shadow-sm` `ListCard`
+      // itself switched to the same day, see lists/page.tsx's own doc
+      // comment). This drops the per-verdict border color
+      // (alert/fair/dodgy-300 depending on `isDodgy`/`isRealSaver`/
+      // `isFairDeal`) that used to ring the whole card -- flagged as an
+      // intentional loss, not an oversight: the bottom-right verdict badge
+      // (Dodgy/Real/Fair, below) already carries the same information
+      // explicitly in text, so the border was a redundant, secondary cue
+      // rather than the only place a user could read the verdict from.
+      className="group relative flex cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200"
     >
       <AddToListButton productId={product.id} />
 
-      {/* Row: product image + brand/name/size/price/store line. */}
-      <div className="flex gap-4 px-5 pt-5">
-        <div className="flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
+      {/* Two full-height panels (2026-08-12, per Jay's ask for a subtle
+          grey fill behind the image and a plain white fill for the text
+          side): outer card stays a plain `flex` row (no `flex-col` wrapper
+          any more) so both panels stretch to the row's full height via
+          flex's own default `items-stretch` -- the panel heights are never
+          set explicitly, they just match whichever of the two is
+          naturally taller (normally the text side, once the "Also on
+          special at" pills are showing). `overflow-hidden` on the outer
+          card (unchanged) clips both panels' outer corners to the card's
+          own `rounded-2xl`, so neither panel needs its own rounded-corner
+          classes. Image panel is `w-36` with `p-4` padding, sized to fit
+          a `h-28 w-28` (112px) image at full size with the same `p-4`
+          (16px/side) inset all round -- bumped up from the original
+          96px/`w-32` same day, per Jay's "can the images be a bit larger
+          and still fit the padding?" (that original 96px size was itself
+          already a same-day revert of an even-earlier accidental 80px
+          shrink -- see project.md for the full back-and-forth). `bg-stone-50`
+          (not `-100`) per Jay's same-day "make the grey slightly lighter"
+          ask. Text panel's `py-6` is symmetric (top and bottom equal) so
+          `justify-center` genuinely centers the text block with equal
+          space above and below, per Jay's same-day ask -- an earlier
+          draft added an extra `pb-6` spacer *inside* the centered group
+          (for badge clearance below), which broke that symmetry by making
+          the centered content-plus-spacer block sit visibly higher than
+          center. Removed that spacer; the verdict badge (bottom-2 right-3)
+          now just sits within this panel's own bottom `py-6` inset
+          instead. */}
+      <div className="flex w-36 flex-shrink-0 select-none items-center justify-center bg-stone-50 p-4">
+        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl">
           <Image
             src={product.image}
             alt={product.name}
-            width={96}
-            height={96}
+            width={112}
+            height={112}
             unoptimized
             className="h-full w-full object-contain"
           />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col justify-center pr-9">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-stone-500">{product.brand}</span>
-          <h3 className="mt-0.5 line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
-            {product.name}
-          </h3>
-          {product.unit && <span className="mt-0.5 text-xs font-medium text-stone-500">{product.unit}</span>}
-          <span className="mt-1.5 font-display text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="text-xs font-bold text-stone-600">
-              {storeLinePrefix} {storeLabel}.
-            </span>
-          </div>
-          {alsoSpecialStores.length > 0 && (
-            <div className="mt-7 flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold tracking-wider text-stone-600">Also on special at:</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {alsoSpecialStores.map((store) => {
-                  const meta = getStoreLogoMeta(store);
-                  return (
-                    <div
-                      key={store}
-                      title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                      className={`select-none rounded-md px-2 py-1 text-[9px] font-black ${meta.bg} ${meta.text}`}
-                    >
-                      {meta.short}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white py-6 pl-4 pr-9">
+        {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
+            (2026-08-17, Jay: "the top brand text, reduce the letter
+            spacing to normal, and increase the font size by 1px") -- same
+            move already applied to the full-screen search "N dodgy
+            specials found" label earlier today, see `FullScreenSearch.tsx`'s
+            own doc comment on that one (wide tracking left over from this
+            label's older all-caps-micro-label styling, read as too loose).
+            This span already got ONE +1px bump earlier today from the
+            app-wide small-font sweep (`text-[10px]` -> `text-[11px]`, one
+            pass = one bump, not cumulative) -- this is a second, separate
+            +1px on top of that, specifically for this label, per this new
+            ask, landing at `text-[12px]`, not evidence the earlier sweep
+            missed it. */}
+        <span className="text-[12px] font-bold tracking-normal text-stone-600">{brandSentenceCase}</span>
+        <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
+          {product.name}
+        </h3>
+        {product.unit && <span className="text-[13px] leading-4 font-medium text-stone-500">{product.unit}</span>}
+        <span className="mt-1 font-display text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] leading-4 font-bold text-stone-600">
+            {storeLinePrefix} {storeLabel}.
+          </span>
         </div>
+        {alsoSpecialStores.length > 0 && (
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {/* "Also on special at:" -> "Also special at:" (2026-08-17,
+                same ask as `storeLinePrefix` above -- Jay's "remove the
+                word 'on'" applied consistently to this card's other
+                "on special" phrase too, not just the primary line). */}
+            <span className="text-[11px] font-bold tracking-wider text-stone-600">Also special at:</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {alsoSpecialStores.map((store) => {
+                const meta = getStoreLogoMeta(store);
+                return (
+                  <div
+                    key={store}
+                    title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
+                    className={`select-none rounded-md px-2 py-1 text-[10px] font-black ${meta.bg} ${meta.text}`}
+                  >
+                    {meta.short}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="pb-2" />
-
       {isDodgy && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-alert-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
+        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-alert-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
           Dodgy
         </span>
       )}
       {isRealSaver && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-fair-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
+        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-fair-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
           Real
         </span>
       )}
       {isFairDeal && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-xs">
+        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
           Fair
         </span>
       )}
+      {/* Supermarket badge -- moved top-left (2026-08-12, per Jay's ask; was
+          bottom-left, alongside the dodgy/real/fair verdict badge which
+          stays bottom-right, unchanged). Sits opposite `AddToListButton`
+          (top-2 right-2), over the product image's top-left corner the
+          same way DealCard.tsx's own verdict badge already sits over its
+          image. */}
       <span
-        className={`absolute bottom-2 left-3 z-10 select-none rounded-md px-2 py-1 text-[9px] font-black shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
+        className={`absolute left-3 top-2 z-10 select-none rounded-md px-2 py-1 text-[10px] font-black shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
       >
         {storeMeta.short}
       </span>

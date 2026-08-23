@@ -1,24 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Trash2, ShieldCheck, Store } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Trash2, Pencil, Store, Plus, Check, X, ChevronDown } from "lucide-react";
 import {
-  fetchUserLists,
   createList,
   deleteList,
-  fetchItemsForLists,
-  fetchListPriceLookups,
-  computeListSummaryFromLookups,
+  updateListName,
+  removeItemFromList,
+  loadListsPageData,
+  invalidateListsPageCache,
+  LIST_MEMBERSHIP_CHANGED_EVENT,
+  describeFetchError,
   type ListRow,
   type ListItemRow,
   type ListSummary,
+  type ListItemProductMeta,
+  type ProductCard as ProductCardData,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { supabaseConfig } from "@/lib/config";
-import AuthPanel from "@/components/AuthPanel";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
+import SearchBar from "@/components/SearchBar";
+import ListItemProductCard from "@/components/ListItemProductCard";
 
 /**
  * S1 — My Lists, per project.md's Stitch screen inventory. First real
@@ -48,61 +54,219 @@ import ErrorState from "@/components/ErrorState";
  * every other "genuine/real savings" indicator in the app (ProductListCard's
  * "Real" badge) uses the `fair-600` token (#56a26a) -- two different greens
  * meaning the same thing. Both now use `fair-600`.
+ *
+ * The 3 "Lists"/"My Lists" `<h1>`s (loading state, signed-out state, real
+ * content) are gone as of 2026-08-13, per Jay's "remove the h1 titles from
+ * each page, as we have the title in the top nav bar" -- `AppHeader.tsx`
+ * already shows "My List" for this route via `ROUTE_TITLES`.
+ *
+ * Create-list flow and the page-local "Log out" button both reworked
+ * 2026-08-14, three separate asks:
+ *  - "change the create list function ... a dedicated button in the bottom
+ *    right (plus icon) ... bring up a bottom sheet that asks for the name
+ *    of the list" -- the inline text input + "Create new list" button that
+ *    used to sit under the header (the `justify-end` row the paragraph
+ *    above used to describe) is gone; a fixed circular `+` button, bottom-
+ *    right, opens a bottom sheet with the same name input + submit button
+ *    instead. Sheet follows the exact scrim + spring slide-up recipe
+ *    `AppHeader.tsx`'s own account menu (and every other bottom sheet in
+ *    this app) already uses. `createError` is a separate, sheet-local
+ *    error string rather than reusing the page's own `error`/`ErrorState`
+ *    banner -- that banner renders in the scrollable content behind the
+ *    sheet, which a user wouldn't see while the sheet is still open over
+ *    it.
+ *  - "remove the old create new list button and list name entry box" --
+ *    same ask, the removal half.
+ *  - "remove the logout button from lists page" -- this page's own
+ *    top-right "Log out" button (the one the removed paragraph above used
+ *    to describe) is gone outright, not relocated; signing out is still
+ *    reachable from `AppHeader`'s global account menu and `/account`, both
+ *    unaffected. With that header row gone entirely (not just its button),
+ *    the gap between `SearchBar` and whatever renders next (the test-mode
+ *    banner, empty state, or the list itself) is now just this `<main>`'s
+ *    own flex gap, same spacing every other flex-col page in this app
+ *    already uses between its own direct children -- no longer a bespoke
+ *    top padding on a row that no longer exists.
+ *
+ * "My list page changes" batch, 2026-08-15 (six separate asks, same
+ * session):
+ *  - Search bar placeholder text ("Search items to add to your lists")
+ *    and the grey-page/white-shadow-pill treatment are `SearchBar.tsx`
+ *    prop changes (`placeholder`, `variant="shadow"`), passed at all three
+ *    `<SearchBar />` call sites below (loading/signed-out/real-content) so
+ *    the copy and look agree in every state this page can render, not just
+ *    the happy path -- see that component's own doc comment for the full
+ *    "why".
+ *  - `ListCard`'s trash-icon confirm state now replaces the WHOLE card's
+ *    content (name row, badges, everything) with a centered "Delete?"
+ *    prompt and larger (`h-12 w-12` circles, `h-6 w-6` icons -- was `h-6
+ *    w-6`/`h-3.5 w-3.5`) confirm/cancel controls, instead of the old
+ *    small top-right-only tick/cross pair, per Jay: "make the whole card
+ *    change to the delete state, and make the Delete text - tick and
+ *    cross larger and centred."
+ *  - `ListCard`'s outer `border border-stone-200` is gone, replaced with
+ *    `shadow-sm` (Jay: "no border line, but instead a short drop shadow
+ *    (subtle)"). The card's own internal `border-t` dividers (the
+ *    edit-mode item list below, unrelated to the outer card boundary Jay
+ *    was pointing at) are untouched -- flagged as a judgment call rather
+ *    than stripped along with it.
+ *  - The create-list FAB is white with a black icon now (was solid
+ *    `bg-stone-900`/white), per Jay: "update the add a list large icon to
+ *    be white by default with black icon." Kept `shadow-lg` so it still
+ *    reads as a floating control against this page's own grey base fill,
+ *    rather than nearly disappearing into it the way a plain white circle
+ *    on `bg-stone-50` would.
+ *  - Route title is "Lists" now, not "My List" -- see `AppHeader.tsx`'s
+ *    own `ROUTE_TITLES` entry for that one-line change and why nothing
+ *    else (BottomNav's tab label, this feature's own internal "My List(s)"
+ *    naming throughout this file's doc comments) changed alongside it.
+ *  - "Allow lists to be edited, and items removed" is the one real new
+ *    feature in this batch, not a restyle: each `ListCard` now has a
+ *    pencil icon next to the trash icon (`isEditing` state) that turns the
+ *    list name into an inline `<input>` (saved via the new
+ *    `updateListName` -- lists.ts previously had no update path, only
+ *    create/delete) and reveals that list's own items underneath, each
+ *    with an X button (`removeItemFromList`, already existed but had no
+ *    caller anywhere in apps/mobile until now). Item names come from a new
+ *    `fetchByIds(..., "products", ...)` lookup in this page's own data
+ *    fetch (moved into the shared package as `loadListsPageData` 2026-08-20,
+ *    see this file's own effect comment below for why),
+ *    keyed by the UNION of every list's product ids in one request --
+ *    same egress-saving shape `fetchListPriceLookups` already uses for
+ *    prices on this same page, not a per-list or per-item fetch. Couldn't
+ *    verify against the live Supabase schema this session (no DB access
+ *    from this environment) that `lists`' RLS actually permits UPDATE --
+ *    flagged on `updateListName` itself in lists.ts, worth a real rename
+ *    attempt on Jay's own dev server to confirm before calling this done.
+ *
+ * UX audit follow-through, 2026-08-20 (Jay: "Ok proceed with these," after
+ * a Lists-page UX review this same session flagged 3 concrete gaps --
+ * "item rows are bare text, no image/price/verdict, unlike every other
+ * product card in this app," "split view items from rename," "item tap
+ * should open the deal page"). All 3 addressed together, since the first
+ * (rich item cards) is also the mechanism the third (tap-through) comes
+ * free from:
+ *  - Item rows now render `ListItemProductCard` (a new, compact sibling of
+ *    `ProductListCard.tsx` -- see that new file's own doc comment for why
+ *    a separate component rather than a `ProductListCard` retrofit) with
+ *    a real image/price/store/verdict badge, built by
+ *    `buildListItemProductCard` (lists.ts) from the SAME
+ *    `cheapestByProduct`/`dealByProductStore` lookups this page's own data
+ *    fetch (`loadListsPageData`, lists.ts, since 2026-08-20) already fetched
+ *    for the card-level summary badge/
+ *    total -- no extra network round trip, just a wider `products` select
+ *    (`id,name,brand` -> `+category,image_url,unit_size`). Falls back to
+ *    the original plain-text row only for the rare item with no current
+ *    price at all (delisted/no catalogue match).
+ *  - Viewing a list's items is no longer tied to the pencil/rename control
+ *    -- `isExpanded` (ListCard) is now independent state, toggled by the
+ *    item-count line itself (now a real button with a chevron, not a
+ *    plain `<p>`). The pencil still opens `isExpanded` too (entering
+ *    rename without seeing the list's own items would be a regression),
+ *    but it's no longer the ONLY way in.
+ *  - Tap-through to `/deal/[id]/[store]` comes free from
+ *    `ListItemProductCard` reusing `ProductListCard`'s own "whole card is
+ *    a button" pattern -- nothing extra needed once real `ProductCard`/
+ *    `CurrentDeal` data existed per item to link to.
+ *
+ * Items expanded by default, 2026-08-20 (cont., Jay: "The lists should be
+ * expanded by default") -- `ListCard`'s `isExpanded` now starts `true`
+ * instead of `false`; still fully toggleable per-card, just a different
+ * initial value.
+ *
+ * Remove confirmation, 2026-08-20 (cont., Jay: "When selecting an X on a
+ * product on a list, there should be a remove confirmation") -- an item's
+ * X button no longer calls `onRemoveItem` on the first tap. Both item-row
+ * shapes (`ListItemProductCard` for items with a real `ProductCard`,
+ * `FallbackItemRow` just below `ListCard` for the rare item with no
+ * current price) now carry their own local `confirmingRemove` state and
+ * swap to an inline "Remove {name}?" + tick/cross prompt first, same
+ * pattern `ListCard`'s own `confirmingDelete` already used for removing a
+ * whole LIST -- see each component's own doc comment for the sizing
+ * differences between the 3 (list-level, card-row, fallback-row).
+ *
+ * Data fetch cached, 2026-08-20 (cont., Jay: "Can we cache the lists in a
+ * smart way? so they don't need to be loaded each time you select the
+ * lists tab") -- this page's own composite fetch (lists + items + price
+ * lookups + product meta + item cards, previously a page-local
+ * `loadListsData` useCallback) moved verbatim into the shared package as
+ * `loadListsPageData`, wrapped there in a per-user, 60s-TTL, invalidate-on-
+ * write cache (same request-dedup shape `data.ts`'s own
+ * `loadLiveProductsDeduped` already established for the specials catalogue)
+ * -- see that function's own doc comment (lists.ts) for the full design and
+ * why invalidation, not the TTL, is the real freshness mechanism. This page
+ * mounts fresh every time the Lists tab is selected (client-side route
+ * change, no persisted layout state), so before this change every single
+ * visit paid for the full 4-round-trip fetch again even seconds after the
+ * last one; a repeat visit within the cache's TTL now returns instantly
+ * with no network call at all. `reload()` (used by create/delete/rename/
+ * remove-item, all below) now invalidates this user's cache entry before
+ * refetching, so this page's own writes always show immediately rather
+ * than serving a pre-write cached result for up to 60s.
  */
 export default function ListsPage() {
-  const { user, isFakeSession, loading: authLoading, signOut } = useAuth();
+  const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const [lists, setLists] = useState<ListRow[]>([]);
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [summaries, setSummaries] = useState<Map<string, ListSummary>>(new Map());
+  // Product id -> catalogue meta, for the item list added 2026-08-15 (see
+  // this file's own doc comment, "allow items removed"). Widened 2026-08-20
+  // (UX audit, "item rows are bare text") from just `{ name, brand }` to
+  // the full `ListItemProductMeta` shape (`category`/`image_url`/
+  // `unit_size` added) -- `buildListItemProductCard` (lists.ts) needs all 5
+  // fields to build a real `ProductCard`, not just enough for a plain-text
+  // label.
+  const [productMeta, setProductMeta] = useState<Map<string, ListItemProductMeta>>(new Map());
+  // product_id -> a real ProductCard (image/price/verdict), built by
+  // `buildListItemProductCard` for every item that has a current price.
+  // Items with NO current price at all (delisted/no catalogue match) have
+  // no entry here -- `ListCard` below falls back to a plain-text row for
+  // those specific items, same as every item rendered before this change.
+  const [itemCards, setItemCards] = useState<Map<string, ProductCardData>>(new Map());
   const [loadingLists, setLoadingLists] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newListName, setNewListName] = useState("");
   const [creating, setCreating] = useState(false);
+  // Create-list bottom sheet (2026-08-14, see this file's own doc comment
+  // above). `createError` is deliberately separate from `error` above --
+  // that one drives the page-level `ErrorState` banner, which sits behind
+  // this sheet while it's open.
+  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  // Pure data fetch -- no setState inside. Kept separate from the effect and
-  // handlers below on purpose: react-hooks' set-state-in-effect rule flags
-  // ANY function invoked from an effect body if that function (even
-  // transitively) calls a state setter, so the effect below applies state
-  // itself via inline .then()/.catch() (mirrors specials/page.tsx's existing
-  // pattern) instead of delegating to a helper that sets state.
-  const loadListsData = useCallback(async () => {
-    const client = getSupabaseClient();
-    const rows = await fetchUserLists(client);
-
-    const items = await fetchItemsForLists(client, rows.map((l) => l.id));
-    const grouped = new Map<string, ListItemRow[]>();
-    for (const item of items) {
-      if (!grouped.has(item.list_id)) grouped.set(item.list_id, []);
-      grouped.get(item.list_id)!.push(item);
-    }
-
-    // Egress pass (2026-08-08): one current_prices/dodgy_deals fetch for the
-    // UNION of every list's product ids, not one fetch per list --
-    // previously a user with several lists sharing even one product paid
-    // for that product's rows N times over. computeListSummaryFromLookups
-    // is pure (no network calls), so building each list's summary from the
-    // shared lookups below costs nothing extra per list.
-    const lookups = await fetchListPriceLookups(supabaseConfig, items.map((i) => i.product_id));
-    const summaries = new Map<string, ListSummary>(
-      rows.map((list) => [list.id, computeListSummaryFromLookups(grouped.get(list.id) ?? [], lookups)])
-    );
-
-    return { rows, grouped, summaries };
-  }, []);
-
+  // The actual composite fetch (fetch this user's lists, their items, price
+  // lookups, product meta, and build item cards) moved out of this page
+  // entirely and into the shared package's own `loadListsPageData`
+  // (2026-08-20, per Jay: "Can we cache the lists in a smart way? so they
+  // don't need to be loaded each time you select the lists tab") -- see
+  // that function's own doc comment (lists.ts) for the full cache design.
+  // This page mounting fresh every time the Lists tab is selected (a real
+  // client-side route change, not a persisted layout) used to mean a full
+  // 4-round-trip refetch on every single visit; `loadListsPageData` now
+  // returns a cached, still-in-memory result for repeat visits within its
+  // 60s TTL, with real invalidation (not just the TTL) firing right after
+  // this page's own create/delete/rename/remove-item writes below AND from
+  // `AddToListButton.tsx`'s own add/remove (different component, same
+  // underlying `list_items` rows) -- so a stale read is either "this user's
+  // own edit, already invalidated" or "under 60s old and nothing wrote to
+  // it," never a visibly wrong item count/total.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    loadListsData()
-      .then(({ rows, grouped, summaries }) => {
+    // Availability is external data and can change after the short list-page
+    // cache is populated, so every page load gets a fresh price/special check.
+    loadListsPageData(getSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
+      .then(({ rows, grouped, summaries, productMeta, itemCards }) => {
         if (cancelled) return;
         setLists(rows);
         setItemsByList(grouped);
         setSummaries(summaries);
+        setProductMeta(productMeta);
+        setItemCards(itemCards);
         setError(null);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load lists");
+        if (!cancelled) setError(describeFetchError(err, "Failed to load lists"));
       })
       .finally(() => {
         if (!cancelled) setLoadingLists(false);
@@ -110,7 +274,7 @@ export default function ListsPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, loadListsData]);
+  }, [user]);
 
   // Used by the handlers below (not effects), so calling setState directly is
   // fine. Also the ErrorState retry action (2026-08-11) -- toggles
@@ -120,121 +284,147 @@ export default function ListsPage() {
   // session) so `LoadingMascot` reappears the same way it does on the
   // initial load, for create/delete's own reload() calls too, not just retry.
   async function reload() {
+    if (!user) return;
     setLoadingLists(true);
     setError(null);
+    // Invalidates BEFORE refetching (2026-08-20, see this file's own
+    // top-of-file effect comment on `loadListsPageData`'s cache) -- without
+    // this, a create/delete/rename/remove-item that happens well within the
+    // 60s TTL would still be served the pre-write cached entry here, so the
+    // user's own just-made edit wouldn't show up until the TTL expired.
+    invalidateListsPageCache(user.id);
     try {
-      const { rows, grouped, summaries } = await loadListsData();
+      const { rows, grouped, summaries, productMeta, itemCards } = await loadListsPageData(
+        getSupabaseClient(),
+        supabaseConfig,
+        user.id
+      );
       setLists(rows);
       setItemsByList(grouped);
       setSummaries(summaries);
+      setProductMeta(productMeta);
+      setItemCards(itemCards);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load lists");
+      setError(describeFetchError(err, "Failed to load lists"));
     } finally {
       setLoadingLists(false);
     }
   }
 
-  // Fake-login guard (2026-08-11, root cause of Jay's reported
-  // `createList: new row violates row-level security policy for table
-  // "lists"`): `isFakeSession` (auth-context.tsx) never touches the real
-  // Supabase client's session -- there's no real JWT, so `lists`' INSERT
-  // policy (`WITH CHECK (auth.uid() = user_id)`, confirmed live via
-  // `execute_sql`, correct and unchanged) always rejects it, since an
-  // unauthenticated request has no `auth.uid()` at all to match. That's
-  // long-documented, working-as-designed behavior for reads (fetchUserLists
-  // silently returns zero rows under RLS, no error) -- but writes throw a
-  // real Postgres error instead of failing quietly, and this screen let that
-  // raw RLS message reach Jay rather than the friendly "test mode" framing
-  // every other fake-session-aware surface (AppHeader's banner,
-  // AuthPanel's own button) already uses. Short-circuits before the network
-  // call entirely (not just after a failure) since it can never succeed;
-  // the Create/Delete buttons below are also disabled outright so the
-  // no-op path isn't reachable by mistake.
+  // Fake-login guard removed 2026-08-13 -- root cause of Jay's original
+  // report (2026-08-11) was the dev-only "test account" having no real
+  // Supabase JWT at all, so `lists`' INSERT policy (`WITH CHECK (auth.uid()
+  // = user_id)`) always rejected it. That's no longer true: the test
+  // account is a real Supabase anonymous sign-in as of 2026-08-13 (per
+  // Jay's ask, once he reported "My List page - currently the user can't
+  // create any lists. Even when logged in with the test account" -- see
+  // auth-context.tsx's own doc comment for the full swap), so it has a
+  // real `auth.uid()` and this insert (and delete, below) now succeeds for
+  // it exactly like any other signed-in user. No guard needed here any
+  // more -- `handleCreate`/`handleDelete` just run the real call directly.
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !newListName.trim() || isFakeSession) return;
+    if (!user || !newListName.trim()) return;
     setCreating(true);
-    setError(null);
+    setCreateError(null);
     try {
       await createList(getSupabaseClient(), user.id, newListName);
       setNewListName("");
+      setIsCreateSheetOpen(false);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create list");
+      setCreateError(describeFetchError(err, "Failed to create list"));
     } finally {
       setCreating(false);
     }
   }
 
   async function handleDelete(listId: string) {
-    if (isFakeSession) return;
     try {
       await deleteList(getSupabaseClient(), listId);
+      window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete list");
+      setError(describeFetchError(err, "Failed to delete list"));
+    }
+  }
+
+  // Deliberately does NOT catch -- `ListCard`'s own `saveName` catches this
+  // and shows the error inline next to its edit field (same
+  // separate-local-error pattern `createError`/the create-list sheet above
+  // already uses), the same way a page-level `setError`/`ErrorState` banner
+  // wouldn't be visible while a card's edit row is open, not because the
+  // failure is any less real.
+  async function handleRename(listId: string, name: string) {
+    await updateListName(getSupabaseClient(), listId, name);
+    await reload();
+  }
+
+  async function handleRemoveItem(listId: string, productId: string) {
+    try {
+      await removeItemFromList(getSupabaseClient(), listId, productId);
+      window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
+      await reload();
+    } catch (err) {
+      setError(describeFetchError(err, "Failed to remove item"));
     }
   }
 
   if (authLoading) {
     return (
-      <main className="flex flex-col gap-3 px-5 py-8">
-        <h1 className="text-2xl font-extrabold text-stone-900">Lists</h1>
-        <p className="text-sm text-stone-500">Loading…</p>
+      <main className="flex flex-col gap-3 pb-8">
+        <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} topSpacing />
+        <div className="flex flex-col gap-3 px-5 pt-4">
+          <LoadingMascot loading />
+        </div>
       </main>
     );
   }
 
+  // 2026-08-19, per Jay: "The login/sign up screen needs it's own dedicated
+  // bottom sheet, and not live on the Lists page" -- this used to render
+  // `AuthPanel` as the entire page (a full-page swap, not a real gate).
+  // Same dashed-card empty-state pattern `page.tsx`'s signed-out
+  // `MyListSection` already uses, with a "Log in" button that opens the new
+  // global `AuthSheet` (`openAuthSheet`, auth-context.tsx) instead.
   if (!user) {
     return (
-      <main className="flex flex-col gap-4 px-5 py-8">
-        <h1 className="text-2xl font-extrabold text-stone-900">Lists</h1>
-        <AuthPanel prompt="Log in to create and save shopping lists." />
+      <main className="flex flex-col gap-4 pb-8">
+        <SearchBar variant="shadow" placeholder="Search today’s deals" sticky={false} topSpacing />
+        <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
+          <p className="max-w-xs px-4 text-sm font-bold text-stone-700">Log in to create and save shopping lists.</p>
+          <button
+            type="button"
+            onClick={() => openAuthSheet("Log in to create and save shopping lists.")}
+            className="dd-btn dd-btn-primary cursor-pointer"
+          >
+            Log in or create an account
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
     <main className="flex flex-col gap-4 pb-6">
-      <header className="flex items-center justify-between px-5 pt-6">
-        <h1 className="text-2xl font-extrabold text-stone-900">My Lists</h1>
-        <button
-          onClick={() => signOut()}
-          className="cursor-pointer text-xs font-black uppercase tracking-wider text-alert-600 transition-colors hover:text-alert-700"
-        >
-          Log Out
-        </button>
-      </header>
+      <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} topSpacing />
 
-      {isFakeSession && (
+      {isAnonymousSession && (
         // Same amber "dev tool" language/styling as AuthPanel.tsx's own
-        // fake-login button, so the two read as one consistent test-mode
-        // language rather than two different ad-hoc warnings.
+        // test-account button, so the two read as one consistent test-mode
+        // language rather than two different ad-hoc warnings. Copy updated
+        // 2026-08-13 -- creating/deleting lists genuinely works now (see
+        // `handleCreate`/`handleDelete`'s own comment above), so this no
+        // longer claims otherwise; it just flags that this particular
+        // account has no email attached to it.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Test Mode</p>
-          <p className="text-xs leading-relaxed text-amber-700">
-            This is a simulated login for design testing, not a real account — creating or deleting lists is
-            disabled here since there&rsquo;s no real account for it to save to.
+          <p className="text-[11px] font-black tracking-widest text-amber-700">Test mode</p>
+          <p className="text-[13px] leading-relaxed text-amber-700">
+            You&rsquo;re using an anonymous test account — lists you create here really do save, but this account
+            has no email attached, so you can&rsquo;t sign back into it from another device.
           </p>
         </div>
       )}
-
-      <form onSubmit={handleCreate} className="flex gap-2 px-5">
-        <input
-          value={newListName}
-          onChange={(e) => setNewListName(e.target.value)}
-          placeholder="New list name"
-          disabled={isFakeSession}
-          className="flex-1 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400"
-        />
-        <button
-          type="submit"
-          disabled={creating || !newListName.trim() || isFakeSession}
-          className="shrink-0 cursor-pointer rounded-xl bg-stone-900 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {creating ? "Creating…" : "Create New List"}
-        </button>
-      </form>
 
       {error && (
         // `reload()` is the same refetch handlers below already call after a
@@ -246,13 +436,13 @@ export default function ListsPage() {
         <ErrorState message="Something went wrong with your lists." detail={error} onRetry={() => reload()} />
       )}
 
-      <LoadingMascot loading={loadingLists} label="Loading your lists…" />
+      <LoadingMascot loading={loadingLists} />
 
       {!loadingLists && lists.length === 0 && (
         <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
-          <p className="max-w-xs px-4 text-xs text-stone-500">
-            Create one above, or tap the + on a Specials card to start one.
+          <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">
+            Tap the + button below, or tap the + on a Specials card to start one.
           </p>
         </div>
       )}
@@ -262,84 +452,603 @@ export default function ListsPage() {
           <ListCard
             key={list.id}
             list={list}
-            itemCount={itemsByList.get(list.id)?.length ?? 0}
+            items={itemsByList.get(list.id) ?? []}
             summary={summaries.get(list.id)}
+            productMeta={productMeta}
+            itemCards={itemCards}
             onDelete={() => handleDelete(list.id)}
+            onRename={(name) => handleRename(list.id, name)}
+            onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
+            onRefresh={reload}
           />
         ))}
       </div>
+
+      {/* Create-list FAB (2026-08-14, see this file's own doc comment) --
+          fixed bottom-right, same `mx-auto` capped-column trick every other
+          fixed, full-viewport-by-default element in this app already needs
+          (BottomNav.tsx's own doc comment has the full "why" -- without it
+          this would stick to the real browser's right edge on a wide
+          window, not the app's own mobile-emulation column). The
+          `pointer-events-none` outer row + `pointer-events-auto` button is
+          what lets that full-width row sit on top of page content without
+          blocking clicks anywhere except the button itself. `.bottom-safe-fab`
+          (globals.css) is one more `env(safe-area-inset-bottom)` offset in
+          the same family as `.bottom-safe-nav`/`.pb-safe-nav`/`.pb-safe-sm`
+          -- plain CSS, not a Tailwind arbitrary-value bracket class, for the
+          same reason those are (see globals.css's own comment on that
+          class): this app's Tailwind/Turbopack build has a real, reproduced
+          bug mangling that exact `env()` pattern when it's a scanned
+          bracket class sitting near multi-byte comment text. Positioned
+          above BottomNav (same `z-40` tier as BottomNav itself, floating
+          page chrome rather than a modal overlay) with enough clearance
+          (see that CSS class) to never overlap it. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-safe-fab z-40 mx-auto flex w-full max-w-[480px] justify-end px-5">
+        <button
+          type="button"
+          onClick={() => setIsCreateSheetOpen(true)}
+          aria-label="Create a new list"
+          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-stone-900 shadow-lg transition-colors hover:bg-stone-50"
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Create-list bottom sheet -- same scrim + spring slide-up recipe as
+          AppHeader.tsx's own account menu (that file's doc comment has the
+          full recipe rationale), same z-50/z-[51] scrim/sheet tier too
+          (opens from ordinary page chrome, not from inside another overlay
+          -- see PageLoader.tsx's own doc comment for this app's full
+          z-index ordering). Input/submit-button classes are lifted
+          verbatim from the inline form this sheet replaces, so the create-
+          list control itself looks identical to before, just relocated.
+
+          `min-h-[45vh]` added 2026-08-14, per Jay: "The new list bottom
+          sheet needs to use the default bottom sheet height so it's not
+          too low on the screen" -- this sheet's only real content (a
+          single input + submit button) is short enough that, without an
+          explicit minimum, the sheet auto-sized to just that content and
+          sat noticeably lower/shorter than every other sheet in the app.
+          `min-h-[45vh]` is the same floor AppHeader.tsx's own account-menu
+          sheet already uses -- the one other sheet in this app real enough
+          to call a "default" -- so this now matches it instead of
+          inventing its own shorter convention. */}
+      <AnimatePresence>
+        {isCreateSheetOpen && (
+          <>
+            <motion.div
+              key="create-list-scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => {
+                setIsCreateSheetOpen(false);
+                setCreateError(null);
+              }}
+              className="fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+            />
+            <motion.div
+              key="create-list-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+                {/* Bottom-sheet title style unified app-wide 2026-08-19 --
+                    was a small tracking-widest text-stone-500 eyebrow label,
+                    same as AppHeader's/AddToListButton's own sheet titles
+                    used to be; now a real title, same class every bottom
+                    sheet's top title uses (see app/page.tsx's Sort sheet for
+                    the full cross-reference). `<h3>`, not `<span>`, to match. */}
+                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">New list</h3>
+                <button
+                  onClick={() => {
+                    setIsCreateSheetOpen(false);
+                    setCreateError(null);
+                  }}
+                  aria-label="Close"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+              <form onSubmit={handleCreate} className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                <input
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder="List name"
+                  autoFocus
+                  disabled={creating}
+                  className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                />
+                {createError && (
+                  <p className="text-[11px] font-semibold leading-relaxed text-alert-700">{createError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={creating || !newListName.trim()}
+                  className="dd-btn dd-btn-primary mt-auto mb-2 w-full cursor-pointer font-display"
+                >
+                  {creating ? "Creating…" : "Create list"}
+                </button>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
 
 function ListCard({
   list,
-  itemCount,
+  items,
   summary,
+  productMeta,
+  itemCards,
   onDelete,
+  onRename,
+  onRemoveItem,
+  onRefresh,
 }: {
   list: ListRow;
-  itemCount: number;
+  items: ListItemRow[];
   summary: ListSummary | undefined;
+  productMeta: Map<string, ListItemProductMeta>;
+  itemCards: Map<string, ProductCardData>;
   onDelete: () => void;
+  onRename: (name: string) => Promise<void>;
+  onRemoveItem: (productId: string) => void;
+  onRefresh: () => void;
 }) {
-  return (
-    <article className="flex flex-col gap-2 rounded-2xl border border-stone-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="text-base font-bold text-stone-900">{list.name}</h2>
-        <button
-          onClick={onDelete}
-          aria-label={`Delete ${list.name}`}
-          className="shrink-0 text-stone-400 hover:text-stone-600"
-        >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+  // Inline "are you sure?" state (2026-08-14, Jay: "create an are you sure?
+  // state on the card incase the user doesn't want to delete the card") --
+  // the trash icon used to call `onDelete` directly. Local to this card
+  // (not lifted to the page) since only one card at a time needs it and
+  // nothing outside this card cares whether it's showing.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  const [deleteCardHeight, setDeleteCardHeight] = useState<number | null>(null);
 
-      {itemCount === 0 ? (
-        <p className="text-xs text-stone-500">
-          Empty — add items from Specials.
-        </p>
-      ) : !summary ? (
-        <p className="text-xs text-stone-500">Checking prices…</p>
+  // Rename state (2026-08-15, "allow lists to be edited"), local to this
+  // card same as `confirmingDelete` above -- only one card at a time needs
+  // it and no sibling card or the page itself cares whether it's open.
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(list.name);
+  const [savingName, setSavingName] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  // View-items toggle -- split OUT from `isEditing` 2026-08-20 (UX audit,
+  // Jay: "split view items from rename"). Before this, the item list only
+  // ever showed alongside the rename input (`isEditing` gated both), so
+  // "see what's in this list" and "rename this list" were the same tap on
+  // the pencil icon -- two unrelated actions sharing one entry point, with
+  // no way to just browse a list's items without also opening its name for
+  // editing. Now independent: this toggles via the item-count summary line
+  // below (a real `<button>`, not the whole card -- keeps hit-targets
+  // predictable and doesn't fight the pencil/trash icon buttons or,
+  // post-audit, `ListItemProductCard`'s own tap-to-deal-page rows nested
+  // inside once expanded), `isEditing` toggles only via the pencil icon
+  // exactly as before. Expanding also happens automatically when entering
+  // edit mode (see `startEditing` below) -- editing a list without seeing
+  // what's actually in it first would be a regression, not an
+  // improvement, so that one path from the old combined behavior is kept.
+  // Defaults to `true` (2026-08-20 (cont.), per Jay: "The lists should be
+  // expanded by default") -- was `false` (collapsed on first render, every
+  // card required an explicit tap to reveal its own items). Still fully
+  // toggleable per-card same as before; this only changes the initial
+  // value each `ListCard` instance's own `useState` starts at, not
+  // anything about how the toggle itself behaves.
+  const [isExpanded, setIsExpanded] = useState(true);
+  const itemCount = items.length;
+
+  async function saveName() {
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === list.name) {
+      // Empty or unchanged -- close without a wasted round trip, same as
+      // the create-list form's own `disabled={!newListName.trim()}` guard
+      // just further up this file, just without disabling the button
+      // outright (Enter/blur should always be able to close this row).
+      setIsEditing(false);
+      setEditName(list.name);
+      setRenameError(null);
+      return;
+    }
+    setSavingName(true);
+    setRenameError(null);
+    try {
+      await onRename(trimmed);
+      setIsEditing(false);
+    } catch (err) {
+      setRenameError(describeFetchError(err, "Failed to rename list"));
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  return (
+    // `shadow-sm` instead of `border border-stone-200` (2026-08-15, Jay:
+    // "no border line, but instead a short drop shadow (subtle)"). Delete
+    // state swaps the fill to `bg-alert-50` too, so the card itself reads
+    // as "in a destructive state," not just its confirm buttons.
+    <article
+      ref={cardRef}
+      style={confirmingDelete && deleteCardHeight ? { minHeight: deleteCardHeight } : undefined}
+      className={`flex flex-col gap-2 rounded-2xl p-4 shadow-sm ${confirmingDelete ? "bg-alert-50" : "bg-white"}`}
+    >
+      {confirmingDelete ? (
+        // Whole-card delete state (2026-08-15, Jay: "make the whole card
+        // change to the delete state, and make the Delete text - tick and
+        // cross larger and centred") -- replaces every other row below
+        // (name, badges, price, best-store chip) rather than just growing
+        // the old top-right tick/cross pair in place, and the two controls
+        // are now `h-12 w-12` circles with `h-6 w-6` icons (was `h-6 w-6`/
+        // `h-3.5 w-3.5`).
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-3 text-center">
+          <span className="text-sm font-black tracking-wide text-alert-700">Delete “{list.name}”?</span>
+          <div className="flex items-center gap-5">
+            <button
+              onClick={onDelete}
+              aria-label={`Confirm delete ${list.name}`}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-alert-600 text-white transition-colors hover:bg-alert-700"
+            >
+              <Check className="h-6 w-6" strokeWidth={3} aria-hidden="true" />
+            </button>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              aria-label="Cancel delete"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:text-stone-700"
+            >
+              <X className="h-6 w-6" strokeWidth={3} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            {summary.hasSavingsData && summary.savingsAmount > 0 ? (
-              <span className="rounded-full bg-fair-600 px-2.5 py-1 text-[11px] font-bold text-white">
-                -${summary.savingsAmount.toFixed(2)} SAVED
-              </span>
+          <div className="flex items-start justify-between gap-2">
+            {isEditing ? (
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveName();
+                    if (e.key === "Escape") {
+                      setIsEditing(false);
+                      setEditName(list.name);
+                      setRenameError(null);
+                    }
+                  }}
+                  autoFocus
+                  disabled={savingName}
+                  aria-label="List name"
+                  className="w-full max-w-[210px] flex-none rounded-lg border border-stone-300 px-2.5 py-1 text-base font-bold text-stone-900 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                  onClick={saveName}
+                  disabled={savingName || !editName.trim()}
+                  aria-label="Save list name"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-fair-700 transition-colors hover:bg-fair-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditName(list.name);
+                    setRenameError(null);
+                  }}
+                  // Disabled while `savingName` (peer review catch,
+                  // 2026-08-15) -- `saveName()`'s `await onRename(...)` isn't
+                  // abortable, so clicking Cancel while a save is still in
+                  // flight used to leave edit mode immediately while that
+                  // save kept running underneath; if it later succeeded the
+                  // rename landed anyway despite the "cancel," and if it
+                  // failed `renameError` had nowhere sensible left to render.
+                  // Disabling Cancel here matches Save's own
+                  // `disabled={savingName || ...}` just above -- once a save
+                  // is in flight, the only way out of this row is waiting
+                  // for it to resolve, not backing out from under it.
+                  disabled={savingName}
+                  aria-label="Cancel rename"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             ) : (
-              <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold text-stone-500">
-                CHECKING PRICES…
-              </span>
+              <h2 className="text-base font-bold text-stone-900">{list.name}</h2>
             )}
-            {summary.hasVerifiedSpecial && (
-              <span className="flex items-center gap-1 rounded-full bg-fair-600 px-2.5 py-1 text-[11px] font-bold text-white">
-                <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                Verified Special
-              </span>
+            {!isEditing && (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditName(list.name);
+                    // Clears any error left over from a previous edit
+                    // session (peer review catch, 2026-08-15) -- without
+                    // this, a failed rename's error message reopened along
+                    // with the edit row on the NEXT pencil tap, before any
+                    // new save had even been attempted.
+                    setRenameError(null);
+                    setIsEditing(true);
+                    // Also expands the item list (2026-08-20, UX audit) --
+                    // `isExpanded` is independent of `isEditing` now (see
+                    // that state's own comment above), but entering rename
+                    // without also seeing the list's own items would be a
+                    // regression from the old combined pencil-does-both
+                    // behavior, not an improvement.
+                    setIsExpanded(true);
+                  }}
+                  aria-label={`Edit ${list.name}`}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  onClick={() => {
+                    setDeleteCardHeight(cardRef.current?.offsetHeight ?? null);
+                    setConfirmingDelete(true);
+                  }}
+                  aria-label={`Delete ${list.name}`}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             )}
           </div>
 
-          <p className="text-sm text-stone-600">
-            {itemCount} item{itemCount === 1 ? "" : "s"}
-            {summary.totalPrice != null && (
-              <>
-                {" "}
-                · <span className="font-semibold text-stone-900">${summary.totalPrice.toFixed(2)}</span>
-              </>
-            )}
-          </p>
+          {renameError && <p className="text-[11px] font-semibold leading-relaxed text-alert-700">{renameError}</p>}
 
-          {summary.bestPriceStore && (
-            <span className="flex w-fit items-center gap-1 rounded-full border border-stone-200 px-2.5 py-1 text-[11px] font-semibold text-stone-600">
-              <Store className="h-3 w-3" aria-hidden="true" />
-              Best at {summary.bestPriceStore.store} — ${summary.bestPriceStore.total.toFixed(2)}
-            </span>
+          {itemCount === 0 ? (
+            <p className="text-[13px] leading-4 text-stone-500">
+              Empty — add items from Specials.
+            </p>
+          ) : (
+            <>
+              {!summary ? (
+                <p className="text-[13px] leading-4 text-stone-500">Checking prices…</p>
+              ) : (
+                <>
+                  {/* Brand Guide v1.0 "06 — UI KIT / TAGS & BADGES" pill styling
+                      (2026-08-13 UI tidy-up) -- was a solid-fill bg-fair-600/white
+                      pair; the guide's badges are always a light tint + matching
+                      darker text, never solid fill, so swapped to the `.dd-badge`
+                      primitives (globals.css) instead. */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {summary.hasSavingsData && summary.savingsAmount > 0 ? (
+                      <span className="dd-badge dd-badge-fair">
+                        -${summary.savingsAmount.toFixed(2)} saved
+                      </span>
+                    ) : (
+                      <span className="dd-badge dd-badge-neutral">
+                        Checking prices…
+                      </span>
+                    )}
+                    {/* "Verified special" badge REMOVED 2026-08-20, per Jay:
+                        "remove verified specials badge from the lists" --
+                        moved to the deal-assessment page instead (see
+                        `app/deal/[id]/[store]/page.tsx`'s own doc comment,
+                        same day), where it now marks an individual item's
+                        verdict as "Real Saver" rather than a whole-list
+                        aggregate ("at least one item is a verified
+                        special"). `ListSummary.hasVerifiedSpecial`
+                        (lists.ts) is left computed but now has no UI
+                        consumer -- kept rather than deleted since it's
+                        already produced for free inside the same per-item
+                        loop that computes `savingsAmount`, and pruning an
+                        exported type field is a bigger surface change than
+                        this ask covers; flagged here in case Jay wants it
+                        gone too as a follow-up. */}
+                  </div>
+
+                  {summary.bestPriceStore && (
+                    <span className="dd-badge dd-badge-neutral w-fit">
+                      <Store className="h-3.5 w-3.5" aria-hidden="true" />
+                      Best at {summary.bestPriceStore.store} — ${summary.bestPriceStore.total.toFixed(2)}
+                    </span>
+                  )}
+                </>
+              )}
+
+              {/* View-items toggle -- pulled out of the `!summary` ternary
+                  above (2026-08-20, UX audit, "split view items from
+                  rename") so it's available the instant items exist, not
+                  only once price-checking finishes, and so it's a REAL
+                  `<button>` (own hit target, own `aria-expanded`) rather
+                  than the plain `<p>` this replaces -- the old paragraph
+                  looked static; nothing signaled it was ever tied to the
+                  item list, because until this change it wasn't (only the
+                  pencil icon revealed items, see `isExpanded`'s own
+                  comment above this component).
+
+                  Chevron moved to the card's right edge + enlarged
+                  (2026-08-20, same day, per Jay: "move the collapse chevron
+                  to the right side of the cards, and make the icon
+                  larger") -- was `w-fit` with the item-count text and
+                  chevron sitting side by side wherever that small button
+                  happened to fall in the card's own left-aligned flow, both
+                  huddled together on the left. Switched to `w-full` +
+                  `justify-between` so the text stays put on the left (still
+                  the first thing read) while the chevron gets pushed all
+                  the way to the card's own right inset -- the same right
+                  edge the pencil/trash icons above already sit flush
+                  against -- instead of only ever appearing a few characters
+                  after the item count. Dropped the old `gap-1` (was
+                  spacing the text and chevron apart when they were
+                  adjacent; `justify-between` alone now does that job across
+                  the button's full width, an explicit gap between the two
+                  remaining children would do nothing extra). Icon `h-3.5
+                  w-3.5` -> `h-5 w-5`, a real size bump (not the "slightly"
+                  wording used for the separate Account-sheet icons ask
+                  elsewhere today) since Jay's exact words here were just
+                  "make the icon larger" with no qualifier. */}
+              <button
+                type="button"
+                onClick={() => setIsExpanded((e) => !e)}
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? "Hide" : "Show"} items in ${list.name}`}
+                className="flex w-full cursor-pointer items-center justify-between text-sm text-stone-600 transition-colors hover:text-stone-900"
+              >
+                <span>
+                  {itemCount} item{itemCount === 1 ? "" : "s"}
+                  {summary?.totalPrice != null && (
+                    <>
+                      {" "}
+                      · <span className="font-semibold text-stone-900">${summary.totalPrice.toFixed(2)}</span>
+                    </>
+                  )}
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 flex-shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+            </>
+          )}
+
+          {isExpanded && itemCount > 0 && (
+            // Item list -- own toggle now, independent of `isEditing` (see
+            // `isExpanded`'s own comment above this component for the full
+            // "why"). Each item renders `ListItemProductCard` (image/price/
+            // verdict badge, tap-through to `/deal/[id]/[store]`) when
+            // `itemCards` has a real ProductCard for it -- i.e. the product
+            // currently has a price -- falling back to the original plain-
+            // text row (name + remove button, no price/image) for the rare
+            // item with no current price at all (delisted/no catalogue
+            // match), same as `buildListItemProductCard`'s own "excluded,
+            // not fabricated" contract (lists.ts).
+            <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-100 pt-2">
+              {items.map((item) => {
+                const card = itemCards.get(item.product_id);
+                const meta = productMeta.get(item.product_id);
+                const label = meta?.name ?? "Item";
+                const removeLabel = `Remove ${label} from ${list.name}`;
+
+                if (card) {
+                  return (
+                    <ListItemProductCard
+                      key={item.id}
+                      product={card}
+                      deal={card.currentDeals[0]}
+                      quantity={item.quantity}
+                      onRemove={() => onRemoveItem(item.product_id)}
+                      removeLabel={removeLabel}
+                      onAfterNotOnSpecial={onRefresh}
+                    />
+                  );
+                }
+                return (
+                  <FallbackItemRow
+                    key={item.id}
+                    label={label}
+                    quantity={item.quantity}
+                    removeLabel={removeLabel}
+                    onRemove={() => onRemoveItem(item.product_id)}
+                  />
+                );
+              })}
+            </div>
           )}
         </>
       )}
     </article>
+  );
+}
+
+/**
+ * Plain-text fallback for the rare list item with NO current price at all
+ * (delisted/no catalogue match -- `buildListItemProductCard`, lists.ts,
+ * returns `null` for these rather than a card with a fabricated price; see
+ * this file's own `isExpanded` item-list block above for the full
+ * card-vs-fallback split). Pulled out of that block's `.map()` into its own
+ * component 2026-08-20 (per Jay: "When selecting an X on a product on a
+ * list, there should be a remove confirmation") specifically so this row
+ * can carry its own `confirmingRemove` state -- `ListCard` maps over
+ * several items at once, so a single boolean at that level couldn't tell
+ * which row was mid-confirm. Same inline "are you sure?" pattern
+ * `ListItemProductCard.tsx`'s own `confirmingRemove` uses (that file's own
+ * doc comment has the fuller "why"), scaled down further to fit this
+ * row's own smaller, image-less footprint (`h-6 w-6`/`h-3.5 w-3.5` tick/
+ * cross, vs. that component's `h-8 w-8`/`h-4 w-4`).
+ *
+ * Trigger switched from a tap on a trailing X icon to a swipe-left
+ * gesture, same day (cont., per Jay: "to remove an item from a list, use
+ * the swipe left gesture, then give the remove warning, keep the card the
+ * same size in the warning") -- same `motion.div` `drag="x"` +
+ * `dragConstraints={{left:0,right:0}}` + `dragElastic` rubber-band pattern
+ * `ListItemProductCard.tsx` now uses, with the same numeric threshold (not
+ * a shared import -- a single local `px` constant per file didn't seem
+ * worth an extra cross-file export), and the same "one box, children swap,
+ * size can't differ by construction" fix for "keep the card the same
+ * size" -- see that file's own top-of-file doc comment for the full
+ * design/tradeoff writeup (incl. the flagged accessibility gap: no
+ * non-drag path left to trigger removal). This row's own normal-state box
+ * widened `px-1` -> `px-2 py-1` (unioned with the confirm state's own box,
+ * which already used that) so both states now share one identical class
+ * string instead of two that merely happened to be close in size.
+ */
+// Matches ListItemProductCard.tsx's own SWIPE_THRESHOLD value -- see this
+// component's own doc comment just above for why it's a separate local
+// constant rather than a shared import.
+const SWIPE_THRESHOLD = 70;
+
+function FallbackItemRow({
+  label,
+  quantity,
+  removeLabel,
+  onRemove,
+}: {
+  label: string;
+  quantity: number;
+  removeLabel: string;
+  onRemove: () => void;
+}) {
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+
+  return (
+    <motion.div
+      drag={confirmingRemove ? false : "x"}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.5}
+      onDragEnd={(_event, info) => {
+        if (info.offset.x < -SWIPE_THRESHOLD) setConfirmingRemove(true);
+      }}
+      className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1 ${confirmingRemove ? "bg-alert-50" : "grayscale opacity-60"}`}
+      style={{ touchAction: "pan-y" }}
+    >
+      {confirmingRemove ? (
+        <>
+          <span className="min-w-0 flex-1 truncate text-[13px] leading-4 font-bold text-alert-700">
+            Remove {label}?
+          </span>
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            <button
+              onClick={onRemove}
+              aria-label={`Confirm ${removeLabel}`}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-alert-600 text-white transition-colors hover:bg-alert-700"
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
+            </button>
+            <button
+              onClick={() => setConfirmingRemove(false)}
+              aria-label="Cancel remove"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-xs transition-colors hover:text-stone-700"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
+            </button>
+          </div>
+        </>
+      ) : (
+        <span className="min-w-0 truncate text-[13px] leading-4 font-medium text-stone-600">
+          {label}
+          {quantity > 1 ? ` ×${quantity}` : ""}
+        </span>
+      )}
+    </motion.div>
   );
 }

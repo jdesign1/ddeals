@@ -751,10 +751,22 @@ function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
   if (normalPrice == null) {
     return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice, savingPct: null, saleStartedAt };
   }
-  if (salePrice > normalPrice) {
+  // Fixed 2026-08-19: was `salePrice > normalPrice` (strictly higher only).
+  // Spec defines Dodgy as "equal to or higher than" the normal price -- an
+  // exact-equal sale price used to fall through to the zero-saving FAIR
+  // branch below instead of DODGY. Mirrored in packages/shared/src/
+  // classify.ts, dodgy_deals_view.sql / migrations/20260819_*.sql, and
+  // analyser.py the same session. NOTE: this file is a stale, out-of-sync
+  // duplicate of /Prototype/index.html (see project.md's "one prototype
+  // folder only" hard rule) -- fixed here too so it doesn't drift further,
+  // flagged as a cleanup candidate, not deleted this session.
+  if (salePrice >= normalPrice) {
+    const reason = salePrice > normalPrice
+      ? `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(2)}) -- fake deal`
+      : `Sale price ($${salePrice.toFixed(2)}) is the SAME as the normal price ($${normalPrice.toFixed(2)}) -- no real discount`;
     return {
       verdict: 'DODGY',
-      reason: `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(2)}) -- fake deal`,
+      reason,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,

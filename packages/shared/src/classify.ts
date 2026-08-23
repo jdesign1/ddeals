@@ -150,12 +150,25 @@ export function classifySpecial(
       saleStartedAt,
     };
   }
-  if (salePrice > normalPrice) {
+  // Fixed 2026-08-19: was `salePrice > normalPrice` (strictly greater only).
+  // Spec ("Main Flow: Check Deals" doc) defines Dodgy as sale price "equal
+  // to or higher than" the normal price -- an exact-equal sale price used
+  // to fall through to the zero-saving FAIR branch below instead of DODGY.
+  // Kept in sync with dodgy_deals_view.sql / migrations/20260819_*.sql,
+  // Prototype/index.html, and analyser.py in the same change (see
+  // project.md's Classification Formula reference section).
+  if (salePrice >= normalPrice) {
+    const reason =
+      salePrice > normalPrice
+        ? `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(
+            2
+          )}) -- fake deal`
+        : `Sale price ($${salePrice.toFixed(2)}) is the SAME as the normal price ($${normalPrice.toFixed(
+            2
+          )}) -- no real discount`;
     return {
       verdict: "DODGY",
-      reason: `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(
-        2
-      )}) -- fake deal`,
+      reason,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,

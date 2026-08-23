@@ -5,3 +5,5 @@ export * from "./lists.ts";
 export * from "./catalogue-cache.ts";
 export * from "./deal-detail.ts";
 export * from "./deal-checks.ts";
+export * from "./error-messages.ts";
+export * from "./search-synonyms.ts";

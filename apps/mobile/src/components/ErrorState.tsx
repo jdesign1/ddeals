@@ -49,13 +49,15 @@ export default function ErrorState({
       />
       <div className="max-w-xs px-4">
         <p className="text-sm font-bold text-alert-700">{message}</p>
-        {detail && <p className="mt-1 text-xs text-stone-500">{detail}</p>}
+        {detail && <p className="mt-1 text-[13px] leading-4 text-stone-500">{detail}</p>}
       </div>
+      {/* Brand Guide v1.0 "06 — UI KIT / BUTTONS" primary pill
+          (2026-08-13 UI tidy-up). */}
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-xl bg-stone-900 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-ink-600"
+          className="dd-btn dd-btn-primary cursor-pointer"
         >
           Try Again
         </button>

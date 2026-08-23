@@ -41,8 +41,40 @@ export interface DodgyDealsRow {
   image_url: string | null;
   unit_size: string | null;
   sale_started_at: string | null;
+  product_url?: string | null;
   verdict: "DODGY" | "GENUINE" | "MARGINAL" | "UNKNOWN";
   reason: string | null;
+  // Price History Insights (2026-08-19) -- real 90-day-calendar-window
+  // stats from the dodgy_deals view's new `history_90d` CTE. See that
+  // view's own "Feature (2026-08-19)" header comment for the NULL
+  // contract: price_history_90d_samples is the single gate (NULL = no
+  // price_history rows in the window, skip the insight); when it's
+  // non-null the other columns are populated, and special_samples may
+  // legitimately be 0 ("never on special" -- a real fact, not missing
+  // data). REQUIRES migrations/20260819_dodgy_deals_price_history_
+  // insights.sql to be applied to the live database BEFORE (or in the same
+  // deploy as) this file's `select=` change below -- PostgREST 400s a
+  // request for a column it doesn't recognize, and this same query backs
+  // every page (Home, Specials, the deal page), not just the new carousel.
+  // See project.md's 2026-08-19 session entry for deploy-order notes.
+  price_history_90d_low?: number | null;
+  price_history_90d_high?: number | null;
+  price_history_90d_avg?: number | null;
+  price_history_90d_samples?: number | null;
+  price_history_90d_special_samples?: number | null;
+  // Duration-weighted frequency (2026-08-20) -- see dodgy_deals_view.sql's
+  // "Fix (2026-08-20)" header comment: price_history_90d_samples/
+  // _special_samples above COUNT transition rows, not days -- misleading
+  // as a "how often is this on special" stat (a single price-change event
+  // 5 days ago reads as "100% of checks" even though it's only been
+  // discounted 5 of the last 90 days). These two are duration-weighted --
+  // actual days covered / actual days on special -- and are the columns
+  // the UI's frequency stat should read, not the _samples pair. SAME
+  // deploy-order requirement as above: REQUIRES migrations/20260820_
+  // dodgy_deals_time_weighted_history.sql applied live before (or with)
+  // adding these two names to the `select=` string below.
+  price_history_90d_days_tracked?: number | null;
+  price_history_90d_special_days?: number | null;
 }
 
 export interface CurrentDeal {
@@ -57,6 +89,21 @@ export interface CurrentDeal {
   isOnSpecial: boolean;
   saleStartedAt: string | null;
   specialEndDate: string | null;
+  /** Canonical retailer product page URL, when the scraper captured one. */
+  productUrl?: string | null;
+  /** Price History Insights (2026-08-19) -- see DodgyDealsRow's own doc
+   * comment for the NULL contract. All null/0 on cards built by
+   * fetchNonSpecialProductCards (no dodgy_deals row backs those). */
+  ninetyDayLow: number | null;
+  ninetyDayHigh: number | null;
+  ninetyDayAvg: number | null;
+  ninetyDaySamples: number | null;
+  ninetyDaySpecialSamples: number | null;
+  /** Duration-weighted frequency (2026-08-20) -- see DodgyDealsRow's own
+   * doc comment. Use these for "how often is this on special" display,
+   * not ninetyDaySamples/ninetyDaySpecialSamples (event counts). */
+  ninetyDayDaysTracked: number | null;
+  ninetyDaySpecialDays: number | null;
 }
 
 export interface ProductCard {
@@ -192,6 +239,40 @@ export interface MatchIndex {
  * `app_comparable_family_links` (reviewed "fair to compare" pairs) so
  * genuinely matched items from different retailer catalogue rows resolve to
  * one group id.
+ *
+ * `union()`'s root choice is deliberately deterministic -- always keeps
+ * whichever of the two roots sorts lexicographically FIRST, rather than
+ * "whichever id the row order happened to union in last" (traced this
+ * session, 2026-08-20, as the real root cause of "products already on your
+ * list still show a Plus icon instead of a tick on Home/Search" -- see
+ * `AddToListButton.tsx`'s own doc comment for the symptom). `find(x)`'s
+ * returned root becomes `ProductCard.id` (`buildProductCardsFromSpecials`
+ * below), which is exactly what gets written to `list_items.product_id`
+ * when a product is added to a list. Neither of this function's two source
+ * queries has an `ORDER BY` (`select=...` with no `order=`), so Postgres/
+ * PostgREST doesn't guarantee row order is identical between calls --  and
+ * in practice it doesn't need to be malicious to actually change: the
+ * 15-minute `dodgy_deals_cache` refresh, ordinary autovacuum, or simply a
+ * different physical scan plan is enough. With the OLD "last union() call
+ * wins" rule, that meant the SAME real-world matched product could resolve
+ * to a different `find()` root on two different page loads -- so a product
+ * added to a list under root A could later render, on a fresh fetch that
+ * happened to union the same group into root B instead, with `addedTo`
+ * empty for root B and the trigger icon stuck on Plus even though the
+ * product genuinely was saved (just under A). Deterministic min-of-group
+ * rooting fixes this at the source: for any fixed *set* of union edges
+ * (which doesn't depend on fetch order, only on which rows exist), always
+ * re-rooting to the lexicographically smaller id converges to the same
+ * global-minimum root for every id in a connected component regardless of
+ * the order those edges were unioned in -- verified by hand for both
+ * processing orders of a 3-node chain before relying on it here, also
+ * covered by `data.test.ts`'s new
+ * "buildMatchIndex: find() is stable regardless of row fetch order" test.
+ * Flagged, not silently left implicit: any list item ALREADY saved under a
+ * pre-fix, non-deterministic root (this session's own test data included)
+ * can still mismatch once against this new deterministic root the first
+ * time it's re-resolved -- there's no way to migrate `list_items.product_id`
+ * retroactively from here, this only guarantees stability GOING FORWARD.
  */
 export async function buildMatchIndex(config: SupabaseRestConfig): Promise<MatchIndex> {
   const [canonicalRows, comparableRows] = await Promise.all([
@@ -221,7 +302,13 @@ export async function buildMatchIndex(config: SupabaseRestConfig): Promise<Match
   const union = (a: string, b: string) => {
     const ra = find(a);
     const rb = find(b);
-    if (ra !== rb) parent.set(ra, rb);
+    if (ra === rb) return;
+    // Deterministic: the lexicographically SMALLER root always wins,
+    // regardless of which of a/b was passed first or which order union()
+    // is called in -- see this function's own top-of-file doc comment for
+    // why that determinism is the actual fix, not a style preference.
+    if (ra < rb) parent.set(rb, ra);
+    else parent.set(ra, rb);
   };
 
   for (const row of canonicalRows) union(row.id, row.canonical_product_id);
@@ -291,6 +378,24 @@ export function buildProductCardsFromSpecials(
       isOnSpecial: true,
       saleStartedAt: row.sale_started_at || null,
       specialEndDate: row.special_end_date || null,
+      productUrl: row.product_url ?? null,
+      // Price History Insights (2026-08-19) -- `?? null` not `|| null`:
+      // 0 is a real, meaningful value for ninetyDaySpecialSamples ("never
+      // on special"), and `||` would wrongly coerce it to null. Comes back
+      // `undefined` (not present on the row) when the view hasn't shipped
+      // these columns yet or the migration hasn't been applied -- `?? null`
+      // normalizes that the same way as an explicit NULL from Postgres, so
+      // callers only ever see `number | null`, never `undefined`.
+      ninetyDayLow: row.price_history_90d_low ?? null,
+      ninetyDayHigh: row.price_history_90d_high ?? null,
+      ninetyDayAvg: row.price_history_90d_avg ?? null,
+      ninetyDaySamples: row.price_history_90d_samples ?? null,
+      ninetyDaySpecialSamples: row.price_history_90d_special_samples ?? null,
+      // `?? null` not `|| null` -- same reasoning as above: 0 is real for
+      // ninetyDaySpecialDays ("never discounted"), and `undefined` (column
+      // not yet shipped/migrated) normalizes to null either way.
+      ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
+      ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
     }));
 
     const bestDealByStore = new Map<string, CurrentDeal>();
@@ -324,7 +429,7 @@ export function buildProductCardsFromSpecials(
 /**
  * Loads current specials only (per the 2026-08-07 scope decision) — the app
  * searches/browses current specials, using history purely to rank them, not
- * full-catalogue browsing. Sourced entirely from the `dodgy_deals` view,
+ * full-catalogue browsing. Sourced from `dodgy_deals_cache` (see below),
  * grouped into real cross-store match groups via the union-find matchIndex.
  */
 async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<ProductCard[]> {
@@ -348,9 +453,56 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Pro
     // the 30s in-flight request cache above still collapses same-session
     // overlapping callers on top of this. See project.md (2026-08-09 entry)
     // for the full diagnosis.
+    //
+    // 2026-08-12: pointed at `dodgy_deals_cache` (a materialized view, new
+    // this session) instead of `dodgy_deals` (the live view) itself. Even
+    // after that same day's `pre_sale` LATERAL fix, live EXPLAIN ANALYZE
+    // (run repeatedly, both directly and by independent peer review) still
+    // measured `dodgy_deals` swinging ~480ms-3,770ms run to run -- the slow
+    // end already exceeds the anon role's 3s statement_timeout outright on
+    // a cold cache, which is why this exact endpoint kept producing
+    // recurring 500s across five separate sessions despite several rounds
+    // of CTE-level optimization.
+    // `dodgy_deals_cache` is `CREATE MATERIALIZED VIEW ... AS SELECT * FROM
+    // dodgy_deals` (same columns/types/verdict logic, zero duplicated
+    // business logic to keep in sync), refreshed on a 15-minute pg_cron
+    // schedule (`REFRESH MATERIALIZED VIEW CONCURRENTLY`, non-blocking for
+    // readers) rather than recomputed per-request -- live EXPLAIN ANALYZE
+    // measured reading it at ~3.5ms. `dodgy_deals` itself is untouched and
+    // still directly queryable if a real-time (not up-to-15-minutes-stale)
+    // read is ever needed. See project.md (2026-08-12 "efficiency deep
+    // dive" entry) for the full measurement/design writeup.
+    //
+    // 2026-08-19: shipped the 5 price_history_90d_* columns in this select=
+    // string BEFORE migrations/20260819_dodgy_deals_price_history_insights.sql
+    // reached the live database -- caused a live PostgREST 400 on every page
+    // ("Couldn't load today's specials", reported by Jay), hotfixed by
+    // reverting this string, then re-added here ONLY after Jay confirmed the
+    // migration was applied to the real database (see project.md's
+    // 2026-08-19 entry for the full incident writeup). If this 400s again,
+    // that almost certainly means the migration got rolled back or applied
+    // to the wrong project -- check `select column_name from
+    // information_schema.columns where table_name = 'dodgy_deals_cache' and
+    // column_name like 'price_history_90d%'` returns 5 rows before assuming
+    // it's something else.
+    //
+    // 2026-08-20: price_history_90d_days_tracked/price_history_90d_special_days
+    // added below ONLY after Jay confirmed migrations/20260820_dodgy_deals_
+    // time_weighted_history.sql AND migrations/20260820_rebuild_dodgy_deals_
+    // cache_for_time_weighted_columns.sql are both live -- verified via a
+    // direct column read (`SELECT price_history_90d_low,
+    // price_history_90d_days_tracked, price_history_90d_special_days FROM
+    // public.dodgy_deals_cache LIMIT 1`, not information_schema -- that
+    // excludes materialized views entirely and always returns 0 rows for
+    // dodgy_deals_cache regardless of real state, a separate bug this
+    // project already hit twice; see project.md's 2026-08-20 entry). Real
+    // data came back (0.99 / 12 / 10), confirming both migrations are live
+    // and dodgy_deals_cache actually carries these columns, not just the
+    // dodgy_deals view. If this 400s, check that same direct-column query
+    // before assuming anything else -- same incident shape as 2026-08-19.
     fetchAllRows<DodgyDealsRow>(
       config,
-      "dodgy_deals?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason",
+      "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days",
       20000
     ),
     buildMatchIndex(config),
@@ -520,6 +672,17 @@ export async function fetchNonSpecialProductCards(
             isOnSpecial: false,
             saleStartedAt: null,
             specialEndDate: null,
+            // No dodgy_deals row backs this card (see this function's own
+            // doc comment -- it's a current_prices/products lookup only),
+            // so there's no real 90-day stat to report -- null, not
+            // fabricated, same as every other "not enough data" case.
+            ninetyDayLow: null,
+            ninetyDayHigh: null,
+            ninetyDayAvg: null,
+            ninetyDaySamples: null,
+            ninetyDaySpecialSamples: null,
+            ninetyDayDaysTracked: null,
+            ninetyDaySpecialDays: null,
           },
         ],
         priceHistory: [],
@@ -535,6 +698,26 @@ export const normalizeStoreKey = (s: string | null | undefined): string =>
 
 export const storeMatchesFilter = (storeName: string, filter: string): boolean =>
   filter === "all" || normalizeStoreKey(storeName).includes(filter);
+
+/**
+ * Multi-select version of `storeMatchesFilter` -- true if `storeName`
+ * matches ANY of the selected filters (or `selectedStores` includes "all").
+ * Extracted here 2026-08-21, per Jay's ask to let users select multiple
+ * supermarket pills at once, not just one, on the "Check deals" (Home) and
+ * search pages -- `FullScreenSearch.tsx`'s own multi-select toggle already
+ * had this exact function defined locally (added 2026-08-10 for that
+ * screen's own store-pill row); Home's own pill row was still single-select
+ * (`storeFilter: string`) until this same ask. Rather than write a second,
+ * page-local copy of the same 2-line function for Home (this codebase's own
+ * established "kept in sync" convention flags exactly this kind of
+ * near-duplicate as the next drift waiting to happen -- see e.g.
+ * `SearchBar.tsx`'s own doc comment on `blurred`/`variant`), promoted the
+ * ONE existing implementation here next to `storeMatchesFilter` itself and
+ * pointed both call sites at it -- `FullScreenSearch.tsx`'s local copy
+ * removed, its import list extended instead.
+ */
+export const matchesAnySelectedStore = (storeName: string, selectedStores: string[]): boolean =>
+  selectedStores.includes("all") || selectedStores.some((filter) => storeMatchesFilter(storeName, filter));
 
 /**
  * Canonical store-pill order + "which of these are actually present in this

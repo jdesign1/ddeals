@@ -16,8 +16,13 @@ import { AnimatePresence, motion } from "motion/react";
  * sit inline within a page's own content column.
  *
  * `z-[70]` -- above `FullScreenSearch`'s overlay (`z-50`) and its category
- * sheet (`z-[60]`), `ScannerModal` (`z-[51]`), and `AppHeader`/`BottomNav`
- * (`z-40`), so it visually wins over whatever else is on screen mid
+ * and sort sheets (both `z-[60]`, the sort one added 2026-08-13 alongside
+ * `page.tsx`'s own Trending/My List sort sheets, per Jay's ask to turn "the
+ * sort drop down menu on all pages" into a bottom sheet), `ScannerModal`
+ * (`z-[51]`), `AppHeader` (`z-[45]` --
+ * bumped 2026-08-12 from `z-40` so its own profile-menu bottom sheet wins
+ * over `BottomNav`, see that component's own doc comment), and `BottomNav`
+ * itself (`z-40`), so it visually wins over whatever else is on screen mid
  * transition, regardless of what's still animating underneath it.
  *
  * Deliberately does NOT fade its own white background in on mount --

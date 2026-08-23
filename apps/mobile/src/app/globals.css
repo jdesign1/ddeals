@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/* Google Material Symbols used by the bottom navigation. The glyph's FILL
+   axis is set per icon in MaterialSymbols.tsx so the exact same Google icon
+   transitions from outlined at rest to filled when selected. */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+}
+
 /*
  * Design tokens ported from the Stitch UI design system (see project.md,
  * "Stitch UI Design — Screen Inventory"). Material 3 tokens, mobile-first.
@@ -7,13 +27,44 @@
  * site reuses brand colors.
  */
 :root {
-  --background: #ffffff;
+  /* Very subtle grey, not pure white (2026-08-14, Jay: "give the app base
+     background a very subtle grey fill colour") -- this is the `body`
+     background below, the base layer every scroll container sits on top
+     of (no page sets its own full-page background, confirmed by grepping
+     `apps/mobile/src/app` for one). `#fafaf9` is this app's own
+     `stone-50` (Tailwind's default stone scale, already used elsewhere in
+     this app -- AppHeader's bar, the account-menu sheet's hover states --
+     so this reuses an existing token rather than introducing a new grey).
+     Was `#ffffff`, plain Next.js boilerplate default, never intentionally
+     chosen. The dark-mode override two blocks down (`#0a0a0a`) is
+     untouched -- also unaddressed boilerplate, out of scope here, this
+     app has no other dark-mode-specific styling anywhere. */
+  --background: #fafaf9;
   --foreground: #171717;
 
-  /* Stitch brand palette */
-  --color-brand-primary: #006948; /* primary green */
+  /* Stitch brand palette. `--color-brand-primary`/`-error` used to be their
+     own separate greens/reds (#006948 / #ba1a1a) from the "Dodgy Deal ·
+     Mobile UI Kit" fair-*, alert-* scale below -- lists/page.tsx's own doc
+     comment already flagged and fixed one instance of exactly this "two
+     different greens meaning the same thing" bug (ListCard's badges);
+     these two were the same bug in the remaining call sites (FilterPill's
+     active state, AddToListButton's checkmark, DealCard's verdict overlay,
+     the "My Lists" link on Home, every inline error message). Re-pointed
+     at the fair-*, alert-* scale (2026-08-13 UI tidy-up) instead of hunting
+     down every call site, since every one of them means the same
+     "positive/brand accent" or "error" semantic either way.
+     fair-800, not fair-600 (peer review caught this): every one of these
+     call sites uses the color as solid white-on-fill (FilterPill's active
+     pill, DealCard's verdict tag) or as text-on-white (the error messages,
+     the "My Lists" link) -- fair-600 only has a 3.1:1 contrast ratio
+     against white in both directions, below WCAG AA's 4.5:1 for normal
+     text. fair-800 is 5.09:1, clearing AA in both directions, and is the
+     same green family the .dd-badge/.dd-btn primitives below already use
+     for their light-tint badge text. alert-600 was already 6.34:1 against
+     white, comfortably clearing AA, so it's unchanged. */
+  --color-brand-primary: var(--color-fair-800); /* was #006948 */
   --color-brand-secondary: #4648d4; /* secondary indigo */
-  --color-brand-error: #ba1a1a; /* error red */
+  --color-brand-error: var(--color-alert-600); /* was #ba1a1a */
   --color-brand-tertiary: #825100; /* tertiary amber */
 
   /* Verdict colors — DODGY / REAL_SAVER / FAIR / UNKNOWN, see
@@ -88,8 +139,7 @@
   --color-verdict-real-saver: var(--color-verdict-real-saver);
   --color-verdict-fair: var(--color-verdict-fair);
   --color-verdict-unknown: var(--color-verdict-unknown);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
   --font-display: var(--font-manrope);
 
   --color-paper: var(--color-paper);
@@ -149,7 +199,16 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Brand Guide v1.0 ("04 — TYPE"): Inter for body/UI copy. This was
+     hardcoded to Arial/Helvetica before (2026-08-13 UI tidy-up) -- the
+     Geist Sans var loaded in layout.tsx was never actually wired up here,
+     so every non-`font-display` element in the app (labels, prices without
+     the display class, badges, buttons, nav) was silently rendering in the
+     browser's default Arial stack instead of any of the fonts the app
+     loads. `--font-sans` now points at Inter (see globals.css's
+     `@theme inline` block), so this and the `font-sans` utility class
+     agree. */
+  font-family: var(--font-sans);
   /* Mobile-only surface — apps/marketing is the desktop-only counterpart. */
   max-width: 480px;
   margin: 0 auto;
@@ -235,4 +294,202 @@ body {
 }
 .animate-mascot-turn {
   animation: mascotTurn 1.8s ease-in-out infinite;
+}
+
+@keyframes mascotBlink {
+  0%,
+  91%,
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  94% {
+    opacity: 0.2;
+    transform: scaleY(0.12);
+  }
+  96% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+.animate-mascot-blink {
+  animation: mascotBlink 7s ease-in-out infinite;
+  transform-origin: center;
+}
+.animate-mascot-header-blink {
+  animation: mascotBlink 10s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Brand Guide v1.0 ("06 — UI KIT") badge + button primitives (2026-08-13 UI
+   tidy-up). The guide ships as a minified single-file bundle
+   (docs/Dodgy Deal Brand Guide (standalone).html) with no readable source,
+   so these values were measured directly off its rendered "TAGS & BADGES"
+   and "BUTTONS" components (computed styles), not guessed from the spec
+   prose. They're kept as their own `--dd-*` tokens rather than folding into
+   the existing ink-*, fair-*, dodgy-*, alert-* scale above -- that scale is
+   this app's own hex approximation of the same palette and is threaded
+   through a lot of other, unrelated UI (borders, focus rings, text) that
+   this pass wasn't asked to re-theme; these are the guide's exact oklch
+   values, used only by `.dd-badge-*`/`.dd-btn-*`. */
+:root {
+  --dd-badge-fair-bg: oklch(93% 0.06 145);
+  --dd-badge-fair-text: oklch(40% 0.15 145);
+  --dd-badge-dodgy-bg: oklch(93% 0.06 85);
+  --dd-badge-dodgy-text: oklch(45% 0.13 85);
+  --dd-badge-neutral-bg: oklch(93% 0.012 90);
+  --dd-badge-neutral-text: oklch(42% 0.02 90);
+  --dd-badge-alert-bg: oklch(94% 0.035 25);
+  --dd-badge-alert-text: oklch(42% 0.14 25);
+
+  --dd-btn-primary-bg: oklch(16% 0.01 90);
+  --dd-btn-primary-text: oklch(97.8% 0.008 90);
+  --dd-btn-success-bg: oklch(70% 0.16 145);
+  --dd-btn-success-text: oklch(26% 0.1 145);
+  --dd-btn-outline-border: oklch(16% 0.01 90);
+  --dd-btn-ghost-text: oklch(42% 0.02 90);
+}
+
+/* "TAGS & BADGES": pill, Inter bold 14px, 8px/16px padding, 6px icon gap.
+   Always a light tint background + a darker matching text color -- never a
+   solid saturated fill -- which is what distinguishes these from this
+   app's older solid-fill pills (bg-fair-600 + white text) that a few
+   screens used instead; call sites converted to these primitives had that
+   fixed as part of the same pass. */
+.dd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 16px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.dd-badge-fair {
+  background: var(--dd-badge-fair-bg);
+  color: var(--dd-badge-fair-text);
+}
+.dd-badge-dodgy {
+  background: var(--dd-badge-dodgy-bg);
+  color: var(--dd-badge-dodgy-text);
+}
+.dd-badge-neutral {
+  background: var(--dd-badge-neutral-bg);
+  color: var(--dd-badge-neutral-text);
+}
+.dd-badge-alert {
+  background: var(--dd-badge-alert-bg);
+  color: var(--dd-badge-alert-text);
+}
+
+/* "BUTTONS": full pill radius, Inter bold 16px.
+   - primary ("Compare my trolley"): ink fill, paper text -- the app's one
+     full-width primary action per screen.
+   - success ("See cheapest store"): fair-green fill, dark-green text -- the
+     "one clear winner" CTA.
+   - outline ("Add item"): transparent fill, 2px ink ring.
+   - ghost ("Skip for now"): text-only in Bark, no border/fill -- tertiary
+     actions. */
+.dd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+.dd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.dd-btn-primary {
+  padding: 16px 28px;
+  background: var(--dd-btn-primary-bg);
+  color: var(--dd-btn-primary-text);
+  border: none;
+}
+.dd-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+.dd-btn-success {
+  padding: 16px 28px;
+  background: var(--dd-btn-success-bg);
+  color: var(--dd-btn-success-text);
+  border: none;
+}
+.dd-btn-success:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.dd-btn-outline {
+  padding: 14px 26px;
+  background: transparent;
+  color: var(--dd-btn-outline-border);
+  border: 2px solid var(--dd-btn-outline-border);
+}
+.dd-btn-outline:hover:not(:disabled) {
+  background: oklch(16% 0.01 90 / 0.06);
+}
+.dd-btn-ghost {
+  padding: 14px 6px;
+  background: transparent;
+  color: var(--dd-btn-ghost-text);
+  border: none;
+}
+.dd-btn-ghost:hover:not(:disabled) {
+  opacity: 0.7;
+}
+/* Not shown in the guide's own BUTTONS demo (it has no destructive-action
+   example), but this is just the outline shape re-colored with the same
+   alert-* scale every other error/destructive affordance in the app
+   already uses (Log Out, delete confirmations) -- same pill/weight/padding
+   language, not a new pattern. */
+.dd-btn-outline-alert {
+  padding: 14px 26px;
+  background: transparent;
+  color: var(--color-alert-600);
+  border: 2px solid var(--color-alert-200);
+}
+.dd-btn-outline-alert:hover:not(:disabled) {
+  background: var(--color-alert-50);
+}
+
+/* Safe-area padding/offset, as plain CSS instead of Tailwind arbitrary-value
+   brackets (2026-08-14 build fix). The calc()-plus-safe-area-inset
+   padding-bottom and bottom-offset classes they replace were reliably
+   getting mangled by the Tailwind v4.3.3 (oxide) class-candidate scanner under
+   Turbopack (Next 16.3.0) whenever the same source file also has multi-byte
+   UTF-8 characters (em dashes, "≈", "·") in nearby comments -- reproducible
+   even from a clean `.next` cache, see project.md. layout.tsx's own doc
+   comment already flagged this pattern as fragile ("a shorthand version of
+   this exact comment once did that and broke the whole app's build") --
+   moving the four call sites (layout.tsx, page.tsx, AppHeader.tsx,
+   FullScreenSearch.tsx, BottomNav.tsx) to these hand-authored classes
+   sidesteps the scanner bug entirely instead of tip-toeing around comment
+   length near it. */
+.pb-safe-nav {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+.pb-safe-sm {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+.bottom-safe-nav {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+/* Same family, added 2026-08-14 for the /lists create-list FAB
+   (app/lists/page.tsx) -- BottomNav's own top edge sits at `5.5rem +
+   env(safe-area-inset-bottom)` from the viewport bottom (its `1rem`
+   bottom-safe-nav offset plus its own 4.5rem height, the same total
+   `.pb-safe-nav` above already accounts for), so this adds one more `1rem`
+   gap on top of that -- floats the FAB just clear of BottomNav's pill with
+   the same visual gap BottomNav itself floats above the screen edge by,
+   rather than sitting flush against it. */
+.bottom-safe-fab {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
 }

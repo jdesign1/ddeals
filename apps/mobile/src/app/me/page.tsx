@@ -4,10 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
-import { fetchDealCheckHistory, computeDealStats, type DealStats } from "@dodgey-deals/shared";
+import { fetchDealCheckHistory, computeDealStats, describeFetchError, type DealStats } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
-import AuthPanel from "@/components/AuthPanel";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 
@@ -37,9 +36,18 @@ import ErrorState from "@/components/ErrorState";
  *    why (this table only ever snapshots the one store/price actually
  *    checked, not every store's price at that moment, so the prototype's
  *    "highest minus lowest price found" isn't reproducible here).
+ *
+ * The 2 plain "Me" `<h1>`s (loading state, signed-out state) are gone as
+ * of 2026-08-13, per Jay's "remove the h1 titles from each page, as we
+ * have the title in the top nav bar" -- `AppHeader.tsx` already shows
+ * "Deal stats" for this route via `ROUTE_TITLES`, so a same-page "Me"
+ * label (already stale next to that title anyway) was a plain duplicate.
+ * The hero `<h1>` further down ("This is how Dodgy Deal works for you")
+ * is deliberately kept -- it's a distinct tagline, not a restated page
+ * name, so it isn't the kind of duplicate this request was about.
  */
 export default function MePage() {
-  const { user, isFakeSession, loading: authLoading } = useAuth();
+  const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const [stats, setStats] = useState<DealStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +73,7 @@ export default function MePage() {
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load your deal stats");
+        if (!cancelled) setError(describeFetchError(err, "Failed to load your deal stats"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -77,63 +85,96 @@ export default function MePage() {
 
   if (authLoading) {
     return (
-      <main className="flex flex-col gap-3 px-5 py-8">
-        <h1 className="text-2xl font-extrabold text-stone-900">Me</h1>
-        <p className="text-sm text-stone-500">Loading…</p>
+      <main className="flex flex-col gap-3 pb-8">
+        {/* `blurred` added 2026-08-20, per Jay: "All checks and Deal stats
+            pages - remove the search bar's white background (container
+            fill) to match the Check deals page." -- was a bare
+            `<SearchBar />` (default variant, not blurred), which renders
+            an opaque `bg-white` sticky wrapper (`SearchBar.tsx`'s own
+            ternary); `blurred` swaps that for the same transparent +
+            `backdrop-blur-md` treatment Home's search bar already uses.
+            Scoped to just the wrapper fill -- this page's pill still keeps
+            its own `border-stone-300` at rest (unlike Home's, see
+            `page.tsx`'s own same-day `variant="shadow"` change) since Jay's
+            two asks were separate: this one about the container fill only,
+            not the pill's stroke. Same change, same reasoning, at this
+            file's other 2 `<SearchBar>` call sites below (short pointer
+            comment there instead of repeating this in full 3 times). */}
+        <div className="flex flex-col gap-3 px-5 pt-4">
+          <LoadingMascot loading />
+        </div>
       </main>
     );
   }
 
+  // 2026-08-19, per Jay: bottom sheet, not a full-page swap -- see
+  // lists/page.tsx's own version of this comment.
   if (!user) {
+    const prompt = "Log in to see your Deal Stats — track checked deals, real savers spotted, and estimated total savings.";
     return (
-      <main className="flex flex-col gap-4 px-5 py-8">
-        <h1 className="text-2xl font-extrabold text-stone-900">Me</h1>
-        <AuthPanel prompt="Log in to see your Deal Stats — track checked deals, real savers spotted, and estimated total savings." />
+      <main className="flex flex-col gap-4 pt-6 pb-8">
+        {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>`
+            call sites for the full "why" (same change, same reasoning, all
+            3 branches of this page). */}
+        <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
+          <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>
+          <button
+            type="button"
+            onClick={() => openAuthSheet(prompt)}
+            className="dd-btn dd-btn-primary cursor-pointer"
+          >
+            Log in or create an account
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
     <main className="flex flex-col gap-6 pb-8">
+      {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>` call
+          sites for the full "why" (same change, same reasoning, all 3
+          branches of this page). */}
       <header className="px-5 pt-6 text-center">
-        <Image src="/logo.svg" alt="" width={48} height={48} className="mx-auto mb-2 h-12 w-12" />
-        <h1 className="font-display text-lg font-black tracking-tight text-stone-900">
+        {/* An infrequent blink keeps the mascot lively without making the
+            static Deal Stats header feel like a loading indicator. */}
+        <Image src="/logo.svg" alt="" width={48} height={48} className="animate-mascot-blink mx-auto mb-2 h-12 w-12" />
+        <h1 className="font-display text-lg font-black tracking-normal text-stone-900">
           This is how Dodgy Deal works for you
         </h1>
       </header>
 
-      {isFakeSession && (
-        // Same amber "dev tool" language/styling as lists/page.tsx's own
-        // Test Mode notice (2026-08-11) -- without this, a fake-session
-        // user just sees "0 checks / $0.00 saved" with no explanation why,
-        // since `fetchDealCheckHistory` (a plain SELECT) silently returns
-        // zero rows under RLS for an unauthenticated request rather than
-        // throwing an error (unlike an INSERT, which would) -- caught in
-        // peer review as a real, if minor, inconsistency with the rest of
-        // this app's fake-session handling.
+      {isAnonymousSession && (
+        // Same amber "dev tool" language/styling as lists/page.tsx and
+        // /history's own Test Mode notice. Copy updated 2026-08-13 -- the
+        // test account is a real Supabase anonymous sign-in now (see
+        // auth-context.tsx's own doc comment), so these stats genuinely
+        // reflect real check history like any other signed-in user; this
+        // no longer claims stats "will always show zero," it just flags
+        // the account itself has no email attached.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Test Mode</p>
-          <p className="text-xs leading-relaxed text-amber-700">
-            This is a simulated login for design testing, not a real account — these stats will always show zero
-            since there&rsquo;s no real check history behind it.
+          <p className="text-sm font-black tracking-widest text-amber-700">Test mode</p>
+          <p className="text-sm leading-relaxed text-amber-700">
+            You&rsquo;re using an anonymous test account — the stats below are real, but this account has no email
+            attached, so you can&rsquo;t sign back into it from another device.
           </p>
         </div>
       )}
 
-      <LoadingMascot loading={loading} label="Loading your deal stats…" />
+      <LoadingMascot loading={loading} />
       {error && <ErrorState message="Couldn't load your deal stats." detail={error} onRetry={retry} />}
 
       {!loading && !error && stats && (
         <div className="flex flex-col gap-4 px-5">
           <div className="grid grid-cols-3 divide-x divide-stone-100 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-            <StatCell label="Deals Checked" value={stats.totalChecked} valueClassName="text-stone-900" />
-            <StatCell label="Real Savers Found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
-            <StatCell label="Dodgy Deals Spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
+            <StatCell label="Deals checked" value={stats.totalChecked} valueClassName="text-stone-900" />
+            <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
+            <StatCell label="Dodgy deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
           </div>
 
           <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
             <h2 className="text-sm font-black text-stone-900">Break down by supermarket</h2>
-            <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 text-[11px] font-black text-stone-400">
+            <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 text-sm font-black text-stone-500">
               <span className="col-span-6">Supermarket</span>
               <span className="col-span-3 text-center">Real savers</span>
               <span className="col-span-3 text-center">Dodgy deals</span>
@@ -165,8 +206,8 @@ export default function MePage() {
               </span>
             </div>
             <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
-              <p className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-fair-800">How we calculate this</p>
-              <p className="text-xs font-semibold leading-relaxed text-stone-600">
+              <p className="mb-1.5 text-sm font-black tracking-wider text-fair-800">How we calculate this</p>
+              <p className="text-sm font-semibold leading-relaxed text-stone-600">
                 Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
                 from. This is the sum of every real saving across everything you&rsquo;ve checked.
               </p>
@@ -190,7 +231,7 @@ function StatCell({
   label,
   value,
   valueClassName,
-  labelClassName = "text-stone-400",
+  labelClassName = "text-stone-500",
 }: {
   label: string;
   value: number;
@@ -199,7 +240,7 @@ function StatCell({
 }) {
   return (
     <div className="flex flex-col items-center justify-between gap-2 px-1 text-center">
-      <span className={`flex min-h-[32px] items-center justify-center text-[10px] font-black uppercase tracking-widest leading-tight ${labelClassName}`}>
+      <span className={`flex min-h-[32px] items-center justify-center text-sm font-black tracking-widest leading-tight ${labelClassName}`}>
         {label}
       </span>
       <span className={`font-display text-2xl font-black tabular-nums ${valueClassName}`}>{value}</span>

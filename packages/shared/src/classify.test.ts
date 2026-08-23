@@ -32,6 +32,22 @@ test("DODGY when sale price is higher than the normal price (fake deal)", () => 
   assert.match(result.reason, /HIGHER than the normal price/);
 });
 
+test("DODGY when sale price exactly equals the normal price (no real discount)", () => {
+  // Regression test for the 2026-08-19 fix: spec defines Dodgy as sale
+  // price "equal to or higher than" the normal price -- this used to fall
+  // through to FAIR (0% saving) instead of DODGY.
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -20), price: 5, is_special: false },
+    { scraped_at: day(now, -10), price: 5, is_special: false },
+    { scraped_at: day(now, -1), price: 5, is_special: true },
+  ];
+  const result = classifySpecial(5, rows);
+  assert.equal(result.verdict, "DODGY");
+  assert.equal(result.savingPct, 0);
+  assert.match(result.reason, /SAME as the normal price/);
+});
+
 test("DODGY shrinkflation: nominal saving but $/unit barely moves", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [

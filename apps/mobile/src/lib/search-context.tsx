@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { loadLiveProducts, type ProductCard } from "@dodgey-deals/shared";
+import { loadLiveProducts, describeFetchError, type ProductCard } from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
 
 /**
@@ -72,8 +72,14 @@ interface SearchContextValue {
    * actually being viewed (guards against a stale pending return from an
    * earlier, abandoned deal-page visit incorrectly reopening search on an
    * unrelated later one, e.g. if the user left a deal page via BottomNav
-   * instead of its back button). */
+   * instead of its back button). The full-screen search uses the accompanying
+   * `preserveSearchStateOnOpen` flag to distinguish this resume from a fresh
+   * search entry, so its selected tab and saved scroll position survive the
+   * deal-page detour. */
   resumeAfterDealBack: () => void;
+  /** True when the next search overlay opening is a return from a deal page,
+   * rather than a fresh search entry. */
+  preserveSearchStateOnOpen: boolean;
   /** True from the instant a card tap inside the search overlay calls
    * `pauseForDealNavigation` until the destination deal page's own mount
    * effect calls `clearDealNavigationPending` -- see `GlobalOverlays.tsx`'s
@@ -116,6 +122,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
+  const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isDealNavigationPending, setIsDealNavigationPending] = useState(false);
   // Guards the timeout safety-net below (peer review, 2026-08-11): a plain
   // counter, bumped on every `pauseForDealNavigation` call, so a stale
@@ -138,7 +145,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setProducts(result);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load specials");
+        if (!cancelled) setError(describeFetchError(err, "Failed to load specials"));
       })
       .finally(() => {
         if (!cancelled) setLoadingProducts(false);
@@ -168,16 +175,21 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setLoadingProducts(true);
         setRetryTick((t) => t + 1);
       },
-      openSearch: () => setIsActive(true),
+      openSearch: () => {
+        setPreserveSearchStateOnOpen(false);
+        setIsActive(true);
+      },
       closeSearch: () => {
         setQuery("");
         setIsActive(false);
         setReturnToSearch(null);
+        setPreserveSearchStateOnOpen(false);
       },
       returnToSearch,
       pauseForDealNavigation: (productId, store) => {
         setIsActive(false);
         setReturnToSearch({ productId, store });
+        setPreserveSearchStateOnOpen(false);
         setIsDealNavigationPending(true);
         // Safety net (peer review, 2026-08-11): normally
         // `clearDealNavigationPending` (below) is what turns this back off,
@@ -199,16 +211,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         }, 6000);
       },
       resumeAfterDealBack: () => {
+        setPreserveSearchStateOnOpen(true);
         setIsActive(true);
         setReturnToSearch(null);
       },
+      preserveSearchStateOnOpen,
       isDealNavigationPending,
       clearDealNavigationPending: () => setIsDealNavigationPending(false),
       isScannerOpen,
       openScanner: () => setIsScannerOpen(true),
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, query, isActive, returnToSearch, isDealNavigationPending, isScannerOpen]
+    [products, loadingProducts, error, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already

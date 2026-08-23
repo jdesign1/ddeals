@@ -1,2 +1,10 @@
 node_modules/
 .next/
+
+# Manual trash (this sandbox's mount can't rm, only mv -- files parked here
+# get orphaned instead of deleted). MUST stay gitignored: Tailwind v4's
+# automatic content scanner walks every non-ignored file for candidate
+# classes, and stale pre-fix build chunks dumped here once re-poisoned every
+# fresh .next build with the same broken safe-area-inset selector even after
+# the real source fix landed (2026-08-14). See project.md.
+_to_delete*/

@@ -27,7 +27,12 @@ const STORE_LOGOS: Record<string, StoreLogoMeta> = {
   // shade. Mirrored in StoreCompareChart.tsx's STORE_TICK_COLORS and the
   // deal-assessment page's STORE_TEXT_COLOR map -- both derive their
   // PAK'nSAVE color from this same bg-amber-600 value, not a separate one.
-  paknsave: { short: "PNS", bg: "bg-amber-600", text: "text-stone-950" },
+  // `text-white` (2026-08-12, per Jay's ask, was `text-stone-950` -- dark
+  // text was likely the original higher-contrast pairing for the lighter
+  // pre-2026-08-11 `bg-amber-500`; white reads fine against the now-darker
+  // `bg-amber-600`), matching every other store badge here (all `text-white`
+  // except the generic stone-600 fallback, also white).
+  paknsave: { short: "PNS", bg: "bg-amber-600", text: "text-white" },
   newworld: { short: "NW", bg: "bg-rose-600", text: "text-white" },
   foursquare: { short: "FS", bg: "bg-green-600", text: "text-white" },
 };
