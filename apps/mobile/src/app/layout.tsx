@@ -46,15 +46,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${manrope.variable} h-full antialiased`}
+      className={`${inter.variable} ${manrope.variable} h-full bg-stone-50 antialiased`}
     >
       <head>
+        <meta name="theme-color" content="#fafaf9" />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_box,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,search_check_2,warning,workspace_premium&display=block"
         />
       </head>
-      <body className="h-dvh flex flex-col overflow-hidden">
+      <body className="h-dvh flex flex-col overflow-hidden bg-stone-50">
         <AuthProvider>
           <HeaderOverrideProvider>
             {/* SearchProvider (lib/search-context.tsx, 2026-08-09) -- global

@@ -27,6 +27,8 @@
  * site reuses brand colors.
  */
 :root {
+  color-scheme: light;
+
   /* Very subtle grey, not pure white (2026-08-14, Jay: "give the app base
      background a very subtle grey fill colour") -- this is the `body`
      background below, the base layer every scroll container sits on top
@@ -191,12 +193,11 @@
 /* The mobile app intentionally keeps its light surface in every browser
    appearance; the UI is designed around this grey background and light cards. */
 html {
-  background: var(--background);
-  color-scheme: light;
+  background-color: #fafaf9;
 }
 
 body {
-  background: var(--background);
+  background-color: #fafaf9;
   color: var(--foreground);
   /* Brand Guide v1.0 ("04 — TYPE"): Inter for body/UI copy. This was
      hardcoded to Arial/Helvetica before (2026-08-13 UI tidy-up) -- the
