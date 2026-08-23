@@ -11,8 +11,8 @@ import {
   deriveAvailableStoreKeys,
   groupCategory,
   CATEGORY_SECTIONS,
-  getSearchSynonymRule,
-  productMatchesSynonymRule,
+  productMatchesSearch,
+  getProductSearchRelevance,
 } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
@@ -55,12 +55,10 @@ import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfinit
  *    search runs over the same already-loaded, specials-only `products`
  *    array, typically a few hundred to low thousands of rows, cheap enough
  *    to filter synchronously).
- *  - No typo-tolerant fuzzy fallback (`isFuzzyProductMatch` /
- *    `levenshteinDistance` in the prototype) -- whole-word/substring
- *    relevance ranking is ported (category > name > brand > substring), the
- *    Levenshtein typo-correction tier is not; a meaningful chunk of extra
- *    code for a nicety that matters most on the prototype's much larger
- *    catalogue, and this app's search never had it either.
+ *  - Search matching now comes from `packages/shared/src/product-search.ts`:
+ *    query tokens are matched across brand/name/category, with prefix and
+ *    bounded typo tolerance. This fixes metadata-split queries such as
+ *    "Anchor Protein" and keeps mobile/browser search behavior in one place.
  *  - No branch personalisation (`usePersonalised`/`selectedBranches`) --
  *    same simplification page.tsx's own doc comment already established;
  *    store labels come from `STORE_DISPLAY_FALLBACK` directly.
@@ -163,74 +161,6 @@ const TOOLBAR_SCROLL_DELTA = 4; // px of scroll movement needed to register a di
 // below -- used to size the post-toggle scroll-event guard window, see
 // `toolbarAnimationGuardRef`'s own comment.
 const TOOLBAR_TRANSITION_MS = 300;
-
-// Strips everything but letters/numbers, so punctuation/spacing differences
-// between how a product is named and how a shopper types it don't cause
-// false misses -- ported from Prototype/index.html's `normalizeSearchText`.
-const normalizeSearchText = (s: string | null | undefined) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
-// Whole-word tokens, ported from the prototype's `tokenizeSearchText`.
-const tokenizeSearchText = (s: string | null | undefined) => (s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-
-/**
- * Text match for the 3+ character results list -- plain substring against
- * name/brand/category (unchanged default behavior), UNLESS `query`
- * (normalized) is a recognized synonym (`packages/shared/src/
- * search-synonyms.ts` -- "dairy", "yogurt"/"yogurts", "diaper"/"diapers",
- * "veggie"/"veggies" as of 2026-08-21), in which case that module's own
- * category/name matching rules decide instead. Any query NOT in that
- * dictionary falls straight through to the original plain-substring check,
- * so this is purely additive -- every search that already worked is
- * matched exactly the same way as before.
- */
-function textMatchesQuery(product: ProductCardData, query: string): boolean {
-  const q = normalizeSearchText(query);
-  const synonymRule = getSearchSynonymRule(q);
-  if (synonymRule) {
-    return productMatchesSynonymRule(synonymRule, { name: product.name, brand: product.brand, category: product.category });
-  }
-  return normalizeSearchText(product.name).includes(q) || normalizeSearchText(product.brand).includes(q) || normalizeSearchText(product.category).includes(q);
-}
-
-/**
- * Relevance tiering, ported from Prototype/index.html's `getSearchRelevance`
- * (Levenshtein typo-tolerance tier omitted, see this file's doc comment):
- * a whole-word category match beats a whole-word name match beats a
- * whole-word brand match beats a plain substring match, so the actual
- * "Milk"/"Butter" category items outrank incidental mentions ("Butter
- * Chicken" sauce, "Milky" candy) regardless of price-based sort.
- *
- * 2026-08-21: also synonym-aware, same recognized-query dictionary
- * `textMatchesQuery` (above) uses -- for those queries, a synonym
- * category-term match ranks as tier 4 (same as a literal whole-word
- * category match), a synonym name-term match as tier 3, so e.g. real dairy
- * products still sort above other "dairy"-matched deals purely by their
- * own price/discount within that top tier, the same way a literal-word
- * search already did. Every other query is completely unaffected --
- * `synonymRule` is `null`, so this falls straight through to the original
- * whole-word tokenized comparison below.
- */
-function getSearchRelevance(product: ProductCardData, query: string): number {
-  const queryTokens = tokenizeSearchText(query);
-  if (queryTokens.length === 0) return 1;
-  const synonymRule = getSearchSynonymRule(normalizeSearchText(query));
-  if (synonymRule) {
-    const categoryOnlyRule = { categoryTerms: synonymRule.categoryTerms };
-    const nameOnlyRule = { nameTerms: synonymRule.nameTerms, nameTermCategoryPrefixes: synonymRule.nameTermCategoryPrefixes };
-    const productText = { name: product.name, brand: product.brand, category: product.category };
-    if (synonymRule.categoryTerms && productMatchesSynonymRule(categoryOnlyRule, productText)) return 4;
-    if (synonymRule.nameTerms && productMatchesSynonymRule(nameOnlyRule, productText)) return 3;
-    return 1;
-  }
-  const isWholeWordMatch = (text: string | null | undefined) => {
-    const tokens = tokenizeSearchText(text);
-    return queryTokens.every((qt) => tokens.includes(qt));
-  };
-  if (isWholeWordMatch(product.category)) return 4;
-  if (isWholeWordMatch(product.name)) return 3;
-  if (isWholeWordMatch(product.brand)) return 2;
-  return 1;
-}
 
 // `matchesAnySelectedStore` moved to packages/shared/src/data.ts, 2026-08-21
 // (see that file's own doc comment on it) -- this file's own local copy is
@@ -614,11 +544,12 @@ export default function FullScreenSearch() {
   });
   const visiblePopularSpecials = sortedPopularSpecials.slice(0, visiblePopularCount);
 
-  // 3+ character results -- filter -> store-match -> relevance/sort, ported
-  // from the prototype's `sortedProducts` memo.
+  // 3+ character results -- tokenized AND search across brand/name/category,
+  // followed by store/deal filters and relevance sorting. The matcher lives
+  // in shared code so browser and mobile surfaces cannot drift apart.
   const sortedProducts = useMemo<ProductCardData[]>(() => {
     if (trimmedQuery.length < 3) return [];
-    const textMatched = products.filter((p) => textMatchesQuery(p, trimmedQuery));
+    const textMatched = products.filter((p) => productMatchesSearch(p, trimmedQuery));
     const matchedByStore = textMatched.filter((p) => {
       if (selectedStores.includes("all")) return p.currentDeals.length > 0;
       return p.currentDeals.some((d) => matchesAnySelectedStore(d.store, selectedStores));
@@ -637,7 +568,10 @@ export default function FullScreenSearch() {
       p.currentDeals.some((d) => d.dealType === "Dodgy Deal") ? 2 : p.currentDeals.some((d) => d.dealType === "Fair Price") ? 1 : 0;
 
     return matched
-      .map((product) => ({ product, relevance: getSearchRelevance(product, trimmedQuery) }))
+      .map((product) => ({
+        product,
+        relevance: getProductSearchRelevance(product, trimmedQuery),
+      }))
       .sort((a, b) => {
         if (b.relevance !== a.relevance) return b.relevance - a.relevance;
         if (resultsSortBy === "cheapest") return getBestPrice(a.product) - getBestPrice(b.product);
