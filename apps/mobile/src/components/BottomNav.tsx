@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearch } from "@/lib/search-context";
 
-type MaterialSymbolName = "check_circle" | "list_alt_add" | "search_check_2" | "leaderboard";
+type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
 /**
  * Bottom nav: Check deals / Lists / All Checks / Deal stats. First tab's
@@ -53,7 +53,7 @@ type MaterialSymbolName = "check_circle" | "list_alt_add" | "search_check_2" | "
  * ~7291/~7304) at the time -- since replaced (2026-08-13, see below).
  *
  * All four tab icons use the exact Google Material Symbols glyphs now:
- * `check_circle`, `list_alt_add`, `search_check_2`, and `leaderboard`.
+ * `search`, `list_alt_add`, `search_check_2`, and `leaderboard`.
  * Each glyph uses FILL 0 for the default state and FILL 1 for the selected
  * state, matching the icon references supplied by Jay.
  *
@@ -217,7 +217,7 @@ const TABS: {
   // just a Home-tab icon, not a functioning search trigger on its own --
   // the real full-screen search overlay is still only reachable via Home's
   // own inline search bar / AppHeader's global icon, per that comment).
-  { href: "/", label: "Check deals", icon: "check_circle" },
+  { href: "/", label: "Check deals", icon: "search" },
   { href: "/lists", label: "Lists", icon: "list_alt_add" },
   { href: "/history", label: "All Checks", icon: "search_check_2" },
   { href: "/me", label: "Deal stats", icon: "leaderboard" },
