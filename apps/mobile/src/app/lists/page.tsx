@@ -390,7 +390,7 @@ export default function ListsPage() {
   // global `AuthSheet` (`openAuthSheet`, auth-context.tsx) instead.
   if (!user) {
     return (
-      <main className="flex flex-col gap-4 pb-8">
+      <main className="flex flex-col gap-4 pt-6 pb-8">
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
             src="/lists-login.webp"
