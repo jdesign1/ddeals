@@ -159,6 +159,28 @@ export async function writeCatalogueCache(products: ProductCard[]): Promise<void
   }
 }
 
+/**
+ * Replaces cached products after a targeted detail validation while keeping
+ * the original full-catalogue timestamp. A one-row validation must not make
+ * the entire catalogue look freshly downloaded for another six hours.
+ */
+export async function updateCatalogueCacheProducts(products: ProductCard[]): Promise<void> {
+  try {
+    const existing = await readCatalogueCacheRecord();
+    if (!existing || existing.version !== CATALOGUE_CACHE_VERSION || !Number.isFinite(existing.savedAt)) return;
+    const db = await openCatalogueCacheDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
+      tx.objectStore(CATALOGUE_CACHE_STORE).put({ ...existing, products }, CATALOGUE_CACHE_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // swallow -- targeted validation must never become a storage failure
+  }
+}
+
 /** Test-only escape hatch to clear the cache between test cases without reaching into IndexedDB internals from the test file. */
 export async function __clearCatalogueCacheForTests(): Promise<void> {
   try {

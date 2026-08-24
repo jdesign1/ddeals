@@ -11,7 +11,7 @@ import {
   type RefreshLiveProductsResult,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
-import { publishCatalogueUpdate } from "./catalogue-refresh";
+import { publishCatalogueUpdate, subscribeToCatalogueUpdates } from "./catalogue-refresh";
 
 /**
  * Global full-screen search state (2026-08-09, per Jay's ask: "clicking the
@@ -196,6 +196,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [retryTick]);
+
+  // Deal-detail targeted validation can update a single cached card without
+  // downloading the full catalogue. Keep the global Check-deals/search state
+  // in sync when that happens, so navigating back never restores the stale
+  // verdict from before the detail page was opened.
+  useEffect(() => subscribeToCatalogueUpdates((result) => {
+    setProducts(result);
+  }), []);
 
   // Refresh after a long-lived foreground session or a backgrounded app has
   // been away for six hours. The timer itself is local-only; the network

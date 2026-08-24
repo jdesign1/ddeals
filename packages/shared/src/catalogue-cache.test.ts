@@ -9,7 +9,9 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   readCatalogueCache,
+  readCatalogueCacheMetadata,
   writeCatalogueCache,
+  updateCatalogueCacheProducts,
   __clearCatalogueCacheForTests,
   __catalogueCacheTestInternals,
 } from "./catalogue-cache.ts";
@@ -55,6 +57,17 @@ test("writeCatalogueCache then readCatalogueCache: real round trip through Index
   await writeCatalogueCache(products);
   const result = await readCatalogueCache();
   assert.deepEqual(result, products);
+});
+
+test("updateCatalogueCacheProducts: updates rows without resetting the full-catalogue timestamp", async () => {
+  const originalProducts = [fakeProduct("p1")];
+  await writeCatalogueCache(originalProducts);
+  const before = await readCatalogueCacheMetadata();
+  await updateCatalogueCacheProducts([fakeProduct("p2")]);
+  const after = await readCatalogueCacheMetadata();
+
+  assert.deepEqual(await readCatalogueCache(), [fakeProduct("p2")]);
+  assert.equal(after?.savedAt, before?.savedAt);
 });
 
 test("writeCatalogueCache: never writes an empty array (would otherwise serve empty results as a false 'warm hit')", async () => {

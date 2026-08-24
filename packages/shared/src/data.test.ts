@@ -16,6 +16,9 @@ import {
   titleCase,
   loadLiveProducts,
   refreshLiveProducts,
+  validateCurrentDeal,
+  applyTargetedDealToProducts,
+  __targetedDealValidations,
   __liveProductsRefreshes,
   __liveProductsCache,
   type DodgyDealsRow,
@@ -32,6 +35,7 @@ import { readCatalogueCache, writeCatalogueCache, __clearCatalogueCacheForTests 
 beforeEach(async () => {
   await __clearCatalogueCacheForTests();
   __liveProductsRefreshes.clear();
+  __targetedDealValidations.clear();
 });
 
 // ---- mergeProductMeta ----
@@ -153,6 +157,8 @@ test("buildProductCardsFromSpecials: maps verdict to dealType/reason and standar
   assert.equal(woolworthsDeal?.dealType, "Real Deal");
   assert.equal(paknsaveDeal?.dealType, "Dodgy Deal");
   assert.equal(paknsaveDeal?.wasArtificiallyInflated, true);
+  assert.equal(woolworthsDeal?.sourceProductId, "p1");
+  assert.equal(woolworthsDeal?.sourceStoreId, "woolworths");
 });
 
 test("buildProductCardsFromSpecials: legacy near-normal DODGY rows are shown as Fair Price", () => {
@@ -499,4 +505,74 @@ test("refreshLiveProducts: the cooldown survives an in-memory reset via IndexedD
   } finally {
     restore();
   }
+});
+
+test("validateCurrentDeal: coalesces and throttles exact product/store checks", async () => {
+  const { calls, restore } = installFetchStubWithOneRealRow();
+  try {
+    const config = fakeConfig("targeted-validation");
+    const [first, overlapping] = await Promise.all([
+      validateCurrentDeal(config, "prod-1", "woolworths"),
+      validateCurrentDeal(config, "prod-1", "woolworths"),
+    ]);
+    assert.equal(first.refreshed, true);
+    assert.equal(overlapping.refreshed, true);
+    assert.equal(first.row?.product_id, "prod-1");
+    assert.equal(calls.length, 1, "overlapping detail checks should share one request");
+    assert.match(calls[0], /product_id=eq\.prod-1/);
+    assert.match(calls[0], /store_id=eq\.woolworths/);
+
+    const repeated = await validateCurrentDeal(config, "prod-1", "woolworths");
+    assert.equal(repeated.throttled, true);
+    assert.equal(repeated.row?.product_id, "prod-1");
+    assert.equal(calls.length, 1, "repeat detail checks inside the cooldown should not fetch again");
+  } finally {
+    restore();
+  }
+});
+
+test("validateCurrentDeal: caches a missing row during the cooldown", async () => {
+  const calls: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    calls.push(String(input));
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => [],
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const config = fakeConfig("targeted-missing");
+    const first = await validateCurrentDeal(config, "prod-gone", "paknsave");
+    const second = await validateCurrentDeal(config, "prod-gone", "paknsave");
+    assert.equal(first.row, null);
+    assert.equal(second.row, null);
+    assert.equal(second.throttled, true);
+    assert.equal(calls.length, 1, "a missing special should not be rechecked repeatedly during the cooldown");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("applyTargetedDealToProducts: updates a cached verdict or removes a retired special", () => {
+  const original = buildProductCardsFromSpecials([[
+    "group-1",
+    [row({ product_id: "prod-1", store_id: "woolworths", verdict: "DODGY", normal_price: 5, sale_price: 4.89 })],
+  ]]);
+  const updatedRow = row({
+    product_id: "prod-1",
+    store_id: "woolworths",
+    verdict: "UNKNOWN",
+    evidence_status: "INSUFFICIENT",
+    normal_price: 5,
+    sale_price: 4.89,
+  });
+  const updated = applyTargetedDealToProducts(original, "prod-1", "woolworths", updatedRow);
+  assert.equal(updated[0].currentDeals[0].dealType, "Unverified Deal");
+
+  const removed = applyTargetedDealToProducts(updated, "prod-1", "woolworths", null);
+  assert.equal(removed.length, 0, "a card with no remaining current deals should disappear");
 });

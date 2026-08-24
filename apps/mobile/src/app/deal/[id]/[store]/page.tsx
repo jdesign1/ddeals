@@ -9,6 +9,9 @@ import { AlertTriangle, ArrowUp, Check, ChevronDown, Clock3, Info, Share, Shield
 import {
   loadLiveProducts,
   refreshLiveProducts,
+  validateCurrentDeal,
+  applyTargetedDealToProducts,
+  updateCatalogueCacheProducts,
   type ProductCard,
   type AssessmentVerdict,
   getAssessmentVerdict,
@@ -161,6 +164,12 @@ export default function DealAssessmentPage() {
   // below instead of leaving "Couldn't load this deal" as a dead end.
   const [retryTick, setRetryTick] = useState(0);
   const staleRetryKeyRef = useRef<string | null>(null);
+  const targetedValidationKeyRef = useRef<string | null>(null);
+  const confirmedMissingDealRef = useRef<{
+    routeKey: string;
+    sourceProductId: string;
+    sourceStoreId: string;
+  } | null>(null);
   // Resets `loadError` here (an event handler, not the effect body --
   // setting state synchronously inside the effect itself trips this
   // project's react-hooks/set-state-in-effect rule) before bumping
@@ -197,6 +206,47 @@ export default function DealAssessmentPage() {
   const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
 
+  // The catalogue is intentionally allowed to render from IndexedDB first,
+  // but a deal assessment should validate the exact retailer row in the
+  // background. This is one small cache read instead of another full
+  // catalogue download, and it catches both verdict changes and specials
+  // that have rolled off since the catalogue snapshot was saved.
+  useEffect(() => {
+    if (!products || !product || deal?.isOnSpecial === false || !deal?.sourceProductId || !deal.sourceStoreId) return;
+    const sourceProductId = deal.sourceProductId;
+    const sourceStoreId = deal.sourceStoreId;
+    const validationKey = `${sourceProductId}::${sourceStoreId}`;
+    if (targetedValidationKeyRef.current === validationKey) return;
+    targetedValidationKeyRef.current = validationKey;
+
+    let cancelled = false;
+    validateCurrentDeal(supabaseConfig, sourceProductId, sourceStoreId)
+      .then(({ row }) => {
+        if (cancelled) return;
+        const nextProducts = applyTargetedDealToProducts(products, sourceProductId, sourceStoreId, row);
+        if (row === null) {
+          confirmedMissingDealRef.current = {
+            routeKey: `${productId}::${dealStore}`,
+            sourceProductId,
+            sourceStoreId,
+          };
+        } else {
+          confirmedMissingDealRef.current = null;
+        }
+        setProducts(nextProducts);
+        void updateCatalogueCacheProducts(nextProducts);
+        publishCatalogueUpdate(nextProducts);
+      })
+      .catch(() => {
+        // Keep the cached assessment visible if the small revalidation request
+        // fails. The existing full-refresh/error paths remain available.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [products, product, deal, productId, dealStore]);
+
   // A stale deep link can miss because the product or its store deal rolled
   // off the live catalogue. Retry once through the shared cooldown-guarded
   // refresh before showing the final "no longer exists" state. The key guard
@@ -210,9 +260,18 @@ export default function DealAssessmentPage() {
     refreshLiveProducts(supabaseConfig)
       .then((result) => {
         if (!cancelled) {
-          setProducts(result.products);
+          const confirmedMissing = confirmedMissingDealRef.current;
+          const refreshedProducts = confirmedMissing?.routeKey === retryKey
+            ? applyTargetedDealToProducts(
+                result.products,
+                confirmedMissing.sourceProductId,
+                confirmedMissing.sourceStoreId,
+                null
+              )
+            : result.products;
+          setProducts(refreshedProducts);
           setLoadError(null);
-          publishCatalogueUpdate(result.products);
+          publishCatalogueUpdate(refreshedProducts);
         }
       })
       .catch(() => {

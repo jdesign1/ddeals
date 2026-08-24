@@ -84,6 +84,9 @@ export interface DodgyDealsRow {
 }
 
 export interface CurrentDeal {
+  /** Exact retailer row identifiers used for low-egress detail revalidation. */
+  sourceProductId?: string | null;
+  sourceStoreId?: string | null;
   store: string;
   price: number;
   originalPrice: number;
@@ -372,6 +375,35 @@ export function mergeProductMeta(memberMetas: ProductMetaInput[]): ProductMetaIn
   };
 }
 
+function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
+  const verdict = effectiveViewVerdict(row);
+  return {
+    sourceProductId: row.product_id,
+    sourceStoreId: row.store_id,
+    store: row.store_name || STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
+    price: row.sale_price,
+    originalPrice: row.normal_price ?? row.was_price ?? row.sale_price,
+    discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
+    dealType: verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[verdict],
+    wasArtificiallyInflated: verdict === "DODGY",
+    reason: VIEW_VERDICT_SHORT_REASON[verdict] || "Standard Special",
+    explanation: row.reason,
+    isOnSpecial: true,
+    saleStartedAt: row.sale_started_at || null,
+    specialEndDate: row.special_end_date || null,
+    productUrl: row.product_url ?? null,
+    ninetyDayLow: row.price_history_90d_low ?? null,
+    ninetyDayHigh: row.price_history_90d_high ?? null,
+    ninetyDayAvg: row.price_history_90d_avg ?? null,
+    ninetyDaySamples: row.price_history_90d_samples ?? null,
+    ninetyDaySpecialSamples: row.price_history_90d_special_samples ?? null,
+    ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
+    ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
+    evidenceStatus: row.evidence_status ?? null,
+    classifierVersion: row.classifier_version ?? null,
+  };
+}
+
 /**
  * Groups current-special rows by resolved match-group id and builds one
  * product card per group. Dedupes to the best (lowest) price per store
@@ -395,43 +427,7 @@ export function buildProductCardsFromSpecials(
     );
     if (!meta.name) continue;
 
-    const currentDeals: CurrentDeal[] = rows.map((row) => {
-      const verdict = effectiveViewVerdict(row);
-      return ({
-      store: row.store_name || STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
-      price: row.sale_price,
-      originalPrice: row.normal_price ?? row.was_price ?? row.sale_price,
-      discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
-      dealType:
-        verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[verdict],
-      wasArtificiallyInflated: verdict === "DODGY",
-      reason: VIEW_VERDICT_SHORT_REASON[verdict] || "Standard Special",
-      explanation: row.reason,
-      isOnSpecial: true,
-      saleStartedAt: row.sale_started_at || null,
-      specialEndDate: row.special_end_date || null,
-      productUrl: row.product_url ?? null,
-      // Price History Insights (2026-08-19) -- `?? null` not `|| null`:
-      // 0 is a real, meaningful value for ninetyDaySpecialSamples ("never
-      // on special"), and `||` would wrongly coerce it to null. Comes back
-      // `undefined` (not present on the row) when the view hasn't shipped
-      // these columns yet or the migration hasn't been applied -- `?? null`
-      // normalizes that the same way as an explicit NULL from Postgres, so
-      // callers only ever see `number | null`, never `undefined`.
-      ninetyDayLow: row.price_history_90d_low ?? null,
-      ninetyDayHigh: row.price_history_90d_high ?? null,
-      ninetyDayAvg: row.price_history_90d_avg ?? null,
-      ninetyDaySamples: row.price_history_90d_samples ?? null,
-      ninetyDaySpecialSamples: row.price_history_90d_special_samples ?? null,
-      // `?? null` not `|| null` -- same reasoning as above: 0 is real for
-      // ninetyDaySpecialDays ("never discounted"), and `undefined` (column
-      // not yet shipped/migrated) normalizes to null either way.
-      ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
-      ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
-      evidenceStatus: row.evidence_status ?? null,
-      classifierVersion: row.classifier_version ?? null,
-      });
-    });
+    const currentDeals: CurrentDeal[] = rows.map(currentDealFromRow);
 
     const bestDealByStore = new Map<string, CurrentDeal>();
     for (const deal of currentDeals) {
@@ -560,6 +556,136 @@ const ENRICHED_SPECIALS_SELECT =
 
 const LEGACY_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
+
+/** A detail-page validation is tiny compared with the full catalogue fetch. */
+export const TARGETED_DEAL_VALIDATION_COOLDOWN_MS = 5 * 60 * 1000;
+
+export interface CurrentDealValidationResult {
+  row: DodgyDealsRow | null;
+  refreshed: boolean;
+  throttled: boolean;
+  retryAfterMs: number;
+}
+
+interface TargetedDealValidationEntry {
+  promise: Promise<CurrentDealValidationResult> | null;
+  lastValidatedAt: number | null;
+  row: DodgyDealsRow | null;
+}
+
+/** Exported for tests only; the app should use validateCurrentDeal(). */
+export const __targetedDealValidations = new Map<string, TargetedDealValidationEntry>();
+
+async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string): Promise<T | null> {
+  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Range-Unit": "items",
+      Range: "0-0",
+    },
+  });
+  if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}`);
+  const rows = (await response.json()) as T[];
+  return rows[0] ?? null;
+}
+
+async function fetchTargetedDealRow(
+  config: SupabaseRestConfig,
+  productId: string,
+  storeId: string
+): Promise<DodgyDealsRow | null> {
+  const filters = `&product_id=eq.${encodeURIComponent(productId)}&store_id=eq.${encodeURIComponent(storeId)}&limit=1`;
+  try {
+    return await fetchFirstRow<DodgyDealsRow>(config, `${ENRICHED_SPECIALS_SELECT}${filters}`);
+  } catch (err) {
+    // Preserve the migration-window fallback used by the full catalogue
+    // request. It is only a compatibility path; live v2 rows include the
+    // evidence metadata needed for the final verdict.
+    if (!(err instanceof Error) || !/HTTP 400/.test(err.message)) throw err;
+    return fetchFirstRow<DodgyDealsRow>(config, `${LEGACY_SPECIALS_SELECT}${filters}`);
+  }
+}
+
+/**
+ * Revalidates one exact retailer product/store pair. Successful null results
+ * are cached too, so a removed special cannot cause repeated requests while a
+ * user navigates around the same detail page.
+ */
+export async function validateCurrentDeal(
+  config: SupabaseRestConfig,
+  productId: string,
+  storeId: string
+): Promise<CurrentDealValidationResult> {
+  const key = `${config.url}::${productId}::${storeId}`;
+  const existing = __targetedDealValidations.get(key);
+  if (existing?.promise) return existing.promise;
+
+  const now = Date.now();
+  if (existing?.lastValidatedAt != null) {
+    const elapsed = now - existing.lastValidatedAt;
+    if (elapsed < TARGETED_DEAL_VALIDATION_COOLDOWN_MS) {
+      return {
+        row: existing.row,
+        refreshed: false,
+        throttled: true,
+        retryAfterMs: TARGETED_DEAL_VALIDATION_COOLDOWN_MS - elapsed,
+      };
+    }
+  }
+
+  const entry: TargetedDealValidationEntry = existing ?? {
+    promise: null,
+    lastValidatedAt: null,
+    row: null,
+  };
+  const promise = (async (): Promise<CurrentDealValidationResult> => {
+    const row = await fetchTargetedDealRow(config, productId, storeId);
+    entry.row = row;
+    entry.lastValidatedAt = Date.now();
+    return { row, refreshed: true, throttled: false, retryAfterMs: 0 };
+  })();
+  entry.promise = promise;
+  __targetedDealValidations.set(key, entry);
+  promise.then(
+    () => {
+      entry.promise = null;
+    },
+    () => {
+      entry.promise = null;
+      if (entry.lastValidatedAt === null && __targetedDealValidations.get(key) === entry) {
+        __targetedDealValidations.delete(key);
+      }
+    }
+  );
+  return promise;
+}
+
+/** Applies a validated row to the cached catalogue without downloading it again. */
+export function applyTargetedDealToProducts(
+  products: ProductCard[],
+  productId: string,
+  storeId: string,
+  row: DodgyDealsRow | null
+): ProductCard[] {
+  return products.flatMap((product) => {
+    const dealIndex = product.currentDeals.findIndex(
+      (deal) => deal.sourceProductId === productId && deal.sourceStoreId === storeId
+    );
+    if (dealIndex === -1) return [product];
+
+    const nextDeals = [...product.currentDeals];
+    if (row === null) nextDeals.splice(dealIndex, 1);
+    else nextDeals[dealIndex] = currentDealFromRow(row);
+    if (!nextDeals.length) return [];
+
+    return [{
+      ...product,
+      standardPrice: Math.min(...nextDeals.map((deal) => deal.originalPrice)),
+      currentDeals: nextDeals,
+    }];
+  });
+}
 
 async function fetchSpecialRows(config: SupabaseRestConfig): Promise<DodgyDealsRow[]> {
   try {
@@ -807,6 +933,8 @@ export async function fetchNonSpecialProductCards(
         unit: meta.unit_size || "",
         currentDeals: [
           {
+            sourceProductId: row.product_id,
+            sourceStoreId: row.store_id,
             store: STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
             price: row.price,
             originalPrice: row.price,
