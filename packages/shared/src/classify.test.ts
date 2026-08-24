@@ -31,6 +31,20 @@ test("UNKNOWN when regular history is too shallow to judge", () => {
   assert.equal(result.normalPrice, null);
 });
 
+test("EARLY when older regular history supports an indicative read but recent evidence is incomplete", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -60), price: 10, is_special: false },
+    { scraped_at: day(now, -20), price: 10, is_special: false },
+    { scraped_at: day(now, -1), price: 8, is_special: true },
+  ];
+  const result = classifySpecial(8, rows);
+  assert.equal(result.verdict, "UNKNOWN");
+  assert.equal(result.evidenceStatus, "EARLY");
+  assert.equal(result.normalPrice, 10);
+  assert.equal(result.savingPct, 20);
+});
+
 test("DODGY when sale price is higher than the normal price (fake deal)", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [

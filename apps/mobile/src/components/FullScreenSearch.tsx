@@ -13,6 +13,7 @@ import {
   CATEGORY_SECTIONS,
   productMatchesSearch,
   getProductSearchRelevance,
+  findBestDodgyDeal,
 } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
@@ -498,11 +499,20 @@ export default function FullScreenSearch() {
   }, [products, selectedStores]);
 
   const sortedPopularSpecials = useMemo(() => {
-    const filtered = popularSpecials.filter(
-      ({ product, bestDeal }) =>
-        (popularTab !== "dodgy" || bestDeal.dealType === "Dodgy Deal") &&
-        (popularCategoryFilter.length === 0 || popularCategoryFilter.includes(groupCategory(product.category)))
-    );
+    const filtered = popularSpecials.flatMap(({ product, bestDeal }) => {
+      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category))) {
+        return [];
+      }
+      if (popularTab !== "dodgy") return [{ product, bestDeal }];
+
+      // A product group can contain different retailer deals. Select the
+      // Dodgy retailer deal first, then sort/display it; selecting the best
+      // discount before filtering can hide a valid Dodgy deal behind another
+      // retailer's genuine or limited-history price.
+      const dodgyDeal = findBestDodgyDeal(product.currentDeals, selectedStores);
+      if (!dodgyDeal) return [];
+      return [{ product, bestDeal: dodgyDeal }];
+    });
     const sorted = [...filtered];
     if (popularTab === "dodgy") {
       if (popularSortBy === "recent") {
@@ -516,7 +526,7 @@ export default function FullScreenSearch() {
       sorted.sort((a, b) => (b.bestDeal.dealType === "Dodgy Deal" ? 1 : 0) - (a.bestDeal.dealType === "Dodgy Deal" ? 1 : 0));
     }
     return sorted;
-  }, [popularSpecials, popularSortBy, popularTab, popularCategoryFilter]);
+  }, [popularSpecials, popularSortBy, popularTab, popularCategoryFilter, selectedStores]);
 
   const popularPageSize = popularTab === "dodgy" ? POPULAR_PAGE_SIZE_DODGY : POPULAR_PAGE_SIZE_SPECIALS;
   // Infinite-scroll reveal replaced the old "Show all N deals" button,

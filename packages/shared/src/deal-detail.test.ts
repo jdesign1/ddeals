@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPriceHistoryInsights,
+  findBestDodgyDeal,
   getAssessmentVerdict,
   getStoreProductUrl,
   MIN_90D_SAMPLES_FOR_INSIGHTS,
@@ -42,9 +43,30 @@ test("getStoreProductUrl: uses Woolworths NZ's live product search route", () =>
   );
 });
 
-test("getAssessmentVerdict: keeps an unverified special neutral instead of calling it fair", () => {
-  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal" })), "Still checking");
+test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling it fair", () => {
+  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal" })), "Limited history");
+  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })), "Early read");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Deal");
+});
+
+test("findBestDodgyDeal: finds a Dodgy retailer deal even when another store has a better discount", () => {
+  const deals = [
+    fakeDeal({
+      store: "Woolworths NZ",
+      price: 2,
+      discountPercentage: 60,
+      dealType: "Real Deal",
+    }),
+    fakeDeal({
+      store: "Pak'nSave",
+      price: 5,
+      discountPercentage: 20,
+      dealType: "Dodgy Deal",
+    }),
+  ];
+  assert.equal(findBestDodgyDeal(deals, ["all"])?.store, "Pak'nSave");
+  assert.equal(findBestDodgyDeal(deals, ["woolworths"]), undefined);
+  assert.equal(findBestDodgyDeal(deals, ["paknsave"])?.dealType, "Dodgy Deal");
 });
 
 test("buildPriceHistoryInsights: returns 4 insights (low/high/avg/frequency) when there's enough real 90-day history", () => {

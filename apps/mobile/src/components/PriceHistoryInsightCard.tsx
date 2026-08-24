@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Equal, Tag } from "lucide-react";
 
-import type { AssessmentVerdict, PriceHistoryInsight } from "@dodgey-deals/shared";
+import { isUncertainAssessment, type AssessmentVerdict, type PriceHistoryInsight } from "@dodgey-deals/shared";
 
 /**
  * Price History Insights block on the deal-assessment page -- ALL FOUR
@@ -135,8 +135,10 @@ const TILE_STYLE: Record<
 };
 
 function getPriceTipsStatement(verdict: AssessmentVerdict, frequency: string): string {
-  if (verdict === "Still checking") {
-    return "We need to see a few more prices before we can tell you whether this is a genuine saving.";
+  if (isUncertainAssessment(verdict)) {
+    return verdict === "Early read"
+      ? "This is an early read based on older prices. More recent checks will help confirm it."
+      : "We don’t have enough regular prices yet to make a reliable comparison.";
   }
 
   const isRare = frequency === "Rare special";

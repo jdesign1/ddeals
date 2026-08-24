@@ -76,10 +76,10 @@ export interface DodgyDealsRow {
   // adding these two names to the `select=` string below.
   price_history_90d_days_tracked?: number | null;
   price_history_90d_special_days?: number | null;
-  /** Evidence metadata emitted by classifier v2. */
+  /** Evidence metadata emitted by the classifier. */
   regular_price_samples?: number | null;
   regular_history_days?: number | null;
-  evidence_status?: "SUFFICIENT" | "INSUFFICIENT" | null;
+  evidence_status?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | null;
   classifier_version?: string | null;
 }
 
@@ -113,8 +113,8 @@ export interface CurrentDeal {
    * not ninetyDaySamples/ninetyDaySpecialSamples (event counts). */
   ninetyDayDaysTracked: number | null;
   ninetyDaySpecialDays: number | null;
-  /** Evidence metadata used to keep insufficient-history specials neutral. */
-  evidenceStatus?: "SUFFICIENT" | "INSUFFICIENT" | null;
+  /** Evidence metadata used to keep incomplete-history specials neutral. */
+  evidenceStatus?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | null;
   classifierVersion?: string | null;
 }
 
@@ -175,7 +175,10 @@ export const VIEW_VERDICT_SHORT_REASON: Record<string, string> = {
  * verdict while the backend source is rolled forward.
  */
 function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
-  if (row.evidence_status === "INSUFFICIENT") return "UNKNOWN";
+  // Rows from the migration window have no evidence_status at all; preserve
+  // their legacy verdict contract. Once the field is present, only SUFFICIENT
+  // evidence may publish a directional verdict.
+  if (row.evidence_status != null && row.evidence_status !== "SUFFICIENT") return "UNKNOWN";
   if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
 
   const reason = (row.reason || "").toLowerCase();

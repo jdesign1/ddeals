@@ -14,6 +14,7 @@ import {
   updateCatalogueCacheProducts,
   type ProductCard,
   type AssessmentVerdict,
+  isUncertainAssessment,
   getAssessmentVerdict,
   getStoreProductUrl,
   getRealAveragePrice,
@@ -120,7 +121,7 @@ const STORE_TEXT_COLOR: Record<string, string> = {
  * change's own doc comment further down, near where it renders). Dodgy Deal
  * and Fair Deal verdicts got no badge at all, which read as inconsistent
  * once Real Saver had one: not "this verdict has no badge because there's
- * nothing to say," just an asymmetry. All 4 `AssessmentVerdict` values now
+ * nothing to say," just an asymmetry. All 5 `AssessmentVerdict` values now
  * get one, same `.dd-badge` primitive, same size/icon convention.
  *
  * Colors reuse this file's own existing `verdictBgClass`/`verdictBorderClass`
@@ -138,14 +139,15 @@ const STORE_TEXT_COLOR: Record<string, string> = {
  * price was checked against a real recent price and is genuinely lower),
  * "Inflated discount" (the opposite -- the "special" price is at or above a
  * recent real price), "Fair price" (no unusual pricing either way, whether
- * or not it happens to be on special right now), and "Still checking" (not
- * enough evidence yet to make a useful call).
+ * or not it happens to be on special right now), plus "Early read" and
+ * "Limited history" for incomplete evidence.
  */
 const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
   "Real Saver": { label: "Verified special", className: "dd-badge-fair", icon: ShieldCheck },
   "Dodgy Deal": { label: "Inflated discount", className: "dd-badge-alert", icon: AlertTriangle },
   "Fair Deal": { label: "Fair price", className: "dd-badge-dodgy", icon: Info },
-  "Still checking": { label: "Still checking", className: "dd-badge-neutral", icon: Clock3 },
+  "Early read": { label: "Early read", className: "dd-badge-neutral", icon: Clock3 },
+  "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
 
 export default function DealAssessmentPage() {
@@ -427,14 +429,15 @@ export default function DealAssessmentPage() {
   }
 
   const verdict = getAssessmentVerdict(deal);
+  const uncertain = isUncertainAssessment(verdict);
   const verdictColorClass =
-    verdict === "Real Saver" ? "text-fair-800" : verdict === "Dodgy Deal" ? "text-alert-800" : verdict === "Still checking" ? "text-stone-700" : "text-dodgy-900";
+    verdict === "Real Saver" ? "text-fair-800" : verdict === "Dodgy Deal" ? "text-alert-800" : uncertain ? "text-stone-700" : "text-dodgy-900";
   const verdictBgClass =
-    verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : verdict === "Still checking" ? "bg-stone-50" : "bg-dodgy-50";
+    verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : uncertain ? "bg-stone-50" : "bg-dodgy-50";
   const verdictBorderClass =
-    verdict === "Real Saver" ? "border-fair-200" : verdict === "Dodgy Deal" ? "border-alert-200" : verdict === "Still checking" ? "border-stone-200" : "border-dodgy-200";
+    verdict === "Real Saver" ? "border-fair-200" : verdict === "Dodgy Deal" ? "border-alert-200" : uncertain ? "border-stone-200" : "border-dodgy-200";
   const verdictButtonBorderClass =
-    verdict === "Real Saver" ? "border-fair-700 text-fair-800" : verdict === "Dodgy Deal" ? "border-alert-700 text-alert-800" : verdict === "Still checking" ? "border-stone-600 text-stone-700" : "border-dodgy-700 text-dodgy-800";
+    verdict === "Real Saver" ? "border-fair-700 text-fair-800" : verdict === "Dodgy Deal" ? "border-alert-700 text-alert-800" : uncertain ? "border-stone-600 text-stone-700" : "border-dodgy-700 text-dodgy-800";
   const verdictBadge = VERDICT_BADGE[verdict];
 
   const cheapestStoreItem = rankingList[0];
@@ -603,11 +606,11 @@ export default function DealAssessmentPage() {
             </div>
             <p
               className={`mt-0.5 text-sm font-bold ${
-                STORE_TEXT_COLOR[getStoreLogoMeta(verdict === "Dodgy Deal" || verdict === "Still checking" ? dealStore : (cheapestStoreItem?.store ?? dealStore)).bg] ||
+                STORE_TEXT_COLOR[getStoreLogoMeta(verdict === "Dodgy Deal" || uncertain ? dealStore : (cheapestStoreItem?.store ?? dealStore)).bg] ||
                 "text-stone-600"
               }`}
             >
-              {verdict === "Dodgy Deal" || verdict === "Still checking"
+              {verdict === "Dodgy Deal" || uncertain
                 ? `at ${dealStore}`
                 : `Lowest at ${cheapestStoreItem?.store ?? dealStore}`}
             </p>
@@ -658,11 +661,15 @@ export default function DealAssessmentPage() {
                 {cheapestDiscountPct === 0 ? "." : ` at ${cheapestStoreItem?.store}.`}
               </p>
             </>
-          ) : verdict === "Still checking" ? (
+          ) : uncertain ? (
             <>
-              <h4 className="mb-1 text-base font-black text-stone-900">We&rsquo;re still checking this deal</h4>
+              <h4 className="mb-1 text-base font-black text-stone-900">
+                {verdict === "Early read" ? "Early read on this deal" : "Limited price history"}
+              </h4>
               <p className="text-sm leading-relaxed text-stone-600">
-                We need to see a few more prices before we can tell you whether this is a genuine saving.
+                {verdict === "Early read"
+                  ? "This looks like a saving based on older regular prices, but more recent checks are needed to confirm it."
+                  : "We don’t have enough regular prices yet to make a reliable comparison."}
               </p>
             </>
           ) : (

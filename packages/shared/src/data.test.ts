@@ -177,6 +177,24 @@ test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'",
   assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
 });
 
+test("buildProductCardsFromSpecials: EARLY evidence stays neutral but carries its indicative baseline", () => {
+  const rows = [row({
+    verdict: "UNKNOWN",
+    normal_price: 10,
+    saving_pct: 20,
+    reason: "Early read based on older regular prices",
+    evidence_status: "EARLY",
+    regular_price_samples: 2,
+    regular_history_days: 20,
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Unverified Deal");
+  assert.equal(deal.evidenceStatus, "EARLY");
+  assert.equal(deal.originalPrice, 10);
+  assert.equal(deal.discountPercentage, 20);
+});
+
 test("buildProductCardsFromSpecials: insufficient evidence keeps a legacy DODGY row neutral", () => {
   const rows = [row({
     verdict: "DODGY",

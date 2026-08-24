@@ -22,12 +22,15 @@ export interface PriceHistoryRow {
   unit_label?: string | null;
 }
 
+export type EvidenceStatus = "SUFFICIENT" | "EARLY" | "INSUFFICIENT";
+
 export interface ClassifyResult {
   verdict: Verdict;
   reason: string;
   normalPrice: number | null;
   savingPct: number | null;
   saleStartedAt: Date | null;
+  evidenceStatus: EvidenceStatus;
 }
 
 export const LOOKBACK_DAYS = 30;
@@ -47,6 +50,12 @@ export const SHRINKFLATION_THRESHOLD = 1;
 export const MIN_REGULAR_PRICE_SAMPLES = 3;
 /** Minimum calendar span for those regular observations. */
 export const MIN_REGULAR_HISTORY_DAYS = 14;
+/** Minimum fallback observations before we can provide an indicative read. */
+export const EARLY_READ_MIN_REGULAR_PRICE_SAMPLES = 2;
+/** Minimum fallback span before we can provide an indicative read. */
+export const EARLY_READ_MIN_REGULAR_HISTORY_DAYS = 7;
+/** Wider history window used only for an indicative read. */
+export const EARLY_READ_LOOKBACK_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function median(nums: number[]): number | null {
@@ -96,6 +105,7 @@ export function classifySpecial(
       normalPrice: null,
       savingPct: null,
       saleStartedAt: null,
+      evidenceStatus: "INSUFFICIENT",
     };
   }
 
@@ -111,22 +121,45 @@ export function classifySpecial(
         DAY_MS
       : 0;
 
-  // A single regular scrape (or several scrapes from the same short window)
-  // is not enough to distinguish a genuine normal price from a noisy scrape.
-  // Keep the item neutral until there are at least three observations spread
-  // across two weeks. This deliberately does not require a full 90-day
-  // history: the longer history is an insight, while this is the minimum
-  // evidence gate for a current deal verdict.
-  if (
-    recentPreSale.length < MIN_REGULAR_PRICE_SAMPLES ||
-    recentSpanDays < MIN_REGULAR_HISTORY_DAYS
-  ) {
+  const fallbackCutoff = new Date(saleStartedAt.getTime() - EARLY_READ_LOOKBACK_DAYS * DAY_MS);
+  const fallbackPreSale = preSale.filter((r) => new Date(r.scraped_at) >= fallbackCutoff);
+  const fallbackSpanDays =
+    fallbackPreSale.length > 1
+      ? (new Date(fallbackPreSale[fallbackPreSale.length - 1].scraped_at).getTime() -
+          new Date(fallbackPreSale[0].scraped_at).getTime()) /
+        DAY_MS
+      : 0;
+  const hasSufficientRecentEvidence =
+    recentPreSale.length >= MIN_REGULAR_PRICE_SAMPLES && recentSpanDays >= MIN_REGULAR_HISTORY_DAYS;
+  const hasEarlyEvidence =
+    !hasSufficientRecentEvidence &&
+    recentPreSale.length > 0 &&
+    fallbackPreSale.length >= EARLY_READ_MIN_REGULAR_PRICE_SAMPLES &&
+    fallbackSpanDays >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS;
+
+  // A single regular scrape is not enough to provide even an indicative
+  // comparison. A wider 90-day fallback can provide an Early read, but it
+  // must never enter the confirmed verdict branches below.
+  if (!hasSufficientRecentEvidence) {
+    if (hasEarlyEvidence) {
+      const normalPrice = median(fallbackPreSale.map((r) => r.price as number));
+      const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : null;
+      return {
+        verdict: "UNKNOWN",
+        reason: "Early read based on older regular prices -- more recent checks are needed to confirm this deal",
+        normalPrice,
+        savingPct: savingPct == null ? null : Math.round(savingPct * 10) / 10,
+        saleStartedAt,
+        evidenceStatus: "EARLY",
+      };
+    }
     return {
       verdict: "UNKNOWN",
       reason: "Not enough price history to judge",
       normalPrice: null,
       savingPct: null,
       saleStartedAt,
+      evidenceStatus: "INSUFFICIENT",
     };
   }
 
@@ -171,6 +204,7 @@ export function classifySpecial(
       normalPrice,
       savingPct: null,
       saleStartedAt,
+      evidenceStatus: "INSUFFICIENT",
     };
   }
   // A sale price that is equal to, or only slightly above, the normal price
@@ -187,6 +221,7 @@ export function classifySpecial(
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
+      evidenceStatus: "SUFFICIENT",
     };
   }
   if (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD) {
@@ -198,6 +233,7 @@ export function classifySpecial(
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
+      evidenceStatus: "SUFFICIENT",
     };
   }
   const repeatedLiftSamples =
@@ -221,6 +257,7 @@ export function classifySpecial(
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
+      evidenceStatus: "SUFFICIENT",
     };
   }
   if (savingPct >= REAL_SAVER_THRESHOLD) {
@@ -230,6 +267,7 @@ export function classifySpecial(
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
+      evidenceStatus: "SUFFICIENT",
     };
   }
   if (savingPct >= FAIR_THRESHOLD) {
@@ -239,6 +277,7 @@ export function classifySpecial(
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
+      evidenceStatus: "SUFFICIENT",
     };
   }
   return {
@@ -247,5 +286,6 @@ export function classifySpecial(
     normalPrice,
     savingPct: Math.round(savingPct * 10) / 10,
     saleStartedAt,
+    evidenceStatus: "SUFFICIENT",
   };
 }

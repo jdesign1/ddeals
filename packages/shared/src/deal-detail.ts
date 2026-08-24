@@ -37,7 +37,7 @@
  */
 
 import type { ProductCard, CurrentDeal } from "./data.ts";
-import { normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
+import { matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
 
 /** Real 5-store list for this app's live catalogue (see file header note). */
 export const DEAL_DETAIL_STORES_LIST: string[] = Object.values(STORE_DISPLAY_FALLBACK);
@@ -52,28 +52,46 @@ export function findDealForStore(deals: CurrentDeal[] | undefined, store: string
   return (deals || []).find((d) => normalizeStoreKey(d.store).includes(normalizeStoreKey(store)));
 }
 
+/** Picks the cheapest Dodgy retailer deal after applying the active store filter. */
+export function findBestDodgyDeal(deals: CurrentDeal[] | undefined, selectedStores: string[] = ["all"]): CurrentDeal | undefined {
+  const dodgyDeals = (deals || []).filter(
+    (deal) => deal.isOnSpecial !== false && deal.dealType === "Dodgy Deal" && matchesAnySelectedStore(deal.store, selectedStores)
+  );
+  return dodgyDeals.reduce<CurrentDeal | undefined>(
+    (cheapest, deal) => (!cheapest || deal.price < cheapest.price ? deal : cheapest),
+    undefined
+  );
+}
+
 /** Maps the catalogue's internal deal labels to the language used on the assessment page. */
 export const HISTORY_DEAL_TYPE: Record<string, string> = {
   "Dodgy Deal": "Dodgy Deal",
   "Real Deal": "Real Saver",
   "Fair Price": "Fair Deal",
-  "Unverified Deal": "Still checking",
+  "Unverified Deal": "Limited history",
 };
 
-export type AssessmentVerdict = "Dodgy Deal" | "Fair Deal" | "Real Saver" | "Still checking";
+export type AssessmentVerdict = "Dodgy Deal" | "Fair Deal" | "Real Saver" | "Early read" | "Limited history";
+
+export function isUncertainAssessment(verdict: AssessmentVerdict): boolean {
+  return verdict === "Early read" || verdict === "Limited history";
+}
 
 /**
  * Same branch order as the prototype's DealModal: a plain (non-special) item
  * always lands as a "Fair Deal" (no discount game being played); a special
- * without enough evidence stays in the neutral "Still checking" state.
+ * without enough evidence stays neutral, while older-but-useful evidence is
+ * shown as an "Early read" rather than being promoted to a confirmed verdict.
  */
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Deal";
+  if (deal.evidenceStatus === "EARLY") return "Early read";
+  if (deal.evidenceStatus === "INSUFFICIENT") return "Limited history";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
-  if (mapped === "Real Saver" || mapped === "Dodgy Deal" || mapped === "Fair Deal" || mapped === "Still checking") {
+  if (mapped === "Real Saver" || mapped === "Dodgy Deal" || mapped === "Fair Deal" || mapped === "Limited history") {
     return mapped;
   }
-  return "Still checking";
+  return "Limited history";
 }
 
 export function getStoreProductUrl(store: string, productName: string): string {
