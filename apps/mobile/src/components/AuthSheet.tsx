@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
@@ -119,6 +119,15 @@ export default function AuthSheet({
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const formScrollRef = useRef<HTMLDivElement>(null);
+
+  // Each Login/Create account tab starts at the top of its form. The sheet
+  // keeps one scroll container mounted while the controlled form content
+  // changes, so without this reset a tab switch inherits the prior tab's
+  // scroll offset.
+  useLayoutEffect(() => {
+    if (formScrollRef.current) formScrollRef.current.scrollTop = 0;
+  }, [mode]);
 
   // Reset to Login whenever the sheet closes -- see this file's own
   // top-of-file doc comment for why this state moved up to this level.
@@ -305,7 +314,7 @@ export default function AuthSheet({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div ref={formScrollRef} className="flex-1 overflow-y-auto p-6">
               <AuthPanel prompt={prompt} onSuccess={onClose} mode={mode} onModeChange={setMode} />
             </div>
           </motion.div>
