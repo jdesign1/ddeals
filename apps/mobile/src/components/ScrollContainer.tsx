@@ -148,7 +148,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   return (
     <div
       ref={scrollRef}
-      className={`relative flex-1 overflow-y-auto overscroll-y-contain ${hasBottomNav ? "pb-safe-nav" : "pb-safe-sm"}`}
+      className="relative flex-1 overflow-y-auto overscroll-y-contain"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => void handleTouchEnd()}
@@ -167,7 +167,12 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
-      <div style={{ transform: pullDistance ? `translateY(${pullDistance}px)` : undefined }}>{children}</div>
+      <div
+        className={hasBottomNav ? "pb-safe-nav" : "pb-safe-sm"}
+        style={{ transform: pullDistance ? `translateY(${pullDistance}px)` : undefined }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

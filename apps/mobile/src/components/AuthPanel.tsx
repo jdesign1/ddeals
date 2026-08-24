@@ -696,14 +696,15 @@ export default function AuthPanel({
   );
 
   const loginIllustration = (
-    <div className="flex justify-center pt-1">
+    <div className="flex w-full justify-center py-1">
       <Image
         src="/auth-login.webp"
         alt="Dodgy Deal mascot looking toward a secure login card"
         width={512}
         height={341}
         sizes="160px"
-        className="h-auto w-full max-w-[10rem]"
+        preload
+        className="mx-auto h-auto w-full max-w-[10rem]"
       />
     </div>
   );
@@ -757,6 +758,7 @@ export default function AuthPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {mode === "signin" && loginIllustration}
       <p className="text-sm font-medium text-stone-600">{subtitle}</p>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login
@@ -782,7 +784,6 @@ export default function AuthPanel({
           <>
             {emailBlock}
             {passwordBlock}
-            {loginIllustration}
             {extraFieldsBlock}
             {confirmPasswordBlock}
           </>
