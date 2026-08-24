@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowUp, Check, ChevronDown, Info, Share, ShieldCheck } from "lucide-react";
 import {
   loadLiveProducts,
+  refreshLiveProducts,
   type ProductCard,
   type AssessmentVerdict,
   getAssessmentVerdict,
@@ -34,6 +35,7 @@ import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import InsightCarousel from "@/components/InsightCarousel";
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
+import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
 
 /**
  * Deal-assessment page — ported from Prototype/index.html's `DealModal`
@@ -156,6 +158,7 @@ export default function DealAssessmentPage() {
   // (2026-08-11) -- lets ErrorState's Try Again button re-run the fetch
   // below instead of leaving "Couldn't load this deal" as a dead end.
   const [retryTick, setRetryTick] = useState(0);
+  const staleRetryKeyRef = useRef<string | null>(null);
   // Resets `loadError` here (an event handler, not the effect body --
   // setting state synchronously inside the effect itself trips this
   // project's react-hooks/set-state-in-effect rule) before bumping
@@ -180,8 +183,43 @@ export default function DealAssessmentPage() {
     };
   }, [retryTick]);
 
+  // Keep this route's local deal snapshot in sync when the global pull-to-
+  // refresh gesture runs on another page.
+  useEffect(() => {
+    return subscribeToCatalogueUpdates((result) => {
+      setProducts(result);
+      setLoadError(null);
+    });
+  }, []);
+
   const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
+
+  // A stale deep link can miss because the product or its store deal rolled
+  // off the live catalogue. Retry once through the shared cooldown-guarded
+  // refresh before showing the final "no longer exists" state. The key guard
+  // prevents an expired link from causing a refresh loop.
+  useEffect(() => {
+    if (products === null || loadError || (product && deal)) return;
+    const retryKey = `${productId}::${dealStore}`;
+    if (staleRetryKeyRef.current === retryKey) return;
+    staleRetryKeyRef.current = retryKey;
+    let cancelled = false;
+    refreshLiveProducts(supabaseConfig)
+      .then((result) => {
+        if (!cancelled) {
+          setProducts(result.products);
+          setLoadError(null);
+          publishCatalogueUpdate(result.products);
+        }
+      })
+      .catch(() => {
+        // The normal missing-deal state below remains the useful fallback.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [products, loadError, product, deal, productId, dealStore]);
 
   // Keep the globally-mounted nav-transition `<PageLoader>` (see
   // `GlobalOverlays.tsx`/`search-context.tsx`) in place until this route's

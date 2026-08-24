@@ -35,14 +35,22 @@ import type { ProductCard } from "./data.ts";
 const CATALOGUE_CACHE_DB = "dodgey_deals_mobile_cache";
 const CATALOGUE_CACHE_STORE = "catalogue";
 const CATALOGUE_CACHE_KEY = "live_products";
+const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
 /** Bump whenever ProductCard's shape changes, so an old cached shape is treated as a miss rather than fed into code expecting new fields. */
 const CATALOGUE_CACHE_VERSION = 1;
-const CATALOGUE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour -- prices only change via the nightly scrape, so this is safely fresh, matching the prototype's own TTL.
+const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- the client refresh policy is deliberately much less chatty than the server-side 15-minute materialized-view refresh.
 
-interface CatalogueCacheRecord {
-  version: number;
+export interface CatalogueCacheMetadata {
   savedAt: number;
+}
+
+interface CatalogueCacheRecord extends CatalogueCacheMetadata {
+  version: number;
   products: ProductCard[];
+}
+
+interface CatalogueCacheTimestampRecord extends CatalogueCacheMetadata {
+  version: number;
 }
 
 function openCatalogueCacheDB(): Promise<IDBDatabase> {
@@ -62,8 +70,7 @@ function openCatalogueCacheDB(): Promise<IDBDatabase> {
   });
 }
 
-/** Returns the cached products if present, version-matched, non-empty, and within TTL — otherwise null. Never throws. */
-export async function readCatalogueCache(): Promise<ProductCard[] | null> {
+async function readCatalogueCacheRecord(): Promise<CatalogueCacheRecord | null> {
   try {
     const db = await openCatalogueCacheDB();
     const record = await new Promise<CatalogueCacheRecord | null>((resolve, reject) => {
@@ -73,13 +80,60 @@ export async function readCatalogueCache(): Promise<ProductCard[] | null> {
       req.onerror = () => reject(req.error);
     });
     db.close();
-    if (!record) return null;
-    if (record.version !== CATALOGUE_CACHE_VERSION) return null;
-    if (!Array.isArray(record.products) || !record.products.length) return null;
-    if (Date.now() - record.savedAt > CATALOGUE_CACHE_TTL_MS) return null;
-    return record.products;
+    return record;
   } catch {
     return null;
+  }
+}
+
+/** Returns the cached products if present, version-matched, non-empty, and within TTL — otherwise null. Never throws. */
+export async function readCatalogueCache(): Promise<ProductCard[] | null> {
+  const record = await readCatalogueCacheRecord();
+  if (!record) return null;
+  if (record.version !== CATALOGUE_CACHE_VERSION) return null;
+  if (!Array.isArray(record.products) || !record.products.length) return null;
+  if (Date.now() - record.savedAt > CATALOGUE_CACHE_TTL_MS) return null;
+  return record.products;
+}
+
+/** Returns the last successful catalogue write even when its products are past the display TTL. Never throws. */
+export async function readCatalogueCacheMetadata(): Promise<CatalogueCacheMetadata | null> {
+  try {
+    const db = await openCatalogueCacheDB();
+    const records = await new Promise<Array<CatalogueCacheTimestampRecord | null>>((resolve, reject) => {
+      const tx = db.transaction(CATALOGUE_CACHE_STORE, "readonly");
+      const productsRequest = tx.objectStore(CATALOGUE_CACHE_STORE).get(CATALOGUE_CACHE_KEY);
+      const metadataRequest = tx.objectStore(CATALOGUE_CACHE_STORE).get(CATALOGUE_CACHE_METADATA_KEY);
+      tx.oncomplete = () => resolve([productsRequest.result as CatalogueCacheTimestampRecord | null, metadataRequest.result as CatalogueCacheTimestampRecord | null]);
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    const savedAt = Math.max(
+      ...records
+        .filter((record): record is CatalogueCacheTimestampRecord => record != null && record.version === CATALOGUE_CACHE_VERSION)
+        .map((record) => record.savedAt)
+        .filter(Number.isFinite),
+      0
+    );
+    return savedAt ? { savedAt } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Best-effort timestamp write used when a successful refresh has no products to cache. */
+export async function writeCatalogueCacheMetadata(savedAt = Date.now()): Promise<void> {
+  try {
+    const db = await openCatalogueCacheDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
+      tx.objectStore(CATALOGUE_CACHE_STORE).put({ version: CATALOGUE_CACHE_VERSION, savedAt }, CATALOGUE_CACHE_METADATA_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // swallow -- best-effort only
   }
 }
 
@@ -108,6 +162,7 @@ export async function __clearCatalogueCacheForTests(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
       tx.objectStore(CATALOGUE_CACHE_STORE).delete(CATALOGUE_CACHE_KEY);
+      tx.objectStore(CATALOGUE_CACHE_STORE).delete(CATALOGUE_CACHE_METADATA_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -128,6 +183,7 @@ export const __catalogueCacheTestInternals = {
   DB: CATALOGUE_CACHE_DB,
   STORE: CATALOGUE_CACHE_STORE,
   KEY: CATALOGUE_CACHE_KEY,
+  METADATA_KEY: CATALOGUE_CACHE_METADATA_KEY,
   VERSION: CATALOGUE_CACHE_VERSION,
   TTL_MS: CATALOGUE_CACHE_TTL_MS,
   openDB: openCatalogueCacheDB,

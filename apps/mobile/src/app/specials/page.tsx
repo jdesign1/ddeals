@@ -18,6 +18,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
+import { subscribeToCatalogueUpdates } from "@/lib/catalogue-refresh";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -97,6 +98,17 @@ export default function SpecialsPage() {
       cancelled = true;
     };
   }, [retryTick]);
+
+  // SearchProvider owns the global refresh gesture, while this route owns a
+  // separate filtered view of the same products. Subscribe so a pull on any
+  // page updates Specials in place without starting another network request.
+  useEffect(() => {
+    return subscribeToCatalogueUpdates((result) => {
+      setProducts(result);
+      setError(null);
+      setLoading(false);
+    });
+  }, []);
 
   const flatDeals = useMemo<FlatDeal[]>(() => {
     const all: FlatDeal[] = [];

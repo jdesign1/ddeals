@@ -15,6 +15,8 @@ import {
   matchesAnySelectedStore,
   titleCase,
   loadLiveProducts,
+  refreshLiveProducts,
+  __liveProductsRefreshes,
   __liveProductsCache,
   type DodgyDealsRow,
   type ProductCard,
@@ -29,6 +31,7 @@ import { readCatalogueCache, writeCatalogueCache, __clearCatalogueCacheForTests 
 // silently short-circuit a later test's network-call assertions.
 beforeEach(async () => {
   await __clearCatalogueCacheForTests();
+  __liveProductsRefreshes.clear();
 });
 
 // ---- mergeProductMeta ----
@@ -438,6 +441,37 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     await Promise.resolve();
     const nowCached = await readCatalogueCache();
     assert.deepEqual(nowCached, result, "expected the fetched result to now be served from IndexedDB");
+  } finally {
+    restore();
+  }
+});
+
+test("refreshLiveProducts: repeated pulls are throttled after one full catalogue fetch", async () => {
+  const { calls, restore } = installFetchStubWithOneRealRow();
+  try {
+    const config = fakeConfig("refresh-cooldown");
+    const first = await refreshLiveProducts(config);
+    const second = await refreshLiveProducts(config);
+
+    assert.equal(first.refreshed, true);
+    assert.equal(second.throttled, true);
+    assert.deepEqual(second.products, first.products);
+    assert.equal(calls.length, 3, "repeated pull gestures must not download the catalogue again");
+  } finally {
+    restore();
+  }
+});
+
+test("refreshLiveProducts: the cooldown survives an in-memory reset via IndexedDB", async () => {
+  const { calls, restore } = installFetchStubWithOneRealRow();
+  try {
+    const config = fakeConfig("refresh-persisted-cooldown");
+    await refreshLiveProducts(config);
+    __liveProductsRefreshes.clear();
+
+    const second = await refreshLiveProducts(config);
+    assert.equal(second.throttled, true);
+    assert.equal(calls.length, 3, "a reload/new tab must respect the persisted refresh timestamp");
   } finally {
     restore();
   }

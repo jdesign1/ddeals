@@ -1,8 +1,17 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { loadLiveProducts, describeFetchError, type ProductCard } from "@dodgey-deals/shared";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  isLiveProductsRefreshDue,
+  loadLiveProducts,
+  refreshLiveProducts,
+  LIVE_PRODUCTS_AUTO_REFRESH_MS,
+  describeFetchError,
+  type ProductCard,
+  type RefreshLiveProductsResult,
+} from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
+import { publishCatalogueUpdate } from "./catalogue-refresh";
 
 /**
  * Global full-screen search state (2026-08-09, per Jay's ask: "clicking the
@@ -49,6 +58,9 @@ interface SearchContextValue {
    * a plain retry counter rather than calling `loadLiveProducts` directly
    * from here. */
   retry: () => void;
+  /** Explicit pull-to-refresh entry point. It is shared by every route and
+   * includes the persistent cooldown that protects Supabase egress. */
+  refreshCatalogue: () => Promise<RefreshLiveProductsResult>;
   /** Opens the full-screen overlay without touching the query -- ported
    * from Prototype/index.html's `onFocus={() => setIsSearchActive(true)}`. */
   openSearch: () => void;
@@ -138,6 +150,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   // the loading/error/cancelled bookkeeping that attempt needs.
   const [retryTick, setRetryTick] = useState(0);
 
+  const refreshCatalogue = useCallback(async (): Promise<RefreshLiveProductsResult> => {
+    const result = await refreshLiveProducts(supabaseConfig);
+    setProducts(result.products);
+    setError(null);
+    publishCatalogueUpdate(result.products);
+    return result;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     loadLiveProducts(supabaseConfig)
@@ -154,6 +174,59 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [retryTick]);
+
+  // Refresh after a long-lived foreground session or a backgrounded app has
+  // been away for six hours. The timer itself is local-only; the network
+  // request is made only once `isLiveProductsRefreshDue()` confirms that the
+  // persisted catalogue timestamp is old enough. Visibility handling covers
+  // mobile browsers/webviews that suspend timers while backgrounded.
+  useEffect(() => {
+    let cancelled = false;
+    let hiddenAt: number | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const maybeRefresh = async () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      if (!(await isLiveProductsRefreshDue()) || cancelled) return;
+      try {
+        await refreshCatalogue();
+      } catch {
+        // Keep the current catalogue visible during a background refresh
+        // failure. The next foreground check or pull can retry it.
+      }
+    };
+
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void maybeRefresh().finally(schedule);
+      }, LIVE_PRODUCTS_AUTO_REFRESH_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      const inactiveFor = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (inactiveFor >= LIVE_PRODUCTS_AUTO_REFRESH_MS) void maybeRefresh();
+    };
+
+    // A browser back/forward-cache restore can emit `pageshow` without the
+    // visibility sequence, so treat it as another cheap freshness checkpoint.
+    const handlePageShow = () => void maybeRefresh();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
+    schedule();
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
+      if (timer) clearTimeout(timer);
+    };
+  }, [refreshCatalogue]);
 
   const value = useMemo<SearchContextValue>(
     () => ({
@@ -175,6 +248,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setLoadingProducts(true);
         setRetryTick((t) => t + 1);
       },
+      refreshCatalogue,
       openSearch: () => {
         setPreserveSearchStateOnOpen(false);
         setIsActive(true);
@@ -222,7 +296,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openScanner: () => setIsScannerOpen(true),
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen]
+    [products, loadingProducts, error, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already

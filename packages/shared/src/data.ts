@@ -23,7 +23,7 @@
  * view shape or grouping logic changes there.
  */
 
-import { readCatalogueCache, writeCatalogueCache } from "./catalogue-cache.ts";
+import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -559,6 +559,33 @@ export const __liveProductsCache = new Map<string, LiveProductsCacheEntry>();
  */
 const LIVE_PRODUCTS_CACHE_TTL_MS = 30_000;
 
+/**
+ * Full catalogue refreshes are intentionally rate-limited. A pull gesture is
+ * user initiated, but it must not turn into an unbounded multi-page Supabase
+ * download when somebody repeatedly pulls the screen. The timestamp is also
+ * persisted in the IndexedDB catalogue record, so reloads and extra tabs get
+ * the same protection.
+ */
+export const LIVE_PRODUCTS_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
+
+export interface RefreshLiveProductsResult {
+  products: ProductCard[];
+  refreshed: boolean;
+  throttled: boolean;
+  retryAfterMs: number;
+}
+
+interface RefreshLiveProductsEntry {
+  promise: Promise<RefreshLiveProductsResult> | null;
+  lastSuccessfulRefreshAt: number | null;
+  products: ProductCard[] | null;
+}
+
+/** Exported for tests only, not part of the public API surface. */
+export const __liveProductsRefreshes = new Map<string, RefreshLiveProductsEntry>();
+
+const LIVE_PRODUCTS_AUTO_REFRESH_MS = 6 * 60 * 60 * 1000;
+
 function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const cacheKey = `${config.url}::${config.anonKey}`;
   const now = Date.now();
@@ -609,6 +636,74 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
   if (fresh.length) writeCatalogueCache(fresh);
   return fresh;
 }
+
+/** Returns true when an automatic six-hour refresh is due, without making a network request. */
+export async function isLiveProductsRefreshDue(): Promise<boolean> {
+  const metadata = await readCatalogueCacheMetadata();
+  if (!metadata) return true;
+  return Date.now() - metadata.savedAt >= LIVE_PRODUCTS_AUTO_REFRESH_MS;
+}
+
+/**
+ * Bypasses the normal cache, but not the shared request/cooldown guards, and
+ * fetches the latest catalogue. A throttled call returns the current cache so
+ * the caller can update its screen without spending egress.
+ */
+export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<RefreshLiveProductsResult> {
+  const cacheKey = `${config.url}::${config.anonKey}`;
+  const existing = __liveProductsRefreshes.get(cacheKey);
+  if (existing?.promise) return existing.promise;
+
+  const entry: RefreshLiveProductsEntry = {
+    promise: null,
+    lastSuccessfulRefreshAt: existing?.lastSuccessfulRefreshAt ?? null,
+    products: existing?.products ?? null,
+  };
+  __liveProductsRefreshes.set(cacheKey, entry);
+
+  const promise = (async (): Promise<RefreshLiveProductsResult> => {
+    const metadata = await readCatalogueCacheMetadata();
+    const inMemoryLast = entry.lastSuccessfulRefreshAt;
+    const lastSuccessfulRefreshAt = Math.max(metadata?.savedAt ?? 0, inMemoryLast ?? 0) || null;
+    const elapsed = lastSuccessfulRefreshAt === null ? Infinity : Date.now() - lastSuccessfulRefreshAt;
+
+    if (elapsed < LIVE_PRODUCTS_REFRESH_COOLDOWN_MS) {
+      const cached = await readCatalogueCache();
+      return {
+        // Empty is preferable to breaking the egress promise. In normal use
+        // this is populated by IndexedDB or the in-memory fallback; it only
+        // occurs when storage was evicted between two pull gestures.
+        products: cached ?? entry.products ?? [],
+        refreshed: false,
+        throttled: true,
+        retryAfterMs: LIVE_PRODUCTS_REFRESH_COOLDOWN_MS - elapsed,
+      };
+    }
+
+    const fresh = await loadLiveProductsDeduped(config);
+    if (fresh.length) await writeCatalogueCache(fresh);
+    else await writeCatalogueCacheMetadata();
+    const refreshEntry = __liveProductsRefreshes.get(cacheKey);
+    if (refreshEntry) {
+      refreshEntry.lastSuccessfulRefreshAt = Date.now();
+      refreshEntry.products = fresh;
+    }
+    return { products: fresh, refreshed: true, throttled: false, retryAfterMs: 0 };
+  })();
+
+  entry.promise = promise;
+  promise.then(
+    () => {
+      entry.promise = null;
+    },
+    () => {
+      if (__liveProductsRefreshes.get(cacheKey) === entry) __liveProductsRefreshes.delete(cacheKey);
+    }
+  );
+  return promise;
+}
+
+export { LIVE_PRODUCTS_AUTO_REFRESH_MS };
 
 interface CurrentPriceRow {
   product_id: string;
