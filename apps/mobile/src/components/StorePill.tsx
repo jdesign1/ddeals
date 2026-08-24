@@ -16,9 +16,8 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
  * active).
  *
  * Purely presentational -- `active`/`onClick` are the only behavioural
- * inputs, so it works unmodified for both Home's single-select store
- * filter (one selected id at a time) and the full-screen search overlay's
- * multi-select toggle (any number of ids selected at once); the caller
+ * inputs, so it works unmodified for the shared multi-select store filter
+ * used by both Check deals and the full-screen search overlay; the caller
  * decides what "active" and "click" mean, this only renders the result.
  *
  * Active fill now animates in/out (2026-08-20, per Jay: "Use the same fill

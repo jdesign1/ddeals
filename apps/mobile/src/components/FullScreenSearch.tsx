@@ -208,6 +208,8 @@ export default function FullScreenSearch() {
     closeSearch,
     pauseForDealNavigation,
     preserveSearchStateOnOpen,
+    selectedStores,
+    toggleStore,
   } = useSearch();
 
   // Scroll position (2026-08-10, per Jay's ask to keep it across a
@@ -306,7 +308,6 @@ export default function FullScreenSearch() {
     };
   }, []);
 
-  const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("cheapest");
   // Was "dodgy" (2026-08-10, per Jay's ask for the full-screen search screen
   // to open on the Dodgy tab) -- changed to "specials" 2026-08-20, per Jay:
@@ -479,17 +480,7 @@ export default function FullScreenSearch() {
     }, TOOLBAR_TRANSITION_MS + 50);
     setToolbarVisible(true);
 
-    if (storeId === "all") {
-      setSelectedStores(["all"]);
-      return;
-    }
-    setSelectedStores((prev) => {
-      let next = prev.includes("all") ? [storeId] : [...prev];
-      if (!prev.includes("all")) {
-        next = next.includes(storeId) ? next.filter((id) => id !== storeId) : [...next, storeId];
-      }
-      return next.length === 0 ? ["all"] : next;
-    });
+    toggleStore(storeId);
   };
 
   // Popular specials -- best (biggest-discount) deal per product, across

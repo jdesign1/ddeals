@@ -182,7 +182,15 @@ export default function HomePage() {
   // fetch, and the overlay itself is reachable from any screen, not just
   // this one. Home still owns everything below that's genuinely specific
   // to it (Trending/My List rails, their own sort/expand state).
-  const { products, loadingProducts, error, retry: retryProducts, isActive: isSearchActive } = useSearch();
+  const {
+    products,
+    loadingProducts,
+    error,
+    retry: retryProducts,
+    isActive: isSearchActive,
+    selectedStores,
+    toggleStore,
+  } = useSearch();
 
   // Computed once via a lazy useState initializer (React's documented escape
   // hatch for a one-time impure call), not inline in useMemo -- calling
@@ -194,39 +202,8 @@ export default function HomePage() {
   const [now] = useState(() => Date.now());
   const weekAgo = now - SEVEN_DAYS_MS;
 
-  // `selectedStores: string[]` (was `storeFilter: string`), 2026-08-21, per
-  // Jay: "When selecting supermarket pills on the check deals and search
-  // page - allow the user to select multiple pills, not just one at a
-  // time." "Check deals" is this page -- `BottomNav.tsx`'s own first-tab
-  // label (`href: "/"`) reads exactly "Check deals". The search page
-  // (`FullScreenSearch.tsx`) already had this exact multi-select shape
-  // since 2026-08-10 (its own `selectedStores`/`handleStoreToggle`); this
-  // page's own pill row was the one still single-select. Same state shape,
-  // same toggle handler (`handleStoreToggle` below, ported verbatim), and
-  // the same shared `matchesAnySelectedStore` helper (packages/shared/
-  // src/data.ts, promoted out of `FullScreenSearch.tsx`'s own local copy as
-  // part of this change) -- not a new pattern invented for Home, the
-  // already-established one extended to a second screen.
-  const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
-  // Ported verbatim from `FullScreenSearch.tsx`'s own `handleStoreToggle` --
-  // tapping "All" resets to `["all"]`; tapping a specific store while "all"
-  // is selected replaces it with just that store; tapping a store while
-  // other specific stores are already selected toggles it in/out of the
-  // set; and the set can never go empty -- falls back to `["all"]` rather
-  // than leaving every deal filtered out with no visible pill active.
-  const handleStoreToggle = (storeId: string) => {
-    if (storeId === "all") {
-      setSelectedStores(["all"]);
-      return;
-    }
-    setSelectedStores((prev) => {
-      let next = prev.includes("all") ? [storeId] : [...prev];
-      if (!prev.includes("all")) {
-        next = next.includes(storeId) ? next.filter((id) => id !== storeId) : [...next, storeId];
-      }
-      return next.length === 0 ? ["all"] : next;
-    });
-  };
+  // `selectedStores` lives in `SearchProvider`, not on either surface, so a
+  // supermarket choice carries between Check deals and full-screen search.
   const [homeTab, setHomeTab] = useState<"trending" | "my-list">("trending");
   // Default changed "discount" -> "latest" 2026-08-21 alongside the
   // TrendingSortBy type change above -- "discount" is no longer a valid
@@ -423,14 +400,14 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && (
         <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto px-5 pb-1">
-          <StorePill storeKey="all" label="All" active={selectedStores.includes("all")} onClick={() => handleStoreToggle("all")} />
+          <StorePill storeKey="all" label="All" active={selectedStores.includes("all")} onClick={() => toggleStore("all")} />
           {availableStoreKeys.map((key) => (
             <StorePill
               key={key}
               storeKey={key}
               label={STORE_DISPLAY_FALLBACK[key] || key}
               active={selectedStores.includes(key)}
-              onClick={() => handleStoreToggle(key)}
+              onClick={() => toggleStore(key)}
             />
           ))}
         </div>

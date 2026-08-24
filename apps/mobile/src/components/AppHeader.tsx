@@ -58,32 +58,14 @@ import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
  *    listener existed to catch.
  *  - Same day, one more fix: Jay noticed the new sheet was rendering
  *    *underneath* `BottomNav` on Home ("bottom sheet should appear over
- *    the bottom nav bar"). Root cause: the sheet's `z-[51]` only counts
- *    against *other elements inside this component's own stacking
- *    context* -- the outer wrapper div right below (`position: sticky`)
- *    itself establishes a NEW stacking context regardless of its z-index
- *    (per the CSS spec, `sticky`/`fixed` elements always create one, with
- *    or without an explicit z-index -- unlike `relative`/`absolute`,
- *    which only do when a z-index is actually set), so every descendant
- *    here, sheet included, is sealed inside a single "layer" -- whatever
- *    z-index THIS wrapper carries -- as far as siblings *outside* this
- *    component are concerned. `BottomNav.tsx` is exactly such an
- *    outside sibling (`layout.tsx` renders it as its own top-level `fixed`
- *    element, after this component) at that *same* z-40 -- and per the
- *    CSS stacking spec, when z-index is tied, later DOM order wins, so
- *    `BottomNav` painted on top of this entire component, sheet included,
- *    no matter how high a z-index the sheet itself claimed. Fixed by
- *    raising the OUTER wrapper's z-index to `z-[45]` (was `z-40`) --
- *    still safely below `ScannerModal`/`FullScreenSearch`'s `z-50`+ tier
- *    (so those still correctly cover this whole header, sheet included,
- *    when open), but now strictly above `BottomNav`'s `z-40`, so this
- *    component's entire stacking context -- and therefore the sheet
- *    nested inside it -- wins over `BottomNav` outright rather than
- *    relying on a DOM-order tiebreak that happened to go the wrong way.
- *    Harmless outside the sheet-open moment: the header docks at the top
- *    of the viewport and `BottomNav` at the bottom, so they never
- *    visually overlap at rest regardless of which one's z-index is
- *    higher.
+ *    the bottom nav bar"). The sticky shell is raised to `z-[45]` (above
+ *    `BottomNav`'s `z-40` and below the app's `z-50` overlay tier), while
+ *    the sheet and scrim render outside that shell at their own `z-50` /
+ *    `z-[51]` values. They must remain outside the shell because the shell
+ *    also uses `overflow: hidden` to collapse the header during scroll;
+ *    keeping a fixed overlay inside it would clip the sheet to the nav
+ *    height. This preserves the correct stacking order without coupling
+ *    the sheet to the header's clipping container.
  *  - The prototype's avatar circle is hardcoded to the letter "S" (a
  *    leftover from its mock data, never actually wired to the signed-in
  *    user's name). This version computes the initial from the real
@@ -247,6 +229,7 @@ export default function AppHeader() {
     // updated 2026-08-13 alongside that swap -- used to say "fake local
     // login, no real account or data," which became false once the account
     // itself became real.
+    <>
     <div
       className={`app-header-shell sticky top-0 z-[45] w-full flex-shrink-0 ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
       aria-hidden={pathname === "/" && isHiddenOnCheckDeals}
@@ -403,130 +386,136 @@ export default function AppHeader() {
           )}
         </div>
       </header>
+      </div>
+    </div>
 
-      <AnimatePresence>
-        {isMenuOpen && (
-          <>
-            <motion.div
-              key="profile-menu-scrim"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
-            />
-            <motion.div
-              key="profile-menu-sheet"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
-            >
-              <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
-                {/* Bottom-sheet title style unified app-wide 2026-08-19 --
-                    was a small tracking-widest text-stone-500 eyebrow label,
-                    now a real title, same class every bottom sheet's top
-                    title uses (see app/page.tsx's Sort sheet for the full
-                    cross-reference). `<h3>`, not `<span>`, to match. */}
-                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Account</h3>
-                <button
-                  onClick={() => setIsMenuOpen(false)}
-                  aria-label="Close"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+    {/* Keep the profile overlay outside `.app-header-shell`: that shell uses
+        `overflow: hidden` so it can collapse while scrolling. A fixed
+        descendant inside that clipped shell is constrained to the header
+        height, which makes the sheet appear to open in the top nav and then
+        disappear. */}
+    <AnimatePresence>
+      {isMenuOpen && (
+        <>
+          <motion.div
+            key="profile-menu-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setIsMenuOpen(false)}
+            className="fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+          />
+          <motion.div
+            key="profile-menu-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+              {/* Bottom-sheet title style unified app-wide 2026-08-19 --
+                  was a small tracking-widest text-stone-500 eyebrow label,
+                  now a real title, same class every bottom sheet's top
+                  title uses (see app/page.tsx's Sort sheet for the full
+                  cross-reference). `<h3>`, not `<span>`, to match. */}
+              <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Account</h3>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            {/* Leading icon on each item (2026-08-14, Jay: "In the
+                account bottom sheet - add icons before each of the
+                items") -- every row switched from `block` to `flex
+                items-center gap-3` to lay the icon and label out
+                horizontally instead of the icon needing its own absolute
+                position; text/hover/border/spacing classes otherwise
+                unchanged from before. Icons picked to match each row's
+                own existing color (the two `stone-700` rows get a plain
+                `stone-500` icon, "Log out"'s `alert-600` icon matches its
+                text, "Create account / log in"'s `ink-600` icon matches
+                its text) rather than a single neutral icon color for all
+                four. */}
+            <div className="py-2 pb-safe-sm">
+              <Link
+                href="/how-it-works"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
+              >
+                <span
+                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
+                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                  aria-hidden="true"
                 >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-              {/* Leading icon on each item (2026-08-14, Jay: "In the
-                  account bottom sheet - add icons before each of the
-                  items") -- every row switched from `block` to `flex
-                  items-center gap-3` to lay the icon and label out
-                  horizontally instead of the icon needing its own absolute
-                  position; text/hover/border/spacing classes otherwise
-                  unchanged from before. Icons picked to match each row's
-                  own existing color (the two `stone-700` rows get a plain
-                  `stone-500` icon, "Log out"'s `alert-600` icon matches its
-                  text, "Create account / log in"'s `ink-600` icon matches
-                  its text) rather than a single neutral icon color for all
-                  four. */}
-              <div className="py-2 pb-safe-sm">
-                <Link
-                  href="/how-it-works"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
-                >
-                  <span
-                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
-                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                    aria-hidden="true"
+                  help_center
+                </span>
+                How Dodgy Deal works
+              </Link>
+              {user ? (
+                <>
+                  <Link
+                    href="/account"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
                   >
-                    help_center
-                  </span>
-                  How Dodgy Deal works
-                </Link>
-                {user ? (
-                  <>
-                    <Link
-                      href="/account"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
-                    >
-                      <UserCog className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
-                      Manage account
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        signOut();
-                      }}
-                      className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-alert-600 transition-colors hover:bg-alert-50 hover:text-alert-700"
-                    >
-                      <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-                      Log out
-                    </button>
-                  </>
-                ) : (
-                  // Was `<Link href="/lists">` -- opened the Lists tab
-                  // instead of the actual sign-in/create-account sheet, so
-                  // tapping this from the profile menu never actually let a
-                  // signed-out visitor log in or create an account, it just
-                  // dropped them on Lists' own signed-out empty state (which
-                  // then required a SECOND tap on its own "Log in or create
-                  // an account" button to get anywhere). Fixed 2026-08-19,
-                  // per Jay: "this should link to the actual create account
-                  // sign in bottom sheet" -- now a real button that closes
-                  // this menu and calls `openAuthSheet()` directly, same as
-                  // every other "Log in or create an account" entry point in
-                  // the app (Lists/History/Deal stats/Account's own empty
-                  // states, all `openAuthSheet(prompt)` -- see those pages'
-                  // own doc comments). No page-specific prompt copy here
-                  // (unlike those four), since this entry point isn't gated
-                  // behind any one page's content.
+                    <UserCog className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
+                    Manage account
+                  </Link>
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);
-                      openAuthSheet();
+                      signOut();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
+                    className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-alert-600 transition-colors hover:bg-alert-50 hover:text-alert-700"
                   >
-                    <span
-                      className="material-symbols-outlined shrink-0 text-[22px]"
-                      style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                      aria-hidden="true"
-                    >
-                      app_registration
-                    </span>
-                    Create account / log in
+                    <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    Log out
                   </button>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-      </div>
-    </div>
+                </>
+              ) : (
+                // Was `<Link href="/lists">` -- opened the Lists tab
+                // instead of the actual sign-in/create-account sheet, so
+                // tapping this from the profile menu never actually let a
+                // signed-out visitor log in or create an account, it just
+                // dropped them on Lists' own signed-out empty state (which
+                // then required a SECOND tap on its own "Log in or create
+                // an account" button to get anywhere). Fixed 2026-08-19,
+                // per Jay: "this should link to the actual create account
+                // sign in bottom sheet" -- now a real button that closes
+                // this menu and calls `openAuthSheet()` directly, same as
+                // every other "Log in or create an account" entry point in
+                // the app (Lists/History/Deal stats/Account's own empty
+                // states, all `openAuthSheet(prompt)` -- see those pages'
+                // own doc comments). No page-specific prompt copy here
+                // (unlike those four), since this entry point isn't gated
+                // behind any one page's content.
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    openAuthSheet();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
+                >
+                  <span
+                    className="material-symbols-outlined shrink-0 text-[22px]"
+                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                    aria-hidden="true"
+                  >
+                    app_registration
+                  </span>
+                  Create account / log in
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+    </>
   );
 }

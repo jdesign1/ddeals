@@ -50,6 +50,9 @@ interface SearchContextValue {
   products: ProductCard[];
   loadingProducts: boolean;
   error: string | null;
+  /** Supermarket preference shared by Check deals and full-screen search. */
+  selectedStores: string[];
+  toggleStore: (storeId: string) => void;
   query: string;
   setQuery: (value: string) => void;
   isActive: boolean;
@@ -131,6 +134,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Kept in the global search provider so the Check deals page and the
+  // full-screen search overlay always show and filter by the same preferred
+  // supermarkets, even when the Home route is remounted between visits.
+  const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
@@ -156,6 +163,21 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setError(null);
     publishCatalogueUpdate(result.products);
     return result;
+  }, []);
+
+  const toggleStore = useCallback((storeId: string) => {
+    if (storeId === "all") {
+      setSelectedStores(["all"]);
+      return;
+    }
+    setSelectedStores((prev) => {
+      const next = prev.includes("all")
+        ? [storeId]
+        : prev.includes(storeId)
+          ? prev.filter((id) => id !== storeId)
+          : [...prev, storeId];
+      return next.length === 0 ? ["all"] : next;
+    });
   }, []);
 
   useEffect(() => {
@@ -233,6 +255,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       products,
       loadingProducts,
       error,
+      selectedStores,
+      toggleStore,
       query,
       setQuery,
       isActive,
@@ -296,7 +320,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openScanner: () => setIsScannerOpen(true),
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
