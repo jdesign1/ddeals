@@ -777,7 +777,6 @@ export default function AuthPanel({
             {extraFieldsBlock}
             {emailBlock}
             {passwordBlock}
-            {loginIllustration}
             {confirmPasswordBlock}
           </>
         ) : (
