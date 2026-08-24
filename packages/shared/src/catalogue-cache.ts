@@ -38,12 +38,12 @@ const CATALOGUE_CACHE_KEY = "live_products";
 const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
 /**
  * Bump whenever ProductCard's shape or deal-verdict contract changes, so an
- * old cached catalogue cannot preserve a stale classifier result. The v3
- * evidence-confidence rollout invalidates v2 records that may have been
+ * old cached catalogue cannot preserve a stale classifier result. The v4
+ * duration-aware evidence rollout invalidates v3 records that may have been
  * written before the backend classifier cache was rebuilt. Keep this version
  * tied to the deployed classifier contract, not only TypeScript shape changes.
  */
-const CATALOGUE_CACHE_VERSION = 3;
+const CATALOGUE_CACHE_VERSION = 4;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- the client refresh policy is deliberately much less chatty than the server-side 15-minute materialized-view refresh.
 
 export interface CatalogueCacheMetadata {

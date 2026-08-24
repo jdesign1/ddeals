@@ -46,11 +46,11 @@ export const REAL_SAVER_THRESHOLD = 10;
 export const FAIR_THRESHOLD = 3;
 /** min % the $/unit must actually drop */
 export const SHRINKFLATION_THRESHOLD = 1;
-/** Minimum regular observations needed before we publish a verdict. */
+/** Legacy row-count threshold retained for compatibility; duration is now the primary evidence signal. */
 export const MIN_REGULAR_PRICE_SAMPLES = 3;
 /** Minimum calendar span for those regular observations. */
 export const MIN_REGULAR_HISTORY_DAYS = 14;
-/** Minimum fallback observations before we can provide an indicative read. */
+/** Legacy fallback row-count threshold retained for compatibility; duration is now the primary signal. */
 export const EARLY_READ_MIN_REGULAR_PRICE_SAMPLES = 2;
 /** Minimum fallback span before we can provide an indicative read. */
 export const EARLY_READ_MIN_REGULAR_HISTORY_DAYS = 7;
@@ -69,7 +69,7 @@ function median(nums: number[]): number | null {
  * Classifies one (product_id, store_id) current special using its own
  * price_history series (+ optional $/unit comparative pricing).
  *
- *   normal_price = median of pre-sale prices within the 30-day lookback
+ *   normal_price = median of regular price spans overlapping the 30-day lookback
  *   inflate_pct  = how much price was pumped in the 7 days before the sale
  *   verdict, checked in order: UNKNOWN (insufficient evidence) / DODGY
  *   (material over-normal pricing, reliable shrinkflation, or repeated
@@ -113,33 +113,51 @@ export function classifySpecial(
     (r) => !r.is_special && new Date(r.scraped_at) < saleStartedAt! && r.price != null
   );
   const lookbackCutoff = new Date(saleStartedAt.getTime() - LOOKBACK_DAYS * DAY_MS);
-  const recentPreSale = preSale.filter((r) => new Date(r.scraped_at) >= lookbackCutoff);
-  const recentSpanDays =
-    recentPreSale.length > 1
-      ? (new Date(recentPreSale[recentPreSale.length - 1].scraped_at).getTime() -
-          new Date(recentPreSale[0].scraped_at).getTime()) /
-        DAY_MS
-      : 0;
+  const regularSpans = preSale.map((row) => {
+    const start = new Date(row.scraped_at);
+    const rowIndex = sorted.indexOf(row);
+    const nextTimestamp = rowIndex >= 0 && sorted[rowIndex + 1]
+      ? new Date(sorted[rowIndex + 1].scraped_at)
+      : saleStartedAt;
+    const end = nextTimestamp < saleStartedAt ? nextTimestamp : saleStartedAt;
+    return { row, start, end };
+  });
+  const overlapDays = (start: Date, end: Date, cutoff: Date) =>
+    Math.max(0, Math.min(end.getTime(), saleStartedAt.getTime()) - Math.max(start.getTime(), cutoff.getTime())) / DAY_MS;
+  const recentRegularSpans = regularSpans.filter(({ start, end }) => end > lookbackCutoff && start < saleStartedAt);
+  const recentRegularRows = recentRegularSpans.map(({ row }) => row);
+  const recentRegularCoverageDays = recentRegularSpans.reduce(
+    (total, { start, end }) => total + overlapDays(start, end, lookbackCutoff),
+    0
+  );
 
   const fallbackCutoff = new Date(saleStartedAt.getTime() - EARLY_READ_LOOKBACK_DAYS * DAY_MS);
-  const fallbackPreSale = preSale.filter((r) => new Date(r.scraped_at) >= fallbackCutoff);
-  const fallbackSpanDays =
-    fallbackPreSale.length > 1
-      ? (new Date(fallbackPreSale[fallbackPreSale.length - 1].scraped_at).getTime() -
-          new Date(fallbackPreSale[0].scraped_at).getTime()) /
-        DAY_MS
-      : 0;
+  const fallbackRegularSpans = regularSpans.filter(({ start, end }) => end > fallbackCutoff && start < saleStartedAt);
+  const fallbackPreSale = fallbackRegularSpans.map(({ row }) => row);
+  const fallbackRegularCoverageDays = fallbackRegularSpans.reduce(
+    (total, { start, end }) => total + overlapDays(start, end, fallbackCutoff),
+    0
+  );
+  const hasRecentRegularAnchor = recentRegularSpans.length > 0;
+  const hasLongRecentRegularSpan = recentRegularSpans.some(
+    ({ start, end }) => overlapDays(start, end, lookbackCutoff) >= MIN_REGULAR_HISTORY_DAYS
+  );
+  const hasLongFallbackRegularSpan = fallbackRegularSpans.some(
+    ({ start, end }) => overlapDays(start, end, fallbackCutoff) >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS
+  );
   const hasSufficientRecentEvidence =
-    recentPreSale.length >= MIN_REGULAR_PRICE_SAMPLES && recentSpanDays >= MIN_REGULAR_HISTORY_DAYS;
+    recentRegularCoverageDays >= MIN_REGULAR_HISTORY_DAYS &&
+    (hasLongRecentRegularSpan || recentRegularRows.length >= MIN_REGULAR_PRICE_SAMPLES);
   const hasEarlyEvidence =
     !hasSufficientRecentEvidence &&
-    recentPreSale.length > 0 &&
-    fallbackPreSale.length >= EARLY_READ_MIN_REGULAR_PRICE_SAMPLES &&
-    fallbackSpanDays >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS;
+    hasRecentRegularAnchor &&
+    fallbackRegularCoverageDays >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS &&
+    (hasLongFallbackRegularSpan || fallbackPreSale.length >= EARLY_READ_MIN_REGULAR_PRICE_SAMPLES);
 
-  // A single regular scrape is not enough to provide even an indicative
-  // comparison. A wider 90-day fallback can provide an Early read, but it
-  // must never enter the confirmed verdict branches below.
+  // A short-lived regular scrape is not enough to provide even an indicative
+  // comparison. A long-held regular price can qualify on duration alone; a
+  // wider 90-day fallback can provide an Early read, but it must never enter
+  // the confirmed verdict branches below.
   if (!hasSufficientRecentEvidence) {
     if (hasEarlyEvidence) {
       const normalPrice = median(fallbackPreSale.map((r) => r.price as number));
@@ -163,7 +181,7 @@ export function classifySpecial(
     };
   }
 
-  const normalPrice = median(recentPreSale.map((r) => r.price as number));
+  const normalPrice = median(recentRegularRows.map((r) => r.price as number));
 
   const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
   const veryEarly = preSale

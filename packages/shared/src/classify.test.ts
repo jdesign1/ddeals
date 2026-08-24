@@ -23,7 +23,7 @@ test("UNKNOWN when every row is a special (no pre-sale baseline)", () => {
 test("UNKNOWN when regular history is too shallow to judge", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [
-    { scraped_at: day(now, -10), price: 5, is_special: false },
+    { scraped_at: day(now, -4), price: 5, is_special: false },
     { scraped_at: day(now, -1), price: 4, is_special: true },
   ];
   const result = classifySpecial(4, rows);
@@ -34,8 +34,9 @@ test("UNKNOWN when regular history is too shallow to judge", () => {
 test("EARLY when older regular history supports an indicative read but recent evidence is incomplete", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [
-    { scraped_at: day(now, -60), price: 10, is_special: false },
-    { scraped_at: day(now, -20), price: 10, is_special: false },
+    { scraped_at: day(now, -80), price: 10, is_special: false },
+    { scraped_at: day(now, -50), price: 9, is_special: true },
+    { scraped_at: day(now, -5), price: 10, is_special: false },
     { scraped_at: day(now, -1), price: 8, is_special: true },
   ];
   const result = classifySpecial(8, rows);
@@ -43,6 +44,18 @@ test("EARLY when older regular history supports an indicative read but recent ev
   assert.equal(result.evidenceStatus, "EARLY");
   assert.equal(result.normalPrice, 10);
   assert.equal(result.savingPct, 20);
+});
+
+test("REAL_SAVER when one regular price was held for at least 14 days before the sale", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -60), price: 10, is_special: false },
+    { scraped_at: day(now, -1), price: 8, is_special: true },
+  ];
+  const result = classifySpecial(8, rows);
+  assert.equal(result.verdict, "REAL_SAVER");
+  assert.equal(result.evidenceStatus, "SUFFICIENT");
+  assert.equal(result.normalPrice, 10);
 });
 
 test("DODGY when sale price is higher than the normal price (fake deal)", () => {
