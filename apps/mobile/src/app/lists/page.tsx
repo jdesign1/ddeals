@@ -391,7 +391,6 @@ export default function ListsPage() {
   if (!user) {
     return (
       <main className="flex flex-col gap-4 pb-8">
-        <SearchBar variant="shadow" placeholder="Search today’s deals" sticky={false} />
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
             src="/lists-login.webp"
