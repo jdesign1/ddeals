@@ -4,9 +4,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import { useSearch } from "@/lib/search-context";
+import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
+const HEADER_DIRECTION_THRESHOLD_PX = 20;
 
 /**
  * Extracted 2026-08-17 from `layout.tsx`'s own inline
@@ -42,6 +44,10 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const touchStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrollTopRef = useRef(0);
+  const scrollDirectionRef = useRef<"up" | "down" | null>(null);
+  const directionDistanceRef = useRef(0);
+  const headerHiddenRef = useRef(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<"updated" | "throttled" | null>(null);
@@ -52,6 +58,47 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     },
     []
   );
+
+  useEffect(() => {
+    lastScrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
+    scrollDirectionRef.current = null;
+    directionDistanceRef.current = 0;
+    headerHiddenRef.current = false;
+    publishCheckDealsHeaderVisibility(false);
+  }, [pathname]);
+
+  const handleScroll = () => {
+    const currentScrollTop = scrollRef.current?.scrollTop ?? 0;
+    const previousScrollTop = lastScrollTopRef.current;
+    lastScrollTopRef.current = currentScrollTop;
+
+    if (pathname !== "/") return;
+    if (currentScrollTop <= 8) {
+      scrollDirectionRef.current = null;
+      directionDistanceRef.current = 0;
+      if (headerHiddenRef.current) {
+        headerHiddenRef.current = false;
+        publishCheckDealsHeaderVisibility(false);
+      }
+      return;
+    }
+
+    const delta = currentScrollTop - previousScrollTop;
+    if (Math.abs(delta) < 1) return;
+    const direction = delta > 0 ? "down" : "up";
+    if (scrollDirectionRef.current !== direction) {
+      scrollDirectionRef.current = direction;
+      directionDistanceRef.current = 0;
+    }
+    directionDistanceRef.current += Math.abs(delta);
+    if (directionDistanceRef.current < HEADER_DIRECTION_THRESHOLD_PX) return;
+
+    directionDistanceRef.current = 0;
+    const hidden = direction === "down";
+    if (headerHiddenRef.current === hidden) return;
+    headerHiddenRef.current = hidden;
+    publishCheckDealsHeaderVisibility(hidden);
+  };
 
   const resetPull = () => {
     touchStartYRef.current = null;
@@ -106,6 +153,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={() => void handleTouchEnd()}
       onTouchCancel={resetPull}
+      onScroll={handleScroll}
     >
       {(pullDistance > 0 || refreshing || feedback) && (
         <div

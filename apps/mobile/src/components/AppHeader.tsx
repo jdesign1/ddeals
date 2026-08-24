@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, X, UserCog, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
+import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -186,6 +187,13 @@ export default function AppHeader() {
   const { user, loading, signOut, isAnonymousSession, openAuthSheet } = useAuth();
   const { override } = useHeaderOverride();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
+
+  useEffect(() => {
+    return subscribeToCheckDealsHeaderVisibility((hidden) => {
+      setIsHiddenOnCheckDeals(hidden);
+    });
+  }, []);
 
   // Close the menu on route change so it doesn't stay open across
   // navigation. Adjusted during render (React's documented escape hatch for
@@ -198,6 +206,7 @@ export default function AppHeader() {
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
     setIsMenuOpen(false);
+    setIsHiddenOnCheckDeals(false);
   }
 
   const title = override
@@ -238,7 +247,11 @@ export default function AppHeader() {
     // updated 2026-08-13 alongside that swap -- used to say "fake local
     // login, no real account or data," which became false once the account
     // itself became real.
-    <div className="sticky top-0 z-[45] w-full flex-shrink-0">
+    <div
+      className={`app-header-shell sticky top-0 z-[45] w-full flex-shrink-0 ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
+      aria-hidden={pathname === "/" && isHiddenOnCheckDeals}
+    >
+      <div className={`app-header-content ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}>
       {isAnonymousSession && (
         <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center text-[11px] font-black tracking-widest text-amber-950">
           Test mode — anonymous test account, not linked to an email
@@ -513,6 +526,7 @@ export default function AppHeader() {
           </>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
