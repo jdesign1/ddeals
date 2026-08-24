@@ -156,7 +156,7 @@ export default function ProductListCard({
             alt={product.name}
             width={112}
             height={112}
-            unoptimized
+            sizes="112px"
             className="h-full w-full object-contain mix-blend-multiply"
           />
         </div>

@@ -90,7 +90,7 @@ export default function HowItWorksPage() {
             alt="Dodgy Deal mascot holding a verified price card beside a grocery basket"
             width={720}
             height={768}
-            priority
+            preload
             className="h-auto w-full max-w-[9rem]"
           />
         </div>

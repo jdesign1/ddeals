@@ -938,6 +938,7 @@ function MyListSection({
           width={482}
           height={512}
           sizes="144px"
+          preload
           className="h-auto w-full max-w-[9rem]"
         />
         {/* `max-w-xs` (320px) dropped and `px-4` (16px) -> `px-5` (20px),

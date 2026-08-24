@@ -266,7 +266,7 @@ export default function ListItemProductCard({
           alt={product.name}
           width={56}
           height={56}
-          unoptimized
+          sizes="56px"
           className="h-full w-full object-contain"
         />
       </div>

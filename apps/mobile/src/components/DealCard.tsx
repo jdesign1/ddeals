@@ -52,7 +52,6 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
           fill
           sizes="(max-width: 480px) 50vw, 240px"
           className="object-contain p-3"
-          unoptimized
         />
         {(isTrueSpecial || isDodgy) && (
           <span
