@@ -374,7 +374,7 @@ export default function ListsPage() {
   if (authLoading) {
     return (
       <main className="flex flex-col gap-3 pb-8">
-        <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} topSpacing />
+        <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
         <div className="flex flex-col gap-3 px-5 pt-4">
           <LoadingMascot loading />
         </div>
@@ -391,14 +391,15 @@ export default function ListsPage() {
   if (!user) {
     return (
       <main className="flex flex-col gap-4 pb-8">
-        <SearchBar variant="shadow" placeholder="Search today’s deals" sticky={false} topSpacing />
+        <SearchBar variant="shadow" placeholder="Search today’s deals" sticky={false} />
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
-            src="/lists-login.png"
+            src="/lists-login.webp"
             alt="A checked shopping list"
-            width={1217}
-            height={1293}
-            priority
+            width={482}
+            height={512}
+            sizes="144px"
+            preload
             className="h-auto w-full max-w-[9rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">Log in to create and save shopping lists.</p>
@@ -416,7 +417,7 @@ export default function ListsPage() {
 
   return (
     <main className="flex flex-col gap-4 pb-6">
-      <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} topSpacing />
+      <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
 
       {isAnonymousSession && (
         // Same amber "dev tool" language/styling as AuthPanel.tsx's own

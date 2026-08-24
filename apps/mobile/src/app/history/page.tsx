@@ -10,6 +10,7 @@ import {
   type DealCheckRow,
   type ProductCard as ProductCardData,
   type CurrentDeal,
+  productMatchesSearch,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
@@ -39,12 +40,9 @@ import ProductListCard from "@/components/ProductListCard";
  *    row's own snapshotted `store`/`price`, not today's live price)
  *    reproduce the prototype's own "this is a historical record, not
  *    today's cheapest option" framing.
- *  - No typo-tolerant fuzzy search fallback (`isFuzzyProductMatch`) —
- *    plain substring match on normalized name/brand only, same established
- *    simplification `FullScreenSearch.tsx`'s own doc comment already made
- *    for the same reason (Levenshtein tolerance matters most at the
- *    prototype's full-catalogue scale; this app's data volumes are much
- *    smaller).
+ *  - History search uses the same shared token, prefix, synonym, and bounded
+ *    typo matcher as full-screen product search, so a checked branded item
+ *    behaves consistently across the app.
  *  - No "Recheck" action wired to reopen a modal — tapping a card here
  *    navigates to the real `/deal/[id]/[store]` route instead (via
  *    `ProductListCard`'s own built-in tap-to-navigate), this app's real
@@ -150,12 +148,11 @@ export default function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const filteredHistory = useMemo(() => {
     if (!history) return [];
-    const q = normalizeSearchText(searchQuery.trim());
-    if (!q) return history;
+    if (!searchQuery.trim()) return history;
     return history.filter((h) => {
       const product = productById.get(h.product_id);
       if (!product) return false;
-      return normalizeSearchText(product.name).includes(q) || normalizeSearchText(product.brand).includes(q);
+      return productMatchesSearch(product, searchQuery);
     });
   }, [history, searchQuery, productById]);
 
@@ -192,11 +189,12 @@ export default function HistoryPage() {
             3 branches of this page). */}
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
-            src="/all-checks-login.png"
+            src="/all-checks-login.webp"
             alt="A checklist with a magnifying glass"
-            width={1218}
-            height={1292}
-            priority
+            width={483}
+            height={512}
+            sizes="144px"
+            preload
             className="h-auto w-full max-w-[9rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>
@@ -299,11 +297,6 @@ export default function HistoryPage() {
     </main>
   );
 }
-
-/** Same normalization FullScreenSearch.tsx's own local copy uses (see that
- * file's header comment for why it's duplicated locally rather than
- * shared) -- punctuation/case-insensitive substring matching. */
-const normalizeSearchText = (s: string | null | undefined) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /** Builds a `CurrentDeal`-shaped object from a `deal_checks` row's own
  * snapshotted values, NOT looked up from the live product's current deals

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -694,6 +695,19 @@ export default function AuthPanel({
     </div>
   );
 
+  const loginIllustration = (
+    <div className="flex justify-center pt-1">
+      <Image
+        src="/auth-login.webp"
+        alt="Dodgy Deal mascot looking toward a secure login card"
+        width={512}
+        height={341}
+        sizes="160px"
+        className="h-auto w-full max-w-[10rem]"
+      />
+    </div>
+  );
+
   // Same always-mounted-but-`invisible`/`inert` treatment as
   // `extraFieldsBlock` above, same reason (2026-08-20, per Jay -- see that
   // block's own comment for the full explanation).
@@ -761,12 +775,14 @@ export default function AuthPanel({
             {extraFieldsBlock}
             {emailBlock}
             {passwordBlock}
+            {loginIllustration}
             {confirmPasswordBlock}
           </>
         ) : (
           <>
             {emailBlock}
             {passwordBlock}
+            {loginIllustration}
             {extraFieldsBlock}
             {confirmPasswordBlock}
           </>

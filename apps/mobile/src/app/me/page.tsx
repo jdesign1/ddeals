@@ -118,11 +118,12 @@ export default function MePage() {
             3 branches of this page). */}
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
-            src="/deal-stats-login.png"
+            src="/deal-stats-login.webp"
             alt="An ascending savings chart with a check mark"
-            width={1312}
-            height={1199}
-            priority
+            width={512}
+            height={468}
+            sizes="144px"
+            preload
             className="h-auto w-full max-w-[9rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>
