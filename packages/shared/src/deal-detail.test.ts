@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPriceHistoryInsights,
+  getAssessmentVerdict,
   getStoreProductUrl,
   MIN_90D_SAMPLES_FOR_INSIGHTS,
 } from "./deal-detail.ts";
@@ -39,6 +40,11 @@ test("getStoreProductUrl: uses Woolworths NZ's live product search route", () =>
     getStoreProductUrl("Woolworths NZ", "Macro Organic Soy Milk Light 1l"),
     "https://www.woolworths.co.nz/shop/searchproducts?search=Macro%20Organic%20Soy%20Milk%20Light%201l"
   );
+});
+
+test("getAssessmentVerdict: keeps an unverified special neutral instead of calling it fair", () => {
+  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal" })), "Still checking");
+  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Deal");
 });
 
 test("buildPriceHistoryInsights: returns 4 insights (low/high/avg/frequency) when there's enough real 90-day history", () => {

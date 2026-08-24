@@ -52,26 +52,28 @@ export function findDealForStore(deals: CurrentDeal[] | undefined, store: string
   return (deals || []).find((d) => normalizeStoreKey(d.store).includes(normalizeStoreKey(store)));
 }
 
-/** 'Real Deal' -> 'Real Saver', 'Fair Price' -> 'Fair Deal', identity otherwise. Verbatim from the prototype. */
+/** Maps the catalogue's internal deal labels to the language used on the assessment page. */
 export const HISTORY_DEAL_TYPE: Record<string, string> = {
   "Dodgy Deal": "Dodgy Deal",
   "Real Deal": "Real Saver",
   "Fair Price": "Fair Deal",
+  "Unverified Deal": "Still checking",
 };
 
-export type AssessmentVerdict = "Dodgy Deal" | "Fair Deal" | "Real Saver";
+export type AssessmentVerdict = "Dodgy Deal" | "Fair Deal" | "Real Saver" | "Still checking";
 
 /**
  * Same branch order as the prototype's DealModal: a plain (non-special) item
- * always lands as a "Fair Deal" (no discount game being played, not a 4th
- * state); otherwise HISTORY_DEAL_TYPE[deal.dealType], defaulting to "Fair
- * Deal" for anything unmapped (covers "Unverified Deal"/UNKNOWN).
+ * always lands as a "Fair Deal" (no discount game being played); a special
+ * without enough evidence stays in the neutral "Still checking" state.
  */
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Deal";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
-  if (mapped === "Real Saver" || mapped === "Dodgy Deal") return mapped;
-  return "Fair Deal";
+  if (mapped === "Real Saver" || mapped === "Dodgy Deal" || mapped === "Fair Deal" || mapped === "Still checking") {
+    return mapped;
+  }
+  return "Still checking";
 }
 
 export function getStoreProductUrl(store: string, productName: string): string {

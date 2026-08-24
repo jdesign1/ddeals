@@ -673,10 +673,14 @@ function median(nums) {
 
 const LOOKBACK_DAYS = 30;
 const SEARCH_RESULTS_PAGE_SIZE = 30; // rendering hundreds+ of cards at once freezes the results list
-const DODGY_THRESHOLD = 5;       // % pre-sale inflation to flag dodgy
+const MATERIAL_OVER_NORMAL_THRESHOLD = 5; // minimum increase above normal before calling a special dodgy
+const DODGY_THRESHOLD = MATERIAL_OVER_NORMAL_THRESHOLD; // legacy name kept for the prototype's shared vocabulary
+const PUMP_INFLATION_THRESHOLD = 10; // repeated lift required for pump-and-discount
 const REAL_SAVER_THRESHOLD = 10; // % saving to count as a real saver
 const FAIR_THRESHOLD = 3;        // % saving floor for "fair"
 const SHRINKFLATION_THRESHOLD = 1; // min % the $/unit must actually drop
+const MIN_REGULAR_PRICE_SAMPLES = 3;
+const MIN_REGULAR_HISTORY_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Classifies one (product_id, store_id) current special using its own
@@ -714,13 +718,16 @@ function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
   }
 
   const preSale = sorted.filter((r) => !r.is_special && new Date(r.scraped_at) < saleStartedAt && r.price != null);
-  if (!preSale.length) {
+  const lookbackCutoff = new Date(saleStartedAt.getTime() - LOOKBACK_DAYS * DAY_MS);
+  const recentPreSale = preSale.filter((r) => new Date(r.scraped_at) >= lookbackCutoff);
+  const recentSpanDays = recentPreSale.length > 1
+    ? (new Date(recentPreSale[recentPreSale.length - 1].scraped_at) - new Date(recentPreSale[0].scraped_at)) / DAY_MS
+    : 0;
+  if (recentPreSale.length < MIN_REGULAR_PRICE_SAMPLES || recentSpanDays < MIN_REGULAR_HISTORY_DAYS) {
     return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice: null, savingPct: null };
   }
 
-  const lookbackCutoff = new Date(saleStartedAt.getTime() - LOOKBACK_DAYS * DAY_MS);
-  const recentPreSale = preSale.filter((r) => new Date(r.scraped_at) >= lookbackCutoff);
-  const normalPrice = median((recentPreSale.length ? recentPreSale : preSale).map((r) => r.price));
+  const normalPrice = median(recentPreSale.map((r) => r.price));
 
   const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
   const veryEarly = preSale.filter((r) => new Date(r.scraped_at) < sevenDayCutoff).map((r) => r.price);
@@ -728,8 +735,8 @@ function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
   let inflatePct = 0;
   if (veryEarly.length && preSaleRecent.length) {
     const baseline = median(veryEarly);
-    const peak = Math.max(...preSaleRecent);
-    inflatePct = baseline ? ((peak - baseline) / baseline) * 100 : 0;
+    const recentMedian = median(preSaleRecent);
+    inflatePct = baseline && recentMedian ? ((recentMedian - baseline) / baseline) * 100 : 0;
   }
 
   const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : 0;
@@ -740,7 +747,7 @@ function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
   let unitPriceChangePct = null;
   if (saleUnitPrice != null && saleUnitLabel) {
     const baselineUnitRows = preSale.filter((r) => r.unit_price != null && r.unit_label === saleUnitLabel);
-    if (baselineUnitRows.length) {
+    if (baselineUnitRows.length >= 2) {
       const baselineUnitPrice = median(baselineUnitRows.map((r) => r.unit_price));
       if (baselineUnitPrice) {
         unitPriceChangePct = ((saleUnitPrice - baselineUnitPrice) / baselineUnitPrice) * 100;
@@ -751,19 +758,10 @@ function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
   if (normalPrice == null) {
     return { verdict: 'UNKNOWN', reason: 'Not enough price history to judge', normalPrice, savingPct: null, saleStartedAt };
   }
-  // Fixed 2026-08-19: was `salePrice > normalPrice` (strictly higher only).
-  // Spec defines Dodgy as "equal to or higher than" the normal price -- an
-  // exact-equal sale price used to fall through to the zero-saving FAIR
-  // branch below instead of DODGY. Mirrored in packages/shared/src/
-  // classify.ts, dodgy_deals_view.sql / migrations/20260819_*.sql, and
-  // analyser.py the same session. NOTE: this file is a stale, out-of-sync
-  // duplicate of /Prototype/index.html (see project.md's "one prototype
-  // folder only" hard rule) -- fixed here too so it doesn't drift further,
-  // flagged as a cleanup candidate, not deleted this session.
-  if (salePrice >= normalPrice) {
-    const reason = salePrice > normalPrice
-      ? `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(2)}) -- fake deal`
-      : `Sale price ($${salePrice.toFixed(2)}) is the SAME as the normal price ($${normalPrice.toFixed(2)}) -- no real discount`;
+  // Equal or near-normal prices are not automatically deceptive. Reserve
+  // Dodgy for a material increase above the normal price.
+  if (salePrice > normalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)) {
+    const reason = `Sale price ($${salePrice.toFixed(2)}) is ${(((salePrice - normalPrice) / normalPrice) * 100).toFixed(1)}% above the normal price ($${normalPrice.toFixed(2)})`;
     return {
       verdict: 'DODGY',
       reason,
@@ -781,7 +779,13 @@ function classifySpecial(salePrice, historyRows, saleUnitPrice, saleUnitLabel) {
       saleStartedAt,
     };
   }
-  if (inflatePct >= DODGY_THRESHOLD && savingPct < REAL_SAVER_THRESHOLD) {
+  const repeatedLiftSamples = veryEarly.length > 0 && preSaleRecent.length >= 2
+    ? preSaleRecent.filter((price) => {
+        const baseline = median(veryEarly);
+        return baseline != null && price >= baseline * (1 + PUMP_INFLATION_THRESHOLD / 100);
+      }).length
+    : 0;
+  if (inflatePct >= PUMP_INFLATION_THRESHOLD && repeatedLiftSamples >= 2 && savingPct < FAIR_THRESHOLD) {
     return {
       verdict: 'DODGY',
       reason: `Price was raised ${inflatePct.toFixed(1)}% just before the sale -- you're only saving ${savingPct.toFixed(1)}%`,
@@ -1228,6 +1232,7 @@ function ProductCard({
   const isDodgy = matchedDeal && matchedDeal.dealType === 'Dodgy Deal';
   const isRealSaver = matchedDeal && matchedDeal.dealType === 'Real Deal';
   const isFairDeal = matchedDeal && matchedDeal.dealType === 'Fair Price';
+  const isStillChecking = matchedDeal && matchedDeal.dealType === 'Unverified Deal';
 
   return (
     <div
@@ -1240,7 +1245,7 @@ function ProductCard({
       className={`relative bg-white border rounded-2xl overflow-hidden flex flex-col group transition-all duration-200 ${
         isPeek
           ? 'h-24 pointer-events-none select-none border-dashed border-stone-300'
-          : `${isDodgy ? 'border-alert-300' : isRealSaver ? 'border-fair-300' : isFairDeal ? 'border-dodgy-300' : emphasizeBorder ? 'border-ink-200' : 'border-stone-200'} ${tappable ? 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]' : ''}`
+          : `${isDodgy ? 'border-alert-300' : isRealSaver ? 'border-fair-300' : isFairDeal ? 'border-dodgy-300' : isStillChecking ? 'border-stone-300' : emphasizeBorder ? 'border-ink-200' : 'border-stone-200'} ${tappable ? 'cursor-pointer hover:shadow-lg hover:shadow-stone-100 active:scale-[0.99]' : ''}`
       }`}
     >
       {/* Peek cards are meant to be a fully inert preview -- pointer-events-none
@@ -1336,6 +1341,12 @@ function ProductCard({
         </span>
       )}
 
+      {isStillChecking && !isPeek && (
+        <span className="absolute bottom-5 right-3 z-10 bg-stone-600 text-white text-[9px] font-black px-2 py-1 rounded-md tracking-wider select-none shadow-xs">
+          Still checking
+        </span>
+      )}
+
       {!isPeek && (() => {
         const meta = getStoreLogoMeta(storeKey);
         return (
@@ -1363,14 +1374,23 @@ function ProductCard({
 // mapping keeps them working unchanged even though the source of the
 // verdict moved from the client to the view.
 const VIEW_VERDICT_TO_DEAL_TYPE = { DODGY: 'Dodgy Deal', GENUINE: 'Real Deal', MARGINAL: 'Fair Price' };
-const VIEW_VERDICT_SHORT_REASON = { DODGY: 'Artificial Discount (Was-Is Trap)', GENUINE: 'Genuine Sale', UNKNOWN: 'Not Enough History' };
+const VIEW_VERDICT_SHORT_REASON = { DODGY: 'Artificial Discount (Was-Is Trap)', GENUINE: 'Genuine Sale', MARGINAL: 'Fair Price', UNKNOWN: 'Not Enough History' };
+
+function effectiveViewVerdict(row) {
+  if (row.verdict !== 'DODGY' || row.normal_price == null || row.normal_price <= 0) return row.verdict;
+  const reason = (row.reason || '').toLowerCase();
+  const hasIndependentDodgySignal = /pack size|unit price|raised|inflated|pump/.test(reason);
+  const increasePct = ((row.sale_price - row.normal_price) / row.normal_price) * 100;
+  return !hasIndependentDodgySignal && increasePct <= MATERIAL_OVER_NORMAL_THRESHOLD ? 'MARGINAL' : row.verdict;
+}
 
 // Builds full product cards straight from dodgy_deals view rows -- no
-// separate products/price_history fetch, no client-side classification.
-// The view already computed verdict/saving_pct/reason server-side (see
-// dodgy_deals_view.sql) and already joins product_name/brand/category/
-// image_url/unit_size/store_name, so this is just reshaping rows into the
-// card shape the UI expects, then grouping into cross-store match groups.
+// separate products/price_history fetch. The view normally computes
+// verdict/saving_pct/reason server-side; effectiveViewVerdict applies the
+// small materiality compatibility correction for legacy cache rows until the
+// upstream producer is regenerated. The view already joins product_name/
+// brand/category/image_url/unit_size/store_name, so this reshapes rows into
+// the card shape the UI expects, then groups them into cross-store matches.
 function buildProductCardsFromSpecials(groupEntries) {
   const products = [];
   for (const [groupId, rows] of groupEntries) {
@@ -1379,14 +1399,16 @@ function buildProductCardsFromSpecials(groupEntries) {
     })));
     if (!meta.name) continue;
 
-    const currentDeals = rows.map((row) => ({
+    const currentDeals = rows.map((row) => {
+      const verdict = effectiveViewVerdict(row);
+      return ({
       store: row.store_name || STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
       price: row.sale_price,
       originalPrice: row.normal_price ?? row.was_price ?? row.sale_price,
       discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
-      dealType: row.verdict === 'UNKNOWN' ? 'Unverified Deal' : VIEW_VERDICT_TO_DEAL_TYPE[row.verdict],
-      wasArtificiallyInflated: row.verdict === 'DODGY',
-      reason: VIEW_VERDICT_SHORT_REASON[row.verdict] || 'Standard Special',
+      dealType: verdict === 'UNKNOWN' ? 'Unverified Deal' : VIEW_VERDICT_TO_DEAL_TYPE[verdict],
+      wasArtificiallyInflated: verdict === 'DODGY',
+      reason: VIEW_VERDICT_SHORT_REASON[verdict] || 'Standard Special',
       explanation: row.reason,
       isOnSpecial: true,
       // When this special began (from the view's sale_start CTE) -- used by
@@ -1396,7 +1418,7 @@ function buildProductCardsFromSpecials(groupEntries) {
       // Retailer-advertised end date for this special, when the source
       // actually supplied one.
       specialEndDate: row.special_end_date || null,
-    }));
+    });
 
     // The identity-matching pipeline occasionally links two distinct
     // retailer catalogue rows from the *same* store into one match group
@@ -1528,7 +1550,7 @@ function buildSeedLists(products) {
   ];
 }
 
-const HISTORY_DEAL_TYPE = { 'Dodgy Deal': 'Dodgy Deal', 'Real Deal': 'Real Saver', 'Fair Price': 'Fair Deal' };
+const HISTORY_DEAL_TYPE = { 'Dodgy Deal': 'Dodgy Deal', 'Real Deal': 'Real Saver', 'Fair Price': 'Fair Deal', 'Unverified Deal': 'Still checking' };
 
 function buildSeedHistory(products) {
   return products.slice(0, 9).map((p, idx) => {
@@ -4653,6 +4675,10 @@ function DealModal({
       verdictColorClass = 'text-alert-800';
       verdictBgClass = 'bg-alert-50';
       verdictBorderClass = 'border-alert-200';
+    } else if (verdict === 'Still checking') {
+      verdictColorClass = 'text-stone-700';
+      verdictBgClass = 'bg-stone-50';
+      verdictBorderClass = 'border-stone-200';
     } else {
       verdict = 'Fair Deal';
       verdictColorClass = 'text-dodgy-900';
@@ -4955,6 +4981,28 @@ function DealModal({
                       </button>
                     </div>
                     )}
+                  </div>
+                ) : verdict === 'Still checking' ? (
+                  <div className={`p-5 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} text-left space-y-5 shadow-xs`}>
+                    <h2 className={`text-xl font-black tracking-tight font-display ${verdictColorClass}`}>Still checking</h2>
+                    <div className="flex items-start gap-4">
+                      <div className="w-24 h-24 flex-shrink-0 rounded-lg bg-white flex items-center justify-center overflow-hidden select-none">
+                        <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-extrabold text-stone-900 text-base leading-snug break-words">{product.name}</h3>
+                        <p className="text-sm text-stone-400 mt-0.5 font-bold uppercase tracking-wider">{product.unit}</p>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-stone-500">ea</span>
+                        </div>
+                        <p className="text-sm font-bold mt-0.5 text-stone-600">at {dealStore}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-base text-stone-900 mb-1">We&rsquo;re still checking this deal</h4>
+                      <p className="text-sm text-stone-600 leading-relaxed">We need to see a few more prices before we can tell you whether this is a genuine saving.</p>
+                    </div>
                   </div>
                 ) : verdict === 'Fair Deal' ? (
                   <div className={`p-5 rounded-2xl border ${verdictBorderClass} ${verdictBgClass} text-left space-y-5 shadow-xs`}>

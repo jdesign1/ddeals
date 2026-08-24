@@ -135,6 +135,10 @@ const TILE_STYLE: Record<
 };
 
 function getPriceTipsStatement(verdict: AssessmentVerdict, frequency: string): string {
+  if (verdict === "Still checking") {
+    return "We need to see a few more prices before we can tell you whether this is a genuine saving.";
+  }
+
   const isRare = frequency === "Rare special";
   const isFrequent = frequency === "Frequent special";
   const isNever = frequency === "Never on special";

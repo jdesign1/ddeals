@@ -24,6 +24,7 @@
  */
 
 import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
+import { MATERIAL_OVER_NORMAL_THRESHOLD } from "./classify.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -150,8 +151,28 @@ export const VIEW_VERDICT_TO_DEAL_TYPE: Record<
 export const VIEW_VERDICT_SHORT_REASON: Record<string, string> = {
   DODGY: "Artificial Discount (Was-Is Trap)",
   GENUINE: "Genuine Sale",
+  MARGINAL: "Fair Price",
   UNKNOWN: "Not Enough History",
 };
+
+/**
+ * Applies the new materiality floor to legacy cache rows until the upstream
+ * view/cache producer is regenerated. Older rows called every equal-or-higher
+ * price Dodgy; rows that are now equal, lower, or within the 5% tolerance are
+ * Fair unless their reason carries an independent unit-price or repeated-lift
+ * signal. This keeps a current client from showing the old false-positive
+ * verdict while the backend source is rolled forward.
+ */
+function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
+  if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
+
+  const reason = (row.reason || "").toLowerCase();
+  const hasIndependentDodgySignal = /pack size|unit price|raised|inflated|pump/.test(reason);
+  const increasePct = ((row.sale_price - row.normal_price) / row.normal_price) * 100;
+
+  if (!hasIndependentDodgySignal && increasePct <= MATERIAL_OVER_NORMAL_THRESHOLD) return "MARGINAL";
+  return row.verdict;
+}
 
 export const titleCase = (s: string | null | undefined): string =>
   (s || "").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -365,15 +386,17 @@ export function buildProductCardsFromSpecials(
     );
     if (!meta.name) continue;
 
-    const currentDeals: CurrentDeal[] = rows.map((row) => ({
+    const currentDeals: CurrentDeal[] = rows.map((row) => {
+      const verdict = effectiveViewVerdict(row);
+      return ({
       store: row.store_name || STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
       price: row.sale_price,
       originalPrice: row.normal_price ?? row.was_price ?? row.sale_price,
       discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
       dealType:
-        row.verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[row.verdict],
-      wasArtificiallyInflated: row.verdict === "DODGY",
-      reason: VIEW_VERDICT_SHORT_REASON[row.verdict] || "Standard Special",
+        verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[verdict],
+      wasArtificiallyInflated: verdict === "DODGY",
+      reason: VIEW_VERDICT_SHORT_REASON[verdict] || "Standard Special",
       explanation: row.reason,
       isOnSpecial: true,
       saleStartedAt: row.sale_started_at || null,
@@ -396,7 +419,8 @@ export function buildProductCardsFromSpecials(
       // not yet shipped/migrated) normalizes to null either way.
       ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
       ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
-    }));
+      });
+    });
 
     const bestDealByStore = new Map<string, CurrentDeal>();
     for (const deal of currentDeals) {

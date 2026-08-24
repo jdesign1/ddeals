@@ -31,14 +31,22 @@ export interface ClassifyResult {
 }
 
 export const LOOKBACK_DAYS = 30;
-/** % pre-sale inflation to flag dodgy */
-export const DODGY_THRESHOLD = 5;
+/** Minimum increase above the normal price before a special is called dodgy. */
+export const MATERIAL_OVER_NORMAL_THRESHOLD = 5;
+/** Backwards-compatible name for consumers that imported the old threshold. */
+export const DODGY_THRESHOLD = MATERIAL_OVER_NORMAL_THRESHOLD;
+/** Minimum repeated pre-sale lift required for a pump-and-discount signal. */
+export const PUMP_INFLATION_THRESHOLD = 10;
 /** % saving to count as a real saver */
 export const REAL_SAVER_THRESHOLD = 10;
 /** % saving floor for "fair" */
 export const FAIR_THRESHOLD = 3;
 /** min % the $/unit must actually drop */
 export const SHRINKFLATION_THRESHOLD = 1;
+/** Minimum regular observations needed before we publish a verdict. */
+export const MIN_REGULAR_PRICE_SAMPLES = 3;
+/** Minimum calendar span for those regular observations. */
+export const MIN_REGULAR_HISTORY_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function median(nums: number[]): number | null {
@@ -54,9 +62,10 @@ function median(nums: number[]): number | null {
  *
  *   normal_price = median of pre-sale prices within the 30-day lookback
  *   inflate_pct  = how much price was pumped in the 7 days before the sale
- *   verdict, checked in order: UNKNOWN (no history) / DODGY (fake markup,
- *   shrinkflation, or pump-and-discount) / REAL_SAVER (>=10% off) /
- *   FAIR (3-10% off, or nothing better established)
+ *   verdict, checked in order: UNKNOWN (insufficient evidence) / DODGY
+ *   (material over-normal pricing, reliable shrinkflation, or repeated
+ *   pump-and-discount) / REAL_SAVER (>=10% off) / FAIR (3-10% off, or
+ *   nothing better established)
  *
  * saleUnitPrice/saleUnitLabel are the current special's own $/unit (e.g.
  * 5.00 / "per 1kg"), used only for the shrinkflation check in step 4.
@@ -93,7 +102,25 @@ export function classifySpecial(
   const preSale = sorted.filter(
     (r) => !r.is_special && new Date(r.scraped_at) < saleStartedAt! && r.price != null
   );
-  if (!preSale.length) {
+  const lookbackCutoff = new Date(saleStartedAt.getTime() - LOOKBACK_DAYS * DAY_MS);
+  const recentPreSale = preSale.filter((r) => new Date(r.scraped_at) >= lookbackCutoff);
+  const recentSpanDays =
+    recentPreSale.length > 1
+      ? (new Date(recentPreSale[recentPreSale.length - 1].scraped_at).getTime() -
+          new Date(recentPreSale[0].scraped_at).getTime()) /
+        DAY_MS
+      : 0;
+
+  // A single regular scrape (or several scrapes from the same short window)
+  // is not enough to distinguish a genuine normal price from a noisy scrape.
+  // Keep the item neutral until there are at least three observations spread
+  // across two weeks. This deliberately does not require a full 90-day
+  // history: the longer history is an insight, while this is the minimum
+  // evidence gate for a current deal verdict.
+  if (
+    recentPreSale.length < MIN_REGULAR_PRICE_SAMPLES ||
+    recentSpanDays < MIN_REGULAR_HISTORY_DAYS
+  ) {
     return {
       verdict: "UNKNOWN",
       reason: "Not enough price history to judge",
@@ -103,11 +130,7 @@ export function classifySpecial(
     };
   }
 
-  const lookbackCutoff = new Date(saleStartedAt.getTime() - LOOKBACK_DAYS * DAY_MS);
-  const recentPreSale = preSale.filter((r) => new Date(r.scraped_at) >= lookbackCutoff);
-  const normalPrice = median(
-    (recentPreSale.length ? recentPreSale : preSale).map((r) => r.price as number)
-  );
+  const normalPrice = median(recentPreSale.map((r) => r.price as number));
 
   const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
   const veryEarly = preSale
@@ -119,8 +142,8 @@ export function classifySpecial(
   let inflatePct = 0;
   if (veryEarly.length && preSaleRecent.length) {
     const baseline = median(veryEarly);
-    const peak = Math.max(...preSaleRecent);
-    inflatePct = baseline ? ((peak - baseline) / baseline) * 100 : 0;
+    const recentMedian = median(preSaleRecent);
+    inflatePct = baseline && recentMedian ? ((recentMedian - baseline) / baseline) * 100 : 0;
   }
 
   const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : 0;
@@ -133,7 +156,7 @@ export function classifySpecial(
     const baselineUnitRows = preSale.filter(
       (r) => r.unit_price != null && r.unit_label === saleUnitLabel
     );
-    if (baselineUnitRows.length) {
+    if (baselineUnitRows.length >= 2) {
       const baselineUnitPrice = median(baselineUnitRows.map((r) => r.unit_price as number));
       if (baselineUnitPrice) {
         unitPriceChangePct = ((saleUnitPrice - baselineUnitPrice) / baselineUnitPrice) * 100;
@@ -150,22 +173,14 @@ export function classifySpecial(
       saleStartedAt,
     };
   }
-  // Fixed 2026-08-19: was `salePrice > normalPrice` (strictly greater only).
-  // Spec ("Main Flow: Check Deals" doc) defines Dodgy as sale price "equal
-  // to or higher than" the normal price -- an exact-equal sale price used
-  // to fall through to the zero-saving FAIR branch below instead of DODGY.
-  // Kept in sync with dodgy_deals_view.sql / migrations/20260819_*.sql,
-  // Prototype/index.html, and analyser.py in the same change (see
-  // project.md's Classification Formula reference section).
-  if (salePrice >= normalPrice) {
-    const reason =
-      salePrice > normalPrice
-        ? `Sale price ($${salePrice.toFixed(2)}) is HIGHER than the normal price ($${normalPrice.toFixed(
-            2
-          )}) -- fake deal`
-        : `Sale price ($${salePrice.toFixed(2)}) is the SAME as the normal price ($${normalPrice.toFixed(
-            2
-          )}) -- no real discount`;
+  // A sale price that is equal to, or only slightly above, the normal price
+  // is not automatically deceptive. Scrapes and retailer rounding can move
+  // a price by a few percent, so reserve Dodgy for a material increase.
+  if (salePrice > normalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)) {
+    const reason = `Sale price ($${salePrice.toFixed(2)}) is ${(
+      ((salePrice - normalPrice) / normalPrice) *
+      100
+    ).toFixed(1)}% above the normal price ($${normalPrice.toFixed(2)})`;
     return {
       verdict: "DODGY",
       reason,
@@ -185,7 +200,18 @@ export function classifySpecial(
       saleStartedAt,
     };
   }
-  if (inflatePct >= DODGY_THRESHOLD && savingPct < REAL_SAVER_THRESHOLD) {
+  const repeatedLiftSamples =
+    veryEarly.length > 0 && preSaleRecent.length >= 2
+      ? preSaleRecent.filter((price) => {
+          const baseline = median(veryEarly);
+          return baseline != null && price >= baseline * (1 + PUMP_INFLATION_THRESHOLD / 100);
+        }).length
+      : 0;
+  if (
+    inflatePct >= PUMP_INFLATION_THRESHOLD &&
+    repeatedLiftSamples >= 2 &&
+    savingPct < FAIR_THRESHOLD
+  ) {
     return {
       verdict: "DODGY",
       reason: `Price was raised ${inflatePct.toFixed(

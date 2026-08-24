@@ -148,10 +148,7 @@ const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; 
   "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert" },
   "Real Deal": { label: "Real", className: "dd-badge-fair" },
   "Fair Price": { label: "Fair", className: "dd-badge-dodgy" },
-  // "Unverified Deal" deliberately has no entry -- same as ProductListCard,
-  // which renders no verdict badge at all for a dealType it doesn't
-  // recognise (only Dodgy/Real/Fair get one), rather than a 4th badge
-  // color for "on special, not yet classified."
+  "Unverified Deal": { label: "Still checking", className: "dd-badge-neutral" },
 };
 
 // How far left (px) a swipe must travel before it counts as "remove this"

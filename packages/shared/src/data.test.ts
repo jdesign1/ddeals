@@ -142,7 +142,7 @@ test("buildProductCardsFromSpecials: dedupes to the lowest price per store withi
 test("buildProductCardsFromSpecials: maps verdict to dealType/reason and standardPrice to min normal_price", () => {
   const rows = [
     row({ store_name: "Woolworths NZ", sale_price: 5, normal_price: 7, verdict: "GENUINE" }),
-    row({ store_name: "Pak'nSave", sale_price: 5.5, normal_price: 6, verdict: "DODGY" }),
+    row({ store_name: "Pak'nSave", sale_price: 6.5, normal_price: 6, verdict: "DODGY" }),
   ];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
   assert.equal(cards.length, 1);
@@ -153,6 +153,16 @@ test("buildProductCardsFromSpecials: maps verdict to dealType/reason and standar
   assert.equal(woolworthsDeal?.dealType, "Real Deal");
   assert.equal(paknsaveDeal?.dealType, "Dodgy Deal");
   assert.equal(paknsaveDeal?.wasArtificiallyInflated, true);
+});
+
+test("buildProductCardsFromSpecials: legacy near-normal DODGY rows are shown as Fair Price", () => {
+  const rows = [
+    row({ sale_price: 5, normal_price: 5, verdict: "DODGY", reason: "Sale price is the same as the normal price" }),
+  ];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Fair Price");
+  assert.equal(deal.wasArtificiallyInflated, false);
 });
 
 test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'", () => {
