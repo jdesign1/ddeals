@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Search } from "lucide-react";
 import {
   fetchDealCheckHistory,
@@ -190,6 +191,14 @@ export default function HistoryPage() {
             call sites for the full "why" (same change, same reasoning, all
             3 branches of this page). */}
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
+          <Image
+            src="/all-checks-login.png"
+            alt="A checklist with a magnifying glass"
+            width={1218}
+            height={1292}
+            priority
+            className="h-auto w-full max-w-[9rem]"
+          />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>
           <button
             type="button"

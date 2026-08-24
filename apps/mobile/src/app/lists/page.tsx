@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Trash2, Pencil, Store, Plus, Check, X, ChevronDown } from "lucide-react";
 import {
@@ -392,6 +393,14 @@ export default function ListsPage() {
       <main className="flex flex-col gap-4 pb-8">
         <SearchBar variant="shadow" placeholder="Search today’s deals" sticky={false} topSpacing />
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
+          <Image
+            src="/lists-login.png"
+            alt="A checked shopping list"
+            width={1217}
+            height={1293}
+            priority
+            className="h-auto w-full max-w-[9rem]"
+          />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">Log in to create and save shopping lists.</p>
           <button
             type="button"
