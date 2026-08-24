@@ -36,8 +36,12 @@ const CATALOGUE_CACHE_DB = "dodgey_deals_mobile_cache";
 const CATALOGUE_CACHE_STORE = "catalogue";
 const CATALOGUE_CACHE_KEY = "live_products";
 const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
-/** Bump whenever ProductCard's shape changes, so an old cached shape is treated as a miss rather than fed into code expecting new fields. */
-const CATALOGUE_CACHE_VERSION = 1;
+/**
+ * Bump whenever ProductCard's shape or deal-verdict contract changes, so an
+ * old cached catalogue cannot preserve a stale classifier result. The v2
+ * evidence-aware cache rollout makes existing v1 browser records invalid.
+ */
+const CATALOGUE_CACHE_VERSION = 2;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- the client refresh policy is deliberately much less chatty than the server-side 15-minute materialized-view refresh.
 
 export interface CatalogueCacheMetadata {
