@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, X } from "lucide-react";
@@ -931,6 +932,14 @@ function MyListSection({
   if (!signedIn) {
     return (
       <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
+        <Image
+          src="/lists-login.webp"
+          alt="A checked shopping list"
+          width={482}
+          height={512}
+          sizes="144px"
+          className="h-auto w-full max-w-[9rem]"
+        />
         {/* `max-w-xs` (320px) dropped and `px-4` (16px) -> `px-5` (20px),
             2026-08-21, per Jay's ask on this exact copy: "Increase the
             width of the copy text box, maybe we can fit it all on one
