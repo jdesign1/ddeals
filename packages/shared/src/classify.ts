@@ -210,6 +210,7 @@ export function classifySpecial(
   if (
     inflatePct >= PUMP_INFLATION_THRESHOLD &&
     repeatedLiftSamples >= 2 &&
+    repeatedLiftSamples === preSaleRecent.length &&
     savingPct < FAIR_THRESHOLD
   ) {
     return {

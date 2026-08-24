@@ -76,6 +76,11 @@ export interface DodgyDealsRow {
   // adding these two names to the `select=` string below.
   price_history_90d_days_tracked?: number | null;
   price_history_90d_special_days?: number | null;
+  /** Evidence metadata emitted by classifier v2. */
+  regular_price_samples?: number | null;
+  regular_history_days?: number | null;
+  evidence_status?: "SUFFICIENT" | "INSUFFICIENT" | null;
+  classifier_version?: string | null;
 }
 
 export interface CurrentDeal {
@@ -105,6 +110,9 @@ export interface CurrentDeal {
    * not ninetyDaySamples/ninetyDaySpecialSamples (event counts). */
   ninetyDayDaysTracked: number | null;
   ninetyDaySpecialDays: number | null;
+  /** Evidence metadata used to keep insufficient-history specials neutral. */
+  evidenceStatus?: "SUFFICIENT" | "INSUFFICIENT" | null;
+  classifierVersion?: string | null;
 }
 
 export interface ProductCard {
@@ -164,6 +172,7 @@ export const VIEW_VERDICT_SHORT_REASON: Record<string, string> = {
  * verdict while the backend source is rolled forward.
  */
 function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
+  if (row.evidence_status === "INSUFFICIENT") return "UNKNOWN";
   if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
 
   const reason = (row.reason || "").toLowerCase();
@@ -419,6 +428,8 @@ export function buildProductCardsFromSpecials(
       // not yet shipped/migrated) normalizes to null either way.
       ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
       ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
+      evidenceStatus: row.evidence_status ?? null,
+      classifierVersion: row.classifier_version ?? null,
       });
     });
 
@@ -524,11 +535,7 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Pro
     // and dodgy_deals_cache actually carries these columns, not just the
     // dodgy_deals view. If this 400s, check that same direct-column query
     // before assuming anything else -- same incident shape as 2026-08-19.
-    fetchAllRows<DodgyDealsRow>(
-      config,
-      "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days",
-      20000
-    ),
+    fetchSpecialRows(config),
     buildMatchIndex(config),
   ]);
   if (!specialRows.length) return [];
@@ -546,6 +553,26 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Pro
 interface LiveProductsCacheEntry {
   promise: Promise<ProductCard[]>;
   resolvedAt: number | null;
+}
+
+const ENRICHED_SPECIALS_SELECT =
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,classifier_version";
+
+const LEGACY_SPECIALS_SELECT =
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
+
+async function fetchSpecialRows(config: SupabaseRestConfig): Promise<DodgyDealsRow[]> {
+  try {
+    return await fetchAllRows<DodgyDealsRow>(config, ENRICHED_SPECIALS_SELECT, 20000);
+  } catch (err) {
+    // Keep the catalogue usable during the brief migration window while the
+    // materialized view is being rebuilt. The fallback deliberately carries
+    // no evidence metadata, so it cannot pretend that old rows were judged by
+    // classifier v2; the next cache refresh will populate the new contract.
+    if (!(err instanceof Error) || !/HTTP 400/.test(err.message)) throw err;
+    console.warn("Evidence-aware deal fields are not live yet; using the legacy cache shape.");
+    return fetchAllRows<DodgyDealsRow>(config, LEGACY_SPECIALS_SELECT, 20000);
+  }
 }
 
 /** Exported for tests only, not part of the public API surface. */

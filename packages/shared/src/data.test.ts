@@ -171,6 +171,20 @@ test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'",
   assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
 });
 
+test("buildProductCardsFromSpecials: insufficient evidence keeps a legacy DODGY row neutral", () => {
+  const rows = [row({
+    verdict: "DODGY",
+    evidence_status: "INSUFFICIENT",
+    regular_price_samples: 1,
+    regular_history_days: 0,
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Unverified Deal");
+  assert.equal(deal.wasArtificiallyInflated, false);
+  assert.equal(deal.evidenceStatus, "INSUFFICIENT");
+});
+
 test("buildProductCardsFromSpecials: maps price_history_90d_* columns to ninetyDay* fields", () => {
   const rows = [
     row({
