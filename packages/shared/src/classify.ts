@@ -22,7 +22,9 @@ export interface PriceHistoryRow {
   unit_label?: string | null;
 }
 
-export type EvidenceStatus = "SUFFICIENT" | "EARLY" | "INSUFFICIENT";
+export type EvidenceStatus = "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | "LIMITED";
+export type EvidenceStrength = "STRONG" | "DURATION_ONLY" | "EARLY" | "INSUFFICIENT";
+export type StoreEvidencePolicy = "STANDARD" | "CONSERVATIVE";
 
 export interface ClassifyResult {
   verdict: Verdict;
@@ -31,6 +33,7 @@ export interface ClassifyResult {
   savingPct: number | null;
   saleStartedAt: Date | null;
   evidenceStatus: EvidenceStatus;
+  evidenceStrength: EvidenceStrength;
 }
 
 export const LOOKBACK_DAYS = 30;
@@ -83,7 +86,8 @@ export function classifySpecial(
   salePrice: number,
   historyRows: PriceHistoryRow[],
   saleUnitPrice: number | null = null,
-  saleUnitLabel: string | null = null
+  saleUnitLabel: string | null = null,
+  storeEvidencePolicy: StoreEvidencePolicy = "STANDARD"
 ): ClassifyResult {
   const sorted = [...historyRows].sort(
     (a, b) => +new Date(a.scraped_at) - +new Date(b.scraped_at)
@@ -106,6 +110,7 @@ export function classifySpecial(
       savingPct: null,
       saleStartedAt: null,
       evidenceStatus: "INSUFFICIENT",
+      evidenceStrength: "INSUFFICIENT",
     };
   }
 
@@ -145,9 +150,13 @@ export function classifySpecial(
   const hasLongFallbackRegularSpan = fallbackRegularSpans.some(
     ({ start, end }) => overlapDays(start, end, fallbackCutoff) >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS
   );
-  const hasSufficientRecentEvidence =
+  const hasStrongRecentEvidence =
     recentRegularCoverageDays >= MIN_REGULAR_HISTORY_DAYS &&
-    (hasLongRecentRegularSpan || recentRegularRows.length >= MIN_REGULAR_PRICE_SAMPLES);
+    recentRegularRows.length >= MIN_REGULAR_PRICE_SAMPLES;
+  const hasDurationOnlyRecentEvidence =
+    recentRegularCoverageDays >= MIN_REGULAR_HISTORY_DAYS &&
+    hasLongRecentRegularSpan;
+  const hasSufficientRecentEvidence = hasStrongRecentEvidence || hasDurationOnlyRecentEvidence;
   const hasEarlyEvidence =
     !hasSufficientRecentEvidence &&
     hasRecentRegularAnchor &&
@@ -169,6 +178,7 @@ export function classifySpecial(
         savingPct: savingPct == null ? null : Math.round(savingPct * 10) / 10,
         saleStartedAt,
         evidenceStatus: "EARLY",
+        evidenceStrength: "EARLY",
       };
     }
     return {
@@ -178,8 +188,13 @@ export function classifySpecial(
       savingPct: null,
       saleStartedAt,
       evidenceStatus: "INSUFFICIENT",
+      evidenceStrength: "INSUFFICIENT",
     };
   }
+
+  const evidenceStrength: EvidenceStrength = hasStrongRecentEvidence ? "STRONG" : "DURATION_ONLY";
+  const canPublishDirectionalVerdict =
+    storeEvidencePolicy === "STANDARD" || evidenceStrength === "STRONG";
 
   const normalPrice = median(recentRegularRows.map((r) => r.price as number));
 
@@ -215,6 +230,14 @@ export function classifySpecial(
     }
   }
 
+  const repeatedLiftSamples =
+    veryEarly.length > 0 && preSaleRecent.length >= 2
+      ? preSaleRecent.filter((price) => {
+          const baseline = median(veryEarly);
+          return baseline != null && price >= baseline * (1 + PUMP_INFLATION_THRESHOLD / 100);
+        }).length
+      : 0;
+
   if (normalPrice == null) {
     return {
       verdict: "UNKNOWN",
@@ -223,11 +246,33 @@ export function classifySpecial(
       savingPct: null,
       saleStartedAt,
       evidenceStatus: "INSUFFICIENT",
+      evidenceStrength,
     };
   }
   // A sale price that is equal to, or only slightly above, the normal price
   // is not automatically deceptive. Scrapes and retailer rounding can move
   // a price by a few percent, so reserve Dodgy for a material increase.
+  const hasDodgySignal =
+    salePrice > normalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100) ||
+    (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD && savingPct > 0) ||
+    (inflatePct >= PUMP_INFLATION_THRESHOLD && repeatedLiftSamples >= 2 && savingPct < FAIR_THRESHOLD);
+
+  // A single long-held baseline is useful for a possible saving, but never
+  // strong enough to accuse a retailer of a Dodgy deal. Conservative stores
+  // (for example New World while its history is immature) also require the
+  // stronger multi-observation baseline before publishing any verdict.
+  if (!canPublishDirectionalVerdict || (hasDodgySignal && evidenceStrength !== "STRONG")) {
+    return {
+      verdict: "UNKNOWN",
+      reason: "Limited price history -- more independent regular prices are needed to confirm this deal",
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
+      evidenceStatus: "LIMITED",
+      evidenceStrength,
+    };
+  }
+
   if (salePrice > normalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)) {
     const reason = `Sale price ($${salePrice.toFixed(2)}) is ${(
       ((salePrice - normalPrice) / normalPrice) *
@@ -240,9 +285,10 @@ export function classifySpecial(
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
       evidenceStatus: "SUFFICIENT",
+      evidenceStrength,
     };
   }
-  if (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD) {
+  if (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD && savingPct > 0) {
     return {
       verdict: "DODGY",
       reason: `Pack size shrank -- the $/unit price barely moved (${
@@ -252,15 +298,9 @@ export function classifySpecial(
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
       evidenceStatus: "SUFFICIENT",
+      evidenceStrength,
     };
   }
-  const repeatedLiftSamples =
-    veryEarly.length > 0 && preSaleRecent.length >= 2
-      ? preSaleRecent.filter((price) => {
-          const baseline = median(veryEarly);
-          return baseline != null && price >= baseline * (1 + PUMP_INFLATION_THRESHOLD / 100);
-        }).length
-      : 0;
   if (
     inflatePct >= PUMP_INFLATION_THRESHOLD &&
     repeatedLiftSamples >= 2 &&
@@ -276,6 +316,7 @@ export function classifySpecial(
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
       evidenceStatus: "SUFFICIENT",
+      evidenceStrength,
     };
   }
   if (savingPct >= REAL_SAVER_THRESHOLD) {
@@ -286,6 +327,7 @@ export function classifySpecial(
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
       evidenceStatus: "SUFFICIENT",
+      evidenceStrength,
     };
   }
   if (savingPct >= FAIR_THRESHOLD) {
@@ -296,6 +338,7 @@ export function classifySpecial(
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
       evidenceStatus: "SUFFICIENT",
+      evidenceStrength,
     };
   }
   return {
@@ -305,5 +348,6 @@ export function classifySpecial(
     savingPct: Math.round(savingPct * 10) / 10,
     saleStartedAt,
     evidenceStatus: "SUFFICIENT",
+    evidenceStrength,
   };
 }

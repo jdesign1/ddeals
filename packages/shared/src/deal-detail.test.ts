@@ -46,6 +46,7 @@ test("getStoreProductUrl: uses Woolworths NZ's live product search route", () =>
 test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling it fair", () => {
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal" })), "Limited history");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })), "Early read");
+  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })), "Limited history");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Deal");
 });
 

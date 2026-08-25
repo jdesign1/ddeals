@@ -86,7 +86,7 @@ export function isUncertainAssessment(verdict: AssessmentVerdict): boolean {
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Deal";
   if (deal.evidenceStatus === "EARLY") return "Early read";
-  if (deal.evidenceStatus === "INSUFFICIENT") return "Limited history";
+  if (deal.evidenceStatus === "INSUFFICIENT" || deal.evidenceStatus === "LIMITED") return "Limited history";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
   if (mapped === "Real Saver" || mapped === "Dodgy Deal" || mapped === "Fair Deal" || mapped === "Limited history") {
     return mapped;

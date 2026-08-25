@@ -55,7 +55,32 @@ test("REAL_SAVER when one regular price was held for at least 14 days before the
   const result = classifySpecial(8, rows);
   assert.equal(result.verdict, "REAL_SAVER");
   assert.equal(result.evidenceStatus, "SUFFICIENT");
+  assert.equal(result.evidenceStrength, "DURATION_ONLY");
   assert.equal(result.normalPrice, 10);
+});
+
+test("duration-only evidence never publishes a Dodgy verdict", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -60), price: 10, is_special: false },
+    { scraped_at: day(now, -1), price: 12, is_special: true },
+  ];
+  const result = classifySpecial(12, rows);
+  assert.equal(result.verdict, "UNKNOWN");
+  assert.equal(result.evidenceStatus, "LIMITED");
+  assert.equal(result.evidenceStrength, "DURATION_ONLY");
+});
+
+test("conservative store policy keeps duration-only savings neutral", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -60), price: 10, is_special: false },
+    { scraped_at: day(now, -1), price: 8, is_special: true },
+  ];
+  const result = classifySpecial(8, rows, null, null, "CONSERVATIVE");
+  assert.equal(result.verdict, "UNKNOWN");
+  assert.equal(result.evidenceStatus, "LIMITED");
+  assert.equal(result.evidenceStrength, "DURATION_ONLY");
 });
 
 test("DODGY when sale price is higher than the normal price (fake deal)", () => {

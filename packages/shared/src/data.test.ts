@@ -210,6 +210,40 @@ test("buildProductCardsFromSpecials: insufficient evidence keeps a legacy DODGY 
   assert.equal(deal.evidenceStatus, "INSUFFICIENT");
 });
 
+test("buildProductCardsFromSpecials: limited store evidence stays neutral", () => {
+  const rows = [row({
+    verdict: "UNKNOWN",
+    normal_price: 10,
+    saving_pct: -20,
+    reason: "Limited price history",
+    evidence_status: "LIMITED",
+    evidence_strength: "DURATION_ONLY",
+    store_history_ready: false,
+    regular_price_samples: 1,
+    regular_history_days: 20,
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Unverified Deal");
+  assert.equal(deal.evidenceStatus, "LIMITED");
+  assert.equal(deal.evidenceStrength, "DURATION_ONLY");
+  assert.equal(deal.storeHistoryReady, false);
+});
+
+test("buildProductCardsFromSpecials: weak-evidence Dodgy rows are neutralized client-side", () => {
+  const rows = [row({
+    verdict: "DODGY",
+    evidence_status: "SUFFICIENT",
+    evidence_strength: "DURATION_ONLY",
+    regular_price_samples: 1,
+    regular_history_days: 20,
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Unverified Deal");
+  assert.equal(deal.wasArtificiallyInflated, false);
+});
+
 test("buildProductCardsFromSpecials: maps price_history_90d_* columns to ninetyDay* fields", () => {
   const rows = [
     row({

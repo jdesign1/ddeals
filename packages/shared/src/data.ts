@@ -24,7 +24,7 @@
  */
 
 import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
-import { MATERIAL_OVER_NORMAL_THRESHOLD } from "./classify.ts";
+import { MATERIAL_OVER_NORMAL_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -79,7 +79,9 @@ export interface DodgyDealsRow {
   /** Evidence metadata emitted by the classifier. */
   regular_price_samples?: number | null;
   regular_history_days?: number | null;
-  evidence_status?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | null;
+  evidence_status?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | "LIMITED" | null;
+  evidence_strength?: EvidenceStrength | null;
+  store_history_ready?: boolean | null;
   classifier_version?: string | null;
 }
 
@@ -114,7 +116,9 @@ export interface CurrentDeal {
   ninetyDayDaysTracked: number | null;
   ninetyDaySpecialDays: number | null;
   /** Evidence metadata used to keep incomplete-history specials neutral. */
-  evidenceStatus?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | null;
+  evidenceStatus?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | "LIMITED" | null;
+  evidenceStrength?: EvidenceStrength | null;
+  storeHistoryReady?: boolean | null;
   classifierVersion?: string | null;
 }
 
@@ -186,6 +190,11 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
   // their legacy verdict contract. Once the field is present, only SUFFICIENT
   // evidence may publish a directional verdict.
   if (row.evidence_status != null && row.evidence_status !== "SUFFICIENT") return "UNKNOWN";
+  // Defence in depth for the permanent Dodgy safety rule. During a rolling
+  // backend migration a row can briefly expose SUFFICIENT baseline evidence
+  // while still carrying a duration-only strength; never let that become a
+  // retailer accusation in the client.
+  if (row.verdict === "DODGY" && row.evidence_strength != null && row.evidence_strength !== "STRONG") return "UNKNOWN";
   if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
 
   const reason = (row.reason || "").toLowerCase();
@@ -410,6 +419,8 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
     ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
     evidenceStatus: row.evidence_status ?? null,
+    evidenceStrength: row.evidence_strength ?? null,
+    storeHistoryReady: row.store_history_ready ?? null,
     classifierVersion: row.classifier_version ?? null,
   };
 }
@@ -562,7 +573,7 @@ interface LiveProductsCacheEntry {
 }
 
 const ENRICHED_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,classifier_version";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version";
 
 const LEGACY_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
