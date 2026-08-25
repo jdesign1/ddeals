@@ -76,8 +76,9 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
   const barWidth = 28;
 
   return (
-    <div className="relative h-56 w-full rounded-xl border border-stone-100 bg-stone-50 p-2">
-      <div className="flex h-full items-end justify-around">
+    <div className="relative flex h-56 w-full flex-col rounded-xl border border-stone-100 bg-stone-50 p-2">
+      <p className="shrink-0 pb-1 text-center text-sm font-bold text-stone-700">Current prices vs recent averages</p>
+      <div className="flex min-h-0 flex-1 items-end justify-around">
         {rows.map((row, idx) => {
           const isCheaper = row.currentPrice < row.averagePrice;
           const isPricier = row.currentPrice > row.averagePrice;

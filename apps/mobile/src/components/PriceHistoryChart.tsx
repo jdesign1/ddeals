@@ -18,8 +18,8 @@ interface ChartPoint extends PriceHistoryPoint {
 const WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const VIEWBOX_WIDTH = 360;
 const VIEWBOX_HEIGHT = 210;
-const PLOT_LEFT = 36;
-const PLOT_RIGHT = 348;
+const PLOT_LEFT = 52;
+const PLOT_RIGHT = 344;
 const PLOT_TOP = 16;
 const PLOT_BOTTOM = 164;
 
@@ -118,7 +118,10 @@ export default function PriceHistoryChart({
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-100 bg-stone-50 p-2">
-        <div className="flex min-h-6 items-center justify-center pb-1">
+        <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
+          <span className="text-sm font-bold text-stone-700">
+            Current price: <span className="font-display font-black text-stone-900">${currentPrice.toFixed(2)}</span>
+          </span>
           {hasComparisonPrice && comparisonPct !== 0 && (
             <span
               className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[13px] leading-4 font-black text-white ${
