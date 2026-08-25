@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 
 interface PriceHistoryChartProps {
   points: PriceHistoryPoint[];
   currentPrice: number;
   currentIsSpecial: boolean;
+  comparisonPrice?: number | null;
   loading?: boolean;
   error?: string | null;
 }
@@ -61,6 +63,7 @@ export default function PriceHistoryChart({
   points,
   currentPrice,
   currentIsSpecial,
+  comparisonPrice = null,
   loading = false,
   error = null,
 }: PriceHistoryChartProps) {
@@ -108,10 +111,30 @@ export default function PriceHistoryChart({
   const yFor = (price: number) => PLOT_BOTTOM - ((price - yMin) / yRange) * (PLOT_BOTTOM - PLOT_TOP);
   const coordinates = chartPoints.map((point) => ({ point, x: xFor(point), y: yFor(point.price) }));
   const gridValues = [yMax, yMin + yRange / 2, yMin];
+  const hasComparisonPrice = typeof comparisonPrice === "number" && Number.isFinite(comparisonPrice) && comparisonPrice > 0;
+  const comparisonPct = hasComparisonPrice ? Math.round(((currentPrice - comparisonPrice) / comparisonPrice) * 100) : 0;
+  const isCheaperThanComparison = hasComparisonPrice && currentPrice < comparisonPrice;
 
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-100 bg-stone-50 p-2">
+        <div className="flex min-h-6 items-center justify-center pb-1">
+          {hasComparisonPrice && comparisonPct !== 0 && (
+            <span
+              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[13px] leading-4 font-black text-white ${
+                isCheaperThanComparison ? "bg-fair-600" : "bg-alert-600"
+              }`}
+              aria-label={`${Math.abs(comparisonPct)}% ${isCheaperThanComparison ? "below" : "above"} the recent average`}
+            >
+              {isCheaperThanComparison ? (
+                <ArrowDown className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
+              ) : (
+                <ArrowUp className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
+              )}
+              {Math.abs(comparisonPct)}%
+            </span>
+          )}
+        </div>
         <svg
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           className="h-64 w-full"
@@ -123,7 +146,7 @@ export default function PriceHistoryChart({
             return (
               <g key={value}>
                 <line x1={PLOT_LEFT} x2={PLOT_RIGHT} y1={y} y2={y} stroke="#e7e5e4" strokeDasharray="3 4" />
-                <text x={PLOT_LEFT - 6} y={y + 4} textAnchor="end" fontSize="10" fill="#78716c">
+                <text x={PLOT_LEFT - 6} y={y + 4} textAnchor="end" fontSize="12" fill="#57534e">
                   ${value.toFixed(2)}
                 </text>
               </g>
@@ -155,14 +178,14 @@ export default function PriceHistoryChart({
             </g>
           ))}
 
-          <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="11" fontWeight="700" fill="#78716c">
+          <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="12" fontWeight="700" fill="#57534e">
             90 days ago
           </text>
-          <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 28} textAnchor="end" fontSize="11" fontWeight="700" fill="#78716c">
+          <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 28} textAnchor="end" fontSize="12" fontWeight="700" fill="#57534e">
             Today
           </text>
         </svg>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-sm leading-4 font-bold text-stone-600">
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-sm leading-4 font-bold text-stone-700">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-fair-600" />
             <span>On special</span>
@@ -173,7 +196,7 @@ export default function PriceHistoryChart({
           </div>
         </div>
       </div>
-      <p className="text-center text-sm leading-5 text-stone-500">
+      <p className="text-center text-sm leading-5 text-stone-600">
         The line connects recorded price changes; green sections show when the item was on special.
       </p>
     </div>
