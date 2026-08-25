@@ -1192,12 +1192,12 @@ export default function DealAssessmentPage() {
                 <span>Pricier</span>
               </div>
             </div>
+              </>
+            )}
             {insights.length > 0 && (
               <div className="border-t border-stone-100 pt-5">
                 <PriceHistoryInsightCard insights={insights} verdict={verdict} />
               </div>
-            )}
-              </>
             )}
           </div>
         </div>
