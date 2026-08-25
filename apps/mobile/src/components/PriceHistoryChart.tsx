@@ -111,17 +111,6 @@ export default function PriceHistoryChart({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-center gap-3 text-sm leading-4 font-bold text-stone-600">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-fair-600" />
-          <span>On special</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-stone-400" />
-          <span>Regular price</span>
-        </div>
-      </div>
-
       <div className="rounded-xl border border-stone-100 bg-stone-50 p-2">
         <svg
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
@@ -173,6 +162,16 @@ export default function PriceHistoryChart({
             Today
           </text>
         </svg>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-sm leading-4 font-bold text-stone-600">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-fair-600" />
+            <span>On special</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-stone-400" />
+            <span>Regular price</span>
+          </div>
+        </div>
       </div>
       <p className="text-center text-sm leading-5 text-stone-500">
         The line connects recorded price changes; green sections show when the item was on special.
