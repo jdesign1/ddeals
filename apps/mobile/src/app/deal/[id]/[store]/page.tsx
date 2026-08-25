@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowUp, Check, ChevronDown, Clock3, Info, Share, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowUp, Check, ChevronDown, Clock3, Info, Share, ShieldCheck, X } from "lucide-react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -363,6 +363,21 @@ export default function DealAssessmentPage() {
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
   const [priceHistoryTab, setPriceHistoryTab] = useState<"insights" | "90-days">("insights");
+  const [showProductImage, setShowProductImage] = useState(false);
+
+  useEffect(() => {
+    if (!showProductImage) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowProductImage(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showProductImage]);
 
   // Reopens the full-screen search overlay instead of just falling through
   // to whatever route was underneath it (2026-08-10, per Jay's ask: "land
@@ -625,9 +640,14 @@ export default function DealAssessmentPage() {
         </span>
 
         <div className="flex items-start gap-4">
-          <div className="h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg bg-white">
+          <button
+            type="button"
+            onClick={() => setShowProductImage(true)}
+            aria-label={`View larger image of ${product.name}`}
+            className="h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 bg-white p-0"
+          >
             <Image src={product.image} alt={product.name} width={112} height={112} unoptimized className="h-full w-full object-contain" />
-          </div>
+          </button>
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h3>
             <p className="mt-0.5 text-sm font-bold tracking-wider text-stone-500">{product.unit}</p>
@@ -1165,6 +1185,7 @@ export default function DealAssessmentPage() {
                 points={priceHistoryPoints}
                 currentPrice={deal.price}
                 currentIsSpecial={deal.isOnSpecial}
+                comparisonPrice={deal.originalPrice}
                 loading={priceHistoryLoading}
                 error={priceHistoryResult?.key === priceHistoryKey ? priceHistoryResult.error : null}
               />
@@ -1203,6 +1224,38 @@ export default function DealAssessmentPage() {
         </div>
       </div>
     </div>
+
+    {showProductImage && (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/80 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Larger image of ${product.name}`}
+        onClick={() => setShowProductImage(false)}
+      >
+        <button
+          type="button"
+          onClick={() => setShowProductImage(false)}
+          aria-label="Close larger image"
+          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <div
+          className="flex max-h-[85vh] max-w-[92vw] items-center justify-center rounded-2xl bg-white p-4 shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Image
+            src={product.image}
+            alt={product.name}
+            width={768}
+            height={768}
+            unoptimized
+            className="max-h-[78vh] max-w-[84vw] object-contain"
+          />
+        </div>
+      </div>
+    )}
 
     </>
   );
