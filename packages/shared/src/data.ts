@@ -118,6 +118,13 @@ export interface CurrentDeal {
   classifierVersion?: string | null;
 }
 
+/** A sparse price/special-state transition from the retailer history table. */
+export interface PriceHistoryPoint {
+  price: number;
+  isSpecial: boolean;
+  scrapedAt: string;
+}
+
 export interface ProductCard {
   id: string;
   brand: string;
@@ -608,6 +615,46 @@ async function fetchTargetedDealRow(
     if (!(err instanceof Error) || !/HTTP 400/.test(err.message)) throw err;
     return fetchFirstRow<DodgyDealsRow>(config, `${LEGACY_SPECIALS_SELECT}${filters}`);
   }
+}
+
+/**
+ * Fetches the small, exact product/store history needed by the deal page's
+ * 90-day chart. `price_history` is changes-only storage, so the latest row
+ * before the window is included as a carry-in state; without it, the chart
+ * could incorrectly imply that the item had no price/special state at the
+ * start of the 90 days.
+ */
+export async function fetchPriceHistory90d(
+  config: SupabaseRestConfig,
+  productId: string,
+  storeId: string
+): Promise<PriceHistoryPoint[]> {
+  interface PriceHistoryRow {
+    price: number | null;
+    is_special: boolean | null;
+    scraped_at: string | null;
+  }
+  const start = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const base =
+    "price_history?select=price,is_special,scraped_at" +
+    `&product_id=eq.${encodeURIComponent(productId)}` +
+    `&store_id=eq.${encodeURIComponent(storeId)}`;
+  const [carryIn, recent] = await Promise.all([
+    fetchFirstRow<PriceHistoryRow>(config, `${base}&scraped_at=lt.${encodeURIComponent(start)}&order=scraped_at.desc&limit=1`),
+    fetchAllRows<PriceHistoryRow>(
+      config,
+      `${base}&scraped_at=gte.${encodeURIComponent(start)}&order=scraped_at.asc`,
+      1000
+    ),
+  ]);
+
+  return [carryIn, ...recent]
+    .filter((row): row is PriceHistoryRow => row != null && Number.isFinite(Number(row.price)) && !!row.scraped_at)
+    .map((row) => ({
+      price: Number(row.price),
+      isSpecial: Boolean(row.is_special),
+      scrapedAt: row.scraped_at as string,
+    }));
 }
 
 /**

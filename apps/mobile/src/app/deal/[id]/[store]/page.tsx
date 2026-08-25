@@ -9,10 +9,12 @@ import { AlertTriangle, ArrowUp, Check, ChevronDown, Clock3, Info, Share, Shield
 import {
   loadLiveProducts,
   refreshLiveProducts,
+  fetchPriceHistory90d,
   validateCurrentDeal,
   applyTargetedDealToProducts,
   updateCatalogueCacheProducts,
   type ProductCard,
+  type PriceHistoryPoint,
   type AssessmentVerdict,
   isUncertainAssessment,
   getAssessmentVerdict,
@@ -36,6 +38,7 @@ import { usePageHeader } from "@/lib/header-context";
 import PageLoader from "@/components/PageLoader";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
+import PriceHistoryChart from "@/components/PriceHistoryChart";
 import InsightCarousel from "@/components/InsightCarousel";
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
@@ -58,12 +61,10 @@ import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catal
  * Deliberate differences from the prototype, flagged rather than silently
  * dropped:
  *  - No bottom "Regular/Special min/max by store" pricing-stats table —
- *    needs real `price_history` data this app doesn't fetch anywhere
- *    (`ProductCard.priceHistory` is always `[]`, see data.ts). Faking it or
- *    silently reusing empty data would be exactly the kind of fabrication
- *    this app exists to catch, not commit. Flagged in project.md as a
- *    follow-up (would need a small targeted `price_history` fetch scoped to
- *    just this product/store, not a bigger architecture change).
+ *    that remains a separate UI follow-up. This page now does make one small,
+ *    targeted `price_history` fetch for the 90-day chart below; the full
+ *    catalogue still does not load raw history (`ProductCard.priceHistory`
+ *    remains `[]`, see data.ts).
  *  - No search bar on this page (2026-08-17, per Jay: "Remove the search
  *    bar on the deal assessment pages"). This page briefly rendered the
  *    real, shared `SearchBar.tsx` component earlier the same day (replacing
@@ -208,6 +209,35 @@ export default function DealAssessmentPage() {
   const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
 
+  const priceHistoryKey =
+    deal?.sourceProductId && deal.sourceStoreId ? `${deal.sourceProductId}::${deal.sourceStoreId}` : null;
+  const [priceHistoryResult, setPriceHistoryResult] = useState<{
+    key: string;
+    points: PriceHistoryPoint[];
+    error: string | null;
+  } | null>(null);
+  const priceHistoryLoading = priceHistoryKey != null && priceHistoryResult?.key !== priceHistoryKey;
+  const priceHistoryPoints = priceHistoryResult?.key === priceHistoryKey ? priceHistoryResult.points : [];
+
+  // The catalogue carries summary history statistics only. The detail page
+  // fetches this one product/store's sparse transition series on demand,
+  // keeping the 90-day chart useful without adding thousands of rows to the
+  // full catalogue payload.
+  useEffect(() => {
+    if (!priceHistoryKey || !deal?.sourceProductId || !deal.sourceStoreId) return;
+    let cancelled = false;
+    fetchPriceHistory90d(supabaseConfig, deal.sourceProductId, deal.sourceStoreId)
+      .then((points) => {
+        if (!cancelled) setPriceHistoryResult({ key: priceHistoryKey, points, error: null });
+      })
+      .catch(() => {
+        if (!cancelled) setPriceHistoryResult({ key: priceHistoryKey, points: [], error: "history-unavailable" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [priceHistoryKey, deal?.sourceProductId, deal?.sourceStoreId]);
+
   // The catalogue is intentionally allowed to render from IndexedDB first,
   // but a deal assessment should validate the exact retailer row in the
   // background. This is one small cache read instead of another full
@@ -332,6 +362,7 @@ export default function DealAssessmentPage() {
   // screen either way), it just shows/hides one inline section, so a
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
+  const [priceHistoryTab, setPriceHistoryTab] = useState<"insights" | "90-days">("insights");
 
   // Reopens the full-screen search overlay instead of just falling through
   // to whatever route was underneath it (2026-08-10, per Jay's ask: "land
@@ -372,11 +403,11 @@ export default function DealAssessmentPage() {
     () => (product && deal && products ? findCheaperAlternatives(product, products, deal.price, ["all"]) : []),
     [product, deal, products]
   );
-  // Price History Insights carousel slides 2+ (spec step 4). Built from the
-  // `dodgy_deals` view's new price_history_90d_* columns (see data.ts) --
-  // returns [] below MIN_90D_SAMPLES_FOR_INSIGHTS, in which case the
-  // carousel below just renders slide 1 (the existing chart) with no dots.
-  // See project.md's 2026-08-19 session entry for deploy-order notes.
+  // Summary insight tiles for the tabbed Price History Insights panel. Built
+  // from the `dodgy_deals` view's price_history_90d_* columns (see data.ts) --
+  // returns [] below MIN_90D_SAMPLES_FOR_INSIGHTS, while the separate 90-day
+  // tab can still show its raw transition chart when that summary gate is not
+  // met.
   const insights = useMemo(() => (deal ? buildPriceHistoryInsights(deal) : []), [deal]);
 
   // `<PageLoader>` is rendered as a sibling on EVERY branch below
@@ -1105,6 +1136,40 @@ export default function DealAssessmentPage() {
                 How this price compares to each store&apos;s recent average, and to its own last 90 days.
               </p>
             </div>
+            <div className="flex rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Price history views">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={priceHistoryTab === "insights"}
+                onClick={() => setPriceHistoryTab("insights")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
+                  priceHistoryTab === "insights" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
+                }`}
+              >
+                Insights
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={priceHistoryTab === "90-days"}
+                onClick={() => setPriceHistoryTab("90-days")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
+                  priceHistoryTab === "90-days" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
+                }`}
+              >
+                90 days
+              </button>
+            </div>
+            {priceHistoryTab === "90-days" ? (
+              <PriceHistoryChart
+                points={priceHistoryPoints}
+                currentPrice={deal.price}
+                currentIsSpecial={deal.isOnSpecial}
+                loading={priceHistoryLoading}
+                error={priceHistoryResult?.key === priceHistoryKey ? priceHistoryResult.error : null}
+              />
+            ) : (
+              <>
             {/* `justify-end` -> `justify-center` (2026-08-21, per Jay:
                 "Centre the legend 'Recent average, Cheaper, Pricier' above
                 the graph") -- was right-aligned, no particular reason tied
@@ -1113,7 +1178,7 @@ export default function DealAssessmentPage() {
                 the legend directly above it reads as belonging to the chart
                 rather than just sitting in the card's corner. */}
             <StoreCompareChart rows={barChartData} />
-            <div className="flex flex-wrap items-center justify-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-3">
               <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
                 <span className="h-2 w-2 rounded-full bg-ink-600" />
                 <span>Recent average</span>
@@ -1127,13 +1192,14 @@ export default function DealAssessmentPage() {
                 <span>Pricier</span>
               </div>
             </div>
+            {insights.length > 0 && (
+              <div className="border-t border-stone-100 pt-5">
+                <PriceHistoryInsightCard insights={insights} verdict={verdict} />
+              </div>
+            )}
+              </>
+            )}
           </div>
-
-          {insights.length > 0 && (
-            <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
-              <PriceHistoryInsightCard insights={insights} verdict={verdict} />
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -16,6 +16,7 @@ import {
   titleCase,
   loadLiveProducts,
   refreshLiveProducts,
+  fetchPriceHistory90d,
   validateCurrentDeal,
   applyTargetedDealToProducts,
   __targetedDealValidations,
@@ -546,6 +547,40 @@ test("validateCurrentDeal: coalesces and throttles exact product/store checks", 
     assert.equal(calls.length, 1, "repeat detail checks inside the cooldown should not fetch again");
   } finally {
     restore();
+  }
+});
+
+test("fetchPriceHistory90d: includes the carry-in state and ordered transition points", async () => {
+  const calls: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    const rows = url.includes("scraped_at=lt.")
+      ? [{ price: 8, is_special: false, scraped_at: "2026-05-01T00:00:00Z" }]
+      : [
+          { price: 7, is_special: true, scraped_at: "2026-06-01T00:00:00Z" },
+          { price: 9, is_special: false, scraped_at: "2026-07-01T00:00:00Z" },
+        ];
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => rows,
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const points = await fetchPriceHistory90d(fakeConfig("history"), "prod-1", "paknsave");
+    assert.deepEqual(points, [
+      { price: 8, isSpecial: false, scrapedAt: "2026-05-01T00:00:00Z" },
+      { price: 7, isSpecial: true, scrapedAt: "2026-06-01T00:00:00Z" },
+      { price: 9, isSpecial: false, scrapedAt: "2026-07-01T00:00:00Z" },
+    ]);
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((url) => url.includes("product_id=eq.prod-1") && url.includes("store_id=eq.paknsave")));
+  } finally {
+    globalThis.fetch = original;
   }
 });
 
