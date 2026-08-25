@@ -164,7 +164,7 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
 
               {/* Always-visible price + delta — not gated behind hover, so
                   this reads on a phone with no mouse (see file header). */}
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <span className="text-sm font-black text-stone-900">${row.currentPrice.toFixed(2)}</span>
                 {pct !== 0 && (
                   <span
