@@ -414,6 +414,23 @@ export default function HomePage() {
         </div>
       )}
 
+      {!isSearchActive && loadingProducts && (
+        <div className="mx-5 flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm" aria-label="Home sections">
+          {(["trending", "my-list"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setHomeTab(tab)}
+              className={`flex-1 rounded-lg py-2 text-[13px] leading-4 font-bold ${
+                homeTab === tab ? "bg-stone-900 text-white shadow-xs" : "text-stone-600"
+              }`}
+            >
+              {tab === "trending" ? "Trending" : "My List"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!isSearchActive && <LoadingMascot loading={loadingProducts} />}
       {!isSearchActive && error && (
         <ErrorState message="Couldn't load today's specials." detail={error} onRetry={retryProducts} />
