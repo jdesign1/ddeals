@@ -43,7 +43,7 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
       // apply here, this card's border was already plain `border-stone-200`
       // regardless of verdict, not color-coded, so there's no signal lost
       // by dropping it).
-      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm"
+      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
       <div className="relative aspect-square w-full bg-stone-100">
         <Image

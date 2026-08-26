@@ -118,7 +118,7 @@ export default function ProductListCard({
       // (Dodgy/Real/Fair, below) already carries the same information
       // explicitly in text, so the border was a redundant, secondary cue
       // rather than the only place a user could read the verdict from.
-      className="group relative flex cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200"
+      className="group relative flex cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
       <AddToListButton productId={product.id} />
 

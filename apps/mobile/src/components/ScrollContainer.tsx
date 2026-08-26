@@ -149,7 +149,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   return (
     <div
       ref={scrollRef}
-      className="relative flex-1 overflow-y-auto overscroll-y-contain"
+      className="relative flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => void handleTouchEnd()}

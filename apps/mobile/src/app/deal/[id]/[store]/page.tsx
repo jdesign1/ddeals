@@ -155,7 +155,7 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { returnToSearch, resumeAfterDealBack, clearDealNavigationPending } = useSearch();
+  const { returnToSearch, resumeAfterDealBack, clearDealNavigationPending, isDealNavigationPending } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
@@ -364,6 +364,22 @@ export default function DealAssessmentPage() {
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
   const [priceHistoryTab, setPriceHistoryTab] = useState<"insights" | "90-days">("insights");
   const [showProductImage, setShowProductImage] = useState(false);
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
+  const startedWithPendingNavigationRef = useRef(isDealNavigationPending);
+  const backNavigationStartedRef = useRef(false);
+
+  // Full-screen search uses a solid global loader while this route mounts.
+  // Hold the incoming slide until that cover has finished exiting, otherwise
+  // the route transition would complete invisibly underneath the loader.
+  useEffect(() => {
+    if (isEntryAnimationReady || (products === null && !loadError)) return;
+    const timer = window.setTimeout(
+      () => setIsEntryAnimationReady(true),
+      startedWithPendingNavigationRef.current ? 320 : 0
+    );
+    return () => window.clearTimeout(timer);
+  }, [isEntryAnimationReady, products, loadError]);
 
   useEffect(() => {
     if (!showProductImage) return;
@@ -391,10 +407,15 @@ export default function DealAssessmentPage() {
   // correctly restored for if/when the user closes search normally
   // afterwards via its own back arrow.
   const onBack = () => {
-    if (returnToSearch && returnToSearch.productId === productId && returnToSearch.store === dealStore) {
-      resumeAfterDealBack();
-    }
-    router.back();
+    if (backNavigationStartedRef.current) return;
+    backNavigationStartedRef.current = true;
+    setIsNavigatingBack(true);
+    window.setTimeout(() => {
+      if (returnToSearch && returnToSearch.productId === productId && returnToSearch.store === dealStore) {
+        resumeAfterDealBack();
+      }
+      router.back();
+    }, 280);
   };
   // No longer branches on `currentView` (2026-08-12, and still true after
   // the 2026-08-21 bottom-sheet -> inline-carousel change) -- "cheaper
@@ -515,6 +536,12 @@ export default function DealAssessmentPage() {
   return (
     <>
       <PageLoader loading={false} />
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="min-h-full w-full"
+      >
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
           as the change above that had briefly added the real `SearchBar`
           component here -- see this file's header comment).
@@ -1226,6 +1253,7 @@ export default function DealAssessmentPage() {
         </div>
       </div>
     </div>
+      </motion.div>
 
     {showProductImage && (
       <div
