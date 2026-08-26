@@ -157,7 +157,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     >
       {(pullDistance > 0 || refreshing || feedback) && (
         <div
-          className="pointer-events-none absolute inset-x-0 top-2 z-30 flex justify-center"
+          className="pointer-events-none fixed inset-x-0 top-8 z-[9999] flex -translate-y-1/2 justify-center"
           aria-live="polite"
           aria-label={refreshing ? "Refreshing specials" : feedback === "updated" ? "Specials updated" : "Already up to date"}
         >
