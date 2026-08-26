@@ -29,6 +29,7 @@ import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import StorePill from "@/components/StorePill";
 import SearchBar from "@/components/SearchBar";
+import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 
 /**
@@ -362,7 +363,18 @@ export default function HomePage() {
   }, [products, myListProductIds, selectedStores]);
 
   return (
-    <main className="flex flex-col gap-4 pb-6">
+    <>
+      {/* Keep the first Check Deals render behind the same solid full-screen
+          mascot cover used during deal navigation. The complete page fades in
+          as one surface once the shared catalogue request has resolved, so
+          the search bar, store pills, tabs, and cards never appear in stages. */}
+      <PageLoader loading={loadingProducts} />
+      <motion.main
+        initial={{ opacity: 0 }}
+        animate={{ opacity: loadingProducts ? 0 : 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="flex flex-col gap-4 pb-6"
+      >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
           restyle session).
@@ -587,7 +599,8 @@ export default function HomePage() {
           )}
         </>
       )}
-    </main>
+      </motion.main>
+    </>
   );
 }
 
