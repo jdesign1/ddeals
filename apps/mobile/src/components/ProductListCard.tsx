@@ -185,7 +185,7 @@ export default function ProductListCard({
         <span className="mt-1 font-display text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
         <div className="flex items-center gap-1.5">
           <span className="text-[13px] leading-4 font-bold text-stone-600">
-            {storeLinePrefix} {storeLabel}.
+            {storeLinePrefix === "Lowest at" ? storeLabel : `${storeLinePrefix} ${storeLabel}.`}
           </span>
         </div>
         {alsoSpecialStores.length > 0 && (
