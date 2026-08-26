@@ -524,6 +524,12 @@ select {
 .bottom-safe-nav {
   bottom: calc(1rem + env(safe-area-inset-bottom));
 }
+/* iOS: bring the floating nav 4px closer to the home-indicator safe area. */
+@supports (-webkit-touch-callout: none) {
+  .bottom-safe-nav {
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}
 /* Keep the longest tab label inside its equal-width cell on compact iPhones. */
 @media (max-width: 360px) {
   .bottom-nav-tab {

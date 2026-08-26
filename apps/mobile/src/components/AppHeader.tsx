@@ -331,9 +331,7 @@ export default function AppHeader() {
               onClick={() => setIsMenuOpen((open) => !open)}
               id="global-header-profile-btn"
               aria-label="Account menu"
-              className={`flex h-8 w-8 items-center justify-center rounded-full bg-fair-600 text-base font-black text-white transition-all duration-150 ease-in-out ${
-                isMenuOpen ? "ring-2 ring-ink-200" : ""
-              }`}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-fair-600 text-base font-black text-white transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               {avatarInitial}
             </button>
@@ -342,9 +340,7 @@ export default function AppHeader() {
               onClick={() => setIsMenuOpen((open) => !open)}
               id="global-header-profile-btn"
               aria-label="Account menu"
-              className={`flex h-9 w-9 items-center justify-center text-stone-900 transition-all duration-150 ease-in-out ${
-                isMenuOpen ? "ring-2 ring-ink-200" : ""
-              }`}
+              className="flex h-9 w-9 items-center justify-center text-stone-900 transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               {/* Filled black silhouette, not lucide's outline `CircleUser`
                   (2026-08-20, per Jay: "Use a filled in (black) user
@@ -380,7 +376,7 @@ export default function AppHeader() {
                 style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
                 aria-hidden="true"
               >
-                account_box
+                account_circle
               </span>
             </button>
           )}

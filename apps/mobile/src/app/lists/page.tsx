@@ -399,7 +399,7 @@ export default function ListsPage() {
             height={512}
             sizes="144px"
             preload
-            className="h-auto w-full max-w-[9rem]"
+            className="h-auto w-full max-w-[8.5rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">Log in to create and save shopping lists.</p>
           <button

@@ -695,13 +695,13 @@ export default function AuthPanel({
     </div>
   );
 
-  const loginIllustration = (
+  const authIllustration = (
     <div className="flex w-full justify-center py-1">
       <Image
-        src="/auth-login.webp"
-        alt="Dodgy Deal mascot looking toward a secure login card"
-        width={512}
-        height={341}
+        src="/auth-wave.png"
+        alt="Dodgy Deal mascot waving"
+        width={1165}
+        height={1350}
         sizes="160px"
         preload
         className="mx-auto h-auto w-full max-w-[10rem]"
@@ -758,7 +758,7 @@ export default function AuthPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {mode === "signin" && loginIllustration}
+      {authIllustration}
       <p className="text-sm font-medium text-stone-600">{subtitle}</p>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login
