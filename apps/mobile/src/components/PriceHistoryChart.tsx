@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 
 interface PriceHistoryChartProps {
@@ -68,6 +69,7 @@ export default function PriceHistoryChart({
   error = null,
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   if (loading) {
     return (
@@ -159,7 +161,7 @@ export default function PriceHistoryChart({
           {coordinates.slice(0, -1).map((coordinate, index) => {
             const next = coordinates[index + 1];
             return (
-              <line
+              <motion.line
                 key={`${coordinate.point.scrapedAt}-${next.point.scrapedAt}`}
                 x1={coordinate.x}
                 x2={next.x}
@@ -168,13 +170,33 @@ export default function PriceHistoryChart({
                 stroke={coordinate.point.isSpecial ? "#15803d" : "#a8a29e"}
                 strokeWidth="3"
                 strokeLinecap="round"
+                initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{
+                  duration: shouldReduceMotion ? 0 : 0.42,
+                  delay: shouldReduceMotion ? 0 : index * 0.1,
+                  ease: "easeOut",
+                }}
               />
             );
           })}
 
-          {coordinates.map(({ point, x, y }) => (
+          {coordinates.map(({ point, x, y }, index) => (
             <g key={`${point.scrapedAt}-${point.price}`}>
-              <circle cx={x} cy={y} r="5" fill={point.isSpecial ? "#16a34a" : "#78716c"} stroke="#fafaf9" strokeWidth="2" />
+              <motion.circle
+                cx={x}
+                cy={y}
+                fill={point.isSpecial ? "#16a34a" : "#78716c"}
+                stroke="#fafaf9"
+                strokeWidth="2"
+                initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
+                animate={{ r: 5, opacity: 1 }}
+                transition={{
+                  duration: shouldReduceMotion ? 0 : 0.24,
+                  delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
+                  ease: "easeOut",
+                }}
+              />
               <title>
                 {`${formatDate(point.scrapedAt, point.isCurrent)}: $${point.price.toFixed(2)} · ${point.isSpecial ? "On special" : "Regular price"}`}
               </title>

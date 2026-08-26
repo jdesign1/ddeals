@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import type { BarChartRow } from "@dodgey-deals/shared";
 
 /**
@@ -62,6 +63,7 @@ import type { BarChartRow } from "@dodgey-deals/shared";
  */
 export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   if (rows.length === 0) {
     return (
@@ -179,11 +181,18 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
                 )}
               </div>
 
-              <div className="relative flex flex-col-reverse" style={{ width: barWidth, height: chartHeight }}>
+              <motion.div
+                className="relative flex flex-col-reverse"
+                style={{ width: barWidth, height: chartHeight, transformOrigin: "bottom" }}
+                initial={shouldReduceMotion ? false : { scaleY: 0, opacity: 0 }}
+                whileInView={{ scaleY: 1, opacity: 1 }}
+                viewport={{ once: true, amount: 0.35 }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.55, delay: shouldReduceMotion ? 0 : idx * 0.08, ease: "easeOut" }}
+              >
                 <div className="w-full bg-ink-600" style={{ height: bodyPx }} />
                 {under > 0 && <div className={`w-full ${deltaClass}`} style={{ height: underPx }} />}
                 {over > 0 && <div className={`w-full ${deltaClass}`} style={{ height: overPx }} />}
-              </div>
+              </motion.div>
 
               <span
                 className="rounded-md px-2.5 py-1 text-[10px] font-black text-white"
