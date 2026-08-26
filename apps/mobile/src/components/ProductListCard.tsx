@@ -75,8 +75,6 @@ export default function ProductListCard({
   const isDodgy = deal.dealType === "Dodgy Deal";
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
-  const isLimitedHistory = deal.dealType === "Unverified Deal" && deal.evidenceStatus !== "EARLY";
-  const isEarlyRead = deal.dealType === "Unverified Deal" && deal.evidenceStatus === "EARLY";
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const storeMeta = getStoreLogoMeta(deal.store);
   // `product.brand` already arrives Title Cased from `packages/shared/src/
@@ -226,16 +224,6 @@ export default function ProductListCard({
       {isFairDeal && (
         <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
           Fair
-        </span>
-      )}
-      {isEarlyRead && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-stone-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
-          Early read
-        </span>
-      )}
-      {isLimitedHistory && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-stone-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
-          Limited history
         </span>
       )}
       {/* Supermarket badge -- moved top-left (2026-08-12, per Jay's ask; was

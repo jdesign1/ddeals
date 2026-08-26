@@ -702,9 +702,9 @@ export default function AuthPanel({
         alt="Dodgy Deal mascot waving"
         width={1165}
         height={1350}
-        sizes="160px"
+        sizes="144px"
         preload
-        className="mx-auto h-auto w-full max-w-[10rem]"
+        className="mx-auto h-auto w-full max-w-[9rem]"
       />
     </div>
   );
@@ -758,7 +758,9 @@ export default function AuthPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {authIllustration}
+      {/* The illustration belongs to the Login experience only; the Create account
+          tab keeps the form focused and avoids repeating the artwork. */}
+      {mode === "signin" && authIllustration}
       <p className="text-sm font-medium text-stone-600">{subtitle}</p>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login

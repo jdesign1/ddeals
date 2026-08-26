@@ -529,7 +529,9 @@ export default function DealAssessmentPage() {
 
       <div className={`space-y-5 rounded-2xl border p-5 text-left shadow-xs ${verdictBorderClass} ${verdictBgClass}`}>
         <div className="flex items-center justify-between">
-          <h2 className={`font-display text-xl font-black tracking-tight ${verdictColorClass}`}>{verdict}</h2>
+          <h2 className={`font-display text-xl font-black tracking-tight ${verdictColorClass}`}>
+            {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Not enough history yet" : verdict}
+          </h2>
           {/* Add-to-list + Share, side by side (2026-08-12, per Jay's ask
               to replace the old full-width sticky "Add to List" bar at the
               bottom of this page with a small circle button next to
@@ -634,10 +636,12 @@ export default function DealAssessmentPage() {
             to fit inside a bottom sheet, no spare room for a second badge
             line without its own layout pass; flagged here as a possible
             follow-up rather than assumed in scope for either ask. */}
-        <span className={`dd-badge ${verdictBadge.className} w-fit`}>
-          <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
-          {verdictBadge.label}
-        </span>
+        {!uncertain && (
+          <span className={`dd-badge ${verdictBadge.className} w-fit`}>
+            <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
+            {verdictBadge.label}
+          </span>
+        )}
 
         <div className="flex items-start gap-4">
           <button
@@ -714,13 +718,11 @@ export default function DealAssessmentPage() {
             </>
           ) : uncertain ? (
             <>
-              <h4 className="mb-1 text-base font-black text-stone-900">
-                {verdict === "Early read" ? "Early read on this deal" : "Limited price history"}
-              </h4>
+              <h4 className="mb-1 text-base font-black text-stone-900">Why this isn&rsquo;t confirmed yet</h4>
               <p className="text-sm leading-relaxed text-stone-600">
                 {verdict === "Early read"
-                  ? "This looks like a saving based on older regular prices, but more recent checks are needed to confirm it."
-                  : "We don’t have enough regular prices yet to make a reliable comparison."}
+                  ? "This looks like a saving compared with an older regular price, but we need more recent checks before we can confirm it."
+                  : "We don’t have enough regular price history yet to tell whether this special is a genuine saving."}
               </p>
             </>
           ) : (

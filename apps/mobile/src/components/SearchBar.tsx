@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useSearch } from "@/lib/search-context";
 
 /**
@@ -206,7 +206,13 @@ export default function SearchBar({
               variant === "shadow" ? "border-transparent" : "border-stone-300"
             }`}
           >
-            <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
+            <span
+              className="material-symbols-outlined mr-3 flex-shrink-0 text-[22px] text-stone-500"
+              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+              aria-hidden="true"
+            >
+              search
+            </span>
             <input
               id="search-input"
               value={searchInput}
@@ -217,7 +223,7 @@ export default function SearchBar({
               }}
               onFocus={openSearch}
               placeholder={placeholder}
-              className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
+              className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-600 placeholder:text-stone-600 focus:outline-none"
               enterKeyHint="search"
             />
             {searchInput && (
