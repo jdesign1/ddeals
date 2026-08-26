@@ -702,9 +702,9 @@ export default function AuthPanel({
         alt="Dodgy Deal mascot waving"
         width={1165}
         height={1350}
-        sizes="144px"
+        sizes="115px"
         preload
-        className="mx-auto h-auto w-full max-w-[9rem]"
+        className="mx-auto h-auto w-full max-w-[7.2rem]"
       />
     </div>
   );
@@ -757,12 +757,12 @@ export default function AuthPanel({
       : "Login to Dodgy deals with your email and password";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-full flex-col gap-4">
       {/* The illustration belongs to the Login experience only; the Create account
           tab keeps the form focused and avoids repeating the artwork. */}
       {mode === "signin" && authIllustration}
       <p className="text-sm font-medium text-stone-600">{subtitle}</p>
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
+      <form onSubmit={handleSubmit} noValidate className="flex min-h-full flex-1 flex-col gap-3">
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login
             tab move email and password fields to the top below the log in
             statement sentence") -- sign-up keeps the original top-to-bottom
@@ -814,13 +814,15 @@ export default function AuthPanel({
             `globals.css`: `.dd-btn:disabled { opacity: 0.5; }`) already
             dims the button to 50% opacity, so this reuses that existing
             look for invalid fields. */}
-        <button
-          type="submit"
-          disabled={submitting || hasBlockingFieldErrors}
-          className="dd-btn dd-btn-primary w-full cursor-pointer"
-        >
-          {submitting ? "Please wait…" : mode === "signin" ? "Log in" : "Create account"}
-        </button>
+        <div className="sticky bottom-0 z-10 mt-auto bg-white pt-3">
+          <button
+            type="submit"
+            disabled={submitting || hasBlockingFieldErrors}
+            className="dd-btn dd-btn-primary w-full cursor-pointer"
+          >
+            {submitting ? "Please wait…" : mode === "signin" ? "Log in" : "Create account"}
+          </button>
+        </div>
       </form>
     </div>
   );
