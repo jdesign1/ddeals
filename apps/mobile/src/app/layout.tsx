@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
-import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import GlobalOverlays from "@/components/GlobalOverlays";
 import ScrollContainer from "@/components/ScrollContainer";
@@ -66,7 +65,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 HeaderOverrideProvider already uses for AppHeader's title
                 override. */}
             <SearchProvider>
-              <AppHeader />
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
                   normal flex sibling (its own row, reserving space below
                   this scroll container) to `fixed` (see that component's

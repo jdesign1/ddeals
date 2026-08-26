@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { Check, RefreshCw } from "lucide-react";
+import AppHeader from "@/components/AppHeader";
 import { useSearch } from "@/lib/search-context";
 import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
@@ -155,6 +156,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       onTouchCancel={resetPull}
       onScroll={handleScroll}
     >
+      <AppHeader />
       {(pullDistance > 0 || refreshing || feedback) && (
         <div
           className="pointer-events-none fixed inset-x-0 top-8 z-[9999] flex -translate-y-1/2 justify-center"

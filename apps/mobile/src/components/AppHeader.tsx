@@ -234,7 +234,7 @@ export default function AppHeader() {
       className={`app-header-shell sticky top-0 z-[45] w-full flex-shrink-0 ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
       aria-hidden={pathname === "/" && isHiddenOnCheckDeals}
     >
-      <div className={`app-header-content ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}>
+      <div>
       {isAnonymousSession && (
         <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center text-[11px] font-black tracking-widest text-amber-950">
           Test mode — anonymous test account, not linked to an email
@@ -385,11 +385,9 @@ export default function AppHeader() {
       </div>
     </div>
 
-    {/* Keep the profile overlay outside `.app-header-shell`: that shell uses
-        `overflow: hidden` so it can collapse while scrolling. A fixed
-        descendant inside that clipped shell is constrained to the header
-        height, which makes the sheet appear to open in the top nav and then
-        disappear. */}
+    {/* Keep the profile overlay outside `.app-header-shell` so the sheet is
+        independent from the sticky header's hide/show transform and can
+        always cover the full viewport. */}
     <AnimatePresence>
       {isMenuOpen && (
         <>
