@@ -1074,7 +1074,7 @@ export default function FullScreenSearch() {
                           smaller positive tracking value, since Jay asked
                           for "normal" specifically, not just "less wide." */}
                       <h3 className="font-sans text-[13px] leading-4 font-black tracking-normal text-stone-600">
-                        {sortedPopularSpecials.length} {dealFilter === "dodgy" ? "dodgy deals" : dealFilter === "real" ? "real deals" : "deals"} found
+                        {sortedPopularSpecials.length} {dealFilter === "dodgy" ? "dodgy signals" : dealFilter === "real" ? "real deals" : "deals"} found
                       </h3>
                       {renderCategoriesAndSort(
                         popularCategoryFilter,
@@ -1112,7 +1112,7 @@ export default function FullScreenSearch() {
                   <div className="mt-8 space-y-1 py-8 text-center">
                     <p className="text-[13px] leading-4 font-bold tracking-widest text-stone-500">
                       {dealFilter === "dodgy"
-                        ? "No dodgy deals found right now"
+                        ? "No Dodgy deals or review signals found right now"
                         : dealFilter === "real"
                           ? "No real deals found right now"
                           : "No deals found right now"}

@@ -529,9 +529,9 @@ function TrendingSection({
     filter === "dodgy"
       ? {
           title: "Dodgy deals",
-          description: "Specials that look like misleading discounts.",
-          empty: "No dodgy deals found right now.",
-          categoryEmpty: "No dodgy deals in this category right now.",
+          description: "Confirmed Dodgy deals and possible signals needing more checks.",
+          empty: "No Dodgy deals or review signals found right now.",
+          categoryEmpty: "No Dodgy deals or review signals in this category right now.",
         }
       : filter === "real"
         ? {

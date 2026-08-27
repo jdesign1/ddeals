@@ -19,6 +19,8 @@ import {
   fetchPriceHistory90d,
   validateCurrentDeal,
   applyTargetedDealToProducts,
+  isDodgyReviewCandidate,
+  DODGY_REVIEW_OVER_NORMAL_THRESHOLD,
   __targetedDealValidations,
   __liveProductsRefreshes,
   __liveProductsCache,
@@ -176,6 +178,35 @@ test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'",
   const rows = [row({ verdict: "UNKNOWN" })];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
   assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
+});
+
+test("buildProductCardsFromSpecials: flags only safe 15% duration-only review candidates", () => {
+  const candidateRows = [row({
+    verdict: "UNKNOWN",
+    sale_price: 11.6,
+    normal_price: 10,
+    evidence_status: "SUFFICIENT",
+    evidence_strength: "DURATION_ONLY",
+    store_history_ready: true,
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", candidateRows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(DODGY_REVIEW_OVER_NORMAL_THRESHOLD, 15);
+  assert.equal(deal.dealType, "Unverified Deal");
+  assert.equal(deal.isDodgyReviewCandidate, true);
+
+  assert.equal(isDodgyReviewCandidate({
+    ...candidateRows[0],
+    sale_price: 11.5,
+  }), false, "the 15% boundary is not included");
+  assert.equal(isDodgyReviewCandidate({
+    ...candidateRows[0],
+    store_history_ready: false,
+  }), false, "store history must be ready");
+  assert.equal(isDodgyReviewCandidate({
+    ...candidateRows[0],
+    evidence_status: "EARLY",
+  }), false, "early evidence stays neutral");
 });
 
 test("buildProductCardsFromSpecials: EARLY evidence stays neutral but carries its indicative baseline", () => {

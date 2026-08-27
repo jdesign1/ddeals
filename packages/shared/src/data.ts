@@ -95,6 +95,8 @@ export interface CurrentDeal {
   discountPercentage: number;
   dealType: "Dodgy Deal" | "Real Deal" | "Fair Price" | "Unverified Deal";
   wasArtificiallyInflated: boolean;
+  /** A strong price-gap signal with duration-only evidence; not confirmed. */
+  isDodgyReviewCandidate?: boolean;
   reason: string;
   explanation: string | null;
   isOnSpecial: boolean;
@@ -176,6 +178,38 @@ export const VIEW_VERDICT_SHORT_REASON: Record<string, string> = {
   MARGINAL: "Fair Price",
   UNKNOWN: "Not Enough History",
 };
+
+/**
+ * A deliberately separate review threshold for duration-only evidence. This
+ * does not change the upstream verdict: it only identifies a narrow group of
+ * unknown rows worth showing in the Dodgy review filter. A single long-held
+ * baseline can be stale, so the price gap must be materially larger than the
+ * normal 5% Dodgy threshold before we surface it for more checking.
+ */
+export const DODGY_REVIEW_OVER_NORMAL_THRESHOLD = 15;
+
+/**
+ * Identifies a possible Dodgy signal without converting it into a confirmed
+ * Dodgy verdict. Every condition is required so early, incomplete, legacy,
+ * and store-history-not-ready rows remain neutral.
+ */
+export function isDodgyReviewCandidate(row: Pick<
+  DodgyDealsRow,
+  "verdict" | "evidence_status" | "evidence_strength" | "store_history_ready" | "normal_price" | "sale_price"
+>): boolean {
+  if (
+    row.verdict !== "UNKNOWN" ||
+    row.evidence_status !== "SUFFICIENT" ||
+    row.evidence_strength !== "DURATION_ONLY" ||
+    row.store_history_ready !== true ||
+    row.normal_price == null ||
+    row.normal_price <= 0
+  ) {
+    return false;
+  }
+
+  return row.sale_price > row.normal_price * (1 + DODGY_REVIEW_OVER_NORMAL_THRESHOLD / 100);
+}
 
 /**
  * Applies the new materiality floor to legacy cache rows until the upstream
@@ -396,6 +430,7 @@ export function mergeProductMeta(memberMetas: ProductMetaInput[]): ProductMetaIn
 
 function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
   const verdict = effectiveViewVerdict(row);
+  const isDodgyReviewCandidateRow = isDodgyReviewCandidate(row);
   return {
     sourceProductId: row.product_id,
     sourceStoreId: row.store_id,
@@ -405,6 +440,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
     dealType: verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[verdict],
     wasArtificiallyInflated: verdict === "DODGY",
+    isDodgyReviewCandidate: isDodgyReviewCandidateRow,
     reason: VIEW_VERDICT_SHORT_REASON[verdict] || "Standard Special",
     explanation: row.reason,
     isOnSpecial: true,
