@@ -16,7 +16,7 @@ import {
 } from "@dodgey-deals/shared";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
-import { DEAL_FILTER_OPTIONS, matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
+import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
@@ -25,6 +25,7 @@ import StorePill from "@/components/StorePill";
 import SearchBar from "@/components/SearchBar";
 import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
+import DealFilterTabs from "@/components/DealFilterTabs";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -163,11 +164,12 @@ export default function HomePage() {
     isActive: isSearchActive,
     selectedStores,
     toggleStore,
+    dealFilter,
+    setDealFilter,
   } = useSearch();
 
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
-  const [homeTab, setHomeTab] = useState<DealFilter>("all");
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
 
@@ -185,14 +187,14 @@ export default function HomePage() {
     const all: FlatDeal[] = [];
     for (const product of products) {
       const qualifying = product.currentDeals.filter(
-        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, homeTab)
+        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, dealFilter)
       );
       if (!qualifying.length) continue;
       const best = qualifying.reduce((a, b) => (b.price < a.price ? b : a));
       all.push({ product, deal: best });
     }
     return all;
-  }, [products, selectedStores, homeTab]);
+  }, [products, selectedStores, dealFilter]);
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -278,19 +280,8 @@ export default function HomePage() {
       )}
 
       {!isSearchActive && loadingProducts && (
-        <div className="mx-5 flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm" aria-label="Home sections">
-          {DEAL_FILTER_OPTIONS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setHomeTab(tab.id)}
-              className={`flex-1 rounded-lg py-2 text-[13px] leading-4 font-bold ${
-                homeTab === tab.id ? "bg-stone-900 text-white shadow-xs" : "text-stone-600"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="mx-5" aria-label="Home sections">
+          <DealFilterTabs value={dealFilter} onChange={setDealFilter} />
         </div>
       )}
 
@@ -374,49 +365,13 @@ export default function HomePage() {
               below, and `FullScreenSearch.tsx`'s Categories/Sort triggers +
               category chips -- one consistent "flat, shadow-grounded"
               language app-wide instead of border outlines. */}
-          <div className="mx-5 flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
-            {DEAL_FILTER_OPTIONS.map((tab) => {
-              const isActive = homeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setHomeTab(tab.id)}
-                  className={`relative z-0 flex-1 rounded-lg py-2 text-[13px] leading-4 font-bold transition-colors ${
-                    isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
-                  }`}
-                >
-                  {/* initial={false} (2026-08-20, per Jay: "don't animate
-                      the tabs into view [on load] ... animation only occurs
-                      when users select the tab") -- without it, AnimatePresence
-                      plays this fill's `initial` pop-in for whichever tab is
-                      already active the moment this component first mounts
-                      (page load/reload), not just on a real click. `initial=
-                      {false}` only suppresses that one-time first-mount
-                      animation; a later real tab switch still mounts/unmounts
-                      the fill normally and plays the full enter/exit spring,
-                      since that's a genuine child-list change happening
-                      after the initial render, not the initial render itself. */}
-                  <AnimatePresence initial={false}>
-                    {isActive && (
-                      <motion.span
-                        className="absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
-                        style={{ zIndex: -1 }}
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.5, opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      />
-                    )}
-                  </AnimatePresence>
-                  {tab.label}
-                </button>
-              );
-            })}
+          <div className="mx-5">
+            <DealFilterTabs value={dealFilter} onChange={setDealFilter} />
           </div>
 
           <TrendingSection
             deals={filteredDeals}
-            filter={homeTab}
+            filter={dealFilter}
             sortBy={dealSortBy}
             onSortByChange={setDealSortBy}
             categoryFilter={dealCategoryFilter}

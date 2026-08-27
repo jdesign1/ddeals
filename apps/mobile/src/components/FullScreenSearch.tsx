@@ -18,8 +18,9 @@ import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import StorePill from "@/components/StorePill";
+import DealFilterTabs from "@/components/DealFilterTabs";
 import { useSearch } from "@/lib/search-context";
-import { DEAL_FILTER_OPTIONS, matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
+import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 
 /**
@@ -214,6 +215,8 @@ export default function FullScreenSearch() {
     preserveSearchStateOnOpen,
     selectedStores,
     toggleStore,
+    dealFilter,
+    setDealFilter,
   } = useSearch();
 
   // Scroll position (2026-08-10, per Jay's ask to keep it across a
@@ -313,42 +316,11 @@ export default function FullScreenSearch() {
   }, []);
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("cheapest");
-  // Was "dodgy" (2026-08-10, per Jay's ask for the full-screen search screen
-  // to open on the Dodgy tab) -- changed to "specials" 2026-08-20, per Jay:
-  // "When searching for an item, All specials tab should be defaulted, to
-  // stop users having zero results if the item isn't dodgy." A typed query
-  // is filtered against THIS state (see the `priceFilter === "dodgy" &&
-  // !p.currentDeals.some(...)` check further down, the actual results-list
-  // filter) -- with "dodgy" as the default, typing the name of a product
-  // that's on special but not classified Dodgy produced a correct-looking
-  // but empty results list, no visible reason why, since the search input
-  // itself gave no indication a filter was silently excluding everything.
-  // "specials" shows every on-special match regardless of verdict, so a
-  // search only ever comes back empty when there's genuinely no matching
-  // product on special, not because of an unrelated tab selection the user
-  // never touched. `handleBack`'s reset value below updated to match, same
-  // "kept in sync" convention as before.
-  const [priceFilter, setPriceFilter] = useState<DealFilter>("all");
+  // The selected deal filter is shared with Check Deals through
+  // SearchProvider, so switching screens keeps the same tab selected and
+  // applies the same filter to both surfaces.
   const [resultsCategoryFilter, setResultsCategoryFilter] = useState<string[]>([]);
 
-  // `popularTab` (this state's own pre-3-character "Popular"/browse-mode
-  // counterpart, above) was DELIBERATELY left on "dodgy" the same day
-  // `priceFilter` above changed -- browsing before anyone's typed anything
-  // isn't "searching for an item" (Jay's own wording that day), so the
-  // zero-results failure mode `priceFilter`'s own change fixed didn't apply
-  // here. Changed anyway 2026-08-20 (later same day), per Jay's follow-up:
-  // "Full screen search mode should always default to 'All Specials' not
-  // dodgy, and be the same for any entry point to search" -- broader than
-  // the earlier ask, this explicitly covers BOTH tabs and every way into
-  // this screen, not just the post-typing results view. `handleBack` below
-  // now resets this alongside `priceFilter` too (previously only reset
-  // `priceFilter`, since `popularTab` had no "always defaults to X" promise
-  // to keep yet) -- this component doesn't unmount between opens (`isActive`
-  // just toggles its visibility, see `search-context.tsx`), so without a
-  // matching reset here a manual tab switch from a PREVIOUS visit would
-  // still be showing on the NEXT one, which is exactly the "any entry
-  // point" consistency this ask is about.
-  const [popularTab, setPopularTab] = useState<DealFilter>("all");
   // "discount" to match the tab-click handler below, which sets this same
   // sort whenever the All-specials tab is selected -- keeps the initial
   // render consistent with what clicking the (now-default) tab would
@@ -357,20 +329,21 @@ export default function FullScreenSearch() {
   const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("discount");
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
 
-  // Re-apply the browse defaults whenever a fresh full-screen search session
-  // opens. A deal-page back navigation deliberately opts out through
-  // `preserveSearchStateOnOpen`: the component stays mounted, so the selected
-  // tab, filters, and `lastScrollTopRef` are already the saved search state we
-  // want to restore rather than fresh-session defaults.
+  // Track the open transition for scroll restoration. The shared deal filter
+  // deliberately is not reset here: it must survive full-screen search
+  // open/close transitions and navigation back to Check Deals.
   const [lastSearchOpen, setLastSearchOpen] = useState(isOpen);
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
-      setPopularTab("all");
-      setPopularSortBy("discount");
-      setPriceFilter("all");
+      setPopularSortBy(dealFilter === "dodgy" ? "recent" : "discount");
     }
   }
+
+  const handleDealFilterChange = (filter: DealFilter) => {
+    setDealFilter(filter);
+    setPopularSortBy(filter === "dodgy" ? "recent" : "discount");
+  };
 
   const [categorySheetTarget, setCategorySheetTarget] = useState<"popular" | "results" | null>(null);
   const activeCategoryFilter = categorySheetTarget === "results" ? resultsCategoryFilter : popularCategoryFilter;
@@ -396,7 +369,7 @@ export default function FullScreenSearch() {
           value: popularSortBy as string,
           onChange: (v: string) => setPopularSortBy(v as PopularSortBy),
           options:
-            popularTab === "dodgy"
+            dealFilter === "dodgy"
               ? [
                   { value: "recent", label: "Most recent" },
                   { value: "price-desc", label: "Highest price" },
@@ -451,7 +424,7 @@ export default function FullScreenSearch() {
   // enabled only when at least one product in it has a matching on-special
   // deal for the selected supermarkets, so the Categories sheet cannot lead
   // to an empty result set.
-  const categoryDealFilter = categorySheetTarget === "results" ? priceFilter : popularTab;
+  const categoryDealFilter = dealFilter;
   const categoryDealCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
@@ -501,13 +474,13 @@ export default function FullScreenSearch() {
       if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category))) {
         return [];
       }
-      if (popularTab === "all") return [{ product, bestDeal }];
+      if (dealFilter === "all") return [{ product, bestDeal }];
 
       // A product group can contain different retailer assessments. Select
       // the best deal within the active tab so Real Deals never displays a
       // Dodgy retailer price, and vice versa.
       const matchingDeals = product.currentDeals.filter(
-        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, popularTab)
+        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, dealFilter)
       );
       if (matchingDeals.length === 0) return [];
       const filteredBestDeal = matchingDeals.reduce(
@@ -517,7 +490,7 @@ export default function FullScreenSearch() {
       return [{ product, bestDeal: filteredBestDeal }];
     });
     const sorted = [...filtered];
-    if (popularTab === "dodgy") {
+    if (dealFilter === "dodgy") {
       if (popularSortBy === "recent") {
         sorted.sort((a, b) => new Date(b.bestDeal.saleStartedAt || 0).getTime() - new Date(a.bestDeal.saleStartedAt || 0).getTime());
       } else if (popularSortBy === "price-desc") {
@@ -529,9 +502,9 @@ export default function FullScreenSearch() {
       sorted.sort((a, b) => (b.bestDeal.dealType === "Dodgy Deal" ? 1 : 0) - (a.bestDeal.dealType === "Dodgy Deal" ? 1 : 0));
     }
     return sorted;
-  }, [popularSpecials, popularSortBy, popularTab, popularCategoryFilter, selectedStores]);
+  }, [popularSpecials, popularSortBy, dealFilter, popularCategoryFilter, selectedStores]);
 
-  const popularPageSize = popularTab === "dodgy" ? POPULAR_PAGE_SIZE_DODGY : POPULAR_PAGE_SIZE_SPECIALS;
+  const popularPageSize = dealFilter === "dodgy" ? POPULAR_PAGE_SIZE_DODGY : POPULAR_PAGE_SIZE_SPECIALS;
   // Infinite-scroll reveal replaced the old "Show all N deals" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
   // sortedPopularSpecials` restarts the reveal at the top whenever the tab,
@@ -555,18 +528,18 @@ export default function FullScreenSearch() {
     if (trimmedQuery.length < 3) return [];
     const textMatched = products.filter((p) => productMatchesSearch(p, trimmedQuery));
     const matched = textMatched.filter((p) => {
-      const matchingDeals = applicableDealsFor(p, selectedStores, priceFilter);
+      const matchingDeals = applicableDealsFor(p, selectedStores, dealFilter);
       if (matchingDeals.length === 0) return false;
       if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category))) return false;
       return true;
     });
 
-    const getBestPrice = (p: ProductCardData) => Math.min(...applicableDealsFor(p, selectedStores, priceFilter).map((d) => d.price));
-    const getMaxDiscount = (p: ProductCardData) => Math.max(...applicableDealsFor(p, selectedStores, priceFilter).map((d) => d.discountPercentage));
+    const getBestPrice = (p: ProductCardData) => Math.min(...applicableDealsFor(p, selectedStores, dealFilter).map((d) => d.price));
+    const getMaxDiscount = (p: ProductCardData) => Math.max(...applicableDealsFor(p, selectedStores, dealFilter).map((d) => d.discountPercentage));
     const getDodgyScore = (p: ProductCardData) =>
-      applicableDealsFor(p, selectedStores, priceFilter).some((d) => d.dealType === "Dodgy Deal")
+      applicableDealsFor(p, selectedStores, dealFilter).some((d) => d.dealType === "Dodgy Deal")
         ? 2
-        : applicableDealsFor(p, selectedStores, priceFilter).some((d) => d.dealType === "Fair Price")
+        : applicableDealsFor(p, selectedStores, dealFilter).some((d) => d.dealType === "Fair Price")
           ? 1
           : 0;
 
@@ -583,11 +556,11 @@ export default function FullScreenSearch() {
         return 0;
       })
       .map((x) => x.product);
-  }, [products, trimmedQuery, selectedStores, resultsSortBy, priceFilter, resultsCategoryFilter]);
+  }, [products, trimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter]);
 
   const totalRetailersCount = useMemo(
-    () => new Set(sortedProducts.flatMap((p) => applicableDealsFor(p, selectedStores, priceFilter).map((d) => d.store))).size,
-    [sortedProducts, selectedStores, priceFilter]
+    () => new Set(sortedProducts.flatMap((p) => applicableDealsFor(p, selectedStores, dealFilter).map((d) => d.store))).size,
+    [sortedProducts, selectedStores, dealFilter]
   );
   // Infinite-scroll reveal replaced the old "Show all N items" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
@@ -607,21 +580,6 @@ export default function FullScreenSearch() {
 
   const handleClearText = () => setQuery("");
   const handleBack = () => {
-    // Reset to "specials" (the default as of 2026-08-20, see the state
-    // declaration above), not "dodgy" -- keeps the reset value in sync with
-    // what the screen opens on.
-    setPriceFilter("all");
-    // `popularTab`/`popularSortBy` reset added 2026-08-20 (later same day),
-    // per Jay: "Full screen search mode should always default to 'All
-    // Specials' not dodgy, and be the same for any entry point to search"
-    // -- see the `popularTab` state declaration's own comment above for why
-    // this wasn't here already. Without this, closing search after
-    // manually switching to the Dodgy tab would leave the NEXT open on
-    // Dodgy too (this component stays mounted between opens, its state
-    // doesn't reset itself), which is exactly the inconsistent-entry-point
-    // behaviour this ask is about.
-    setPopularTab("all");
-    setPopularSortBy("discount");
     closeSearch();
   };
 
@@ -1047,45 +1005,10 @@ export default function FullScreenSearch() {
                         pills/tabs/sort/category no-border ask -- see
                         `app/page.tsx`'s Home tab track for the full
                         cross-reference. */}
-                    <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
-                      {(
-                        DEAL_FILTER_OPTIONS
-                      ).map((tab) => {
-                        const isActive = popularTab === tab.id;
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => {
-                              setPopularTab(tab.id);
-                              setPopularSortBy(tab.id === "dodgy" ? "recent" : "discount");
-                              // No longer resets a local "show all" state here (that state's
-                              // gone, see useInfiniteReveal.ts) -- sortedPopularSpecials is
-                              // itself recomputed from popularTab/popularSortBy, so
-                              // useInfiniteReveal's own `resetKey: sortedPopularSpecials`
-                              // already restarts the reveal on this exact tab switch.
-                            }}
-                            className={`relative z-0 flex-1 cursor-pointer rounded-lg py-2 text-[13px] leading-4 font-bold transition-colors ${
-                              isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
-                            }`}
-                          >
-                            <AnimatePresence>
-                              {isActive && (
-                                <motion.span
-                                  className="absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
-                                  style={{ zIndex: -1 }}
-                                  initial={{ scale: 0.5, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  exit={{ scale: 0.5, opacity: 0 }}
-                                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                />
-                              )}
-                            </AnimatePresence>
-                            {tab.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <DealFilterTabs
+                      value={dealFilter}
+                      onChange={handleDealFilterChange}
+                    />
 
                     {/* StorePill -- same component as Home's own store row
                         (text-[13px] leading-4, per-store brand color), per Jay's ask.
@@ -1151,7 +1074,7 @@ export default function FullScreenSearch() {
                           smaller positive tracking value, since Jay asked
                           for "normal" specifically, not just "less wide." */}
                       <h3 className="font-sans text-[13px] leading-4 font-black tracking-normal text-stone-600">
-                        {sortedPopularSpecials.length} {popularTab === "dodgy" ? "dodgy deals" : popularTab === "real" ? "real deals" : "deals"} found
+                        {sortedPopularSpecials.length} {dealFilter === "dodgy" ? "dodgy deals" : dealFilter === "real" ? "real deals" : "deals"} found
                       </h3>
                       {renderCategoriesAndSort(
                         popularCategoryFilter,
@@ -1188,9 +1111,9 @@ export default function FullScreenSearch() {
                 ) : (
                   <div className="mt-8 space-y-1 py-8 text-center">
                     <p className="text-[13px] leading-4 font-bold tracking-widest text-stone-500">
-                      {popularTab === "dodgy"
+                      {dealFilter === "dodgy"
                         ? "No dodgy deals found right now"
-                        : popularTab === "real"
+                        : dealFilter === "real"
                           ? "No real deals found right now"
                           : "No deals found right now"}
                     </p>
@@ -1315,39 +1238,7 @@ export default function FullScreenSearch() {
                           pills/tabs/sort/category no-border ask -- see
                           `app/page.tsx`'s Home tab track for the full
                           cross-reference. */}
-                      <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
-                        {(
-                          DEAL_FILTER_OPTIONS
-                        ).map((tab) => {
-                          const isActive = priceFilter === tab.id;
-                          return (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              id={`price-filter-${tab.id}`}
-                              aria-pressed={isActive}
-                              onClick={() => setPriceFilter(tab.id)}
-                              className={`relative z-0 flex-1 cursor-pointer rounded-lg py-2 text-[13px] leading-4 font-bold transition-colors ${
-                                isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
-                              }`}
-                            >
-                              <AnimatePresence>
-                                {isActive && (
-                                  <motion.span
-                                    className="absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
-                                    style={{ zIndex: -1 }}
-                                    initial={{ scale: 0.5, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0.5, opacity: 0 }}
-                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                  />
-                                )}
-                              </AnimatePresence>
-                              {tab.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <DealFilterTabs value={dealFilter} onChange={handleDealFilterChange} buttonIdPrefix="price-filter" />
 
                       {/* Same `StorePill` component as Home's row + the
                           pre-3-char row above (2026-08-09) -- previously
@@ -1390,14 +1281,14 @@ export default function FullScreenSearch() {
                   <div className="space-y-4">
                     {sortedProducts.length > 0 ? (
                       visibleSearchResults.map((product) => {
-                        const bestDeal = cheapestApplicableDeal(product, selectedStores, priceFilter);
+                        const bestDeal = cheapestApplicableDeal(product, selectedStores, dealFilter);
                         return (
                           <ProductListCard
                             key={product.id}
                             product={product}
                             deal={bestDeal}
                             storeLinePrefix={null}
-                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, priceFilter)}
+                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter)}
                             onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                           />
                         );

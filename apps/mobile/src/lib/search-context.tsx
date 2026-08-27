@@ -12,6 +12,7 @@ import {
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
 import { publishCatalogueUpdate, subscribeToCatalogueUpdates } from "./catalogue-refresh";
+import type { DealFilter } from "./deal-filters";
 
 /**
  * Global full-screen search state (2026-08-09, per Jay's ask: "clicking the
@@ -53,6 +54,9 @@ interface SearchContextValue {
   /** Supermarket preference shared by Check deals and full-screen search. */
   selectedStores: string[];
   toggleStore: (storeId: string) => void;
+  /** Deal filter shared by Check Deals and both full-screen search views. */
+  dealFilter: DealFilter;
+  setDealFilter: (filter: DealFilter) => void;
   query: string;
   setQuery: (value: string) => void;
   isActive: boolean;
@@ -138,6 +142,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   // full-screen search overlay always show and filter by the same preferred
   // supermarkets, even when the Home route is remounted between visits.
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
+  const [dealFilter, setDealFilter] = useState<DealFilter>("all");
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
@@ -265,6 +270,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       error,
       selectedStores,
       toggleStore,
+      dealFilter,
+      setDealFilter,
       query,
       setQuery,
       isActive,
@@ -328,7 +335,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openScanner: () => setIsScannerOpen(true),
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
