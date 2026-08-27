@@ -37,13 +37,13 @@ const CATALOGUE_CACHE_STORE = "catalogue";
 const CATALOGUE_CACHE_KEY = "live_products";
 const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
 /**
- * Bump whenever ProductCard's shape or deal-verdict contract changes, so an
- * old cached catalogue cannot preserve a stale classifier result. The v6
- * review-candidate rollout invalidates v5 records that do not carry the
- * separate possible-Dodgy flag. Keep this version tied to the deployed
- * classifier contract, not only TypeScript shape changes.
+ * Bump whenever ProductCard's shape, deal-verdict contract, or catalogue
+ * loading contract changes, so an old cached catalogue cannot preserve stale
+ * or incomplete results. The v7 pagination rollout invalidates v6 records
+ * that may contain only the first server-capped page. Keep this version tied
+ * to the deployed catalogue contract, not only TypeScript shape changes.
  */
-const CATALOGUE_CACHE_VERSION = 6;
+const CATALOGUE_CACHE_VERSION = 7;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- the client refresh policy is deliberately much less chatty than the server-side 15-minute materialized-view refresh.
 
 export interface CatalogueCacheMetadata {
