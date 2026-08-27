@@ -243,11 +243,13 @@ export const titleCase = (s: string | null | undefined): string =>
   (s || "").replace(/\b\w/g, (c) => c.toUpperCase());
 
 /**
- * PostgREST caps responses (commonly 1000 rows) regardless of ?limit=, so
- * anything that can exceed that must be paged with the Range header. Fetches
- * page 1 with `Prefer: count=exact` to learn the true row count from the
- * `Content-Range` response header, then fires every remaining page in
- * parallel.
+ * PostgREST can cap responses (commonly at 1000 rows) even when the caller
+ * requests a larger range. Fetches page 1 with `Prefer: count=exact`, then
+ * uses the number of rows actually returned as the real page size before
+ * firing the remaining pages in parallel. This matters when callers ask for
+ * 20,000 rows but the API returns only 1,000: the old implementation treated
+ * that short response as complete and silently dropped everything after row
+ * 1,000.
  */
 export async function fetchAllRows<T = Record<string, unknown>>(
   config: SupabaseRestConfig,
@@ -255,15 +257,15 @@ export async function fetchAllRows<T = Record<string, unknown>>(
   pageSize = 1000
 ): Promise<T[]> {
   const page = pageSize;
-  const MAX_PAGES = 100; // safety cap: MAX_PAGES * pageSize rows (100k at the default 1000/page)
+  const MAX_PAGES = 100; // safety cap based on the number of rows the server actually returns per page
 
-  const fetchPage = async (start: number, extraHeaders?: Record<string, string>) => {
+  const fetchPage = async (start: number, count: number, extraHeaders?: Record<string, string>) => {
     const res = await fetch(`${config.url}/rest/v1/${path}`, {
       headers: {
         apikey: config.anonKey,
         Authorization: `Bearer ${config.anonKey}`,
         "Range-Unit": "items",
-        Range: `${start}-${start + page - 1}`,
+        Range: `${start}-${start + count - 1}`,
         ...extraHeaders,
       },
     });
@@ -271,19 +273,25 @@ export async function fetchAllRows<T = Record<string, unknown>>(
     return res;
   };
 
-  const firstRes = await fetchPage(0, { Prefer: "count=exact" });
+  const firstRes = await fetchPage(0, page, { Prefer: "count=exact" });
   const firstData = (await firstRes.json()) as T[];
   const contentRange = firstRes.headers.get("content-range"); // e.g. "0-999/12702"
+  const returnedRange = contentRange?.split("/")[0];
+  const [returnedStart, returnedEnd] = returnedRange?.split("-").map(Number) ?? [0, firstData.length - 1];
+  const actualPageSize = returnedEnd >= returnedStart ? returnedEnd - returnedStart + 1 : firstData.length;
   const total =
     contentRange && contentRange.includes("/") ? parseInt(contentRange.split("/")[1], 10) : NaN;
 
-  if (!Number.isFinite(total) || firstData.length < page) {
+  if (!Number.isFinite(total) || actualPageSize <= 0 || total <= firstData.length) {
     return firstData; // no exact count available, or that one page was everything
   }
 
-  const remainingPages = Math.min(Math.ceil((total - page) / page), MAX_PAGES - 1);
+  const remainingPages = Math.ceil((total - firstData.length) / actualPageSize);
+  if (remainingPages > MAX_PAGES - 1) {
+    throw new Error(`${path} -> response exceeds safe pagination limit of ${MAX_PAGES * actualPageSize} rows`);
+  }
   const restResponses = await Promise.all(
-    Array.from({ length: remainingPages }, (_, i) => fetchPage(page * (i + 1)))
+    Array.from({ length: remainingPages }, (_, i) => fetchPage(firstData.length + actualPageSize * i, page))
   );
   const restData = await Promise.all(restResponses.map((res) => res.json() as Promise<T[]>));
   return firstData.concat(...restData);
@@ -647,6 +655,57 @@ async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string): Promi
   return rows[0] ?? null;
 }
 
+/**
+ * Cheap cache revalidation marker. `current_prices.updated_at` is public to
+ * the app role and changes when the scraper writes a newer price snapshot;
+ * unlike the full catalogue request, this returns one scalar row. A failure
+ * is deliberately treated as "unknown" by callers so a transient metadata
+ * outage never prevents the app from using its last good catalogue.
+ */
+async function fetchLatestCurrentSpecialUpdatedAt(config: SupabaseRestConfig): Promise<number | null> {
+  try {
+    const row = await fetchFirstRow<{ updated_at: string | null }>(
+      config,
+      "current_prices?select=updated_at&is_special=eq.true&order=updated_at.desc&limit=1"
+    );
+    if (!row?.updated_at) return null;
+    const timestamp = Date.parse(row.updated_at);
+    return Number.isFinite(timestamp) ? timestamp : null;
+  } catch {
+    return null;
+  }
+}
+
+interface LatestSourceTimestampCacheEntry {
+  promise: Promise<number | null>;
+  resolvedAt: number | null;
+}
+
+const latestSourceTimestampCache = new Map<string, LatestSourceTimestampCacheEntry>();
+const LATEST_SOURCE_TIMESTAMP_CACHE_TTL_MS = 30_000;
+
+function fetchLatestCurrentSpecialUpdatedAtDeduped(config: SupabaseRestConfig): Promise<number | null> {
+  const key = `${config.url}::${config.anonKey}`;
+  const now = Date.now();
+  const existing = latestSourceTimestampCache.get(key);
+  if (existing && (existing.resolvedAt === null || now - existing.resolvedAt < LATEST_SOURCE_TIMESTAMP_CACHE_TTL_MS)) {
+    return existing.promise;
+  }
+
+  const promise = fetchLatestCurrentSpecialUpdatedAt(config);
+  const entry: LatestSourceTimestampCacheEntry = { promise, resolvedAt: null };
+  latestSourceTimestampCache.set(key, entry);
+  promise.then(
+    () => {
+      entry.resolvedAt = Date.now();
+    },
+    () => {
+      if (latestSourceTimestampCache.get(key) === entry) latestSourceTimestampCache.delete(key);
+    }
+  );
+  return promise;
+}
+
 async function fetchTargetedDealRow(
   config: SupabaseRestConfig,
   productId: string,
@@ -889,7 +948,8 @@ function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCar
  * specifically about egress efficiency -- checks the persistent, cross-
  * session IndexedDB cache (`catalogue-cache.ts`, a direct port of
  * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
- * browser, within its 1-hour TTL) skips the network fetch entirely --
+ * browser, within its 6-hour TTL) skips the network fetch entirely when the
+ * cheap source timestamp has not advanced --
  * `dodgy_deals` AND `buildMatchIndex()`'s two paginated fetches, not just
  * one of them. Only on a miss does this fall through to the in-memory
  * dedup + real network fetch, then best-effort writes the result back to
@@ -904,10 +964,25 @@ function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCar
  */
 export async function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const cached = await readCatalogueCache();
-  if (cached) return cached;
+  if (cached) {
+    const metadata = await readCatalogueCacheMetadata();
+    if (Number.isFinite(metadata?.sourceUpdatedAt)) {
+      const latestSourceUpdatedAt = await fetchLatestCurrentSpecialUpdatedAtDeduped(config);
+      // Unknown freshness is fail-safe: keep the last good catalogue and let
+      // the normal TTL/foreground refresh policy provide the next retry.
+      if (latestSourceUpdatedAt === null || latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+        return cached;
+      }
+    } else {
+      // Records written before source markers existed remain valid until their
+      // normal TTL expires; they will acquire a marker on the next refresh.
+      return cached;
+    }
+  }
 
   const fresh = await loadLiveProductsDeduped(config);
-  if (fresh.length) writeCatalogueCache(fresh);
+  const sourceUpdatedAt = await fetchLatestCurrentSpecialUpdatedAtDeduped(config);
+  if (fresh.length) writeCatalogueCache(fresh, sourceUpdatedAt);
   return fresh;
 }
 
@@ -955,8 +1030,9 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
     }
 
     const fresh = await loadLiveProductsDeduped(config);
-    if (fresh.length) await writeCatalogueCache(fresh);
-    else await writeCatalogueCacheMetadata();
+    const sourceUpdatedAt = await fetchLatestCurrentSpecialUpdatedAtDeduped(config);
+    if (fresh.length) await writeCatalogueCache(fresh, sourceUpdatedAt);
+    else await writeCatalogueCacheMetadata(Date.now(), sourceUpdatedAt);
     const refreshEntry = __liveProductsRefreshes.get(cacheKey);
     if (refreshEntry) {
       refreshEntry.lastSuccessfulRefreshAt = Date.now();

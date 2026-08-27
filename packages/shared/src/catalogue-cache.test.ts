@@ -59,6 +59,14 @@ test("writeCatalogueCache then readCatalogueCache: real round trip through Index
   assert.deepEqual(result, products);
 });
 
+test("writeCatalogueCache: preserves the source freshness marker in metadata", async () => {
+  const sourceUpdatedAt = Date.parse("2026-08-26T14:58:51.659Z");
+  await writeCatalogueCache([fakeProduct("p1")], sourceUpdatedAt);
+  const metadata = await readCatalogueCacheMetadata();
+  assert.equal(metadata?.sourceUpdatedAt, sourceUpdatedAt);
+  assert.equal(Number.isFinite(metadata?.savedAt), true);
+});
+
 test("updateCatalogueCacheProducts: updates rows without resetting the full-catalogue timestamp", async () => {
   const originalProducts = [fakeProduct("p1")];
   await writeCatalogueCache(originalProducts);

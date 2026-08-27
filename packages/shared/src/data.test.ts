@@ -14,6 +14,7 @@ import {
   storeMatchesFilter,
   matchesAnySelectedStore,
   titleCase,
+  fetchAllRows,
   loadLiveProducts,
   refreshLiveProducts,
   fetchPriceHistory90d,
@@ -100,6 +101,33 @@ test("matchesAnySelectedStore: true if the store matches ANY selected filter, or
   assert.equal(matchesAnySelectedStore("Woolworths NZ", ["paknsave"]), false);
   assert.equal(matchesAnySelectedStore("Woolworths NZ", ["paknsave", "woolworths"]), true);
   assert.equal(matchesAnySelectedStore("Pak'nSave", []), false);
+});
+
+test("fetchAllRows: continues after a server-capped first page", async () => {
+  const original = globalThis.fetch;
+  const requestedRanges: string[] = [];
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const range = new Headers(init?.headers).get("Range") || "";
+    requestedRanges.push(range);
+    const start = Number(range.split("-")[0]);
+    const total = 2_500;
+    const rows = Array.from({ length: Math.min(1_000, total - start) }, (_, index) => ({ id: start + index }));
+    return {
+      ok: true,
+      status: rows.length === total ? 200 : 206,
+      headers: { get: (name: string) => name.toLowerCase() === "content-range" ? `${start}-${start + rows.length - 1}/${total}` : null },
+      json: async () => rows,
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const rows = await fetchAllRows<{ id: number }>({ url: "https://fake-pagination.example.com", anonKey: "k" }, "items", 20_000);
+    assert.equal(rows.length, 2_500);
+    assert.deepEqual(requestedRanges, ["0-19999", "1000-20999", "2000-21999"]);
+    assert.equal(rows[2_499].id, 2_499);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 
 // ---- buildProductCardsFromSpecials ----
@@ -420,9 +448,10 @@ test("loadLiveProducts: concurrent overlapping calls share one in-flight fetch, 
     // loadLiveProductsUncached makes 3 underlying fetchAllRows calls
     // (dodgy_deals_cache as of 2026-08-12, products, app_comparable_family_links)
     // -- 2 overlapping loadLiveProducts()
-    // calls sharing one fetch means 3 total, not 6. This is the exact
+    // calls sharing one fetch means 4 total, not 8. The fourth is the
+    // single-row freshness marker check. This is the exact
     // production failure mode: before this cache existed, this would be 6.
-    assert.equal(calls.length, 3, `expected 3 underlying fetches for 2 overlapping callers, got ${calls.length}`);
+    assert.equal(calls.length, 4, `expected 4 underlying fetches for 2 overlapping callers, got ${calls.length}`);
   } finally {
     restore();
   }
@@ -433,10 +462,10 @@ test("loadLiveProducts: a second call after the cache entry is evicted fetches a
   try {
     const config = fakeConfig("eviction");
     await loadLiveProducts(config);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 4);
     __liveProductsCache.delete(`${config.url}::${config.anonKey}`);
     await loadLiveProducts(config);
-    assert.equal(calls.length, 6, "expected a fresh fetch after manual cache eviction");
+    assert.equal(calls.length, 7, "expected a fresh catalogue pipeline after manual cache eviction");
   } finally {
     restore();
   }
@@ -546,7 +575,7 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     const config = fakeConfig("writeback");
     const result = await loadLiveProducts(config);
     assert.equal(result.length, 1, "expected one product card built from the one real dodgy_deals row");
-    assert.equal(calls.length, 3, "expected the normal 3-call network pipeline on a cache miss");
+    assert.equal(calls.length, 4, "expected the normal 3-call network pipeline plus one freshness marker on a cache miss");
 
     // writeCatalogueCache is fire-and-forget inside loadLiveProducts (not
     // awaited, matching the prototype's own pattern) -- give it a couple of
@@ -560,6 +589,42 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
   }
 });
 
+test("loadLiveProducts: refreshes a warm cache when the source timestamp advances", async () => {
+  const cachedProducts = [fakeProductCard("cached")];
+  await writeCatalogueCache(cachedProducts, Date.parse("2026-08-26T14:00:00Z"));
+
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("current_prices")) {
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => [{ updated_at: "2026-08-26T15:00:00Z" }],
+      } as unknown as Response;
+    }
+    const body = url.includes("dodgy_deals") ? [SAMPLE_DODGY_DEALS_ROW] : [];
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => body,
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(fakeConfig("source-advanced"));
+    assert.notDeepEqual(result, cachedProducts);
+    assert.equal(result.length, 1);
+    assert.equal(calls.length, 4, "expected one freshness check plus the three-call catalogue pipeline");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("refreshLiveProducts: repeated pulls are throttled after one full catalogue fetch", async () => {
   const { calls, restore } = installFetchStubWithOneRealRow();
   try {
@@ -570,7 +635,7 @@ test("refreshLiveProducts: repeated pulls are throttled after one full catalogue
     assert.equal(first.refreshed, true);
     assert.equal(second.throttled, true);
     assert.deepEqual(second.products, first.products);
-    assert.equal(calls.length, 3, "repeated pull gestures must not download the catalogue again");
+    assert.equal(calls.length, 4, "repeated pull gestures must not download the catalogue again");
   } finally {
     restore();
   }
@@ -585,7 +650,7 @@ test("refreshLiveProducts: the cooldown survives an in-memory reset via IndexedD
 
     const second = await refreshLiveProducts(config);
     assert.equal(second.throttled, true);
-    assert.equal(calls.length, 3, "a reload/new tab must respect the persisted refresh timestamp");
+    assert.equal(calls.length, 4, "a reload/new tab must respect the persisted refresh timestamp");
   } finally {
     restore();
   }
