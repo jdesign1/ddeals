@@ -508,6 +508,7 @@ export default function DealAssessmentPage() {
   const verdictBadge = VERDICT_BADGE[verdict];
 
   const cheapestStoreItem = rankingList[0];
+  const onlyOneSupermarket = rankingList.length === 1;
   const cheapestAveragePrice = cheapestStoreItem ? getRealAveragePrice(product, cheapestStoreItem.store) : null;
   const cheapestDiscountPct =
     cheapestStoreItem && cheapestAveragePrice && cheapestAveragePrice > 0
@@ -692,9 +693,11 @@ export default function DealAssessmentPage() {
                 "text-stone-600"
               }`}
             >
-              {verdict === "Dodgy Deal" || uncertain
-                ? `at ${dealStore}`
-                : `Lowest at ${cheapestStoreItem?.store ?? dealStore}`}
+              {onlyOneSupermarket
+                ? (cheapestStoreItem?.store ?? dealStore)
+                : verdict === "Dodgy Deal" || uncertain
+                  ? `at ${dealStore}`
+                  : `Lowest at ${cheapestStoreItem?.store ?? dealStore}`}
             </p>
           </div>
         </div>

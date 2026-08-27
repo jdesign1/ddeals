@@ -47,10 +47,9 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
 export interface ProductListCardProps {
   product: ProductCardData;
   deal: CurrentDeal;
-  /** Text before the store name, e.g. "Lowest at" / "Special at" (was
-   * "On special at" until 2026-08-17, Jay: "change wording to just
-   * 'special at supermarket', remove the word 'on'"). */
-  storeLinePrefix?: string;
+  /** Text before the store name, e.g. "Lowest at" / "Special at". Pass
+   * `null` when the store name should stand alone. */
+  storeLinePrefix?: string | null;
   /** Other stores (raw store names) also running a special on this product right now. */
   alsoSpecialStores?: string[];
   /** Called right before navigating to the deal page -- lets a caller that
@@ -183,7 +182,11 @@ export default function ProductListCard({
         <span className="mt-1 font-display text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
         <div className="flex items-center gap-1.5">
           <span className="text-[13px] leading-4 font-bold text-stone-600">
-            {storeLinePrefix === "Lowest at" ? storeLabel : `${storeLinePrefix} ${storeLabel}.`}
+            {storeLinePrefix == null
+              ? storeLabel
+              : storeLinePrefix === "Lowest at"
+                ? storeLabel
+                : `${storeLinePrefix} ${storeLabel}.`}
           </span>
         </div>
         {alsoSpecialStores.length > 0 && (

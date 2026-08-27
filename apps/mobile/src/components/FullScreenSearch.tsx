@@ -13,13 +13,13 @@ import {
   CATEGORY_SECTIONS,
   productMatchesSearch,
   getProductSearchRelevance,
-  findBestDodgyDeal,
 } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import StorePill from "@/components/StorePill";
 import { useSearch } from "@/lib/search-context";
+import { DEAL_FILTER_OPTIONS, matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 
 /**
@@ -140,9 +140,7 @@ interface PopularEntry {
   bestDeal: CurrentDeal;
 }
 
-type PopularTab = "specials" | "dodgy";
 type PopularSortBy = "discount" | "dodgy" | "recent" | "price-desc" | "price-asc";
-type PriceFilter = "specials" | "dodgy";
 type ResultsSortBy = "cheapest" | "discount" | "dodgy-rating";
 
 // `CATEGORY_SECTIONS` promoted to `@dodgey-deals/shared` (`deal-detail.ts`)
@@ -168,24 +166,29 @@ const TOOLBAR_TRANSITION_MS = 300;
 // gone, imported from `@dodgey-deals/shared` instead now that Home's own
 // store-pill row needed the identical logic and duplicating it a second
 // time was the wrong call.
-function applicableDealsFor(product: ProductCardData, selectedStores: string[]): CurrentDeal[] {
-  return product.currentDeals.filter((d) => matchesAnySelectedStore(d.store, selectedStores));
+function applicableDealsFor(product: ProductCardData, selectedStores: string[], filter: DealFilter = "all"): CurrentDeal[] {
+  return product.currentDeals.filter((deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, filter));
 }
 
 /** Cheapest deal among stores matching the current filter -- ported from
  * the results section's per-item `bestDeal` calc (falls back to the
  * unfiltered pool's first entry when the filter excludes everything, same
  * fallback the prototype uses). */
-function cheapestApplicableDeal(product: ProductCardData, selectedStores: string[]): CurrentDeal {
-  const applicable = applicableDealsFor(product, selectedStores);
+function cheapestApplicableDeal(product: ProductCardData, selectedStores: string[], filter: DealFilter = "all"): CurrentDeal {
+  const applicable = applicableDealsFor(product, selectedStores, filter);
   const seed = applicable[0] ?? product.currentDeals[0];
   return applicable.reduce((lowest, cur) => (cur.price < lowest.price ? cur : lowest), seed);
 }
 
 /** Other applicable stores also on special right now, excluding `shownDeal`'s
  * own store -- ported from the results section's `alsoSpecialStores` calc. */
-function alsoSpecialStoresForResults(product: ProductCardData, shownDeal: CurrentDeal, selectedStores: string[]): string[] {
-  const applicable = applicableDealsFor(product, selectedStores);
+function alsoSpecialStoresForResults(
+  product: ProductCardData,
+  shownDeal: CurrentDeal,
+  selectedStores: string[],
+  filter: DealFilter = "all"
+): string[] {
+  const applicable = applicableDealsFor(product, selectedStores, filter);
   const pool = applicable.length > 0 ? applicable : product.currentDeals;
   return [...new Set(pool.filter((d) => d.isOnSpecial !== false && d.store !== shownDeal.store).map((d) => d.store))];
 }
@@ -325,7 +328,7 @@ export default function FullScreenSearch() {
   // product on special, not because of an unrelated tab selection the user
   // never touched. `handleBack`'s reset value below updated to match, same
   // "kept in sync" convention as before.
-  const [priceFilter, setPriceFilter] = useState<PriceFilter>("specials");
+  const [priceFilter, setPriceFilter] = useState<DealFilter>("all");
   const [resultsCategoryFilter, setResultsCategoryFilter] = useState<string[]>([]);
 
   // `popularTab` (this state's own pre-3-character "Popular"/browse-mode
@@ -345,7 +348,7 @@ export default function FullScreenSearch() {
   // matching reset here a manual tab switch from a PREVIOUS visit would
   // still be showing on the NEXT one, which is exactly the "any entry
   // point" consistency this ask is about.
-  const [popularTab, setPopularTab] = useState<PopularTab>("specials");
+  const [popularTab, setPopularTab] = useState<DealFilter>("all");
   // "discount" to match the tab-click handler below, which sets this same
   // sort whenever the All-specials tab is selected -- keeps the initial
   // render consistent with what clicking the (now-default) tab would
@@ -363,9 +366,9 @@ export default function FullScreenSearch() {
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
-      setPopularTab("specials");
+      setPopularTab("all");
       setPopularSortBy("discount");
-      setPriceFilter("specials");
+      setPriceFilter("all");
     }
   }
 
@@ -444,28 +447,23 @@ export default function FullScreenSearch() {
     [products]
   );
 
-  // Per-category dodgy-deal counts (2026-08-12, per Jay's ask to grey out
-  // categories with no dodgy results in the sheet below) -- a category
-  // "has dodgy results" if at least one product in it currently has a
-  // Dodgy Deal that's actually on special and matches the current store
-  // filter, the same three conditions `popularSpecials`/`sortedProducts`
-  // above already apply when deciding what's actually browsable. Shared
-  // across both sheet targets ("popular" and "results") since
-  // `selectedStores` is the one piece of state both sections already
-  // share -- a category greyed out here is genuinely a dead end for
-  // either list, not just one of them.
-  const categoryDodgyCounts = useMemo(() => {
+  // Per-category deal counts for the active three-tab filter. A category is
+  // enabled only when at least one product in it has a matching on-special
+  // deal for the selected supermarkets, so the Categories sheet cannot lead
+  // to an empty result set.
+  const categoryDealFilter = categorySheetTarget === "results" ? priceFilter : popularTab;
+  const categoryDealCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
       const cat = groupCategory(product.category);
       if (!cat) continue;
-      const hasDodgy = product.currentDeals.some(
-        (d) => d.dealType === "Dodgy Deal" && d.isOnSpecial !== false && matchesAnySelectedStore(d.store, selectedStores)
+      const hasMatchingDeal = product.currentDeals.some(
+        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)
       );
-      if (hasDodgy) counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      if (hasMatchingDeal) counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return counts;
-  }, [products, selectedStores]);
+  }, [products, selectedStores, categoryDealFilter]);
 
   const handleStoreToggle = (storeId: string) => {
     const currentScrollTop = scrollContainerRef.current?.scrollTop ?? lastScrollTopRef.current;
@@ -503,15 +501,20 @@ export default function FullScreenSearch() {
       if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category))) {
         return [];
       }
-      if (popularTab !== "dodgy") return [{ product, bestDeal }];
+      if (popularTab === "all") return [{ product, bestDeal }];
 
-      // A product group can contain different retailer deals. Select the
-      // Dodgy retailer deal first, then sort/display it; selecting the best
-      // discount before filtering can hide a valid Dodgy deal behind another
-      // retailer's genuine or limited-history price.
-      const dodgyDeal = findBestDodgyDeal(product.currentDeals, selectedStores);
-      if (!dodgyDeal) return [];
-      return [{ product, bestDeal: dodgyDeal }];
+      // A product group can contain different retailer assessments. Select
+      // the best deal within the active tab so Real Deals never displays a
+      // Dodgy retailer price, and vice versa.
+      const matchingDeals = product.currentDeals.filter(
+        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, popularTab)
+      );
+      if (matchingDeals.length === 0) return [];
+      const filteredBestDeal = matchingDeals.reduce(
+        (best, deal) => (deal.discountPercentage > best.discountPercentage ? deal : best),
+        matchingDeals[0]
+      );
+      return [{ product, bestDeal: filteredBestDeal }];
     });
     const sorted = [...filtered];
     if (popularTab === "dodgy") {
@@ -551,22 +554,21 @@ export default function FullScreenSearch() {
   const sortedProducts = useMemo<ProductCardData[]>(() => {
     if (trimmedQuery.length < 3) return [];
     const textMatched = products.filter((p) => productMatchesSearch(p, trimmedQuery));
-    const matchedByStore = textMatched.filter((p) => {
-      if (selectedStores.includes("all")) return p.currentDeals.length > 0;
-      return p.currentDeals.some((d) => matchesAnySelectedStore(d.store, selectedStores));
-    });
-    const matched = matchedByStore.filter((p) => {
-      const hasSpecial = p.currentDeals.some((d) => d.isOnSpecial !== false);
-      if (!hasSpecial) return false;
-      if (priceFilter === "dodgy" && !p.currentDeals.some((d) => d.dealType === "Dodgy Deal")) return false;
+    const matched = textMatched.filter((p) => {
+      const matchingDeals = applicableDealsFor(p, selectedStores, priceFilter);
+      if (matchingDeals.length === 0) return false;
       if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category))) return false;
       return true;
     });
 
-    const getBestPrice = (p: ProductCardData) => Math.min(...p.currentDeals.map((d) => d.price));
-    const getMaxDiscount = (p: ProductCardData) => Math.max(...p.currentDeals.map((d) => d.discountPercentage));
+    const getBestPrice = (p: ProductCardData) => Math.min(...applicableDealsFor(p, selectedStores, priceFilter).map((d) => d.price));
+    const getMaxDiscount = (p: ProductCardData) => Math.max(...applicableDealsFor(p, selectedStores, priceFilter).map((d) => d.discountPercentage));
     const getDodgyScore = (p: ProductCardData) =>
-      p.currentDeals.some((d) => d.dealType === "Dodgy Deal") ? 2 : p.currentDeals.some((d) => d.dealType === "Fair Price") ? 1 : 0;
+      applicableDealsFor(p, selectedStores, priceFilter).some((d) => d.dealType === "Dodgy Deal")
+        ? 2
+        : applicableDealsFor(p, selectedStores, priceFilter).some((d) => d.dealType === "Fair Price")
+          ? 1
+          : 0;
 
     return matched
       .map((product) => ({
@@ -584,8 +586,8 @@ export default function FullScreenSearch() {
   }, [products, trimmedQuery, selectedStores, resultsSortBy, priceFilter, resultsCategoryFilter]);
 
   const totalRetailersCount = useMemo(
-    () => new Set(sortedProducts.flatMap((p) => p.currentDeals.map((d) => d.store))).size,
-    [sortedProducts]
+    () => new Set(sortedProducts.flatMap((p) => applicableDealsFor(p, selectedStores, priceFilter).map((d) => d.store))).size,
+    [sortedProducts, selectedStores, priceFilter]
   );
   // Infinite-scroll reveal replaced the old "Show all N items" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
@@ -608,7 +610,7 @@ export default function FullScreenSearch() {
     // Reset to "specials" (the default as of 2026-08-20, see the state
     // declaration above), not "dodgy" -- keeps the reset value in sync with
     // what the screen opens on.
-    setPriceFilter("specials");
+    setPriceFilter("all");
     // `popularTab`/`popularSortBy` reset added 2026-08-20 (later same day),
     // per Jay: "Full screen search mode should always default to 'All
     // Specials' not dodgy, and be the same for any entry point to search"
@@ -618,7 +620,7 @@ export default function FullScreenSearch() {
     // Dodgy too (this component stays mounted between opens, its state
     // doesn't reset itself), which is exactly the inconsistent-entry-point
     // behaviour this ask is about.
-    setPopularTab("specials");
+    setPopularTab("all");
     setPopularSortBy("discount");
     closeSearch();
   };
@@ -1047,10 +1049,7 @@ export default function FullScreenSearch() {
                         cross-reference. */}
                     <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
                       {(
-                        [
-                          { id: "specials", label: "All specials" },
-                          { id: "dodgy", label: "Dodgy" },
-                        ] as { id: PopularTab; label: string }[]
+                        DEAL_FILTER_OPTIONS
                       ).map((tab) => {
                         const isActive = popularTab === tab.id;
                         return (
@@ -1152,7 +1151,7 @@ export default function FullScreenSearch() {
                           smaller positive tracking value, since Jay asked
                           for "normal" specifically, not just "less wide." */}
                       <h3 className="font-sans text-[13px] leading-4 font-black tracking-normal text-stone-600">
-                        {sortedPopularSpecials.length} {popularTab === "dodgy" ? "dodgy specials" : "specials"} found
+                        {sortedPopularSpecials.length} {popularTab === "dodgy" ? "dodgy deals" : popularTab === "real" ? "real deals" : "deals"} found
                       </h3>
                       {renderCategoriesAndSort(
                         popularCategoryFilter,
@@ -1166,7 +1165,7 @@ export default function FullScreenSearch() {
                           key={product.id}
                           product={product}
                           deal={bestDeal}
-                          storeLinePrefix="Special at" // 2026-08-17, Jay: "change wording to just 'special at supermarket', remove the word 'on'"
+                          storeLinePrefix={null}
                           alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal)}
                           onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                         />
@@ -1189,7 +1188,11 @@ export default function FullScreenSearch() {
                 ) : (
                   <div className="mt-8 space-y-1 py-8 text-center">
                     <p className="text-[13px] leading-4 font-bold tracking-widest text-stone-500">
-                      {popularTab === "dodgy" ? "No dodgy deals found right now" : "No specials found right now"}
+                      {popularTab === "dodgy"
+                        ? "No dodgy deals found right now"
+                        : popularTab === "real"
+                          ? "No real deals found right now"
+                          : "No deals found right now"}
                     </p>
                     <p className="text-[13px] leading-4 text-stone-500">Try widening the supermarket filter above.</p>
                   </div>
@@ -1314,10 +1317,7 @@ export default function FullScreenSearch() {
                           cross-reference. */}
                       <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
                         {(
-                          [
-                            { id: "specials", label: "All specials" },
-                            { id: "dodgy", label: "Dodgy" },
-                          ] as { id: PriceFilter; label: string }[]
+                          DEAL_FILTER_OPTIONS
                         ).map((tab) => {
                           const isActive = priceFilter === tab.id;
                           return (
@@ -1390,13 +1390,14 @@ export default function FullScreenSearch() {
                   <div className="space-y-4">
                     {sortedProducts.length > 0 ? (
                       visibleSearchResults.map((product) => {
-                        const bestDeal = cheapestApplicableDeal(product, selectedStores);
+                        const bestDeal = cheapestApplicableDeal(product, selectedStores, priceFilter);
                         return (
                           <ProductListCard
                             key={product.id}
                             product={product}
                             deal={bestDeal}
-                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores)}
+                            storeLinePrefix={null}
+                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, priceFilter)}
                             onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                           />
                         );
@@ -1440,7 +1441,7 @@ export default function FullScreenSearch() {
           {/* Category sheet -- rebuilt 2026-08-12, three of Jay's asks
               together:
                (1) Grey out/disable categories with zero dodgy results
-                   right now (`categoryDodgyCounts`, computed above) --
+                   right now (`categoryDealCounts`, computed above) --
                    `disabled`, no `onClick`, and a distinct grey style so
                    it doesn't read as just another unselected option.
                (2) Full page width, not the old `max-w-md` (448px) --
@@ -1526,17 +1527,17 @@ export default function FullScreenSearch() {
                           <div className="flex flex-wrap gap-2">
                             {sectionCats.map((cat) => {
                               const isSelected = activeCategoryFilter.includes(cat);
-                              const hasDodgyResults = (categoryDodgyCounts.get(cat) ?? 0) > 0;
+                              const hasMatchingResults = (categoryDealCounts.get(cat) ?? 0) > 0;
                               return (
                                 <button
                                   key={cat}
                                   type="button"
-                                  disabled={!hasDodgyResults}
-                                  aria-disabled={!hasDodgyResults}
-                                  title={hasDodgyResults ? undefined : "No dodgy deals in this category right now"}
+                                  disabled={!hasMatchingResults}
+                                  aria-disabled={!hasMatchingResults}
+                                  title={hasMatchingResults ? undefined : "No matching deals in this category right now"}
                                   onClick={() => toggleActiveCategory(cat)}
                                   className={`rounded-full px-3 py-2 text-[13px] leading-4 font-bold shadow-sm transition-colors ${
-                                    !hasDodgyResults
+                                    !hasMatchingResults
                                       ? "cursor-not-allowed bg-stone-50 text-stone-300"
                                       : isSelected
                                         ? "cursor-pointer bg-ink-600 text-white"
