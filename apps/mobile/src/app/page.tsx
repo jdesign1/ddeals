@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
@@ -14,15 +14,9 @@ import {
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
-import {
-  fetchUserLists,
-  fetchItemsForLists,
-  describeFetchError,
-  LIST_MEMBERSHIP_CHANGED_EVENT,
-} from "@dodgey-deals/shared";
-import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { useAuth } from "@/lib/auth-context";
+import { DEAL_FILTER_OPTIONS, matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
@@ -110,17 +104,8 @@ interface FlatDeal {
   deal: CurrentDeal;
 }
 
+type DealSortBy = "price-asc" | "latest";
 type SortBy = "discount" | "dodgy";
-
-/** Trending-rail-only sort options, added 2026-08-21 per Jay: "Sort by
- * option on the Trending tab - options should be 'Lowest to highest price'
- * 'Latest specials'." Deliberately its own type/union rather than reusing
- * `SortBy` above -- Trending no longer offers "Biggest discount"/"Dodgy
- * first" at all now that it has its own options, while My List keeps using
- * `SortBy`/`SORT_OPTIONS` unchanged. See `SortDropdown`'s own comment on
- * why it was made generic over both unions instead of duplicating the
- * dropdown component. */
-type TrendingSortBy = "price-asc" | "latest";
 
 /** Ported from Prototype/index.html's `ProductCard` call sites: other
  * stores (besides the one this card is already showing) currently running
@@ -135,33 +120,21 @@ function alsoSpecialStores(product: ProductCard, shownStore: string): string[] {
   return [...seen];
 }
 
-/** Ported from Prototype/index.html's rail sort control (`railSortBy`
- * discount/dodgy options). My-List-only as of 2026-08-21 -- Trending used
- * to share this same sort (where "Dodgy first" was a legitimate no-op,
- * since that rail is already filtered to confirmed Real Deal entries only)
- * but now has its own `TrendingSortBy`/`sortTrendingDeals` below instead,
- * per Jay's ask for Trending-specific sort options. */
-function sortDeals(deals: FlatDeal[], sortBy: SortBy): FlatDeal[] {
-  const sorted = [...deals];
-  if (sortBy === "dodgy") {
-    sorted.sort((a, b) => (b.deal.dealType === "Dodgy Deal" ? 1 : 0) - (a.deal.dealType === "Dodgy Deal" ? 1 : 0));
-  } else {
-    sorted.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
-  }
-  return sorted;
-}
-
-/** Trending-rail-only counterpart to `sortDeals` above -- see
- * `TrendingSortBy`'s own comment for why this is a separate function
- * rather than an extra branch on `sortDeals`. */
-function sortTrendingDeals(deals: FlatDeal[], sortBy: TrendingSortBy): FlatDeal[] {
+/** The home deal rail keeps the same lightweight sort controls across all
+ * three deal assessment filters. */
+function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
   const sorted = [...deals];
   if (sortBy === "price-asc") {
     sorted.sort((a, b) => a.deal.price - b.deal.price);
+  } else if (sortBy === "discount" || sortBy === "dodgy") {
+    if (sortBy === "dodgy") {
+      sorted.sort((a, b) => (b.deal.dealType === "Dodgy Deal" ? 1 : 0) - (a.deal.dealType === "Dodgy Deal" ? 1 : 0));
+    } else {
+      sorted.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
+    }
   } else {
     // "latest" -- most recently started special first. Deals with no
-    // saleStartedAt (shouldn't normally happen for a qualifying Trending
-    // entry, but handled defensively) sort last, not first.
+    // saleStartedAt sort last rather than first.
     sorted.sort((a, b) => {
       const aTime = a.deal.saleStartedAt ? new Date(a.deal.saleStartedAt).getTime() : -Infinity;
       const bTime = b.deal.saleStartedAt ? new Date(b.deal.saleStartedAt).getTime() : -Infinity;
@@ -172,10 +145,8 @@ function sortTrendingDeals(deals: FlatDeal[], sortBy: TrendingSortBy): FlatDeal[
 }
 
 const TRENDING_PAGE_SIZE = 12;
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function HomePage() {
-  const { user, loading: authLoading } = useAuth();
   // `products`/`loadingProducts`/`error` and the search bar's own
   // query/active state now come from the global `SearchProvider`
   // (lib/search-context.tsx, 2026-08-09) instead of a local fetch + local
@@ -194,102 +165,11 @@ export default function HomePage() {
     toggleStore,
   } = useSearch();
 
-  // Computed once via a lazy useState initializer (React's documented escape
-  // hatch for a one-time impure call), not inline in useMemo -- calling
-  // Date.now() directly in a component/useMemo body trips
-  // react-hooks/purity ("Cannot call impure function during render"). The
-  // "last 7 days" trending window doesn't need to be live/reactive to the
-  // second anyway, so a value fixed for this page's lifetime is correct,
-  // not a workaround.
-  const [now] = useState(() => Date.now());
-  const weekAgo = now - SEVEN_DAYS_MS;
-
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
-  const [homeTab, setHomeTab] = useState<"trending" | "my-list">("trending");
-  // Default changed "discount" -> "latest" 2026-08-21 alongside the
-  // TrendingSortBy type change above -- "discount" is no longer a valid
-  // TrendingSortBy value, and "latest" fits "Trending real savings this
-  // week"'s own framing better than "price-asc" would as a default.
-  const [trendingSortBy, setTrendingSortBy] = useState<TrendingSortBy>("latest");
-  const [myListSortBy, setMyListSortBy] = useState<SortBy>("discount");
-  // Trending-only category filter, added 2026-08-21 alongside the new
-  // Categories button on the Trending rail -- mirrors FullScreenSearch's
-  // own `activeCategoryFilter` (multi-select, empty array = "All
-  // categories"). My List has no equivalent; it's not part of this ask.
-  const [trendingCategoryFilter, setTrendingCategoryFilter] = useState<string[]>([]);
-
-  const [myListProductIds, setMyListProductIds] = useState<Set<string> | null>(null);
-  // Which user (or null for signed-out) `myListProductIds` was last loaded
-  // for -- NOT the same guard as "is myListProductIds non-null", because an
-  // account switch (sign out, sign in as someone else) without a full page
-  // reload would otherwise leave the *previous* user's product ids sitting
-  // in state with nothing to invalidate them. Caught this on review before
-  // it shipped: MyListSection happens to gate on `signedIn` first so a
-  // signed-out render never leaked the stale data, but a same-session
-  // account switch would have shown the wrong user's "on special" items.
-  const [myListLoadedForUserId, setMyListLoadedForUserId] = useState<string | null>(null);
-  const [myListError, setMyListError] = useState<string | null>(null);
-
-  // Real cross-reference against the caller's own lists, same query S1's
-  // list cards run. Egress-conscious on purpose (2026-08-08): only fetches
-  // once the My List tab is actually opened, and only once per (tab,
-  // user) combination after that -- Home used to fetch this unconditionally
-  // on every mount regardless of which tab was showing, which meant a
-  // Trending-only visit still pulled the user's lists/items for nothing.
-  // Guarded on `myListLoadedForUserId === (user?.id ?? null)` rather than
-  // "is myListProductIds non-null" so an account switch invalidates the
-  // guard and refetches, instead of showing a stale previous user's data.
-  // A plain early return here (the guard-clause branch) never calls
-  // setState directly, so it doesn't trip react-hooks/set-state-in-effect
-  // -- only the "actually fetch for this user" path runs through the
-  // load()/.then() chain, mirroring /lists.
-  useEffect(() => {
-    const currentUserId = user?.id ?? null;
-    if (homeTab !== "my-list" || myListLoadedForUserId === currentUserId) return;
-    let cancelled = false;
-    const load = async (): Promise<Set<string> | null> => {
-      if (!user) return null;
-      const client = getSupabaseClient();
-      const lists = await fetchUserLists(client);
-      const items = await fetchItemsForLists(client, lists.map((l) => l.id));
-      return new Set(items.map((i) => i.product_id));
-    };
-    load()
-      .then((ids) => {
-        if (cancelled) return;
-        setMyListProductIds(ids);
-        setMyListLoadedForUserId(currentUserId);
-        setMyListError(null);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setMyListError(describeFetchError(err, "Failed to load your lists"));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, homeTab, myListLoadedForUserId]);
-
-  // List mutations can happen on the Lists page or inside an AddToListButton
-  // while this route remains mounted. Invalidate the membership snapshot so
-  // removed products disappear from this tab without requiring a full reload.
-  useEffect(() => {
-    const refreshMembership = () => {
-      setMyListLoadedForUserId(null);
-      setMyListError(null);
-    };
-    window.addEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, refreshMembership);
-    return () => window.removeEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, refreshMembership);
-  }, []);
-
-  // Derived, not stored state: avoids a separate "start loading" setState in
-  // the effect above (which would trip the same lint rule) and can't drift
-  // from what the effect is actually doing the way a manually-toggled
-  // boolean could. Checked against `myListLoadedForUserId`, not
-  // `myListProductIds === null` -- during an account switch, the previous
-  // user's non-null `myListProductIds` would otherwise read as "not
-  // loading" for a moment while the new fetch is still in flight.
-  const myListLoading = !!user && myListLoadedForUserId !== user.id && !myListError;
+  const [homeTab, setHomeTab] = useState<DealFilter>("all");
+  const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
+  const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
   // session (2026-08-09, full-screen search build) from this exact inline
@@ -299,68 +179,39 @@ export default function HomePage() {
   // of each keeping its own copy.
   const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
 
-  // Pre-category-filter Trending set. Renamed from the old `trendingDeals`
-  // 2026-08-21 when the Categories filter was added below -- this is now an
-  // intermediate value (also used to compute the category counts/available-
-  // categories the filter sheet itself needs), not the final list rendered.
-  const trendingDealsAllCategories = useMemo<FlatDeal[]>(() => {
-    const isRecentRealDeal = (d: CurrentDeal) =>
-      d.dealType === "Real Deal" &&
-      matchesAnySelectedStore(d.store, selectedStores) &&
-      (!d.saleStartedAt || new Date(d.saleStartedAt).getTime() >= weekAgo);
-
+  // Build one best matching special per product for the selected shared deal
+  // tab. Real Deals deliberately includes both Real Deal and Fair Price.
+  const dealsAllCategories = useMemo<FlatDeal[]>(() => {
     const all: FlatDeal[] = [];
     for (const product of products) {
-      const qualifying = product.currentDeals.filter(isRecentRealDeal);
+      const qualifying = product.currentDeals.filter(
+        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, homeTab)
+      );
       if (!qualifying.length) continue;
       const best = qualifying.reduce((a, b) => (b.price < a.price ? b : a));
       all.push({ product, deal: best });
     }
-    // No `.sort()` here anymore (was sorted by discount%) -- TrendingSection
-    // always re-sorts via `sortTrendingDeals` before rendering regardless of
-    // this memo's own order, so a pre-sort here was redundant dead weight
-    // even before this restructure; dropped rather than carried forward.
     return all;
-  }, [products, selectedStores, weekAgo]);
+  }, [products, selectedStores, homeTab]);
 
-  // Per-category counts over the UNFILTERED Trending set, for the Categories
-  // sheet's own "no trending deals in this category" disabled-pill state --
-  // mirrors FullScreenSearch's `categoryDodgyCounts` pattern exactly (see
-  // that file), just generalized off "dodgy" to Trending's own real-deal set.
-  const trendingCategoryCounts = useMemo(() => {
+  const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const { product } of trendingDealsAllCategories) {
+    for (const { product } of dealsAllCategories) {
       const cat = groupCategory(product.category);
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return counts;
-  }, [trendingDealsAllCategories]);
+  }, [dealsAllCategories]);
 
-  // Which categories actually have at least one Trending item right now --
-  // passed to the sheet so it only ever shows sections/pills that are
-  // possible to select (same idea as FullScreenSearch's `homeCategories`).
-  const trendingAvailableCategories = useMemo(
-    () => [...new Set(trendingDealsAllCategories.map(({ product }) => groupCategory(product.category)))],
-    [trendingDealsAllCategories]
+  const availableCategories = useMemo(
+    () => [...new Set(dealsAllCategories.map(({ product }) => groupCategory(product.category)))],
+    [dealsAllCategories]
   );
 
-  const trendingDeals = useMemo<FlatDeal[]>(() => {
-    if (trendingCategoryFilter.length === 0) return trendingDealsAllCategories;
-    return trendingDealsAllCategories.filter(({ product }) => trendingCategoryFilter.includes(groupCategory(product.category)));
-  }, [trendingDealsAllCategories, trendingCategoryFilter]);
-
-  const myListDeals = useMemo<FlatDeal[]>(() => {
-    if (!myListProductIds || !myListProductIds.size) return [];
-    const all: FlatDeal[] = [];
-    for (const product of products) {
-      if (!myListProductIds.has(product.id)) continue;
-      const qualifying = product.currentDeals.filter((d) => matchesAnySelectedStore(d.store, selectedStores));
-      if (!qualifying.length) continue;
-      const best = qualifying.reduce((a, b) => (b.price < a.price ? b : a));
-      all.push({ product, deal: best });
-    }
-    return all.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
-  }, [products, myListProductIds, selectedStores]);
+  const filteredDeals = useMemo<FlatDeal[]>(() => {
+    if (dealCategoryFilter.length === 0) return dealsAllCategories;
+    return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category)));
+  }, [dealsAllCategories, dealCategoryFilter]);
 
   return (
     <>
@@ -428,16 +279,16 @@ export default function HomePage() {
 
       {!isSearchActive && loadingProducts && (
         <div className="mx-5 flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm" aria-label="Home sections">
-          {(["trending", "my-list"] as const).map((tab) => (
+          {DEAL_FILTER_OPTIONS.map((tab) => (
             <button
-              key={tab}
+              key={tab.id}
               type="button"
-              onClick={() => setHomeTab(tab)}
+              onClick={() => setHomeTab(tab.id)}
               className={`flex-1 rounded-lg py-2 text-[13px] leading-4 font-bold ${
-                homeTab === tab ? "bg-stone-900 text-white shadow-xs" : "text-stone-600"
+                homeTab === tab.id ? "bg-stone-900 text-white shadow-xs" : "text-stone-600"
               }`}
             >
-              {tab === "trending" ? "Trending" : "My List"}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -524,12 +375,12 @@ export default function HomePage() {
               category chips -- one consistent "flat, shadow-grounded"
               language app-wide instead of border outlines. */}
           <div className="mx-5 flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
-            {(["trending", "my-list"] as const).map((tab) => {
-              const isActive = homeTab === tab;
+            {DEAL_FILTER_OPTIONS.map((tab) => {
+              const isActive = homeTab === tab.id;
               return (
                 <button
-                  key={tab}
-                  onClick={() => setHomeTab(tab)}
+                  key={tab.id}
+                  onClick={() => setHomeTab(tab.id)}
                   className={`relative z-0 flex-1 rounded-lg py-2 text-[13px] leading-4 font-bold transition-colors ${
                     isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
                   }`}
@@ -557,46 +408,22 @@ export default function HomePage() {
                       />
                     )}
                   </AnimatePresence>
-                  {tab === "trending" ? "Trending" : "My List"}
+                  {tab.label}
                 </button>
               );
             })}
           </div>
 
-          {homeTab === "trending" && (
-            <TrendingSection
-              deals={trendingDeals}
-              sortBy={trendingSortBy}
-              onSortByChange={setTrendingSortBy}
-              categoryFilter={trendingCategoryFilter}
-              onCategoryFilterChange={setTrendingCategoryFilter}
-              availableCategories={trendingAvailableCategories}
-              categoryCounts={trendingCategoryCounts}
-            />
-          )}
-
-          {homeTab === "my-list" && (
-            <MyListSection
-              authLoading={authLoading}
-              signedIn={!!user}
-              loading={myListLoading}
-              error={myListError}
-              onRetry={() => {
-                // Resets the "already loaded for this user" guard back to
-                // its pre-fetch state (`null`, same as before any fetch has
-                // ever run for a signed-in user -- see that state's own
-                // initializer above) so the load effect's existing
-                // `myListLoadedForUserId === currentUserId` check reads as
-                // "not loaded yet" and fires again, exactly the normal
-                // first-load path, not a special-cased retry branch.
-                setMyListLoadedForUserId(null);
-                setMyListError(null);
-              }}
-              deals={myListDeals}
-              sortBy={myListSortBy}
-              onSortByChange={setMyListSortBy}
-            />
-          )}
+          <TrendingSection
+            deals={filteredDeals}
+            filter={homeTab}
+            sortBy={dealSortBy}
+            onSortByChange={setDealSortBy}
+            categoryFilter={dealCategoryFilter}
+            onCategoryFilterChange={setDealCategoryFilter}
+            availableCategories={availableCategories}
+            categoryCounts={categoryCounts}
+          />
         </>
       )}
       </motion.main>
@@ -622,7 +449,7 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 // Trending-only sort options, added 2026-08-21 -- see `TrendingSortBy`'s own
 // comment above for why Trending no longer shares `SORT_OPTIONS`/`SortBy`
 // with My List.
-const TRENDING_SORT_OPTIONS: { value: TrendingSortBy; label: string }[] = [
+const TRENDING_SORT_OPTIONS: { value: DealSortBy; label: string }[] = [
   { value: "price-asc", label: "Lowest to highest price" },
   { value: "latest", label: "Latest specials" },
 ];
@@ -725,6 +552,7 @@ function SortDropdown<T extends string>({
 
 function TrendingSection({
   deals,
+  filter,
   sortBy,
   onSortByChange,
   categoryFilter,
@@ -733,14 +561,36 @@ function TrendingSection({
   categoryCounts,
 }: {
   deals: FlatDeal[];
-  sortBy: TrendingSortBy;
-  onSortByChange: (value: TrendingSortBy) => void;
+  filter: DealFilter;
+  sortBy: DealSortBy;
+  onSortByChange: (value: DealSortBy) => void;
   categoryFilter: string[];
   onCategoryFilterChange: (value: string[]) => void;
   availableCategories: string[];
   categoryCounts: Map<string, number>;
 }) {
-  const sorted = useMemo(() => sortTrendingDeals(deals, sortBy), [deals, sortBy]);
+  const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
+  const sectionCopy =
+    filter === "dodgy"
+      ? {
+          title: "Dodgy deals",
+          description: "Specials that look like misleading discounts.",
+          empty: "No dodgy deals found right now.",
+          categoryEmpty: "No dodgy deals in this category right now.",
+        }
+      : filter === "real"
+        ? {
+            title: "Real deals",
+            description: "Real saver and fair-price specials.",
+            empty: "No real deals found right now.",
+            categoryEmpty: "No real deals in this category right now.",
+          }
+        : {
+            title: "All deals",
+            description: "All current supermarket specials.",
+            empty: "No deals found right now.",
+            categoryEmpty: "No deals in this category right now.",
+          };
   // Infinite-scroll reveal replaced the old "Show all N deals" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment for why
   // scroll-triggered reveal is free here (the whole `deals` array is
@@ -779,11 +629,11 @@ function TrendingSection({
   return (
     <section className="flex flex-col gap-4 px-5">
       <div className="space-y-1 pb-1 text-center">
-        <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Trending real savings this week</h3>
-        <p className="text-[13px] leading-4 font-semibold text-stone-500">Items we&rsquo;ve confirmed are real saver deals.</p>
+        <h3 className="font-display text-lg font-black tracking-normal text-stone-900">{sectionCopy.title}</h3>
+        <p className="text-[13px] leading-4 font-semibold text-stone-500">{sectionCopy.description}</p>
       </div>
       {deals.length === 0 && categoryFilter.length === 0 ? (
-        <EmptyState>No confirmed real-saver deals started in the last week.</EmptyState>
+        <EmptyState>{sectionCopy.empty}</EmptyState>
       ) : (
         <>
           <div className="flex items-center justify-between gap-2">
@@ -803,7 +653,7 @@ function TrendingSection({
             </div>
           </div>
           {sorted.length === 0 ? (
-            <EmptyState>No trending deals in this category right now.</EmptyState>
+            <EmptyState>{sectionCopy.categoryEmpty}</EmptyState>
           ) : (
             <>
               <div className="grid grid-cols-1 gap-4">
@@ -892,17 +742,17 @@ function TrendingSection({
                       <div className="flex flex-wrap gap-2">
                         {sectionCats.map((cat) => {
                           const isSelected = categoryFilter.includes(cat);
-                          const hasTrendingResults = (categoryCounts.get(cat) ?? 0) > 0;
+                          const hasDealResults = (categoryCounts.get(cat) ?? 0) > 0;
                           return (
                             <button
                               key={cat}
                               type="button"
-                              disabled={!hasTrendingResults}
-                              aria-disabled={!hasTrendingResults}
-                              title={hasTrendingResults ? undefined : "No trending deals in this category right now"}
+                              disabled={!hasDealResults}
+                              aria-disabled={!hasDealResults}
+                              title={hasDealResults ? undefined : sectionCopy.categoryEmpty}
                               onClick={() => toggleCategory(cat)}
                               className={`rounded-full px-3 py-2 text-[13px] leading-4 font-bold shadow-sm transition-colors ${
-                                !hasTrendingResults
+                                !hasDealResults
                                   ? "cursor-not-allowed bg-stone-50 text-stone-300"
                                   : isSelected
                                     ? "cursor-pointer bg-ink-600 text-white"

@@ -2,7 +2,10 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useSearch } from "@/lib/search-context";
+import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 /**
  * Global search bar — extracted 2026-08-11 from Home's own inline block
@@ -176,6 +179,21 @@ export default function SearchBar({
   topSpacing?: boolean;
 }) {
   const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
+  const pathname = usePathname();
+  const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+    return subscribeToCheckDealsHeaderVisibility(setIsCheckDealsHeaderHidden);
+  }, [pathname]);
+
+  // Check Deals has two sticky siblings: AppHeader and this search bar. When
+  // the header returns while scrolling upward, dock the search bar beneath
+  // the 64px nav instead of letting both sticky elements claim top: 0. Once
+  // the header slides away, the search bar returns to the top of the viewport.
+  const stickyPositionClass = sticky
+    ? `sticky z-20 ${pathname === "/" && !isCheckDealsHeaderHidden ? "top-16" : "top-0"} ${pathname === "/" ? "transition-[top] duration-300 ease-out" : ""}`
+    : "";
 
   return (
     <AnimatePresence>
@@ -184,7 +202,7 @@ export default function SearchBar({
           initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`${sticky ? "sticky top-0 z-20" : ""} px-5 ${topSpacing ? "pb-2 pt-4" : "py-2"} ${
+          className={`${stickyPositionClass} px-5 ${topSpacing ? "pb-2 pt-4" : "py-2"} ${
             blurred ? "backdrop-blur-md" : variant === "shadow" ? "bg-stone-50" : "bg-white"
           }`}
         >
