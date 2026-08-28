@@ -948,7 +948,7 @@ export default function FullScreenSearch() {
                       transitioned on this item directly, same treatment as
                       `pt-4` above. */}
                   <div
-                    className={`min-h-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
+                    className={`min-h-0 min-w-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
                       isToolbarVisible ? "pb-2" : "pb-0"
                     }`}
                   >
@@ -1201,7 +1201,7 @@ export default function FullScreenSearch() {
                         leaving a flat 8px gap under the search bar even
                         fully collapsed). */}
                     <div
-                      className={`min-h-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
+                      className={`min-h-0 min-w-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
                         isToolbarVisible ? "pb-2" : "pb-0"
                       }`}
                     >

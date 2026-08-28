@@ -287,12 +287,12 @@ export default function HomePage() {
           className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
           } ${
-            isToolbarVisible ? "top-[calc(8rem-6px)] pt-2" : "top-[4rem] pt-0"
+            isToolbarVisible ? "top-[124px] pt-1" : "top-[4rem] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >
           <div
-            className={`min-h-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
+            className={`min-h-0 min-w-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
               isToolbarVisible ? "pb-2" : "pb-0"
             }`}
           >
