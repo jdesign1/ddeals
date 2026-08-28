@@ -232,15 +232,8 @@ export default function ProductListCard({
           </span>
         </div>
         </div>
-      </div>
-
-      <div
-        className={`absolute bottom-2 left-40 right-3 z-10 flex min-w-0 items-center gap-2 ${
-          alsoSpecialStores.length > 0 ? "justify-between" : "justify-end"
-        }`}
-      >
         {alsoSpecialStores.length > 0 && (
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-[10px]">
             <span className="shrink-0 text-[11px] font-bold tracking-normal text-stone-600">Also at:</span>
             {alsoSpecialStores.map((store) => {
               const meta = getStoreLogoMeta(store);
@@ -256,6 +249,9 @@ export default function ProductListCard({
             })}
           </div>
         )}
+      </div>
+
+      <div className="absolute bottom-2 left-40 right-3 z-10 flex min-w-0 items-center justify-end gap-2">
         {isDodgy && (
           <span className="shrink-0 select-none rounded-md bg-alert-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
             Dodgy
