@@ -645,7 +645,7 @@ export default function FullScreenSearch() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-colors duration-200 ${
+          className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-[background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-50"
           } ${
             categorySheetTarget !== null || sortSheetTarget !== null ? "z-[70]" : "z-50"

@@ -1,5 +1,4 @@
 export const CHECK_DEALS_HEADER_SCROLL_EVENT = "dodgey-deals:check-deals-header-scroll";
-export const CHECK_DEALS_STICKY_EVENT = "dodgey-deals:check-deals-sticky";
 
 export function publishCheckDealsHeaderVisibility(hidden: boolean): void {
   if (typeof window === "undefined") return;
@@ -16,21 +15,4 @@ export function subscribeToCheckDealsHeaderVisibility(onChange: (hidden: boolean
 
   window.addEventListener(CHECK_DEALS_HEADER_SCROLL_EVENT, handleChange);
   return () => window.removeEventListener(CHECK_DEALS_HEADER_SCROLL_EVENT, handleChange);
-}
-
-export function publishCheckDealsStickyState(sticky: boolean): void {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<boolean>(CHECK_DEALS_STICKY_EVENT, { detail: sticky }));
-}
-
-export function subscribeToCheckDealsStickyState(onChange: (sticky: boolean) => void): () => void {
-  if (typeof window === "undefined") return () => undefined;
-
-  const handleChange = (event: Event) => {
-    const sticky = (event as CustomEvent<boolean>).detail;
-    if (typeof sticky === "boolean") onChange(sticky);
-  };
-
-  window.addEventListener(CHECK_DEALS_STICKY_EVENT, handleChange);
-  return () => window.removeEventListener(CHECK_DEALS_STICKY_EVENT, handleChange);
 }

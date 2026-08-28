@@ -6,11 +6,12 @@ import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useSearch } from "@/lib/search-context";
-import { publishCheckDealsHeaderVisibility, publishCheckDealsStickyState } from "@/lib/scroll-events";
+import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
-const HEADER_DIRECTION_THRESHOLD_PX = 20;
+const HEADER_SHOW_AT_TOP = 8;
+const HEADER_SCROLL_DELTA = 4;
 const HEADER_TRANSITION_MS = 300;
 
 /**
@@ -48,10 +49,8 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pullDistanceRef = useRef(0);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollTopRef = useRef(0);
-  const scrollDirectionRef = useRef<"up" | "down" | null>(null);
-  const directionDistanceRef = useRef(0);
   const headerHiddenRef = useRef(false);
-  const firstProductPassedRef = useRef(false);
+  const headerScrollAnchorRef = useRef(0);
   const headerAnimationGuardRef = useRef(false);
   const headerAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
@@ -70,12 +69,9 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     if (headerAnimationTimeoutRef.current) clearTimeout(headerAnimationTimeoutRef.current);
     headerAnimationGuardRef.current = false;
     lastScrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
-    scrollDirectionRef.current = null;
-    directionDistanceRef.current = 0;
+    headerScrollAnchorRef.current = lastScrollTopRef.current;
     headerHiddenRef.current = false;
     publishCheckDealsHeaderVisibility(false);
-    firstProductPassedRef.current = false;
-    publishCheckDealsStickyState(pathname !== "/");
   }, [pathname]);
 
   // Collapsing the sticky header/search/toolbar changes the layout above the
@@ -95,51 +91,28 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
 
   const handleScroll = () => {
     const currentScrollTop = scrollRef.current?.scrollTop ?? 0;
-    const previousScrollTop = lastScrollTopRef.current;
     lastScrollTopRef.current = currentScrollTop;
 
     if (pathname !== "/") return;
 
-    const firstProductCard = scrollRef.current?.querySelector<HTMLElement>("[data-first-product-card]");
-    const scrollSurface = scrollRef.current;
-    const firstProductPassed = Boolean(
-      firstProductCard && scrollSurface && firstProductCard.getBoundingClientRect().bottom <= scrollSurface.getBoundingClientRect().top
-    );
-    if (firstProductPassedRef.current !== firstProductPassed) {
-      firstProductPassedRef.current = firstProductPassed;
-      publishCheckDealsStickyState(firstProductPassed);
-    }
-    if (!firstProductPassed) {
-      if (headerHiddenRef.current) setHeaderHidden(false);
-      scrollDirectionRef.current = null;
-      directionDistanceRef.current = 0;
-      return;
-    }
-
     if (headerAnimationGuardRef.current) {
-      scrollDirectionRef.current = null;
-      directionDistanceRef.current = 0;
+      headerScrollAnchorRef.current = currentScrollTop;
       return;
     }
-    if (currentScrollTop <= 8) {
-      scrollDirectionRef.current = null;
-      directionDistanceRef.current = 0;
+    if (currentScrollTop <= HEADER_SHOW_AT_TOP) {
+      headerScrollAnchorRef.current = currentScrollTop;
       if (headerHiddenRef.current) setHeaderHidden(false);
       return;
     }
 
-    const delta = currentScrollTop - previousScrollTop;
-    if (Math.abs(delta) < 1) return;
-    const direction = delta > 0 ? "down" : "up";
-    if (scrollDirectionRef.current !== direction) {
-      scrollDirectionRef.current = direction;
-      directionDistanceRef.current = 0;
+    const delta = currentScrollTop - headerScrollAnchorRef.current;
+    if (delta > HEADER_SCROLL_DELTA) {
+      setHeaderHidden(true);
+      headerScrollAnchorRef.current = currentScrollTop;
+    } else if (delta < -HEADER_SCROLL_DELTA) {
+      setHeaderHidden(false);
+      headerScrollAnchorRef.current = currentScrollTop;
     }
-    directionDistanceRef.current += Math.abs(delta);
-    if (directionDistanceRef.current < HEADER_DIRECTION_THRESHOLD_PX) return;
-
-    directionDistanceRef.current = 0;
-    setHeaderHidden(direction === "down");
   };
 
   const resetPull = () => {

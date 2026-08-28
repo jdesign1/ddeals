@@ -22,7 +22,7 @@ export default function DealFilterTabs({
   inactiveBackgroundClassName?: string;
 }) {
   return (
-    <div className={`flex items-center gap-1 rounded-xl border border-stone-300 p-1 shadow-none ${backgroundClassName}`}>
+    <div className={`flex items-center gap-1 rounded-xl border border-stone-300 p-1 shadow-none transition-[background-color] duration-300 ease-out ${backgroundClassName}`}>
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
         return (

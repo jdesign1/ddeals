@@ -199,7 +199,7 @@ export default function SearchBar({
   // the 64px nav instead of letting both sticky elements claim top: 0. Once
   // the header slides away, the search bar returns to the top of the viewport.
   const stickyPositionClass = sticky
-    ? `sticky z-20 ${pathname === "/" && !isCheckDealsHeaderHidden ? "top-16" : "top-0"} ${pathname === "/" ? "transition-[top] duration-300 ease-out" : ""}`
+    ? `sticky z-20 ${pathname === "/" && !isCheckDealsHeaderHidden ? "top-16" : "top-0"}`
     : "";
 
   return (
@@ -209,7 +209,7 @@ export default function SearchBar({
           initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`${stickyPositionClass} px-5 ${topSpacing ? "pb-2 pt-4" : compact ? "pb-0 pt-2" : "py-2"} ${
+          className={`${stickyPositionClass} px-5 transition-[top,background-color] duration-300 ease-out ${topSpacing ? "pb-2 pt-4" : compact ? "pb-0 pt-2" : "py-2"} ${
             blurred
               ? "backdrop-blur-md"
               : backgroundClassName || (variant === "shadow" ? "bg-stone-50" : "bg-white")
