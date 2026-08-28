@@ -163,7 +163,11 @@ export default function ProductListCard({
           />
         </div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white py-5 pl-4 pr-9">
+      <div
+        className={`flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white pl-4 pr-9 ${
+          alsoSpecialStores.length > 0 ? "py-6" : "py-5"
+        }`}
+      >
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same
