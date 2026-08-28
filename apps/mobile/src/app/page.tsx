@@ -274,7 +274,7 @@ export default function HomePage() {
       {!isSearchActive && !loadingProducts && !error && (
         <div
           className={`sticky z-20 grid overflow-hidden bg-stone-50 px-5 transition-[top,grid-template-rows,padding-top] duration-300 ease-out ${
-            isToolbarVisible ? "top-[9rem] pt-2" : "top-[4rem] pt-0"
+            isToolbarVisible ? "top-[calc(8rem+10px)] pt-2" : "top-[4rem] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >
