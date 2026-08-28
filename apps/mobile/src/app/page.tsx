@@ -268,7 +268,11 @@ export default function HomePage() {
           needs the two concerns (wrapper fill vs. pill border) decoupled
           today. */}
       {!isSearchActive && (
-        <SearchBar variant="shadow" backgroundClassName={dealFilterTintClass || "bg-stone-100"} />
+        <SearchBar
+          variant="shadow"
+          bordered
+          backgroundClassName={dealFilterTintClass || "bg-stone-100"}
+        />
       )}
 
       {/* Store filter pills -- ported from Prototype/index.html's global
@@ -295,6 +299,7 @@ export default function HomePage() {
               value={dealFilter}
               onChange={setDealFilter}
               backgroundClassName={dealFilterTintClass || "bg-stone-100"}
+              inactiveBackgroundClassName="bg-white"
             />
             <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
               <StorePill
@@ -302,7 +307,7 @@ export default function HomePage() {
                 label="All"
                 active={selectedStores.includes("all")}
                 onClick={() => toggleStore("all")}
-                backgroundClassName={dealFilterTintClass || "bg-stone-100"}
+                backgroundClassName="bg-white"
               />
               {availableStoreKeys.map((key) => (
                 <StorePill
@@ -311,7 +316,7 @@ export default function HomePage() {
                   label={STORE_DISPLAY_FALLBACK[key] || key}
                   active={selectedStores.includes(key)}
                   onClick={() => toggleStore(key)}
-                  backgroundClassName={dealFilterTintClass || "bg-stone-100"}
+                  backgroundClassName="bg-white"
                 />
               ))}
             </div>

@@ -168,6 +168,7 @@ import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 export default function SearchBar({
   blurred = false,
   variant = "default",
+  bordered = false,
   backgroundClassName,
   placeholder = "Search if today's deals are dodgy",
   sticky = true,
@@ -175,6 +176,7 @@ export default function SearchBar({
 }: {
   blurred?: boolean;
   variant?: "default" | "shadow";
+  bordered?: boolean;
   backgroundClassName?: string;
   placeholder?: string;
   sticky?: boolean;
@@ -224,8 +226,12 @@ export default function SearchBar({
               would just be the next drift waiting to be caught. */}
           <form
             onSubmit={(e) => e.preventDefault()}
-            className={`flex items-center rounded-full border bg-white py-2.5 pl-5 pr-3 shadow-sm transition-colors focus-within:border-stone-900 ${
-              variant === "shadow" ? "border-transparent" : "border-stone-300"
+            className={`flex items-center rounded-full border bg-white py-2.5 pl-5 pr-3 transition-colors focus-within:border-stone-900 ${
+              bordered
+                ? "border-stone-300 shadow-none"
+                : variant === "shadow"
+                  ? "border-transparent shadow-sm"
+                  : "border-stone-300 shadow-sm"
             }`}
           >
             <span

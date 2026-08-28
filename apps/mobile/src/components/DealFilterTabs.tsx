@@ -13,14 +13,16 @@ export default function DealFilterTabs({
   onChange,
   buttonIdPrefix,
   backgroundClassName = "bg-white",
+  inactiveBackgroundClassName = "",
 }: {
   value: DealFilter;
   onChange: (value: DealFilter) => void;
   buttonIdPrefix?: string;
   backgroundClassName?: string;
+  inactiveBackgroundClassName?: string;
 }) {
   return (
-    <div className={`flex items-center gap-1 rounded-xl p-1 shadow-sm ${backgroundClassName}`}>
+    <div className={`flex items-center gap-1 rounded-xl border border-stone-300 p-1 shadow-none ${backgroundClassName}`}>
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
         return (
@@ -31,13 +33,13 @@ export default function DealFilterTabs({
             aria-pressed={isActive}
             onClick={() => onChange(tab.id)}
             className={`relative z-0 flex-1 cursor-pointer rounded-lg py-2 text-[13px] leading-4 font-bold transition-colors ${
-              isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
+              isActive ? "text-white" : `${inactiveBackgroundClassName} text-stone-600 hover:text-stone-900`
             }`}
           >
             <AnimatePresence initial={false}>
               {isActive && (
                 <motion.span
-                  className="absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
+                  className="absolute inset-0 rounded-lg bg-stone-900"
                   style={{ zIndex: -1 }}
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
