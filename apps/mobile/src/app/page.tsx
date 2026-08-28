@@ -222,6 +222,9 @@ export default function HomePage() {
     return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category)));
   }, [dealsAllCategories, dealCategoryFilter]);
 
+  const dealFilterTintClass =
+    dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "";
+
   return (
     <>
       {/* Keep the first Check Deals render behind the same solid full-screen
@@ -233,7 +236,7 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="flex flex-col gap-4 pb-6"
+        className={`flex flex-col gap-4 pb-6 transition-colors duration-200 ${dealFilterTintClass}`}
       >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
@@ -273,7 +276,9 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
         <div
-          className={`sticky z-20 grid overflow-hidden bg-stone-50 px-5 transition-[top,grid-template-rows,padding-top] duration-300 ease-out ${
+          className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
+            dealFilterTintClass || "bg-stone-50"
+          } ${
             isToolbarVisible ? "top-[calc(8rem+10px)] pt-2" : "top-[4rem] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}

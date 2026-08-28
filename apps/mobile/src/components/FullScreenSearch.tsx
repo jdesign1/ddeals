@@ -570,6 +570,9 @@ export default function FullScreenSearch() {
 
   const getStoreDisplayName = (key: string) => STORE_DISPLAY_FALLBACK[key] || key;
 
+  const dealFilterTintClass =
+    dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "";
+
   /** Shared "Categories" button + "Sort" button row, used above both the
    * pre-3-char popular list and the post-3-char results grid -- factored out
    * once both were repositioned to sit directly above their own list
@@ -641,7 +644,9 @@ export default function FullScreenSearch() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col bg-stone-50 ${
+          className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-colors duration-200 ${
+            dealFilterTintClass || "bg-stone-50"
+          } ${
             categorySheetTarget !== null || sortSheetTarget !== null ? "z-[70]" : "z-50"
           }`}
         >
@@ -909,9 +914,9 @@ export default function FullScreenSearch() {
                     header comment already uses for the whole overlay's
                     `isActive`. */}
                 <div
-                  className={`sticky top-0 z-20 -mx-5 grid overflow-hidden bg-stone-50 px-5 transition-[grid-template-rows,padding-top] duration-300 ease-out ${
-                    isToolbarVisible ? "pt-4" : "pt-0"
-                  }`}
+                  className={`sticky top-0 z-20 -mx-5 grid overflow-hidden px-5 transition-[grid-template-rows,padding-top,background-color] duration-300 ease-out ${
+                    dealFilterTintClass || "bg-stone-50"
+                  } ${isToolbarVisible ? "pt-4" : "pt-0"}`}
                   style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
                 >
                   {/* `pt-4` above is on this wrapper (the grid CONTAINER),
@@ -1171,7 +1176,9 @@ export default function FullScreenSearch() {
                     // 1px of box height even when "hidden," the same class
                     // of bug `pt-1`/`pt-4` just above had with padding.
                     // Dropped to no border at all when collapsed.
-                    className={`sticky top-0 z-20 -mx-5 grid overflow-hidden bg-stone-50 px-5 transition-[grid-template-rows,padding-top] duration-300 ease-out ${
+                    className={`sticky top-0 z-20 -mx-5 grid overflow-hidden px-5 transition-[grid-template-rows,padding-top,background-color] duration-300 ease-out ${
+                      dealFilterTintClass || "bg-stone-50"
+                    } ${
                       isToolbarVisible ? "border-b border-stone-200 pt-1" : "border-none pt-0"
                     }`}
                     style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
