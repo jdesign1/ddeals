@@ -83,6 +83,8 @@ export interface DodgyDealsRow {
   evidence_strength?: EvidenceStrength | null;
   store_history_ready?: boolean | null;
   classifier_version?: string | null;
+  /** Timestamp of the materialized cache refresh that produced this row. */
+  cache_refreshed_at?: string | null;
 }
 
 export interface CurrentDeal {
@@ -261,6 +263,7 @@ export async function fetchAllRows<T = Record<string, unknown>>(
 
   const fetchPage = async (start: number, count: number, extraHeaders?: Record<string, string>) => {
     const res = await fetch(`${config.url}/rest/v1/${path}`, {
+      cache: "no-store",
       headers: {
         apikey: config.anonKey,
         Authorization: `Bearer ${config.anonKey}`,
@@ -314,6 +317,7 @@ export async function fetchByIds<T = Record<string, unknown>>(
     chunks.map(async (chunk) => {
       const url = `${config.url}/rest/v1/${path}?select=${select}&${column}=in.(${chunk.join(",")})`;
       const res = await fetch(url, {
+        cache: "no-store",
         headers: { apikey: config.anonKey, Authorization: `Bearer ${config.anonKey}` },
       });
       if (!res.ok) throw new Error(`${path} in-lookup -> HTTP ${res.status}`);
@@ -528,7 +532,13 @@ export function buildProductCardsFromSpecials(
  * full-catalogue browsing. Sourced from `dodgy_deals_cache` (see below),
  * grouped into real cross-store match groups via the union-find matchIndex.
  */
-async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<ProductCard[]> {
+interface LiveProductsLoadResult {
+  products: ProductCard[];
+  /** Cache refresh timestamp from the exact rows used to build these cards. */
+  sourceUpdatedAt: number | null;
+}
+
+async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<LiveProductsLoadResult> {
   const [specialRows, matchIndex] = await Promise.all([
     // 2026-08-09: production 500s on this exact query traced (via Supabase API
     // + Postgres logs, not guessed) to `canceling statement due to statement
@@ -599,7 +609,12 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Pro
     fetchSpecialRows(config),
     buildMatchIndex(config),
   ]);
-  if (!specialRows.length) return [];
+  const sourceUpdatedAt = specialRows.reduce<number | null>((latest, row) => {
+    const timestamp = row.cache_refreshed_at ? Date.parse(row.cache_refreshed_at) : NaN;
+    if (!Number.isFinite(timestamp)) return latest;
+    return latest === null ? timestamp : Math.max(latest, timestamp);
+  }, null);
+  if (!specialRows.length) return { products: [], sourceUpdatedAt };
 
   const byGroup = new Map<string, DodgyDealsRow[]>();
   for (const row of specialRows) {
@@ -608,16 +623,16 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Pro
     byGroup.get(groupId)!.push(row);
   }
 
-  return buildProductCardsFromSpecials([...byGroup.entries()]);
+  return { products: buildProductCardsFromSpecials([...byGroup.entries()]), sourceUpdatedAt };
 }
 
 interface LiveProductsCacheEntry {
-  promise: Promise<ProductCard[]>;
+  promise: Promise<LiveProductsLoadResult>;
   resolvedAt: number | null;
 }
 
 const ENRICHED_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
 
 const LEGACY_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
@@ -643,6 +658,7 @@ export const __targetedDealValidations = new Map<string, TargetedDealValidationE
 
 async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string): Promise<T | null> {
   const response = await fetch(`${config.url}/rest/v1/${path}`, {
+    cache: "no-store",
     headers: {
       apikey: config.anonKey,
       Authorization: `Bearer ${config.anonKey}`,
@@ -656,13 +672,41 @@ async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string): Promi
 }
 
 /**
- * Cheap cache revalidation marker. `current_prices.updated_at` is public to
- * the app role and changes when the scraper writes a newer price snapshot;
- * unlike the full catalogue request, this returns one scalar row. A failure
- * is deliberately treated as "unknown" by callers so a transient metadata
- * outage never prevents the app from using its last good catalogue.
+ * Cheap catalogue revalidation marker. `catalogue_publications.published_at`
+ * changes only after the materialized-view refresh has succeeded and the
+ * publication row has been updated. A failure is deliberately treated as
+ * "unknown" by callers so a transient metadata outage never prevents the app
+ * from using its last good catalogue.
  */
-async function fetchLatestCurrentSpecialUpdatedAt(config: SupabaseRestConfig): Promise<number | null> {
+async function fetchLatestPublicationTimestamp(config: SupabaseRestConfig): Promise<number | null> {
+  try {
+    const row = await fetchFirstRow<{ published_at: string | null }>(
+      config,
+      "catalogue_publications?select=published_at&id=eq.live&limit=1"
+    );
+    if (row?.published_at) {
+      const timestamp = Date.parse(row.published_at);
+      if (Number.isFinite(timestamp)) return timestamp;
+    }
+  } catch {
+    // Backward-compatible deployment window: older databases do not have
+    // catalogue_publications yet. Continue through the older markers below.
+  }
+
+  try {
+    const row = await fetchFirstRow<{ cache_refreshed_at: string | null }>(
+      config,
+      "dodgy_deals_cache?select=cache_refreshed_at&limit=1"
+    );
+    if (row?.cache_refreshed_at) {
+      const timestamp = Date.parse(row.cache_refreshed_at);
+      if (Number.isFinite(timestamp)) return timestamp;
+    }
+  } catch {
+    // Backward-compatible deployment window: older databases do not have
+    // cache_refreshed_at yet. Continue to the original current_prices marker.
+  }
+
   try {
     const row = await fetchFirstRow<{ updated_at: string | null }>(
       config,
@@ -684,7 +728,7 @@ interface LatestSourceTimestampCacheEntry {
 const latestSourceTimestampCache = new Map<string, LatestSourceTimestampCacheEntry>();
 const LATEST_SOURCE_TIMESTAMP_CACHE_TTL_MS = 30_000;
 
-function fetchLatestCurrentSpecialUpdatedAtDeduped(config: SupabaseRestConfig): Promise<number | null> {
+function fetchLatestPublicationTimestampDeduped(config: SupabaseRestConfig): Promise<number | null> {
   const key = `${config.url}::${config.anonKey}`;
   const now = Date.now();
   const existing = latestSourceTimestampCache.get(key);
@@ -692,7 +736,7 @@ function fetchLatestCurrentSpecialUpdatedAtDeduped(config: SupabaseRestConfig): 
     return existing.promise;
   }
 
-  const promise = fetchLatestCurrentSpecialUpdatedAt(config);
+  const promise = fetchLatestPublicationTimestamp(config);
   const entry: LatestSourceTimestampCacheEntry = { promise, resolvedAt: null };
   latestSourceTimestampCache.set(key, entry);
   promise.then(
@@ -704,6 +748,14 @@ function fetchLatestCurrentSpecialUpdatedAtDeduped(config: SupabaseRestConfig): 
     }
   );
   return promise;
+}
+
+/**
+ * A realtime publication event or foreground return means the 30-second
+ * marker deduplication window must not hide a newly published version.
+ */
+export function invalidateLiveProductsPublicationMarker(config: SupabaseRestConfig): void {
+  latestSourceTimestampCache.delete(`${config.url}::${config.anonKey}`);
 }
 
 async function fetchTargetedDealRow(
@@ -919,11 +971,15 @@ export const __liveProductsRefreshes = new Map<string, RefreshLiveProductsEntry>
 
 const LIVE_PRODUCTS_AUTO_REFRESH_MS = 6 * 60 * 60 * 1000;
 
-function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCard[]> {
+function loadLiveProductsDeduped(
+  config: SupabaseRestConfig,
+  forceRefresh = false
+): Promise<LiveProductsLoadResult> {
   const cacheKey = `${config.url}::${config.anonKey}`;
   const now = Date.now();
   const cached = __liveProductsCache.get(cacheKey);
-  if (cached && (cached.resolvedAt === null || now - cached.resolvedAt < LIVE_PRODUCTS_CACHE_TTL_MS)) {
+  if (cached && cached.resolvedAt === null) return cached.promise;
+  if (!forceRefresh && cached && now - (cached.resolvedAt ?? 0) < LIVE_PRODUCTS_CACHE_TTL_MS) {
     return cached.promise;
   }
 
@@ -948,8 +1004,8 @@ function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCar
  * specifically about egress efficiency -- checks the persistent, cross-
  * session IndexedDB cache (`catalogue-cache.ts`, a direct port of
  * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
- * browser, within its 6-hour TTL) skips the network fetch entirely when the
- * cheap source timestamp has not advanced --
+ * browser, within its 6-hour TTL) skips the full catalogue network fetch when
+ * the cheap published-cache timestamp has not advanced --
  * `dodgy_deals` AND `buildMatchIndex()`'s two paginated fetches, not just
  * one of them. Only on a miss does this fall through to the in-memory
  * dedup + real network fetch, then best-effort writes the result back to
@@ -964,26 +1020,27 @@ function loadLiveProductsDeduped(config: SupabaseRestConfig): Promise<ProductCar
  */
 export async function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const cached = await readCatalogueCache();
+  let markerAdvanced = false;
   if (cached) {
     const metadata = await readCatalogueCacheMetadata();
-    if (Number.isFinite(metadata?.sourceUpdatedAt)) {
-      const latestSourceUpdatedAt = await fetchLatestCurrentSpecialUpdatedAtDeduped(config);
-      // Unknown freshness is fail-safe: keep the last good catalogue and let
-      // the normal TTL/foreground refresh policy provide the next retry.
-      if (latestSourceUpdatedAt === null || latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
-        return cached;
-      }
-    } else {
-      // Records written before source markers existed remain valid until their
-      // normal TTL expires; they will acquire a marker on the next refresh.
+    const latestSourceUpdatedAt = await fetchLatestPublicationTimestampDeduped(config);
+    // Unknown freshness is fail-safe: keep the last good catalogue and let
+    // the next foreground check or normal TTL expiry retry the marker query.
+    // A legacy record without a marker is treated as older than any known
+    // server marker, so deploying this contract cannot leave old browsers
+    // pinned to stale data for the remainder of the six-hour display TTL.
+    if (latestSourceUpdatedAt === null || latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
       return cached;
     }
+    markerAdvanced = true;
   }
 
-  const fresh = await loadLiveProductsDeduped(config);
-  const sourceUpdatedAt = await fetchLatestCurrentSpecialUpdatedAtDeduped(config);
-  if (fresh.length) writeCatalogueCache(fresh, sourceUpdatedAt);
-  return fresh;
+  const fresh = await loadLiveProductsDeduped(config, markerAdvanced);
+  const sourceUpdatedAt = fresh.products.length
+    ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
+    : fresh.sourceUpdatedAt;
+  if (fresh.products.length) writeCatalogueCache(fresh.products, sourceUpdatedAt);
+  return fresh.products;
 }
 
 /** Returns true when an automatic six-hour refresh is due, without making a network request. */
@@ -1009,6 +1066,7 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
     products: existing?.products ?? null,
   };
   __liveProductsRefreshes.set(cacheKey, entry);
+  invalidateLiveProductsPublicationMarker(config);
 
   const promise = (async (): Promise<RefreshLiveProductsResult> => {
     const metadata = await readCatalogueCacheMetadata();
@@ -1029,16 +1087,18 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
       };
     }
 
-    const fresh = await loadLiveProductsDeduped(config);
-    const sourceUpdatedAt = await fetchLatestCurrentSpecialUpdatedAtDeduped(config);
-    if (fresh.length) await writeCatalogueCache(fresh, sourceUpdatedAt);
+    const fresh = await loadLiveProductsDeduped(config, true);
+    const sourceUpdatedAt = fresh.products.length
+      ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
+      : fresh.sourceUpdatedAt;
+    if (fresh.products.length) await writeCatalogueCache(fresh.products, sourceUpdatedAt);
     else await writeCatalogueCacheMetadata(Date.now(), sourceUpdatedAt);
     const refreshEntry = __liveProductsRefreshes.get(cacheKey);
     if (refreshEntry) {
       refreshEntry.lastSuccessfulRefreshAt = Date.now();
-      refreshEntry.products = fresh;
+      refreshEntry.products = fresh.products;
     }
-    return { products: fresh, refreshed: true, throttled: false, retryAfterMs: 0 };
+    return { products: fresh.products, refreshed: true, throttled: false, retryAfterMs: 0 };
   })();
 
   entry.promise = promise;

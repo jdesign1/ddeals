@@ -15,8 +15,9 @@ import type { ProductCard } from "./data.ts";
  * fetches (`products`, `app_comparable_family_links`) — real egress on a
  * free-tier project, and the same endpoints already implicated in this
  * session's earlier statement-timeout 500s. A warm cache hit (same
- * browser, within `CATALOGUE_CACHE_TTL_MS`) skips ALL of that network
- * traffic, not just the `dodgy_deals` fetch.
+ * browser, within `CATALOGUE_CACHE_TTL_MS`) skips the full catalogue
+ * network traffic, not just the `dodgy_deals` fetch; the app still makes
+ * one lightweight published-cache marker check for freshness.
  *
  * This is a different, complementary thing to `data.ts`'s own short-TTL
  * (30s) in-memory promise cache: this one is cross-session (survives a
@@ -44,11 +45,11 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * to the deployed catalogue contract, not only TypeScript shape changes.
  */
 const CATALOGUE_CACHE_VERSION = 7;
-const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- the client refresh policy is deliberately much less chatty than the server-side 15-minute materialized-view refresh.
+const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {
   savedAt: number;
-  /** Latest source-row timestamp observed when this catalogue was fetched. */
+  /** Last catalogue publication timestamp observed when fetched. */
   sourceUpdatedAt?: number;
 }
 

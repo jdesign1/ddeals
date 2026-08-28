@@ -16,6 +16,7 @@ import {
   titleCase,
   fetchAllRows,
   loadLiveProducts,
+  invalidateLiveProductsPublicationMarker,
   refreshLiveProducts,
   fetchPriceHistory90d,
   validateCurrentDeal,
@@ -447,11 +448,11 @@ test("loadLiveProducts: concurrent overlapping calls share one in-flight fetch, 
     assert.deepEqual(a, b);
     // loadLiveProductsUncached makes 3 underlying fetchAllRows calls
     // (dodgy_deals_cache as of 2026-08-12, products, app_comparable_family_links)
-    // -- 2 overlapping loadLiveProducts()
-    // calls sharing one fetch means 4 total, not 8. The fourth is the
-    // single-row freshness marker check. This is the exact
+    // -- 2 overlapping loadLiveProducts() calls sharing one fetch means 3
+    // catalogue calls total, not 6. The one publication-marker request is
+    // also shared by the overlapping callers. This is the exact
     // production failure mode: before this cache existed, this would be 6.
-    assert.equal(calls.length, 4, `expected 4 underlying fetches for 2 overlapping callers, got ${calls.length}`);
+    assert.equal(calls.length, 3, `expected 3 underlying fetches for 2 overlapping callers, got ${calls.length}`);
   } finally {
     restore();
   }
@@ -462,10 +463,10 @@ test("loadLiveProducts: a second call after the cache entry is evicted fetches a
   try {
     const config = fakeConfig("eviction");
     await loadLiveProducts(config);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 3);
     __liveProductsCache.delete(`${config.url}::${config.anonKey}`);
     await loadLiveProducts(config);
-    assert.equal(calls.length, 7, "expected a fresh catalogue pipeline after manual cache eviction");
+    assert.equal(calls.length, 6, "expected a fresh catalogue pipeline after manual cache eviction");
   } finally {
     restore();
   }
@@ -525,6 +526,7 @@ const SAMPLE_DODGY_DEALS_ROW: DodgyDealsRow = {
   sale_started_at: "2026-08-01T00:00:00Z",
   verdict: "GENUINE",
   reason: "Saving 28.6% vs recent normal price",
+  cache_refreshed_at: "2026-08-26T14:00:00Z",
 };
 
 function installFetchStubWithOneRealRow(): { calls: string[]; restore: () => void } {
@@ -533,6 +535,14 @@ function installFetchStubWithOneRealRow(): { calls: string[]; restore: () => voi
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     calls.push(url);
+    if (url.includes("catalogue_publications")) {
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => [{ published_at: "2026-08-26T14:00:00Z" }],
+      } as unknown as Response;
+    }
     const body = url.includes("dodgy_deals") ? [SAMPLE_DODGY_DEALS_ROW] : [];
     return {
       ok: true,
@@ -549,21 +559,28 @@ function installFetchStubWithOneRealRow(): { calls: string[]; restore: () => voi
   };
 }
 
-test("loadLiveProducts: a warm IndexedDB cache hit skips the network fetch entirely", async () => {
+test("loadLiveProducts: a warm IndexedDB cache hit checks the marker but skips the full fetch", async () => {
   const cachedProducts = [fakeProductCard("p1"), fakeProductCard("p2")];
-  await writeCatalogueCache(cachedProducts);
+  await writeCatalogueCache(cachedProducts, Date.parse("2026-08-26T14:00:00Z"));
 
   const original = globalThis.fetch;
-  let fetchWasCalled = false;
-  globalThis.fetch = (async () => {
-    fetchWasCalled = true;
-    throw new Error("network should not be reached on a warm IndexedDB cache hit");
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => [{ published_at: "2026-08-26T14:00:00Z" }],
+    } as unknown as Response;
   }) as typeof fetch;
 
   try {
     const result = await loadLiveProducts(fakeConfig("warm-hit"));
     assert.deepEqual(result, cachedProducts);
-    assert.equal(fetchWasCalled, false, "expected loadLiveProducts to skip the network fetch entirely");
+    assert.equal(calls.length, 1, "expected one marker check and no full catalogue fetch");
+    assert.ok(calls[0].includes("catalogue_publications"));
   } finally {
     globalThis.fetch = original;
   }
@@ -575,7 +592,7 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     const config = fakeConfig("writeback");
     const result = await loadLiveProducts(config);
     assert.equal(result.length, 1, "expected one product card built from the one real dodgy_deals row");
-    assert.equal(calls.length, 4, "expected the normal 3-call network pipeline plus one freshness marker on a cache miss");
+    assert.equal(calls.length, 4, "expected the 3-call pipeline plus one publication marker");
 
     // writeCatalogueCache is fire-and-forget inside loadLiveProducts (not
     // awaited, matching the prototype's own pattern) -- give it a couple of
@@ -598,12 +615,12 @@ test("loadLiveProducts: refreshes a warm cache when the source timestamp advance
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     calls.push(url);
-    if (url.includes("current_prices")) {
+    if (url.includes("catalogue_publications")) {
       return {
         ok: true,
         status: 200,
         headers: { get: () => null },
-        json: async () => [{ updated_at: "2026-08-26T15:00:00Z" }],
+        json: async () => [{ published_at: "2026-08-26T15:00:00Z" }],
       } as unknown as Response;
     }
     const body = url.includes("dodgy_deals") ? [SAMPLE_DODGY_DEALS_ROW] : [];
@@ -619,7 +636,48 @@ test("loadLiveProducts: refreshes a warm cache when the source timestamp advance
     const result = await loadLiveProducts(fakeConfig("source-advanced"));
     assert.notDeepEqual(result, cachedProducts);
     assert.equal(result.length, 1);
-    assert.equal(calls.length, 4, "expected one freshness check plus the three-call catalogue pipeline");
+    assert.equal(calls.length, 4, "expected one publication marker plus the three-call catalogue pipeline");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: a new publication bypasses a resolved pre-publication in-memory result", async () => {
+  const config = fakeConfig("publication-bypasses-memory");
+  const first = installFetchStubWithOneRealRow();
+  await loadLiveProducts(config);
+  await Promise.resolve();
+  await Promise.resolve();
+  first.restore();
+  invalidateLiveProductsPublicationMarker(config);
+
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  const freshRow = { ...SAMPLE_DODGY_DEALS_ROW, product_name: "Fresh Butter" };
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("catalogue_publications")) {
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => [{ published_at: "2026-08-26T15:00:00Z" }],
+      } as unknown as Response;
+    }
+    const body = url.includes("dodgy_deals") ? [freshRow] : [];
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => body,
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(config);
+    assert.equal(result[0]?.name, "Fresh Butter");
+    assert.equal(calls.length, 4, "an advanced marker must force the 3-call catalogue fetch");
   } finally {
     globalThis.fetch = original;
   }

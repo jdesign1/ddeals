@@ -2,16 +2,16 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  isLiveProductsRefreshDue,
   loadLiveProducts,
+  invalidateLiveProductsPublicationMarker,
   refreshLiveProducts,
-  LIVE_PRODUCTS_AUTO_REFRESH_MS,
   describeFetchError,
   type ProductCard,
   type RefreshLiveProductsResult,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
 import { publishCatalogueUpdate, subscribeToCatalogueUpdates } from "./catalogue-refresh";
+import { subscribeToCataloguePublication } from "./catalogue-publication";
 import type { DealFilter } from "./deal-filters";
 
 /**
@@ -210,58 +210,62 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setProducts(result);
   }), []);
 
-  // Refresh after a long-lived foreground session or a backgrounded app has
-  // been away for six hours. The timer itself is local-only; the network
-  // request is made only once `isLiveProductsRefreshDue()` confirms that the
-  // persisted catalogue timestamp is old enough. Visibility handling covers
-  // mobile browsers/webviews that suspend timers while backgrounded.
+  // Revalidate when the database publishes a new catalogue. The realtime
+  // event is only an invalidation signal; loadLiveProducts still compares the
+  // durable publication marker and downloads the full catalogue at most once
+  // per publication. Visibility handling catches events missed while the
+  // browser/webview was suspended, and SUBSCRIBED catches reconnects.
   useEffect(() => {
     let cancelled = false;
-    let hiddenAt: number | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let revalidation: Promise<void> | null = null;
+    let revalidationQueued = false;
 
-    const maybeRefresh = async () => {
+    const revalidate = () => {
       if (cancelled || document.visibilityState !== "visible") return;
-      if (!(await isLiveProductsRefreshDue()) || cancelled) return;
-      try {
-        await refreshCatalogue();
-      } catch {
-        // Keep the current catalogue visible during a background refresh
-        // failure. The next foreground check or pull can retry it.
+      if (revalidation) {
+        revalidationQueued = true;
+        return;
       }
-    };
-
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        void maybeRefresh().finally(schedule);
-      }, LIVE_PRODUCTS_AUTO_REFRESH_MS);
+      invalidateLiveProductsPublicationMarker(supabaseConfig);
+      revalidation = (async () => {
+        try {
+          const result = await loadLiveProducts(supabaseConfig);
+          if (!cancelled) {
+            setProducts(result);
+            setError(null);
+            publishCatalogueUpdate(result);
+          }
+        } catch {
+          // Keep the current catalogue visible during a background refresh
+          // failure. The next foreground check or realtime reconnect retries.
+        } finally {
+          revalidation = null;
+          if (revalidationQueued) {
+            revalidationQueued = false;
+            revalidate();
+          }
+        }
+      })();
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        hiddenAt = Date.now();
-        return;
-      }
-      const inactiveFor = hiddenAt === null ? 0 : Date.now() - hiddenAt;
-      hiddenAt = null;
-      if (inactiveFor >= LIVE_PRODUCTS_AUTO_REFRESH_MS) void maybeRefresh();
+      if (document.visibilityState === "visible") revalidate();
     };
 
     // A browser back/forward-cache restore can emit `pageshow` without the
     // visibility sequence, so treat it as another cheap freshness checkpoint.
-    const handlePageShow = () => void maybeRefresh();
+    const handlePageShow = () => revalidate();
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pageshow", handlePageShow);
-    schedule();
+    const unsubscribe = subscribeToCataloguePublication(revalidate);
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pageshow", handlePageShow);
-      if (timer) clearTimeout(timer);
+      unsubscribe();
     };
-  }, [refreshCatalogue]);
+  }, []);
 
   const value = useMemo<SearchContextValue>(
     () => ({
