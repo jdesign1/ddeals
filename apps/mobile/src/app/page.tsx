@@ -169,6 +169,7 @@ export default function HomePage() {
     dealFilter,
     setDealFilter,
   } = useSearch();
+  const { isAnonymousSession } = useAuth();
 
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
@@ -287,7 +288,11 @@ export default function HomePage() {
           className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
           } ${
-            isToolbarVisible ? "top-[140px] pt-2" : "top-[62px] pt-0"
+            isToolbarVisible
+              ? isAnonymousSession
+                ? "top-[164px] pt-2"
+                : "top-[140px] pt-2"
+              : "top-[62px] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >

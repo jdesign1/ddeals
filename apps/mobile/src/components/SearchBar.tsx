@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
@@ -186,6 +187,7 @@ export default function SearchBar({
   compact?: boolean;
 }) {
   const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
+  const { isAnonymousSession } = useAuth();
   const pathname = usePathname();
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
 
@@ -199,7 +201,7 @@ export default function SearchBar({
   // the 64px nav instead of letting both sticky elements claim top: 0. Once
   // the header slides away, the search bar returns to the top of the viewport.
   const stickyPositionClass = sticky
-    ? `sticky z-20 ${pathname === "/" && !isCheckDealsHeaderHidden ? "top-16" : "top-0"}`
+    ? `sticky z-20 ${pathname === "/" && !isCheckDealsHeaderHidden ? (isAnonymousSession ? "top-[88px]" : "top-16") : "top-0"}`
     : "";
 
   return (
