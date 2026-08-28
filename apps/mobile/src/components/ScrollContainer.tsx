@@ -11,6 +11,7 @@ import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
 const HEADER_DIRECTION_THRESHOLD_PX = 20;
+const HEADER_TRANSITION_MS = 300;
 
 /**
  * Extracted 2026-08-17 from `layout.tsx`'s own inline
@@ -50,6 +51,8 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const scrollDirectionRef = useRef<"up" | "down" | null>(null);
   const directionDistanceRef = useRef(0);
   const headerHiddenRef = useRef(false);
+  const headerAnimationGuardRef = useRef(false);
+  const headerAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<"updated" | "throttled" | null>(null);
@@ -57,11 +60,14 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   useEffect(
     () => () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (headerAnimationTimeoutRef.current) clearTimeout(headerAnimationTimeoutRef.current);
     },
     []
   );
 
   useEffect(() => {
+    if (headerAnimationTimeoutRef.current) clearTimeout(headerAnimationTimeoutRef.current);
+    headerAnimationGuardRef.current = false;
     lastScrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
     scrollDirectionRef.current = null;
     directionDistanceRef.current = 0;
@@ -69,19 +75,36 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     publishCheckDealsHeaderVisibility(false);
   }, [pathname]);
 
+  // Collapsing the sticky header/search/toolbar changes the layout above the
+  // current viewport and can make the browser emit a compensating scroll
+  // event. Ignore those animation-generated events so they cannot be read as
+  // a new user direction and immediately reverse the transition.
+  const setHeaderHidden = (hidden: boolean) => {
+    if (headerHiddenRef.current === hidden) return;
+    headerHiddenRef.current = hidden;
+    publishCheckDealsHeaderVisibility(hidden);
+    headerAnimationGuardRef.current = true;
+    if (headerAnimationTimeoutRef.current) clearTimeout(headerAnimationTimeoutRef.current);
+    headerAnimationTimeoutRef.current = setTimeout(() => {
+      headerAnimationGuardRef.current = false;
+    }, HEADER_TRANSITION_MS + 50);
+  };
+
   const handleScroll = () => {
     const currentScrollTop = scrollRef.current?.scrollTop ?? 0;
     const previousScrollTop = lastScrollTopRef.current;
     lastScrollTopRef.current = currentScrollTop;
 
     if (pathname !== "/") return;
+    if (headerAnimationGuardRef.current) {
+      scrollDirectionRef.current = null;
+      directionDistanceRef.current = 0;
+      return;
+    }
     if (currentScrollTop <= 8) {
       scrollDirectionRef.current = null;
       directionDistanceRef.current = 0;
-      if (headerHiddenRef.current) {
-        headerHiddenRef.current = false;
-        publishCheckDealsHeaderVisibility(false);
-      }
+      if (headerHiddenRef.current) setHeaderHidden(false);
       return;
     }
 
@@ -96,10 +119,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     if (directionDistanceRef.current < HEADER_DIRECTION_THRESHOLD_PX) return;
 
     directionDistanceRef.current = 0;
-    const hidden = direction === "down";
-    if (headerHiddenRef.current === hidden) return;
-    headerHiddenRef.current = hidden;
-    publishCheckDealsHeaderVisibility(hidden);
+    setHeaderHidden(direction === "down");
   };
 
   const resetPull = () => {
