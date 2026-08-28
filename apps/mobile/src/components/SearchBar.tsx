@@ -168,12 +168,14 @@ import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 export default function SearchBar({
   blurred = false,
   variant = "default",
+  backgroundClassName,
   placeholder = "Search if today's deals are dodgy",
   sticky = true,
   topSpacing = false,
 }: {
   blurred?: boolean;
   variant?: "default" | "shadow";
+  backgroundClassName?: string;
   placeholder?: string;
   sticky?: boolean;
   topSpacing?: boolean;
@@ -203,7 +205,9 @@ export default function SearchBar({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
           className={`${stickyPositionClass} px-5 ${topSpacing ? "pb-2 pt-4" : "py-2"} ${
-            blurred ? "backdrop-blur-md" : variant === "shadow" ? "bg-stone-50" : "bg-white"
+            blurred
+              ? "backdrop-blur-md"
+              : backgroundClassName || (variant === "shadow" ? "bg-stone-50" : "bg-white")
           }`}
         >
           {/* `pr-2` -> `pr-3` + clear-`X` `h-4 w-4` -> `h-5 w-5`, 2026-08-20,
