@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 const SHOW_AFTER_PX = 640;
 const MIN_SCROLLABLE_DISTANCE_PX = 900;
+const SCROLL_TO_TOP_DURATION_MS = 220;
 
 /**
  * Small shared control for the long result lists. It waits until the list is
@@ -20,6 +21,7 @@ export default function BackToTopButton({
   enabled?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
+  const scrollAnimationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -47,11 +49,32 @@ export default function BackToTopButton({
       element?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
       observer?.disconnect();
+      if (scrollAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
     };
   }, [enabled, scrollRef]);
 
   const scrollToTop = () => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    const element = scrollRef.current;
+    if (!element) return;
+    if (scrollAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+    }
+
+    const startTop = element.scrollTop;
+    const startTime = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startTime) / SCROLL_TO_TOP_DURATION_MS);
+      const easedProgress = 1 - (1 - progress) ** 3;
+      element.scrollTop = startTop * (1 - easedProgress);
+      if (progress < 1) {
+        scrollAnimationFrameRef.current = window.requestAnimationFrame(animate);
+      } else {
+        scrollAnimationFrameRef.current = null;
+      }
+    };
+    scrollAnimationFrameRef.current = window.requestAnimationFrame(animate);
   };
 
   return (
