@@ -263,7 +263,7 @@ export default function HomePage() {
           than adding a 3rd variant/new prop just for the border -- no page
           needs the two concerns (wrapper fill vs. pill border) decoupled
           today. */}
-      {!isSearchActive && <SearchBar blurred variant="shadow" />}
+      {!isSearchActive && <SearchBar variant="shadow" />}
 
       {/* Store filter pills -- ported from Prototype/index.html's global
           supermarket filter. `StorePill` (extracted 2026-08-09) is the same
@@ -274,7 +274,7 @@ export default function HomePage() {
       {!isSearchActive && !loadingProducts && !error && (
         <div
           className={`sticky z-20 grid overflow-hidden bg-stone-50 px-5 transition-[top,grid-template-rows,padding-top] duration-300 ease-out ${
-            isToolbarVisible ? "top-[8rem] pt-2" : "top-[4rem] pt-0"
+            isToolbarVisible ? "top-[10rem] pt-2" : "top-[4rem] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >
