@@ -174,7 +174,11 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       // keeps a drag that starts on a tappable product card from being
       // interpreted as card interaction instead of page scrolling.
       className="relative flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain"
-      style={{ touchAction: "pan-y" }}
+      // Check Deals changes the heights/offsets of several sticky siblings
+      // together. Prevent scroll anchoring from converting those layout
+      // changes into compensating scroll events, which can look like a
+      // reversal during a slow drag and make the header dock/undock repeatedly.
+      style={{ touchAction: "pan-y", overflowAnchor: pathname === "/" ? "none" : undefined }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => void handleTouchEnd()}

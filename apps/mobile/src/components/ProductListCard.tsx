@@ -165,10 +165,11 @@ export default function ProductListCard({
         </div>
       </div>
       <div
-        className={`flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white pl-4 pr-9 ${
+        className={`flex min-w-0 flex-1 flex-col justify-center bg-white pl-4 pr-9 ${
           alsoSpecialStores.length > 0 ? "py-8" : "py-5"
         }`}
       >
+        <div className={`flex flex-col justify-center gap-0.5 ${alsoSpecialStores.length > 0 ? "flex-1" : ""}`}>
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same
@@ -196,6 +197,7 @@ export default function ProductListCard({
                 ? storeLabel
                 : `${storeLinePrefix} ${storeLabel}.`}
           </span>
+        </div>
         </div>
       </div>
 
