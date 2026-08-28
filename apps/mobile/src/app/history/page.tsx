@@ -68,6 +68,7 @@ export default function HistoryPage() {
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
 
   const [history, setHistory] = useState<DealCheckRow[] | null>(null);
+  const [availableMonthKeys, setAvailableMonthKeys] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryTick, setRetryTick] = useState(0);
@@ -82,7 +83,7 @@ export default function HistoryPage() {
     if (!user) return;
     let cancelled = false;
     const range = selectedMonth ? monthRange(selectedMonth) : null;
-    fetchDealCheckHistory(getSupabaseClient(), range ? { ...range, limit: 500 } : 200)
+    fetchDealCheckHistory(getSupabaseClient(), range ? { ...range, limit: 500 } : 500)
       .then((rows) => {
         if (!cancelled) {
           // A month change can leave fallback product metadata from the
@@ -90,6 +91,7 @@ export default function HistoryPage() {
           // so a just-selected month can never render a stale product.
           setFallbackProducts([]);
           setHistory(rows);
+          if (!selectedMonth) setAvailableMonthKeys([...new Set(rows.map((row) => getHistoryMonthKey(row.checked_at)))]);
         }
       })
       .catch((err: unknown) => {
@@ -153,6 +155,7 @@ export default function HistoryPage() {
       return productMatchesSearch(product, searchQuery);
     });
   }, [displayHistory, searchQuery, productById]);
+  const monthOptions = useMemo(() => buildHistoryMonthOptions(availableMonthKeys), [availableMonthKeys]);
 
   if (authLoading) {
     return (
@@ -230,21 +233,27 @@ export default function HistoryPage() {
         <div className="flex items-center gap-2">
           <label
             htmlFor="history-month"
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-stone-700 shadow-sm"
+            className="flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-stone-700 shadow-sm"
           >
             <CalendarDays className="h-4 w-4 flex-shrink-0 text-stone-500" aria-hidden="true" />
             <span className="sr-only">Jump to month</span>
-            <input
+            <select
               id="history-month"
-              type="month"
               value={selectedMonth ?? ""}
               onChange={(event) => {
                 setHistory(null);
                 setSelectedMonth(event.target.value || null);
               }}
               aria-label="Jump to month"
-              className="mobile-zoom-safe-input min-w-0 flex-1 border-none bg-transparent text-sm font-bold text-stone-700 focus:outline-none"
-            />
+              className="mobile-zoom-safe-input w-max max-w-[calc(100vw-11rem)] border-none bg-transparent text-sm font-bold text-stone-700 focus:outline-none"
+            >
+              <option value="">Select month</option>
+              {monthOptions.map((month) => (
+                <option key={month.value} value={month.value} disabled={month.disabled}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
           </label>
           {selectedMonth && (
             <button
@@ -253,9 +262,9 @@ export default function HistoryPage() {
                 setHistory(null);
                 setSelectedMonth(null);
               }}
-              className="shrink-0 rounded-full px-3 py-2.5 text-xs font-bold text-stone-600 shadow-sm transition-colors hover:bg-white hover:text-stone-900"
+              className="shrink-0 px-1 py-2.5 text-xs font-bold text-stone-600 underline underline-offset-2 transition-colors hover:text-stone-900"
             >
-              All months
+              Clear all
             </button>
           )}
         </div>
@@ -369,6 +378,38 @@ function monthRange(month: string): { startAt: string; endAt: string } {
   const startAt = new Date(year, monthNumber - 1, 1).toISOString();
   const endAt = new Date(year, monthNumber, 1).toISOString();
   return { startAt, endAt };
+}
+
+function getHistoryMonthKey(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return isoDate.slice(0, 7);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+function buildHistoryMonthOptions(monthKeys: string[]): { value: string; label: string; disabled: boolean }[] {
+  const validKeys = [...new Set(monthKeys)].filter((key) => /^\d{4}-\d{2}$/.test(key)).sort();
+  if (!validKeys.length) return [];
+
+  const [firstYear, firstMonth] = validKeys[0].split("-").map(Number);
+  const [lastYear, lastMonth] = validKeys[validKeys.length - 1].split("-").map(Number);
+  const firstIndex = firstYear * 12 + firstMonth - 1;
+  const lastIndex = lastYear * 12 + lastMonth - 1;
+  const available = new Set(validKeys);
+  const formatter = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+  const options: { value: string; label: string; disabled: boolean }[] = [];
+
+  for (let index = lastIndex; index >= firstIndex; index -= 1) {
+    const year = Math.floor(index / 12);
+    const month = (index % 12) + 1;
+    const value = `${year}-${String(month).padStart(2, "0")}`;
+    options.push({
+      value,
+      label: formatter.format(new Date(year, month - 1, 1)),
+      disabled: !available.has(value),
+    });
+  }
+  return options;
 }
 
 function getLocalDayKey(isoDate: string): string {

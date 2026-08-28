@@ -217,6 +217,11 @@ import { useAuth } from "@/lib/auth-context";
  * the comment directly above the `return`'s JSX for the actual per-mode
  * ordering.
  *
+ * Latest bottom-sheet refinement (2026-08-29): Login now renders only its
+ * email/password fields and uses a content-sized sheet. This supersedes the
+ * equal-height treatment above for the Login tab so it cannot scroll into
+ * sign-up-only empty space; Create account keeps the taller scrollable form.
+ *
  * Three more changes 2026-08-20, same "login create account bottom sheet"
  * batch as the border removal in `AuthSheet.tsx` (see that file's own doc
  * comment):
@@ -757,23 +762,25 @@ export default function AuthPanel({
       : "Login to Dodgy deals with your email and password";
 
   return (
-    <div className="flex min-h-full flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${mode === "signup" ? "min-h-full" : ""}`}>
       {/* The illustration belongs to the Login experience only; the Create account
           tab keeps the form focused and avoids repeating the artwork. */}
       {mode === "signin" && authIllustration}
       <p className="text-sm font-medium text-stone-600">{subtitle}</p>
-      <form onSubmit={handleSubmit} noValidate className="flex min-h-full flex-1 flex-col gap-3">
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className={`flex flex-col gap-3 ${mode === "signup" ? "min-h-full flex-1" : ""}`}
+      >
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login
             tab move email and password fields to the top below the log in
             statement sentence") -- sign-up keeps the original top-to-bottom
             order (Name/Select age/NZ ZIP Code, Email, Password, Confirm
             Password); sign-in surfaces Email/Password FIRST (right after
             the prompt paragraph above, when there is one), with the other
-            2 blocks -- invisible/inert in sign-in either way, see their
-            own comments above -- following after rather than before. Same
-            4 blocks in both branches, just reordered, so the form's total
-            height (sum of its children, order-independent) is unaffected
-            -- this doesn't reopen the same-height-across-tabs fix above. */}
+            sign-in keeps only the fields it uses, so its sheet can wrap
+            tightly around the actual login content instead of retaining
+            sign-up-only empty space. */}
         {mode === "signup" ? (
           <>
             {extraFieldsBlock}
@@ -785,8 +792,6 @@ export default function AuthPanel({
           <>
             {emailBlock}
             {passwordBlock}
-            {extraFieldsBlock}
-            {confirmPasswordBlock}
           </>
         )}
         {/* Tile-level error -- system/connection failures for sign-up

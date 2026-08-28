@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
-import { Trash2, Pencil, Store, Plus, Check, X, ChevronDown } from "lucide-react";
+import { Pencil, Store, Plus, Check, X, ChevronDown } from "lucide-react";
 import {
   createList,
   deleteList,
@@ -691,6 +691,11 @@ function ListCard({
   const liveItems = items.filter((item) => itemCards.get(item.product_id)?.currentDeals[0]?.isOnSpecial === true);
   const notOnSpecialItems = items.filter((item) => !liveItems.includes(item));
 
+  function enterDeleteMode() {
+    setDeleteCardHeight(cardRef.current?.offsetHeight ?? null);
+    setConfirmingDelete(true);
+  }
+
   async function saveName() {
     const trimmed = editName.trim();
     if (!trimmed || trimmed === list.name) {
@@ -722,11 +727,20 @@ function ListCard({
     // as "in a destructive state," not just its confirm buttons.
     <motion.article
       ref={cardRef}
-      style={confirmingDelete && deleteCardHeight ? { minHeight: deleteCardHeight } : undefined}
+      style={{
+        ...(confirmingDelete && deleteCardHeight ? { minHeight: deleteCardHeight } : {}),
+        touchAction: "pan-y",
+      }}
       initial={isNew ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       onAnimationComplete={isNew ? onNewAnimationComplete : undefined}
+      drag={confirmingDelete ? false : "x"}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.5}
+      onDragEnd={(_event, info) => {
+        if (info.offset.x < -70) enterDeleteMode();
+      }}
       aria-busy={isDeleting}
       className={`relative flex flex-col gap-2 overflow-hidden rounded-2xl p-4 shadow-sm ${confirmingDelete ? "bg-alert-50" : "bg-white"}`}
     >
@@ -839,16 +853,6 @@ function ListCard({
                   className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  onClick={() => {
-                    setDeleteCardHeight(cardRef.current?.offsetHeight ?? null);
-                    setConfirmingDelete(true);
-                  }}
-                  aria-label={`Delete ${list.name}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             )}

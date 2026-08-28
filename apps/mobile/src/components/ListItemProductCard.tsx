@@ -148,7 +148,6 @@ const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; 
   "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert" },
   "Real Deal": { label: "Real", className: "dd-badge-fair" },
   "Fair Price": { label: "Fair", className: "dd-badge-dodgy" },
-  "Unverified Deal": { label: "Limited history", className: "dd-badge-neutral" },
 };
 
 // How far left (px) a swipe must travel before it counts as "remove this"
@@ -167,9 +166,7 @@ export default function ListItemProductCard({
 }: ListItemProductCardProps) {
   const router = useRouter();
   const storeMeta = getStoreLogoMeta(deal.store);
-  const badge = deal.dealType === "Unverified Deal" && deal.evidenceStatus === "EARLY"
-    ? { label: "Early read", className: "dd-badge-neutral" }
-    : DEAL_TYPE_BADGE[deal.dealType];
+  const badge = deal.dealType === "Unverified Deal" ? undefined : DEAL_TYPE_BADGE[deal.dealType];
   // Same sentence-case transform ProductListCard.tsx applies to `brand`
   // (that file's own doc comment has the full "why": Title Case from
   // data.ts isn't the same thing as real sentence case, and there's no CSS

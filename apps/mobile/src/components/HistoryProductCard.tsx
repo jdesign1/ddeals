@@ -11,11 +11,10 @@ interface HistoryProductCardProps {
   deal: CurrentDeal;
 }
 
-const DEAL_TYPE_BADGE: Record<CurrentDeal["dealType"], { label: string; className: string }> = {
+const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; className: string }>> = {
   "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert" },
   "Real Deal": { label: "Real", className: "dd-badge-fair" },
   "Fair Price": { label: "Fair", className: "dd-badge-dodgy" },
-  "Unverified Deal": { label: "Limited history", className: "dd-badge-neutral" },
 };
 
 /**
@@ -26,9 +25,7 @@ const DEAL_TYPE_BADGE: Record<CurrentDeal["dealType"], { label: string; classNam
 export default function HistoryProductCard({ product, deal }: HistoryProductCardProps) {
   const router = useRouter();
   const storeMeta = getStoreLogoMeta(deal.store);
-  const badge = deal.dealType === "Unverified Deal" && deal.evidenceStatus === "EARLY"
-    ? { label: "Early read", className: "dd-badge-neutral" }
-    : DEAL_TYPE_BADGE[deal.dealType];
+  const badge = deal.dealType === "Unverified Deal" ? undefined : DEAL_TYPE_BADGE[deal.dealType];
   const brandSentenceCase = product.brand
     ? product.brand.charAt(0).toUpperCase() + product.brand.slice(1).toLowerCase()
     : product.brand;
