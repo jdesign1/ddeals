@@ -282,6 +282,27 @@ select {
   -webkit-overflow-scrolling: touch;
 }
 
+/* The compact Check Deals search bar sits 14px above its sticky toolbar so
+   the tabs and pills retain their normal-flow spacing. Extend the bar's own
+   background through that dock gap without adding layout height, which keeps
+   the iOS WebView from exposing a white/transparent strip while the toolbar
+   reappears during upward scrolling. `inherit` keeps the active fair/dodgy
+   tint in sync with the search bar itself. */
+.search-bar-gap-fill {
+  position: relative;
+}
+
+.search-bar-gap-fill::after {
+  position: absolute;
+  right: 0;
+  bottom: -14px;
+  left: 0;
+  height: 14px;
+  background-color: inherit;
+  content: "";
+  pointer-events: none;
+}
+
 /* Quick, periodic "blink" on the header logo mark: mostly still, with a
    fast vertical squash near the 96% mark so it reads as a blink rather
    than a constant pulse. Ported verbatim from Prototype/index.html. */

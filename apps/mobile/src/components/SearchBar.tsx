@@ -209,7 +209,7 @@ export default function SearchBar({
           initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`${stickyPositionClass} px-5 transition-[top,background-color] duration-300 ease-out ${topSpacing ? "pb-2 pt-4" : compact ? "pb-0 pt-2" : "py-2"} ${
+          className={`${stickyPositionClass} ${compact ? "search-bar-gap-fill" : ""} px-5 transition-[top,background-color] duration-300 ease-out ${topSpacing ? "pb-2 pt-4" : compact ? "pb-0 pt-2" : "py-2"} ${
             blurred
               ? "backdrop-blur-md"
               : backgroundClassName || (variant === "shadow" ? "bg-stone-50" : "bg-white")
