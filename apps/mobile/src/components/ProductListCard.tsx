@@ -142,14 +142,15 @@ export default function ProductListCard({
           already a same-day revert of an even-earlier accidental 80px
           shrink -- see project.md for the full back-and-forth). `bg-stone-50`
           (not `-100`) per Jay's same-day "make the grey slightly lighter"
-          ask. Text panel's `py-6` is symmetric (top and bottom equal) so
+          ask. Text panel's extra vertical padding for multi-supermarket
+          cards is symmetric (top and bottom equal) so
           `justify-center` genuinely centers the text block with equal
           space above and below, per Jay's same-day ask -- an earlier
           draft added an extra `pb-6` spacer *inside* the centered group
           (for badge clearance below), which broke that symmetry by making
           the centered content-plus-spacer block sit visibly higher than
           center. Removed that spacer; the verdict badge (bottom-2 right-3)
-          now just sits within this panel's own bottom `py-5` inset
+          now just sits within this panel's own bottom inset
           instead. */}
       <div className="flex w-36 flex-shrink-0 select-none items-center justify-center bg-stone-50 p-4">
         <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl">
@@ -165,7 +166,7 @@ export default function ProductListCard({
       </div>
       <div
         className={`flex min-w-0 flex-1 flex-col justify-center gap-0.5 bg-white pl-4 pr-9 ${
-          alsoSpecialStores.length > 0 ? "py-6" : "py-5"
+          alsoSpecialStores.length > 0 ? "py-8" : "py-5"
         }`}
       >
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
