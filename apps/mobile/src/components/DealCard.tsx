@@ -35,6 +35,9 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
       }}
       role="button"
       tabIndex={0}
+      // Keep vertical swipes scrolling the page when they start on a card;
+      // tapping the card still navigates normally.
+      style={{ touchAction: "pan-y" }}
       // No border, `shadow-sm` instead (2026-08-15, Jay: "Make all product
       // item cards have no border, and the same tight drop shadow used on
       // the Lists page saved lists cards" -- same treatment as

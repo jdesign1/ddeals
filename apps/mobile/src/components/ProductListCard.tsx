@@ -117,6 +117,9 @@ export default function ProductListCard({
       // (Dodgy/Real/Fair, below) already carries the same information
       // explicitly in text, so the border was a redundant, secondary cue
       // rather than the only place a user could read the verdict from.
+      // Product cards remain tappable, but vertical swipes must stay with the
+      // page's scroll container even when the gesture starts on this card.
+      style={{ touchAction: "pan-y" }}
       className="group relative flex cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
       <AddToListButton productId={product.id} />
