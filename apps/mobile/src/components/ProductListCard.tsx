@@ -189,46 +189,46 @@ export default function ProductListCard({
                 : `${storeLinePrefix} ${storeLabel}.`}
           </span>
         </div>
-        {alsoSpecialStores.length > 0 && (
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            {/* "Also on special at:" -> "Also special at:" (2026-08-17,
-                same ask as `storeLinePrefix` above -- Jay's "remove the
-                word 'on'" applied consistently to this card's other
-                "on special" phrase too, not just the primary line). */}
-            <span className="text-[11px] font-bold tracking-wider text-stone-600">Also special at:</span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {alsoSpecialStores.map((store) => {
-                const meta = getStoreLogoMeta(store);
-                return (
-                  <div
-                    key={store}
-                    title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                    className={`select-none rounded-md px-2 py-1 text-[10px] font-black ${meta.bg} ${meta.text}`}
-                  >
-                    {meta.short}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
-      {isDodgy && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-alert-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
-          Dodgy
-        </span>
-      )}
-      {isRealSaver && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-fair-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
-          Real
-        </span>
-      )}
-      {isFairDeal && (
-        <span className="absolute bottom-2 right-3 z-10 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
-          Fair
-        </span>
-      )}
+      <div
+        className={`absolute bottom-2 left-40 right-3 z-10 flex min-w-0 items-center gap-2 ${
+          alsoSpecialStores.length > 0 ? "justify-between" : "justify-end"
+        }`}
+      >
+        {alsoSpecialStores.length > 0 && (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            <span className="shrink-0 text-[11px] font-bold tracking-normal text-stone-600">Also at:</span>
+            {alsoSpecialStores.map((store) => {
+              const meta = getStoreLogoMeta(store);
+              return (
+                <div
+                  key={store}
+                  title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
+                  className={`select-none rounded-md px-2 py-1 text-[10px] font-black ${meta.bg} ${meta.text}`}
+                >
+                  {meta.short}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {isDodgy && (
+          <span className="shrink-0 select-none rounded-md bg-alert-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
+            Dodgy
+          </span>
+        )}
+        {isRealSaver && (
+          <span className="shrink-0 select-none rounded-md bg-fair-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
+            Real
+          </span>
+        )}
+        {isFairDeal && (
+          <span className="shrink-0 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
+            Fair
+          </span>
+        )}
+      </div>
       {/* Supermarket badge -- moved top-left (2026-08-12, per Jay's ask; was
           bottom-left, alongside the dodgy/real/fair verdict badge which
           stays bottom-right, unchanged). Sits opposite `AddToListButton`

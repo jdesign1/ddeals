@@ -362,7 +362,7 @@ export default function DealAssessmentPage() {
   // screen either way), it just shows/hides one inline section, so a
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
-  const [priceHistoryTab, setPriceHistoryTab] = useState<"insights" | "90-days">("insights");
+  const [priceHistoryTab, setPriceHistoryTab] = useState<"insights" | "90-days">("90-days");
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
@@ -508,6 +508,12 @@ export default function DealAssessmentPage() {
   const verdictBadge = VERDICT_BADGE[verdict];
 
   const cheapestStoreItem = rankingList[0];
+  // `visibleRanking` is already sorted by price and contains only stores
+  // where this item is currently on special. When multiple supermarkets
+  // have the special, the hero label must point to the cheapest special,
+  // rather than the store used to enter this assessment page.
+  const lowestSpecialStoreItem = visibleRanking[0];
+  const multipleSpecialSupermarkets = visibleRanking.length > 1;
   const onlyOneSupermarket = rankingList.length === 1;
   const cheapestAveragePrice = cheapestStoreItem ? getRealAveragePrice(product, cheapestStoreItem.store) : null;
   const cheapestDiscountPct =
@@ -558,7 +564,7 @@ export default function DealAssessmentPage() {
       <div className={`space-y-5 rounded-2xl border p-5 text-left shadow-xs ${verdictBorderClass} ${verdictBgClass}`}>
         <div className="flex items-center justify-between">
           <h2 className={`font-display text-xl font-black tracking-tight ${verdictColorClass}`}>
-            {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Not enough history yet" : verdict}
+            {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Needs more evidence" : verdict}
           </h2>
           {/* Add-to-list + Share, side by side (2026-08-12, per Jay's ask
               to replace the old full-width sticky "Add to List" bar at the
@@ -689,11 +695,21 @@ export default function DealAssessmentPage() {
             </div>
             <p
               className={`mt-0.5 text-sm font-bold ${
-                STORE_TEXT_COLOR[getStoreLogoMeta(verdict === "Dodgy Deal" || uncertain ? dealStore : (cheapestStoreItem?.store ?? dealStore)).bg] ||
+                STORE_TEXT_COLOR[
+                  getStoreLogoMeta(
+                    multipleSpecialSupermarkets
+                      ? (lowestSpecialStoreItem?.store ?? dealStore)
+                      : verdict === "Dodgy Deal" || uncertain
+                        ? dealStore
+                        : (cheapestStoreItem?.store ?? dealStore)
+                  ).bg
+                ] ||
                 "text-stone-600"
               }`}
             >
-              {onlyOneSupermarket
+              {multipleSpecialSupermarkets
+                ? `Lowest at ${lowestSpecialStoreItem?.store ?? dealStore}`
+                : onlyOneSupermarket
                 ? (cheapestStoreItem?.store ?? dealStore)
                 : verdict === "Dodgy Deal" || uncertain
                   ? `at ${dealStore}`
@@ -849,7 +865,9 @@ export default function DealAssessmentPage() {
                       <span className={`w-24 text-center text-sm leading-4 ${isOnSale ? "italic font-bold" : "font-semibold"} ${isCheapest ? "text-fair-700" : "text-stone-500"}`}>
                         {isOnSale ? "Special" : "Regular price"}
                       </span>
-                      <span className={`text-right text-sm ${isCheapest ? "font-bold text-fair-700" : "font-semibold text-stone-600"}`}>${item.price.toFixed(2)} ea</span>
+                      <span className={`text-right text-sm ${isCheapest ? "font-bold text-fair-700" : "font-semibold text-stone-600"}`}>
+                        ${item.price.toFixed(2)}{multipleSpecialSupermarkets ? "" : " ea"}
+                      </span>
                     </>
                   );
                   const rowClassName = `flex items-center gap-2 py-2.5 ${idx < arr.length - 1 ? `border-b ${verdictBorderClass}` : ""}`;
@@ -1192,17 +1210,6 @@ export default function DealAssessmentPage() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={priceHistoryTab === "insights"}
-                onClick={() => setPriceHistoryTab("insights")}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
-                  priceHistoryTab === "insights" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
-                }`}
-              >
-                Insights
-              </button>
-              <button
-                type="button"
-                role="tab"
                 aria-selected={priceHistoryTab === "90-days"}
                 onClick={() => setPriceHistoryTab("90-days")}
                 className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
@@ -1210,6 +1217,17 @@ export default function DealAssessmentPage() {
                 }`}
               >
                 90 days
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={priceHistoryTab === "insights"}
+                onClick={() => setPriceHistoryTab("insights")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
+                  priceHistoryTab === "insights" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
+                }`}
+              >
+                Insights
               </button>
             </div>
             {priceHistoryTab === "90-days" ? (

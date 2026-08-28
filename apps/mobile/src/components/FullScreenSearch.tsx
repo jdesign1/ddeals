@@ -321,12 +321,9 @@ export default function FullScreenSearch() {
   // applies the same filter to both surfaces.
   const [resultsCategoryFilter, setResultsCategoryFilter] = useState<string[]>([]);
 
-  // "discount" to match the tab-click handler below, which sets this same
-  // sort whenever the All-specials tab is selected -- keeps the initial
-  // render consistent with what clicking the (now-default) tab would
-  // produce (same "kept in sync" reasoning `priceFilter`'s own default
-  // change above already established).
-  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("discount");
+  // Match Check Deals' default "Latest specials" ordering when search opens.
+  // Users can still choose a different sort from the sheet below.
+  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("recent");
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
 
   // Track the open transition for scroll restoration. The shared deal filter
@@ -336,13 +333,13 @@ export default function FullScreenSearch() {
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
-      setPopularSortBy(dealFilter === "dodgy" ? "recent" : "discount");
+      setPopularSortBy("recent");
     }
   }
 
   const handleDealFilterChange = (filter: DealFilter) => {
     setDealFilter(filter);
-    setPopularSortBy(filter === "dodgy" ? "recent" : "discount");
+    setPopularSortBy("recent");
   };
 
   const [categorySheetTarget, setCategorySheetTarget] = useState<"popular" | "results" | null>(null);
@@ -377,6 +374,7 @@ export default function FullScreenSearch() {
                 ]
               : [
                   { value: "discount", label: "Biggest discount" },
+                  { value: "recent", label: "Most recent" },
                   { value: "dodgy", label: "Dodgy first" },
                 ],
         }
@@ -455,49 +453,35 @@ export default function FullScreenSearch() {
     toggleStore(storeId);
   };
 
-  // Popular specials -- best (biggest-discount) deal per product, across
-  // whatever stores are selected. Shown before the user has typed 3+
-  // characters, so there's something to browse rather than a dead end.
+  // Popular specials -- the same filtered, cheapest deal per product used by
+  // Check Deals. Shown before the user has typed 3+ characters.
   const popularSpecials = useMemo<PopularEntry[]>(() => {
     const out: PopularEntry[] = [];
     for (const product of products) {
-      const specialDeals = product.currentDeals.filter((d) => d.isOnSpecial !== false && matchesAnySelectedStore(d.store, selectedStores));
-      if (specialDeals.length === 0) continue;
-      const bestDeal = specialDeals.reduce((best, d) => (d.discountPercentage > best.discountPercentage ? d : best), specialDeals[0]);
+      const qualifyingDeals = applicableDealsFor(product, selectedStores, dealFilter);
+      if (qualifyingDeals.length === 0) continue;
+      const bestDeal = qualifyingDeals.reduce((best, d) => (d.price < best.price ? d : best), qualifyingDeals[0]);
       out.push({ product, bestDeal });
     }
-    return out.sort((a, b) => b.bestDeal.discountPercentage - a.bestDeal.discountPercentage);
-  }, [products, selectedStores]);
+    return out;
+  }, [products, selectedStores, dealFilter]);
 
   const sortedPopularSpecials = useMemo(() => {
-    const filtered = popularSpecials.flatMap(({ product, bestDeal }) => {
+    const filtered = popularSpecials.filter(({ product }) => {
       if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category))) {
-        return [];
+        return false;
       }
-      if (dealFilter === "all") return [{ product, bestDeal }];
-
-      // A product group can contain different retailer assessments. Select
-      // the best deal within the active tab so Real Deals never displays a
-      // Dodgy retailer price, and vice versa.
-      const matchingDeals = product.currentDeals.filter(
-        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, dealFilter)
-      );
-      if (matchingDeals.length === 0) return [];
-      const filteredBestDeal = matchingDeals.reduce(
-        (best, deal) => (deal.discountPercentage > best.discountPercentage ? deal : best),
-        matchingDeals[0]
-      );
-      return [{ product, bestDeal: filteredBestDeal }];
+      return true;
     });
     const sorted = [...filtered];
-    if (dealFilter === "dodgy") {
-      if (popularSortBy === "recent") {
-        sorted.sort((a, b) => new Date(b.bestDeal.saleStartedAt || 0).getTime() - new Date(a.bestDeal.saleStartedAt || 0).getTime());
-      } else if (popularSortBy === "price-desc") {
-        sorted.sort((a, b) => b.bestDeal.price - a.bestDeal.price);
-      } else if (popularSortBy === "price-asc") {
-        sorted.sort((a, b) => a.bestDeal.price - b.bestDeal.price);
-      }
+    if (popularSortBy === "recent") {
+      sorted.sort((a, b) => new Date(b.bestDeal.saleStartedAt || 0).getTime() - new Date(a.bestDeal.saleStartedAt || 0).getTime());
+    } else if (popularSortBy === "discount") {
+      sorted.sort((a, b) => b.bestDeal.discountPercentage - a.bestDeal.discountPercentage);
+    } else if (popularSortBy === "price-desc") {
+      sorted.sort((a, b) => b.bestDeal.price - a.bestDeal.price);
+    } else if (popularSortBy === "price-asc") {
+      sorted.sort((a, b) => a.bestDeal.price - b.bestDeal.price);
     } else if (popularSortBy === "dodgy") {
       sorted.sort((a, b) => (b.bestDeal.dealType === "Dodgy Deal" ? 1 : 0) - (a.bestDeal.dealType === "Dodgy Deal" ? 1 : 0));
     }
