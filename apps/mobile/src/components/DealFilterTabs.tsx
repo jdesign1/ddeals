@@ -12,13 +12,15 @@ export default function DealFilterTabs({
   value,
   onChange,
   buttonIdPrefix,
+  backgroundClassName = "bg-white",
 }: {
   value: DealFilter;
   onChange: (value: DealFilter) => void;
   buttonIdPrefix?: string;
+  backgroundClassName?: string;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm">
+    <div className={`flex items-center gap-1 rounded-xl p-1 shadow-sm ${backgroundClassName}`}>
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
         return (

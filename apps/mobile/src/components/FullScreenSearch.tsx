@@ -20,6 +20,7 @@ import BackToTopButton from "@/components/BackToTopButton";
 import ErrorState from "@/components/ErrorState";
 import StorePill from "@/components/StorePill";
 import DealFilterTabs from "@/components/DealFilterTabs";
+import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
@@ -1019,6 +1020,8 @@ export default function FullScreenSearch() {
                   </div>
                 </div>
 
+                <DealFilterSummary filter={dealFilter} />
+
                 {sortedPopularSpecials.length > 0 ? (
                   <div className="mt-8 space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -1251,6 +1254,8 @@ export default function FullScreenSearch() {
                       </div>
                     </div>
                   </div>
+
+                  <DealFilterSummary filter={dealFilter} />
 
                   {/* Categories + Sort now sit directly above the results
                       grid (2026-08-09, per Jay's ask to match the home

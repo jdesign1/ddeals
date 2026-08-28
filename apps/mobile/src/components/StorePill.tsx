@@ -58,12 +58,14 @@ export default function StorePill({
   label,
   active,
   onClick,
+  backgroundClassName = "bg-white",
 }: {
   /** Normalized store key ("newworld", "paknsave", ...) or "all". */
   storeKey: string;
   label: string;
   active: boolean;
   onClick: () => void;
+  backgroundClassName?: string;
 }) {
   const meta = storeKey === "all" ? { bg: "bg-stone-900", text: "text-white" } : getStoreLogoMeta(storeKey);
   return (
@@ -72,7 +74,7 @@ export default function StorePill({
       onClick={onClick}
       aria-pressed={active}
       className={`relative z-0 flex-shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-[13px] leading-4 font-bold tracking-wider shadow-sm transition-colors duration-150 ${
-        active ? meta.text : "bg-white text-stone-600 hover:bg-stone-50"
+        active ? meta.text : `${backgroundClassName} text-stone-600 hover:bg-stone-50`
       }`}
     >
       <AnimatePresence>

@@ -26,6 +26,7 @@ import SearchBar from "@/components/SearchBar";
 import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
+import DealFilterSummary from "@/components/DealFilterSummary";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 /**
@@ -267,7 +268,7 @@ export default function HomePage() {
           needs the two concerns (wrapper fill vs. pill border) decoupled
           today. */}
       {!isSearchActive && (
-        <SearchBar variant="shadow" backgroundClassName={dealFilterTintClass || "bg-stone-50"} />
+        <SearchBar variant="shadow" backgroundClassName={dealFilterTintClass || "bg-stone-100"} />
       )}
 
       {/* Store filter pills -- ported from Prototype/index.html's global
@@ -279,7 +280,7 @@ export default function HomePage() {
       {!isSearchActive && !loadingProducts && !error && (
         <div
           className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
-            dealFilterTintClass || "bg-stone-50"
+            dealFilterTintClass || "bg-stone-100"
           } ${
             isToolbarVisible ? "top-[calc(8rem+10px)] pt-2" : "top-[4rem] pt-0"
           }`}
@@ -290,13 +291,18 @@ export default function HomePage() {
               isToolbarVisible ? "pb-2" : "pb-0"
             }`}
           >
-            <DealFilterTabs value={dealFilter} onChange={setDealFilter} />
+            <DealFilterTabs
+              value={dealFilter}
+              onChange={setDealFilter}
+              backgroundClassName={dealFilterTintClass || "bg-stone-100"}
+            />
             <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
               <StorePill
                 storeKey="all"
                 label="All"
                 active={selectedStores.includes("all")}
                 onClick={() => toggleStore("all")}
+                backgroundClassName={dealFilterTintClass || "bg-stone-100"}
               />
               {availableStoreKeys.map((key) => (
                 <StorePill
@@ -305,6 +311,7 @@ export default function HomePage() {
                   label={STORE_DISPLAY_FALLBACK[key] || key}
                   active={selectedStores.includes(key)}
                   onClick={() => toggleStore(key)}
+                  backgroundClassName={dealFilterTintClass || "bg-stone-100"}
                 />
               ))}
             </div>
@@ -551,21 +558,15 @@ function TrendingSection({
   const sectionCopy =
     filter === "dodgy"
       ? {
-          badges: [{ label: "Dodgy", className: "text-alert-800" }],
-          description: "Confirmed Dodgy deals and potentially dodgy",
           empty: "No Dodgy deals or review signals found right now.",
           categoryEmpty: "No Dodgy deals or review signals in this category right now.",
         }
       : filter === "real"
         ? {
-            badges: [{ label: "Real Saver", className: "text-fair-800" }],
-            description: "Real saver and fair-price specials.",
             empty: "No real deals found right now.",
             categoryEmpty: "No real deals in this category right now.",
           }
         : {
-            badges: [{ label: "All deals", className: "text-stone-600" }],
-            description: "All current supermarket specials.",
             empty: "No deals found right now.",
             categoryEmpty: "No deals in this category right now.",
           };
@@ -606,16 +607,7 @@ function TrendingSection({
 
   return (
     <section className="flex flex-col gap-4 px-5">
-      <div className="space-y-2 pb-1 text-center">
-        <div className="flex items-center justify-center gap-2">
-          {sectionCopy.badges.map((badge) => (
-            <span key={badge.label} className={`text-sm font-bold leading-none ${badge.className}`}>
-              {badge.label}
-            </span>
-          ))}
-        </div>
-        <p className="text-[13px] leading-4 font-semibold text-stone-600">{sectionCopy.description}</p>
-      </div>
+      <DealFilterSummary filter={filter} />
       {deals.length === 0 && categoryFilter.length === 0 ? (
         <EmptyState>{sectionCopy.empty}</EmptyState>
       ) : (
