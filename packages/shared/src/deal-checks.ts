@@ -33,6 +33,25 @@ export interface DealCheckRow {
 }
 
 /**
+ * Collapses repeated views of the same product when they occur consecutively
+ * in the history feed. The input is newest-first, so the first row for a run
+ * is the most recent check and is the one retained. A product that appears
+ * again after another product remains visible as a separate check.
+ */
+export function collapseConsecutiveDealChecks(history: DealCheckRow[]): DealCheckRow[] {
+  const collapsed: DealCheckRow[] = [];
+  let previousProductId: string | null = null;
+
+  for (const row of history) {
+    if (row.product_id === previousProductId) continue;
+    collapsed.push(row);
+    previousProductId = row.product_id;
+  }
+
+  return collapsed;
+}
+
+/**
  * Fire-and-forget from the caller's point of view (the deal page doesn't
  * block rendering on this, see its own comment) but NOT swallowed here —
  * throws on a real failure so the caller can decide whether to log/ignore
@@ -66,17 +85,33 @@ export async function logDealCheck(
  * column order — RLS already scopes this to the caller's own rows, no
  * explicit `.eq("user_id", ...)` needed (same convention `fetchUserLists`
  * already relies on). `limit` caps the history page's own render/fetch
- * volume, consistent with this app's established egress-consciousness
+ * volume (200 by default; month-filtered requests may ask for more),
+ * consistent with this app's established egress-consciousness
  * (see project.md's "Diagnosed and fixed a Supabase egress source"
  * session) — 200 is generous for a "recent checks" list without being
  * unbounded.
  */
-export async function fetchDealCheckHistory(client: SupabaseClient, limit = 200): Promise<DealCheckRow[]> {
-  const { data, error } = await client
+export interface DealCheckHistoryOptions {
+  limit?: number;
+  /** Inclusive ISO timestamp for the start of the requested range. */
+  startAt?: string;
+  /** Exclusive ISO timestamp for the end of the requested range. */
+  endAt?: string;
+}
+
+export async function fetchDealCheckHistory(
+  client: SupabaseClient,
+  limitOrOptions: number | DealCheckHistoryOptions = 200
+): Promise<DealCheckRow[]> {
+  const options = typeof limitOrOptions === "number" ? { limit: limitOrOptions } : limitOrOptions;
+  let query = client
     .from("deal_checks")
     .select("*")
     .order("checked_at", { ascending: false })
-    .limit(limit);
+    .limit(options.limit ?? 200);
+  if (options.startAt) query = query.gte("checked_at", options.startAt);
+  if (options.endAt) query = query.lt("checked_at", options.endAt);
+  const { data, error } = await query;
   if (error) throw new Error(`fetchDealCheckHistory: ${error.message}`);
   return (data as DealCheckRow[]) ?? [];
 }

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Search } from "lucide-react";
+import { CalendarDays, Search } from "lucide-react";
 import {
+  collapseConsecutiveDealChecks,
   fetchDealCheckHistory,
   fetchNonSpecialProductCards,
   describeFetchError,
@@ -18,7 +19,7 @@ import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
-import ProductListCard from "@/components/ProductListCard";
+import HistoryProductCard from "@/components/HistoryProductCard";
 
 /**
  * All Checks — ported from Prototype/index.html's `HistoryTab` (2026-08-11,
@@ -32,20 +33,15 @@ import ProductListCard from "@/components/ProductListCard";
  *
  * Deliberate differences from the prototype's own `HistoryTab`, flagged
  * rather than silently dropped:
- *  - Card component is this app's real `ProductListCard` (already used by
- *    Home/full-screen search/deal-assessment's cheaper-alternatives view),
- *    not the prototype's own bespoke `ProductCard`, matching this app's
- *    established one-shared-card convention. `storeLinePrefix="Checked
- *    at"` and a synthetic per-row `deal` object (built from the checked
- *    row's own snapshotted `store`/`price`, not today's live price)
- *    reproduce the prototype's own "this is a historical record, not
- *    today's cheapest option" framing.
+ *  - Cards use this app's compact `HistoryProductCard`, shaped like a Lists
+ *    product item so the history can show many more checks on screen while
+ *    retaining the checked row's own snapshotted store/price/verdict.
  *  - History search uses the same shared token, prefix, synonym, and bounded
  *    typo matcher as full-screen product search, so a checked branded item
  *    behaves consistently across the app.
  *  - No "Recheck" action wired to reopen a modal — tapping a card here
  *    navigates to the real `/deal/[id]/[store]` route instead (via
- *    `ProductListCard`'s own built-in tap-to-navigate), this app's real
+ *    `HistoryProductCard`'s own tap-to-navigate), this app's real
  *    equivalent of the prototype's `onRecheck`/`DealModal` reopen. This
  *    itself logs a NEW `deal_checks` row, same as visiting from anywhere
  *    else — a deliberate, accurate behavior (re-checking a deal really is
@@ -65,15 +61,17 @@ import ProductListCard from "@/components/ProductListCard";
  * already shows "All Checks" for this route via `ROUTE_TITLES`, so the
  * in-page heading was a plain duplicate. Everything else in each of those
  * 3 blocks (loading text, the `AuthPanel`, the description paragraph +
- * search input) is unchanged.
+ * search input), plus the month filter described above.
  */
 export default function HistoryPage() {
   const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
 
   const [history, setHistory] = useState<DealCheckRow[] | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryTick, setRetryTick] = useState(0);
+  const [fallbackProducts, setFallbackProducts] = useState<ProductCardData[]>([]);
   const retry = useCallback(() => {
     setError(null);
     setHistory(null);
@@ -83,9 +81,16 @@ export default function HistoryPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    fetchDealCheckHistory(getSupabaseClient())
+    const range = selectedMonth ? monthRange(selectedMonth) : null;
+    fetchDealCheckHistory(getSupabaseClient(), range ? { ...range, limit: 500 } : 200)
       .then((rows) => {
-        if (!cancelled) setHistory(rows);
+        if (!cancelled) {
+          // A month change can leave fallback product metadata from the
+          // previous result briefly in memory. Clear it with the new history
+          // so a just-selected month can never render a stale product.
+          setFallbackProducts([]);
+          setHistory(rows);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(describeFetchError(err, "Failed to load your check history"));
@@ -93,14 +98,13 @@ export default function HistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, retryTick]);
+  }, [user, retryTick, selectedMonth]);
 
   // Gap-fill: any checked product not in the currently-loaded live specials
   // set (rolled off special since it was checked) gets looked up
   // separately. Runs once history resolves, not on every render -- keyed
   // off the actual set of missing ids so it doesn't re-fire pointlessly
   // when `liveProducts` itself updates for unrelated reasons.
-  const [fallbackProducts, setFallbackProducts] = useState<ProductCardData[]>([]);
   const missingIds = useMemo(() => {
     // Waits for the global specials fetch (`useSearch()`, loaded once in
     // layout.tsx) to actually finish before deciding what's "missing" --
@@ -114,10 +118,7 @@ export default function HistoryPage() {
   }, [history, liveProducts, liveProductsLoading]);
   const missingIdsKey = missingIds.join(",");
   useEffect(() => {
-    if (!missingIds.length) {
-      setFallbackProducts([]);
-      return;
-    }
+    if (!missingIds.length) return;
     let cancelled = false;
     fetchNonSpecialProductCards(supabaseConfig, missingIds)
       .then((rows) => {
@@ -133,10 +134,7 @@ export default function HistoryPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed off
-    // missingIdsKey (a stable string) deliberately, not missingIds itself
-    // (a new array identity every render).
-  }, [missingIdsKey]);
+  }, [missingIds, missingIdsKey]);
 
   const productById = useMemo(() => {
     const map = new Map<string, ProductCardData>();
@@ -146,15 +144,15 @@ export default function HistoryPage() {
   }, [liveProducts, fallbackProducts]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const displayHistory = useMemo(() => collapseConsecutiveDealChecks(history || []), [history]);
   const filteredHistory = useMemo(() => {
-    if (!history) return [];
-    if (!searchQuery.trim()) return history;
-    return history.filter((h) => {
+    if (!searchQuery.trim()) return displayHistory;
+    return displayHistory.filter((h) => {
       const product = productById.get(h.product_id);
       if (!product) return false;
       return productMatchesSearch(product, searchQuery);
     });
-  }, [history, searchQuery, productById]);
+  }, [displayHistory, searchQuery, productById]);
 
   if (authLoading) {
     return (
@@ -229,6 +227,38 @@ export default function HistoryPage() {
             className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
           />
         </div>
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="history-month"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-stone-700 shadow-sm"
+          >
+            <CalendarDays className="h-4 w-4 flex-shrink-0 text-stone-500" aria-hidden="true" />
+            <span className="sr-only">Jump to month</span>
+            <input
+              id="history-month"
+              type="month"
+              value={selectedMonth ?? ""}
+              onChange={(event) => {
+                setHistory(null);
+                setSelectedMonth(event.target.value || null);
+              }}
+              aria-label="Jump to month"
+              className="mobile-zoom-safe-input min-w-0 flex-1 border-none bg-transparent text-sm font-bold text-stone-700 focus:outline-none"
+            />
+          </label>
+          {selectedMonth && (
+            <button
+              type="button"
+              onClick={() => {
+                setHistory(null);
+                setSelectedMonth(null);
+              }}
+              className="shrink-0 rounded-full px-3 py-2.5 text-xs font-bold text-stone-600 shadow-sm transition-colors hover:bg-white hover:text-stone-900"
+            >
+              All months
+            </button>
+          )}
+        </div>
       </header>
 
       {isAnonymousSession && (
@@ -269,26 +299,23 @@ export default function HistoryPage() {
             <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">Try searching for a different product name or brand.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 px-5">
-            {filteredHistory.map((h) => {
+          <div className="flex flex-col gap-3 px-5">
+            {filteredHistory.map((h, index) => {
               const product = productById.get(h.product_id);
               if (!product) return null;
               const deal = buildHistoricalDeal(h);
-              const alsoSpecialStores = [
-                ...new Set(
-                  (product.currentDeals || [])
-                    .filter((d) => d.isOnSpecial !== false && d.store !== h.store)
-                    .map((d) => d.store)
-                ),
-              ];
+              const previous = filteredHistory[index - 1];
+              const dayKey = getLocalDayKey(h.checked_at);
+              const previousDayKey = previous ? getLocalDayKey(previous.checked_at) : null;
               return (
-                <ProductListCard
-                  key={h.id}
-                  product={product}
-                  deal={deal}
-                  storeLinePrefix="Checked at"
-                  alsoSpecialStores={alsoSpecialStores}
-                />
+                <div key={h.id} className="flex flex-col gap-2">
+                  {dayKey !== previousDayKey && (
+                    <p className="pt-2 text-xs font-black uppercase tracking-[0.14em] text-stone-500">
+                      {formatHistoryDay(h.checked_at)}
+                    </p>
+                  )}
+                  <HistoryProductCard product={product} deal={deal} />
+                </div>
               );
             })}
           </div>
@@ -302,7 +329,7 @@ export default function HistoryPage() {
  * snapshotted values, NOT looked up from the live product's current deals
  * -- this row IS the historical record of what was actually checked, at
  * whatever price/store that was, which may no longer match today's live
- * price at all. Only the fields `ProductListCard` actually reads
+ * price at all. Only the fields `HistoryProductCard` actually reads
  * (`store`/`price`/`dealType`, confirmed against that component's own
  * source) matter for display; the rest are filled with honest, inert
  * defaults rather than fabricated ones. */
@@ -332,4 +359,34 @@ function buildHistoricalDeal(h: DealCheckRow): CurrentDeal {
     ninetyDayDaysTracked: null,
     ninetyDaySpecialDays: null,
   };
+}
+
+function monthRange(month: string): { startAt: string; endAt: string } {
+  const [year, monthNumber] = month.split("-").map(Number);
+  // Build boundaries in the user's local timezone because the date labels
+  // below are local too; using UTC here would shift the first/last local day
+  // into the neighbouring month for users outside UTC.
+  const startAt = new Date(year, monthNumber - 1, 1).toISOString();
+  const endAt = new Date(year, monthNumber, 1).toISOString();
+  return { startAt, endAt };
+}
+
+function getLocalDayKey(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return isoDate.slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatHistoryDay(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
 }
