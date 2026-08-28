@@ -551,23 +551,20 @@ function TrendingSection({
   const sectionCopy =
     filter === "dodgy"
       ? {
-          badges: [{ label: "Dodgy", className: "dd-badge-alert" }],
+          badges: [{ label: "Dodgy", className: "text-alert-800" }],
           description: "Confirmed Dodgy deals and potentially dodgy",
           empty: "No Dodgy deals or review signals found right now.",
           categoryEmpty: "No Dodgy deals or review signals in this category right now.",
         }
       : filter === "real"
         ? {
-            badges: [{ label: "Real saver", className: "dd-badge-fair" }],
+            badges: [{ label: "Real Saver", className: "text-fair-800" }],
             description: "Real saver and fair-price specials.",
             empty: "No real deals found right now.",
             categoryEmpty: "No real deals in this category right now.",
           }
         : {
-            badges: [
-              { label: "Real saver", className: "dd-badge-fair" },
-              { label: "Dodgy", className: "dd-badge-alert" },
-            ],
+            badges: [{ label: "All deals", className: "text-stone-600" }],
             description: "All current supermarket specials.",
             empty: "No deals found right now.",
             categoryEmpty: "No deals in this category right now.",
@@ -609,15 +606,15 @@ function TrendingSection({
 
   return (
     <section className="flex flex-col gap-4 px-5">
-      <div className="space-y-1 pb-1 text-center">
+      <div className="space-y-2 pb-1 text-center">
         <div className="flex items-center justify-center gap-2">
           {sectionCopy.badges.map((badge) => (
-            <span key={badge.label} className={`dd-badge ${badge.className}`}>
+            <span key={badge.label} className={`text-sm font-bold leading-none ${badge.className}`}>
               {badge.label}
             </span>
           ))}
         </div>
-        <p className="text-[13px] leading-4 font-semibold text-stone-500">{sectionCopy.description}</p>
+        <p className="text-[13px] leading-4 font-semibold text-stone-600">{sectionCopy.description}</p>
       </div>
       {deals.length === 0 && categoryFilter.length === 0 ? (
         <EmptyState>{sectionCopy.empty}</EmptyState>
