@@ -301,7 +301,7 @@ export default function HomePage() {
               backgroundClassName={dealFilterTintClass || "bg-stone-100"}
               inactiveBackgroundClassName="bg-white"
             />
-            <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
+            <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
               <StorePill
                 storeKey="all"
                 label="All"
@@ -468,7 +468,7 @@ function SortDropdown<T extends string>({
         // Border -> shadow-sm, 2026-08-21, per Jay's pills/tabs/sort/category
         // no-border ask -- see the Home tab track's own doc comment just
         // above for the full cross-reference.
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -625,7 +625,7 @@ function TrendingSection({
               <button
                 type="button"
                 onClick={() => setIsCategorySheetOpen(true)}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
               >
                 <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />

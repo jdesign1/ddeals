@@ -597,7 +597,7 @@ export default function FullScreenSearch() {
       <button
         type="button"
         onClick={onOpenCategorySheet}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -605,7 +605,7 @@ export default function FullScreenSearch() {
       <button
         type="button"
         onClick={onOpenSortSheet}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1006,7 +1006,7 @@ export default function FullScreenSearch() {
                         No longer needs its own `-mx-5 px-5` bleed-to-edge --
                         the wrapper above now owns that (see this block's own
                         comment above for why). */}
-                    <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
+                    <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
                       {storeOptions.map((store) => (
                         <StorePill
                           key={store.id}
@@ -1241,7 +1241,7 @@ export default function FullScreenSearch() {
                           ask for one consistent pill look across the whole
                           screen. No longer needs its own `-mx-5 px-5`
                           bleed-to-edge -- the wrapper above now owns that. */}
-                      <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
+                      <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
                         {storeOptions.map((store) => (
                           <StorePill
                             key={store.id}
