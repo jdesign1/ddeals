@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useRef, type PointerEvent } from "react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
@@ -76,6 +77,8 @@ export default function ProductListCard({
   const isFairDeal = deal.dealType === "Fair Price";
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const storeMeta = getStoreLogoMeta(deal.store);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickRef = useRef(false);
   // `product.brand` already arrives Title Cased from `packages/shared/src/
   // data.ts` (`titleCase(meta.brand)`) -- this card used to re-render it in
   // ALL CAPS on top of that via the `uppercase` CSS class below. Per Jay's
@@ -95,9 +98,39 @@ export default function ProductListCard({
     router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
   };
 
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    suppressClickRef.current = false;
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const start = pointerStartRef.current;
+    if (!start) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) {
+      suppressClickRef.current = true;
+    }
+  };
+
+  const handlePointerUp = () => {
+    pointerStartRef.current = null;
+  };
+
+  const handleCardClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    goToDeal();
+  };
+
   return (
     <div
-      onClick={goToDeal}
+      onClick={handleCardClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      draggable={false}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -119,7 +152,7 @@ export default function ProductListCard({
       // rather than the only place a user could read the verdict from.
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
-      style={{ touchAction: "pan-y" }}
+      style={{ touchAction: "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
       className="group relative flex cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
       <AddToListButton productId={product.id} />

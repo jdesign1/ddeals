@@ -173,6 +173,7 @@ export default function SearchBar({
   placeholder = "Search if today's deals are dodgy",
   sticky = true,
   topSpacing = false,
+  compact = false,
 }: {
   blurred?: boolean;
   variant?: "default" | "shadow";
@@ -181,6 +182,8 @@ export default function SearchBar({
   placeholder?: string;
   sticky?: boolean;
   topSpacing?: boolean;
+  /** Compact Check Deals treatment: shorter control and no bottom shell padding. */
+  compact?: boolean;
 }) {
   const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
   const pathname = usePathname();
@@ -206,7 +209,7 @@ export default function SearchBar({
           initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`${stickyPositionClass} px-5 ${topSpacing ? "pb-2 pt-4" : "py-2"} ${
+          className={`${stickyPositionClass} px-5 ${topSpacing ? "pb-2 pt-4" : compact ? "pb-0 pt-2" : "py-2"} ${
             blurred
               ? "backdrop-blur-md"
               : backgroundClassName || (variant === "shadow" ? "bg-stone-50" : "bg-white")
@@ -226,7 +229,9 @@ export default function SearchBar({
               would just be the next drift waiting to be caught. */}
           <form
             onSubmit={(e) => e.preventDefault()}
-            className={`flex items-center rounded-full border bg-white py-2.5 pl-5 pr-3 transition-colors focus-within:border-stone-900 ${
+            className={`flex items-center rounded-full border bg-white pl-5 pr-3 transition-colors focus-within:border-stone-900 ${
+              compact ? "py-2" : "py-2.5"
+            } ${
               bordered
                 ? "border-stone-300 shadow-none"
                 : variant === "shadow"
@@ -251,7 +256,7 @@ export default function SearchBar({
               }}
               onFocus={openSearch}
               placeholder={placeholder}
-              className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-600 placeholder:text-stone-600 focus:outline-none"
+              className={`mobile-zoom-safe-input ${compact ? "h-9" : "h-10"} w-full border-none bg-transparent font-sans text-sm font-medium text-stone-600 placeholder:text-stone-600 focus:outline-none`}
               enterKeyHint="search"
             />
             {searchInput && (

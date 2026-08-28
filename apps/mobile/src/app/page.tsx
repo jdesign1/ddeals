@@ -237,7 +237,7 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`flex flex-col gap-4 pb-6 transition-colors duration-200 ${dealFilterTintClass}`}
+        className={`flex flex-col gap-[14px] pb-6 transition-colors duration-200 ${dealFilterTintClass}`}
       >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
@@ -271,6 +271,7 @@ export default function HomePage() {
         <SearchBar
           variant="shadow"
           bordered
+          compact
           backgroundClassName={dealFilterTintClass || "bg-stone-100"}
         />
       )}
@@ -286,12 +287,12 @@ export default function HomePage() {
           className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
           } ${
-            isToolbarVisible ? "top-[calc(8rem+10px)] pt-2" : "top-[4rem] pt-0"
+            isToolbarVisible ? "top-[calc(8rem-6px)] pt-2" : "top-[4rem] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >
           <div
-            className={`space-y-4 overflow-hidden transition-[padding-bottom] duration-300 ease-out ${
+            className={`min-h-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
               isToolbarVisible ? "pb-2" : "pb-0"
             }`}
           >

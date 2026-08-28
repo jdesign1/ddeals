@@ -699,7 +699,7 @@ export default function FullScreenSearch() {
               here in case the effect reads as invisible in practice and a
               follow-up ask to make it truly overlay scrolling content
               turns out to be what was actually wanted. */}
-          <div className="flex flex-shrink-0 items-center gap-2 px-4 pb-3 pt-4 backdrop-blur-md">
+          <div className="flex flex-shrink-0 items-center gap-2 px-4 pb-[2px] pt-4 backdrop-blur-md">
             <button
               type="button"
               onClick={handleBack}
@@ -754,7 +754,7 @@ export default function FullScreenSearch() {
                 fix) is to apply the same visual fix to every component that
                 shares the pattern, not just the one currently being looked
                 at. */}
-            <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 items-center rounded-full border border-stone-300 bg-white py-2 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
+            <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 items-center rounded-full border border-stone-300 bg-white py-1.5 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
               {/* Mascot mark replaces lucide's `Search` icon here (2026-08-20,
                   per Jay: "In the active search bar state, replace the search
                   icon with the dodgy man icon") -- same `/logo.svg` mark
@@ -772,7 +772,7 @@ export default function FullScreenSearch() {
               <input
                 id="full-search-input"
                 autoFocus
-                className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
+                className="mobile-zoom-safe-input h-9 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
                 placeholder="Search for a product or brand"
                 type="text"
                 value={query}
@@ -833,7 +833,7 @@ export default function FullScreenSearch() {
               }
               lastScrollTopRef.current = scrollTop;
             }}
-            className="flex-1 space-y-6 overflow-y-auto px-5 pb-safe-nav"
+            className="mobile-scroll-surface flex-1 space-y-6 overflow-y-auto px-5 pb-safe-nav"
           >
             <LoadingMascot loading={loading} />
             {error && (
@@ -937,19 +937,18 @@ export default function FullScreenSearch() {
                       just missed in that first pass (2026-08-19, Jay: "the
                       point at which the tabs are cut/cropped on scroll
                       needs to be moved higher by a fraction", pointing at
-                      this element's collapsed-state classes) -- `overflow-
-                      hidden` zeroes a grid item's auto min-height, but the
-                      item's own `padding-bottom` isn't part of that
-                      min-content sizing, so a static `pb-2` kept adding a
-                      flat 8px underneath the collapsed (0fr) track no
-                      matter what -- exactly the "extra space below the
-                      search bar top bar" Jay flagged, and the reason the
-                      crop point sat 8px lower than the search bar itself.
+                      this element's collapsed-state classes) -- even with
+                      the explicit `min-h-0` needed for the 0fr track, the
+                      item's own `padding-bottom` kept adding a flat 8px
+                      underneath the collapsed track no matter what --
+                      exactly the "extra space below the search bar top bar"
+                      Jay flagged, and the reason the crop point sat 8px
+                      lower than the search bar itself.
                       Made conditional (`pb-2` shown / `pb-0` collapsed) and
                       transitioned on this item directly, same treatment as
                       `pt-4` above. */}
                   <div
-                    className={`space-y-4 overflow-hidden transition-[padding-bottom] duration-300 ease-out ${
+                    className={`min-h-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
                       isToolbarVisible ? "pb-2" : "pb-0"
                     }`}
                   >
@@ -1202,7 +1201,7 @@ export default function FullScreenSearch() {
                         leaving a flat 8px gap under the search bar even
                         fully collapsed). */}
                     <div
-                      className={`space-y-4 overflow-hidden transition-[padding-bottom] duration-300 ease-out ${
+                      className={`min-h-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
                         isToolbarVisible ? "pb-2" : "pb-0"
                       }`}
                     >

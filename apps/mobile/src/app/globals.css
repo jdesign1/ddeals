@@ -274,6 +274,14 @@ select {
   display: none;
 }
 
+/* Keep vertical result drags responsive when they begin on a tappable card.
+   The momentum hint is still useful on iOS WebViews where the scroll surface
+   can otherwise feel sticky during a slow swipe. */
+.mobile-scroll-surface {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Quick, periodic "blink" on the header logo mark: mostly still, with a
    fast vertical squash near the 96% mark so it reads as a blink rather
    than a constant pulse. Ported verbatim from Prototype/index.html. */

@@ -173,7 +173,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       // Explicitly reserve vertical gestures for this scroll surface. This
       // keeps a drag that starts on a tappable product card from being
       // interpreted as card interaction instead of page scrolling.
-      className="relative flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain"
+      className="mobile-scroll-surface relative flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain"
       // Check Deals changes the heights/offsets of several sticky siblings
       // together. Prevent scroll anchoring from converting those layout
       // changes into compensating scroll events, which can look like a
