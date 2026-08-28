@@ -547,7 +547,7 @@ export default function DealAssessmentPage() {
         initial={{ x: "100%" }}
         animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="min-h-full w-full"
+        className={`min-h-full w-full ${verdictBgClass}`}
       >
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
           as the change above that had briefly added the real `SearchBar`
@@ -561,7 +561,7 @@ export default function DealAssessmentPage() {
           is a separate, smaller (20px) value this ask didn't mention. */}
     <div className="flex-1 space-y-6 px-6 pb-6 pt-3">
 
-      <div className={`space-y-5 rounded-2xl border p-5 text-left shadow-xs ${verdictBorderClass} ${verdictBgClass}`}>
+      <div className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         <div className="flex items-center justify-between">
           <h2 className={`font-display text-xl font-black tracking-tight ${verdictColorClass}`}>
             {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Needs more evidence" : verdict}
