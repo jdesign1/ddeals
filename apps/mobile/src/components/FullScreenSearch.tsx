@@ -1019,10 +1019,12 @@ export default function FullScreenSearch() {
                   </div>
                 </div>
 
-                <DealFilterSummary filter={dealFilter} />
+                <div className="mt-4">
+                  <DealFilterSummary filter={dealFilter} />
+                </div>
 
                 {sortedPopularSpecials.length > 0 ? (
-                  <div className="mt-8 space-y-3">
+                  <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       {/* Was a static "Dodgy deals now" / "Popular specials
                           now" label -- now shows the live count (matches
