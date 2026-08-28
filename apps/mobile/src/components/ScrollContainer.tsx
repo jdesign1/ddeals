@@ -6,7 +6,7 @@ import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useSearch } from "@/lib/search-context";
-import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { publishCheckDealsHeaderVisibility, publishCheckDealsStickyState } from "@/lib/scroll-events";
 
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
@@ -51,6 +51,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const scrollDirectionRef = useRef<"up" | "down" | null>(null);
   const directionDistanceRef = useRef(0);
   const headerHiddenRef = useRef(false);
+  const firstProductPassedRef = useRef(false);
   const headerAnimationGuardRef = useRef(false);
   const headerAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
@@ -73,6 +74,8 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     directionDistanceRef.current = 0;
     headerHiddenRef.current = false;
     publishCheckDealsHeaderVisibility(false);
+    firstProductPassedRef.current = false;
+    publishCheckDealsStickyState(pathname !== "/");
   }, [pathname]);
 
   // Collapsing the sticky header/search/toolbar changes the layout above the
@@ -96,6 +99,23 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     lastScrollTopRef.current = currentScrollTop;
 
     if (pathname !== "/") return;
+
+    const firstProductCard = scrollRef.current?.querySelector<HTMLElement>("[data-first-product-card]");
+    const scrollSurface = scrollRef.current;
+    const firstProductPassed = Boolean(
+      firstProductCard && scrollSurface && firstProductCard.getBoundingClientRect().bottom <= scrollSurface.getBoundingClientRect().top
+    );
+    if (firstProductPassedRef.current !== firstProductPassed) {
+      firstProductPassedRef.current = firstProductPassed;
+      publishCheckDealsStickyState(firstProductPassed);
+    }
+    if (!firstProductPassed) {
+      if (headerHiddenRef.current) setHeaderHidden(false);
+      scrollDirectionRef.current = null;
+      directionDistanceRef.current = 0;
+      return;
+    }
+
     if (headerAnimationGuardRef.current) {
       scrollDirectionRef.current = null;
       directionDistanceRef.current = 0;

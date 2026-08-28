@@ -27,7 +27,7 @@ import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
-import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { subscribeToCheckDealsHeaderVisibility, subscribeToCheckDealsStickyState } from "@/lib/scroll-events";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -175,11 +175,23 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const [isToolbarSticky, setIsToolbarSticky] = useState(false);
 
   // Check Deals uses the same direction signal as the global header and the
   // full-screen search toolbar: scrolling down collapses the toolbar, while
   // scrolling back up expands it smoothly at the top of the screen.
-  useEffect(() => subscribeToCheckDealsHeaderVisibility((hidden) => setIsToolbarVisible(!hidden)), []);
+  useEffect(() => {
+    const unsubscribeVisibility = subscribeToCheckDealsHeaderVisibility((hidden) => setIsToolbarVisible(!hidden));
+    const unsubscribeSticky = subscribeToCheckDealsStickyState((sticky) => {
+      setIsToolbarSticky(sticky);
+      if (!sticky) setIsToolbarVisible(true);
+    });
+
+    return () => {
+      unsubscribeVisibility();
+      unsubscribeSticky();
+    };
+  }, []);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
   // session (2026-08-09, full-screen search build) from this exact inline
@@ -272,6 +284,7 @@ export default function HomePage() {
           variant="shadow"
           bordered
           compact
+          sticky={isToolbarSticky}
           backgroundClassName={dealFilterTintClass || "bg-stone-100"}
         />
       )}
@@ -284,10 +297,10 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
         <div
-          className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
+          className={`${isToolbarSticky ? "sticky z-20" : "relative"} grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
           } ${
-            isToolbarVisible ? "top-[126px] pt-2" : "top-[4rem] pt-0"
+            !isToolbarSticky ? "pt-[2px]" : isToolbarVisible ? "top-[126px] pt-4" : "top-[4rem] pt-4"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >
@@ -639,13 +652,14 @@ function TrendingSection({
           ) : (
             <>
               <div className="grid grid-cols-1 gap-4">
-                {visible.map(({ product, deal }) => (
-                  <ProductListCard
-                    key={`${product.id}-${deal.store}`}
-                    product={product}
-                    deal={deal}
-                    alsoSpecialStores={alsoSpecialStores(product, deal.store)}
-                  />
+                {visible.map(({ product, deal }, index) => (
+                  <div key={`${product.id}-${deal.store}`} data-first-product-card={index === 0 ? "true" : undefined}>
+                    <ProductListCard
+                      product={product}
+                      deal={deal}
+                      alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                    />
+                  </div>
                 ))}
               </div>
               {/* Sentinel -- invisible, just gives the IntersectionObserver

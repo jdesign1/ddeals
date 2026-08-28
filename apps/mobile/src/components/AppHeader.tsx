@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, X, UserCog, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
-import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { subscribeToCheckDealsHeaderVisibility, subscribeToCheckDealsStickyState } from "@/lib/scroll-events";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -170,10 +170,17 @@ export default function AppHeader() {
   const { override } = useHeaderOverride();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
+  const [isStickyOnCheckDeals, setIsStickyOnCheckDeals] = useState(pathname !== "/");
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
       setIsHiddenOnCheckDeals(hidden);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeToCheckDealsStickyState((sticky) => {
+      setIsStickyOnCheckDeals(sticky);
     });
   }, []);
 
@@ -189,6 +196,7 @@ export default function AppHeader() {
     setLastPathname(pathname);
     setIsMenuOpen(false);
     setIsHiddenOnCheckDeals(false);
+    setIsStickyOnCheckDeals(pathname !== "/");
   }
 
   const title = override
@@ -231,7 +239,7 @@ export default function AppHeader() {
     // itself became real.
     <>
     <div
-      className={`app-header-shell sticky top-0 z-[45] w-full flex-shrink-0 ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
+      className={`app-header-shell ${pathname === "/" && !isStickyOnCheckDeals ? "relative" : "sticky top-0"} z-[45] w-full flex-shrink-0 ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
       aria-hidden={pathname === "/" && isHiddenOnCheckDeals}
     >
       <div>
