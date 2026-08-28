@@ -16,6 +16,7 @@ import {
 } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
+import BackToTopButton from "@/components/BackToTopButton";
 import ErrorState from "@/components/ErrorState";
 import StorePill from "@/components/StorePill";
 import DealFilterTabs from "@/components/DealFilterTabs";
@@ -1312,6 +1313,7 @@ export default function FullScreenSearch() {
               </>
             )}
           </div>
+          <BackToTopButton scrollRef={scrollContainerRef} enabled={isOpen} />
 
           {/* Category sheet -- rebuilt 2026-08-12, three of Jay's asks
               together:

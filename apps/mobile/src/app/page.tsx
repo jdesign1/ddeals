@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
@@ -26,6 +26,7 @@ import SearchBar from "@/components/SearchBar";
 import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
+import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -172,6 +173,12 @@ export default function HomePage() {
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
+  const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+
+  // Check Deals uses the same direction signal as the global header and the
+  // full-screen search toolbar: scrolling down collapses the toolbar, while
+  // scrolling back up expands it smoothly at the top of the screen.
+  useEffect(() => subscribeToCheckDealsHeaderVisibility((hidden) => setIsToolbarVisible(!hidden)), []);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
   // session (2026-08-09, full-screen search build) from this exact inline
@@ -264,24 +271,37 @@ export default function HomePage() {
           use, per Jay's ask for visual parity between the two. Multi-select
           (2026-08-21) brings that parity to BEHAVIOR too, not just look --
           see `selectedStores`'s own doc comment above for the full "why". */}
-      {!isSearchActive && (
-        <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto px-5 pb-1">
-          <StorePill storeKey="all" label="All" active={selectedStores.includes("all")} onClick={() => toggleStore("all")} />
-          {availableStoreKeys.map((key) => (
-            <StorePill
-              key={key}
-              storeKey={key}
-              label={STORE_DISPLAY_FALLBACK[key] || key}
-              active={selectedStores.includes(key)}
-              onClick={() => toggleStore(key)}
-            />
-          ))}
-        </div>
-      )}
-
-      {!isSearchActive && loadingProducts && (
-        <div className="mx-5" aria-label="Home sections">
-          <DealFilterTabs value={dealFilter} onChange={setDealFilter} />
+      {!isSearchActive && !loadingProducts && !error && (
+        <div
+          className={`sticky z-20 grid overflow-hidden bg-stone-50 px-5 transition-[top,grid-template-rows,padding-top] duration-300 ease-out ${
+            isToolbarVisible ? "top-[8rem] pt-2" : "top-[4rem] pt-0"
+          }`}
+          style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
+        >
+          <div
+            className={`space-y-4 overflow-hidden transition-[padding-bottom] duration-300 ease-out ${
+              isToolbarVisible ? "pb-2" : "pb-0"
+            }`}
+          >
+            <DealFilterTabs value={dealFilter} onChange={setDealFilter} />
+            <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto">
+              <StorePill
+                storeKey="all"
+                label="All"
+                active={selectedStores.includes("all")}
+                onClick={() => toggleStore("all")}
+              />
+              {availableStoreKeys.map((key) => (
+                <StorePill
+                  key={key}
+                  storeKey={key}
+                  label={STORE_DISPLAY_FALLBACK[key] || key}
+                  active={selectedStores.includes(key)}
+                  onClick={() => toggleStore(key)}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -365,10 +385,6 @@ export default function HomePage() {
               below, and `FullScreenSearch.tsx`'s Categories/Sort triggers +
               category chips -- one consistent "flat, shadow-grounded"
               language app-wide instead of border outlines. */}
-          <div className="mx-5">
-            <DealFilterTabs value={dealFilter} onChange={setDealFilter} />
-          </div>
-
           <TrendingSection
             deals={filteredDeals}
             filter={dealFilter}

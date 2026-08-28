@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
+import BackToTopButton from "@/components/BackToTopButton";
 import { useSearch } from "@/lib/search-context";
 import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
@@ -175,6 +176,10 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       >
         {children}
       </div>
+      <BackToTopButton
+        scrollRef={scrollRef}
+        enabled={pathname === "/" || pathname === "/history"}
+      />
     </div>
   );
 }

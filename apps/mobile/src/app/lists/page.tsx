@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Trash2, Pencil, Store, Plus, Check, X, ChevronDown } from "lucide-react";
@@ -234,6 +234,8 @@ export default function ListsPage() {
   // this sheet while it's open.
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [deletingListId, setDeletingListId] = useState<string | null>(null);
+  const [newlyCreatedListId, setNewlyCreatedListId] = useState<string | null>(null);
 
   // The actual composite fetch (fetch this user's lists, their items, price
   // lookups, product meta, and build item cards) moved out of this page
@@ -284,9 +286,9 @@ export default function ListsPage() {
   // motionless with no feedback, unlike every other retry added this
   // session) so `LoadingMascot` reappears the same way it does on the
   // initial load, for create/delete's own reload() calls too, not just retry.
-  async function reload() {
+  const reload = useCallback(async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
     if (!user) return;
-    setLoadingLists(true);
+    if (showLoading) setLoadingLists(true);
     setError(null);
     // Invalidates BEFORE refetching (2026-08-20, see this file's own
     // top-of-file effect comment on `loadListsPageData`'s cache) -- without
@@ -308,9 +310,22 @@ export default function ListsPage() {
     } catch (err) {
       setError(describeFetchError(err, "Failed to load lists"));
     } finally {
-      setLoadingLists(false);
+      if (showLoading) setLoadingLists(false);
     }
-  }
+  }, [user]);
+
+  // AddToListButton invalidates the shared cache and broadcasts this event
+  // after a successful add/remove. Refresh the already-mounted Lists page as
+  // well, so returning to it is not required to see the new membership.
+  useEffect(() => {
+    if (!user) return;
+    const handleMembershipChanged = (event: Event) => {
+      if ((event as CustomEvent<{ source?: string }>).detail?.source === "lists-page") return;
+      void reload({ showLoading: false });
+    };
+    window.addEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, handleMembershipChanged);
+    return () => window.removeEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, handleMembershipChanged);
+  }, [reload, user]);
 
   // Fake-login guard removed 2026-08-13 -- root cause of Jay's original
   // report (2026-08-11) was the dev-only "test account" having no real
@@ -329,10 +344,11 @@ export default function ListsPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      await createList(getSupabaseClient(), user.id, newListName);
+      const createdList = await createList(getSupabaseClient(), user.id, newListName);
       setNewListName("");
       setIsCreateSheetOpen(false);
-      await reload();
+      setNewlyCreatedListId(createdList.id);
+      await reload({ showLoading: false });
     } catch (err) {
       setCreateError(describeFetchError(err, "Failed to create list"));
     } finally {
@@ -341,12 +357,15 @@ export default function ListsPage() {
   }
 
   async function handleDelete(listId: string) {
+    setDeletingListId(listId);
     try {
       await deleteList(getSupabaseClient(), listId);
-      window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
-      await reload();
+      window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "lists-page" } }));
+      await reload({ showLoading: false });
     } catch (err) {
       setError(describeFetchError(err, "Failed to delete list"));
+    } finally {
+      setDeletingListId(null);
     }
   }
 
@@ -364,7 +383,7 @@ export default function ListsPage() {
   async function handleRemoveItem(listId: string, productId: string) {
     try {
       await removeItemFromList(getSupabaseClient(), listId, productId);
-      window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
+      window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "lists-page" } }));
       await reload();
     } catch (err) {
       setError(describeFetchError(err, "Failed to remove item"));
@@ -394,7 +413,7 @@ export default function ListsPage() {
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
             src="/lists-login.webp"
-            alt="A checked shopping list"
+            alt="Dodgey mascot with an empty shopping list"
             width={482}
             height={512}
             sizes="144px"
@@ -449,6 +468,14 @@ export default function ListsPage() {
 
       {!loadingLists && lists.length === 0 && (
         <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
+          <Image
+            src="/lists-login.webp"
+            alt="Dodgey mascot with an empty shopping list"
+            width={482}
+            height={512}
+            sizes="128px"
+            className="mb-2 h-auto w-full max-w-[8rem]"
+          />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
           <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">
             Tap the + button below, or tap the + on a Specials card to start one.
@@ -469,6 +496,9 @@ export default function ListsPage() {
             onRename={(name) => handleRename(list.id, name)}
             onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
             onRefresh={reload}
+            isDeleting={deletingListId === list.id}
+            isNew={newlyCreatedListId === list.id}
+            onNewAnimationComplete={() => setNewlyCreatedListId(null)}
           />
         ))}
       </div>
@@ -497,7 +527,7 @@ export default function ListsPage() {
           type="button"
           onClick={() => setIsCreateSheetOpen(true)}
           aria-label="Create a new list"
-          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-stone-900 shadow-lg transition-colors hover:bg-stone-50"
+          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-stone-900 text-white shadow-lg transition-colors hover:bg-ink-600"
         >
           <Plus className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
         </button>
@@ -602,6 +632,9 @@ function ListCard({
   onRename,
   onRemoveItem,
   onRefresh,
+  isDeleting,
+  isNew,
+  onNewAnimationComplete,
 }: {
   list: ListRow;
   items: ListItemRow[];
@@ -612,6 +645,9 @@ function ListCard({
   onRename: (name: string) => Promise<void>;
   onRemoveItem: (productId: string) => void;
   onRefresh: () => void;
+  isDeleting: boolean;
+  isNew: boolean;
+  onNewAnimationComplete: () => void;
 }) {
   // Inline "are you sure?" state (2026-08-14, Jay: "create an are you sure?
   // state on the card incase the user doesn't want to delete the card") --
@@ -652,6 +688,8 @@ function ListCard({
   // anything about how the toggle itself behaves.
   const [isExpanded, setIsExpanded] = useState(true);
   const itemCount = items.length;
+  const liveItems = items.filter((item) => itemCards.get(item.product_id)?.currentDeals[0]?.isOnSpecial === true);
+  const notOnSpecialItems = items.filter((item) => !liveItems.includes(item));
 
   async function saveName() {
     const trimmed = editName.trim();
@@ -682,10 +720,15 @@ function ListCard({
     // "no border line, but instead a short drop shadow (subtle)"). Delete
     // state swaps the fill to `bg-alert-50` too, so the card itself reads
     // as "in a destructive state," not just its confirm buttons.
-    <article
+    <motion.article
       ref={cardRef}
       style={confirmingDelete && deleteCardHeight ? { minHeight: deleteCardHeight } : undefined}
-      className={`flex flex-col gap-2 rounded-2xl p-4 shadow-sm ${confirmingDelete ? "bg-alert-50" : "bg-white"}`}
+      initial={isNew ? { opacity: 0, y: 8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      onAnimationComplete={isNew ? onNewAnimationComplete : undefined}
+      aria-busy={isDeleting}
+      className={`relative flex flex-col gap-2 overflow-hidden rounded-2xl p-4 shadow-sm ${confirmingDelete ? "bg-alert-50" : "bg-white"}`}
     >
       {confirmingDelete ? (
         // Whole-card delete state (2026-08-15, Jay: "make the whole card
@@ -932,7 +975,7 @@ function ListCard({
             // match), same as `buildListItemProductCard`'s own "excluded,
             // not fabricated" contract (lists.ts).
             <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-100 pt-2">
-              {items.map((item) => {
+              {liveItems.map((item) => {
                 const card = itemCards.get(item.product_id);
                 const meta = productMeta.get(item.product_id);
                 const label = meta?.name ?? "Item";
@@ -961,11 +1004,50 @@ function ListCard({
                   />
                 );
               })}
+              {notOnSpecialItems.length > 0 && (
+                <div className="mt-2 flex flex-col gap-1.5 border-t border-stone-100 pt-3">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-stone-500">Not on special</h3>
+                  {notOnSpecialItems.map((item) => {
+                    const card = itemCards.get(item.product_id);
+                    const meta = productMeta.get(item.product_id);
+                    const label = meta?.name ?? "Item";
+                    const removeLabel = `Remove ${label} from ${list.name}`;
+
+                    if (card) {
+                      return (
+                        <ListItemProductCard
+                          key={item.id}
+                          product={card}
+                          deal={card.currentDeals[0]}
+                          quantity={item.quantity}
+                          onRemove={() => onRemoveItem(item.product_id)}
+                          removeLabel={removeLabel}
+                          onAfterNotOnSpecial={onRefresh}
+                        />
+                      );
+                    }
+                    return (
+                      <FallbackItemRow
+                        key={item.id}
+                        label={label}
+                        quantity={item.quantity}
+                        removeLabel={removeLabel}
+                        onRemove={() => onRemoveItem(item.product_id)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </>
       )}
-    </article>
+      {isDeleting && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/90">
+          <LoadingMascot loading />
+        </div>
+      )}
+    </motion.article>
   );
 }
 
