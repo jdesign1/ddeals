@@ -287,7 +287,7 @@ export default function HomePage() {
           className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
           } ${
-            isToolbarVisible ? "top-[124px] pt-1" : "top-[4rem] pt-0"
+            isToolbarVisible ? "top-[126px] pt-4" : "top-[4rem] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
         >
