@@ -24,7 +24,7 @@
  */
 
 import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
-import { MATERIAL_OVER_NORMAL_THRESHOLD, type EvidenceStrength } from "./classify.ts";
+import { MATERIAL_OVER_NORMAL_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -36,6 +36,12 @@ export interface DodgyDealsRow {
   sale_price: number;
   normal_price: number | null;
   saving_pct: number | null;
+  /** Structured unit-price evidence emitted by the dodgy_deals view. */
+  inflate_pct?: number | null;
+  sale_unit_price?: number | null;
+  sale_unit_label?: string | null;
+  unit_price_change_pct?: number | null;
+  history_days?: number | null;
   special_label: string | null;
   was_price: number | null;
   special_end_date: string | null;
@@ -234,7 +240,18 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
   if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
 
   const reason = (row.reason || "").toLowerCase();
-  const hasIndependentDodgySignal = /pack size|unit price|raised|inflated|pump/.test(reason);
+  // Prefer the structured numeric signal so future retailer wording changes
+  // cannot hide a shrinkflation verdict. The text check remains only for old
+  // cache rows that predate unit_price_change_pct, including Woolworths' legacy
+  // "price per ... / smaller pack" wording.
+  const hasStructuredShrinkflationSignal =
+    row.saving_pct != null &&
+    row.saving_pct > 0 &&
+    row.unit_price_change_pct != null &&
+    row.unit_price_change_pct > -SHRINKFLATION_THRESHOLD;
+  const hasLegacyTextDodgySignal =
+    /pack size|smaller pack|unit price|price per|\$\/unit|raised|inflated|pump/.test(reason);
+  const hasIndependentDodgySignal = hasStructuredShrinkflationSignal || hasLegacyTextDodgySignal;
   const increasePct = ((row.sale_price - row.normal_price) / row.normal_price) * 100;
 
   if (!hasIndependentDodgySignal && increasePct <= MATERIAL_OVER_NORMAL_THRESHOLD) return "MARGINAL";
@@ -632,10 +649,10 @@ interface LiveProductsCacheEntry {
 }
 
 const ENRICHED_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
 
 const LEGACY_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
 
 /** A detail-page validation is tiny compared with the full catalogue fetch. */
 export const TARGETED_DEAL_VALIDATION_COOLDOWN_MS = 5 * 60 * 1000;

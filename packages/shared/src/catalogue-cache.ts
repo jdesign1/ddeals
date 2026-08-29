@@ -40,11 +40,12 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
 /**
  * Bump whenever ProductCard's shape, deal-verdict contract, or catalogue
  * loading contract changes, so an old cached catalogue cannot preserve stale
- * or incomplete results. The v7 pagination rollout invalidates v6 records
- * that may contain only the first server-capped page. Keep this version tied
- * to the deployed catalogue contract, not only TypeScript shape changes.
+ * or incomplete results. The v8 verdict-contract rollout invalidates v7
+ * records whose legacy DODGY rows may already have been downgraded to Fair
+ * Price by the client compatibility rule. Keep this version tied to the
+ * deployed catalogue contract, not only TypeScript shape changes.
  */
-const CATALOGUE_CACHE_VERSION = 7;
+const CATALOGUE_CACHE_VERSION = 8;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {

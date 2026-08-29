@@ -203,6 +203,41 @@ test("buildProductCardsFromSpecials: legacy near-normal DODGY rows are shown as 
   assert.equal(deal.wasArtificiallyInflated, false);
 });
 
+test("buildProductCardsFromSpecials: legacy Woolworths price-per shrinkflation wording stays Dodgy", () => {
+  const rows = [
+    row({
+      store_id: "woolworths",
+      store_name: "Woolworths NZ",
+      sale_price: 8.5,
+      normal_price: 9.7,
+      saving_pct: 12.4,
+      verdict: "DODGY",
+      reason: "Price per 1kg barely moved (0.0%) even though the total price dropped 12.4% — looks like a smaller pack, not a real discount",
+    }),
+  ];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Dodgy Deal");
+  assert.equal(deal.wasArtificiallyInflated, true);
+});
+
+test("buildProductCardsFromSpecials: structured unit-price evidence survives future wording changes", () => {
+  const rows = [
+    row({
+      sale_price: 8.5,
+      normal_price: 9.7,
+      saving_pct: 12.4,
+      unit_price_change_pct: 0,
+      verdict: "DODGY",
+      reason: "Future retailer wording for a unit-price warning",
+    }),
+  ];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Dodgy Deal");
+  assert.equal(deal.wasArtificiallyInflated, true);
+});
+
 test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'", () => {
   const rows = [row({ verdict: "UNKNOWN" })];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
