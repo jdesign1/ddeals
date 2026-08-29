@@ -866,91 +866,19 @@ function ListCard({
             </p>
           ) : (
             <>
-              {!summary ? (
-                <p className="text-[13px] leading-4 text-stone-500">Checking prices…</p>
-              ) : (
-                <>
-                  {/* Brand Guide v1.0 "06 — UI KIT / TAGS & BADGES" pill styling
-                      (2026-08-13 UI tidy-up) -- was a solid-fill bg-fair-600/white
-                      pair; the guide's badges are always a light tint + matching
-                      darker text, never solid fill, so swapped to the `.dd-badge`
-                      primitives (globals.css) instead. */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {summary.hasSavingsData && summary.savingsAmount > 0 ? (
-                      <span className="dd-badge dd-badge-fair">
-                        -${summary.savingsAmount.toFixed(2)} saved
-                      </span>
-                    ) : (
-                      <span className="dd-badge dd-badge-neutral">
-                        Checking prices…
-                      </span>
-                    )}
-                    {/* "Verified special" badge REMOVED 2026-08-20, per Jay:
-                        "remove verified specials badge from the lists" --
-                        moved to the deal-assessment page instead (see
-                        `app/deal/[id]/[store]/page.tsx`'s own doc comment,
-                        same day), where it now marks an individual item's
-                        verdict as "Real Saver" rather than a whole-list
-                        aggregate ("at least one item is a verified
-                        special"). `ListSummary.hasVerifiedSpecial`
-                        (lists.ts) is left computed but now has no UI
-                        consumer -- kept rather than deleted since it's
-                        already produced for free inside the same per-item
-                        loop that computes `savingsAmount`, and pruning an
-                        exported type field is a bigger surface change than
-                        this ask covers; flagged here in case Jay wants it
-                        gone too as a follow-up. */}
-                  </div>
-
-                  {summary.bestPriceStore && (
-                    <span className="dd-badge dd-badge-neutral w-fit">
-                      <Store className="h-3.5 w-3.5" aria-hidden="true" />
-                      Best at {summary.bestPriceStore.store} — ${summary.bestPriceStore.total.toFixed(2)}
-                    </span>
-                  )}
-                </>
-              )}
-
-              {/* View-items toggle -- pulled out of the `!summary` ternary
-                  above (2026-08-20, UX audit, "split view items from
-                  rename") so it's available the instant items exist, not
-                  only once price-checking finishes, and so it's a REAL
-                  `<button>` (own hit target, own `aria-expanded`) rather
-                  than the plain `<p>` this replaces -- the old paragraph
-                  looked static; nothing signaled it was ever tied to the
-                  item list, because until this change it wasn't (only the
-                  pencil icon revealed items, see `isExpanded`'s own
-                  comment above this component).
-
-                  Chevron moved to the card's right edge + enlarged
-                  (2026-08-20, same day, per Jay: "move the collapse chevron
-                  to the right side of the cards, and make the icon
-                  larger") -- was `w-fit` with the item-count text and
-                  chevron sitting side by side wherever that small button
-                  happened to fall in the card's own left-aligned flow, both
-                  huddled together on the left. Switched to `w-full` +
-                  `justify-between` so the text stays put on the left (still
-                  the first thing read) while the chevron gets pushed all
-                  the way to the card's own right inset -- the same right
-                  edge the pencil/trash icons above already sit flush
-                  against -- instead of only ever appearing a few characters
-                  after the item count. Dropped the old `gap-1` (was
-                  spacing the text and chevron apart when they were
-                  adjacent; `justify-between` alone now does that job across
-                  the button's full width, an explicit gap between the two
-                  remaining children would do nothing extra). Icon `h-3.5
-                  w-3.5` -> `h-5 w-5`, a real size bump (not the "slightly"
-                  wording used for the separate Account-sheet icons ask
-                  elsewhere today) since Jay's exact words here were just
-                  "make the icon larger" with no qualifier. */}
+              {/* Keep the item count and total as the leading text in the
+                  summary row, followed immediately by the savings badge.
+                  The row remains a single button so it still controls the
+                  expand/collapse interaction while keeping the chevron at
+                  the far right. */}
               <button
                 type="button"
                 onClick={() => setIsExpanded((e) => !e)}
                 aria-expanded={isExpanded}
                 aria-label={`${isExpanded ? "Hide" : "Show"} items in ${list.name}`}
-                className="flex w-full cursor-pointer items-center justify-between text-sm text-stone-600 transition-colors hover:text-stone-900"
+                className="flex w-full min-w-0 items-center gap-2 text-left text-sm text-stone-600 transition-colors hover:text-stone-900"
               >
-                <span>
+                <span className="min-w-0 truncate">
                   {itemCount} item{itemCount === 1 ? "" : "s"}
                   {summary?.totalPrice != null && (
                     <>
@@ -959,15 +887,33 @@ function ListCard({
                     </>
                   )}
                 </span>
+                {summary?.hasSavingsData && summary.savingsAmount > 0 ? (
+                  <span className="dd-badge dd-badge-fair shrink-0">
+                    -${summary.savingsAmount.toFixed(2)} saved
+                  </span>
+                ) : (
+                  <span className="dd-badge dd-badge-neutral shrink-0">
+                    Checking prices…
+                  </span>
+                )}
                 <ChevronDown
-                  className={`h-5 w-5 flex-shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  className={`ml-auto h-5 w-5 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                   aria-hidden="true"
                 />
               </button>
+
+              {summary?.bestPriceStore && (
+                <span className="dd-badge dd-badge-neutral w-fit">
+                  <Store className="h-3.5 w-3.5" aria-hidden="true" />
+                  Best at {summary.bestPriceStore.store} — ${summary.bestPriceStore.total.toFixed(2)}
+                </span>
+              )}
+
             </>
           )}
 
-          {isExpanded && itemCount > 0 && (
+          <AnimatePresence initial={false}>
+            {isExpanded && itemCount > 0 && (
             // Item list -- own toggle now, independent of `isEditing` (see
             // `isExpanded`'s own comment above this component for the full
             // "why"). Each item renders `ListItemProductCard` (image/price/
@@ -978,7 +924,15 @@ function ListCard({
             // item with no current price at all (delisted/no catalogue
             // match), same as `buildListItemProductCard`'s own "excluded,
             // not fabricated" contract (lists.ts).
-            <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-100 pt-2">
+              <motion.div
+                key="list-items"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-100 pt-2">
               {liveItems.map((item) => {
                 const card = itemCards.get(item.product_id);
                 const meta = productMeta.get(item.product_id);
@@ -1042,8 +996,10 @@ function ListCard({
                   })}
                 </div>
               )}
-            </div>
-          )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
       {isDeleting && (

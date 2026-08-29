@@ -230,7 +230,7 @@ export default function HistoryPage() {
             className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <label
             htmlFor="history-month"
             className="flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-stone-700 shadow-sm"
@@ -245,9 +245,9 @@ export default function HistoryPage() {
                 setSelectedMonth(event.target.value || null);
               }}
               aria-label="Jump to month"
-              className="mobile-zoom-safe-input w-max max-w-[calc(100vw-11rem)] border-none bg-transparent text-sm font-bold text-stone-700 focus:outline-none"
+              className="mobile-zoom-safe-input w-max max-w-[calc(100vw-11rem)] border-none bg-transparent text-xs font-bold text-stone-700 focus:outline-none"
             >
-              <option value="">Select month</option>
+              <option value="">month</option>
               {monthOptions.map((month) => (
                 <option key={month.value} value={month.value} disabled={month.disabled}>
                   {month.label}
