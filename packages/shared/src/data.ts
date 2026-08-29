@@ -232,11 +232,6 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
   // their legacy verdict contract. Once the field is present, only SUFFICIENT
   // evidence may publish a directional verdict.
   if (row.evidence_status != null && row.evidence_status !== "SUFFICIENT") return "UNKNOWN";
-  // Defence in depth for the permanent Dodgy safety rule. During a rolling
-  // backend migration a row can briefly expose SUFFICIENT baseline evidence
-  // while still carrying a duration-only strength; never let that become a
-  // retailer accusation in the client.
-  if (row.verdict === "DODGY" && row.evidence_strength != null && row.evidence_strength !== "STRONG") return "UNKNOWN";
   if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
 
   const reason = (row.reason || "").toLowerCase();
@@ -252,6 +247,17 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
   const hasLegacyTextDodgySignal =
     /pack size|smaller pack|unit price|price per|\$\/unit|raised|inflated|pump/.test(reason);
   const hasIndependentDodgySignal = hasStructuredShrinkflationSignal || hasLegacyTextDodgySignal;
+
+  // Defence in depth for the permanent Dodgy safety rule. A duration-only
+  // baseline may not publish a price-pump or fake-sale accusation, but a
+  // populated unit-price comparison is an independent shrinkflation signal
+  // and must remain visible (including Woolworths' current rows).
+  if (
+    row.evidence_strength != null &&
+    row.evidence_strength !== "STRONG" &&
+    !hasStructuredShrinkflationSignal
+  ) return "UNKNOWN";
+
   const increasePct = ((row.sale_price - row.normal_price) / row.normal_price) * 100;
 
   if (!hasIndependentDodgySignal && increasePct <= MATERIAL_OVER_NORMAL_THRESHOLD) return "MARGINAL";

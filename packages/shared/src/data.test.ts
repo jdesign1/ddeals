@@ -339,6 +339,24 @@ test("buildProductCardsFromSpecials: weak-evidence Dodgy rows are neutralized cl
   assert.equal(deal.wasArtificiallyInflated, false);
 });
 
+test("buildProductCardsFromSpecials: duration-only shrinkflation evidence remains Dodgy", () => {
+  const rows = [row({
+    verdict: "DODGY",
+    evidence_status: "SUFFICIENT",
+    evidence_strength: "DURATION_ONLY",
+    sale_price: 8.5,
+    normal_price: 9.7,
+    saving_pct: 12.4,
+    unit_price_change_pct: 0,
+    regular_price_samples: 1,
+    regular_history_days: 20,
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Dodgy Deal");
+  assert.equal(deal.wasArtificiallyInflated, true);
+});
+
 test("buildProductCardsFromSpecials: maps price_history_90d_* columns to ninetyDay* fields", () => {
   const rows = [
     row({
