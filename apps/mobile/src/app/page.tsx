@@ -26,7 +26,7 @@ import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
-import { subscribeToCheckDealsHeaderVisibility, subscribeToCheckDealsScrollPosition } from "@/lib/scroll-events";
+import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -168,20 +168,16 @@ export default function HomePage() {
     dealFilter,
     setDealFilter,
   } = useSearch();
-  const { isAnonymousSession } = useAuth();
-
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
-  const [isCheckDealsScrolled, setIsCheckDealsScrolled] = useState(false);
 
   // Check Deals uses the same direction signal as the global header and the
   // full-screen search toolbar: scrolling down collapses the toolbar, while
   // scrolling back up expands it smoothly at the top of the screen.
   useEffect(() => subscribeToCheckDealsHeaderVisibility((hidden) => setIsToolbarVisible(!hidden)), []);
-  useEffect(() => subscribeToCheckDealsScrollPosition((scrollTop) => setIsCheckDealsScrolled(scrollTop > 8)), []);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
   // session (2026-08-09, full-screen search build) from this exact inline
@@ -278,24 +274,12 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
         <div
-          className={`sticky z-20 grid overflow-hidden px-5 transition-[top,grid-template-rows,padding-top,background-color] duration-300 ease-out ${
+          className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 transition-[background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
-          } ${
-            isToolbarVisible
-              ? isCheckDealsScrolled
-                ? isAnonymousSession
-                  ? "top-[164px] pt-2"
-                  : "top-[140px] pt-2"
-                : "top-0 pt-2"
-              : "top-[62px] pt-0"
-          }`}
-          style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
+          } ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"}`}
+          style={{ top: "var(--check-deals-chrome-height, 128px)" }}
         >
-          <div
-            className={`min-h-0 min-w-0 space-y-4 transition-[padding-bottom] duration-300 ease-out ${
-              isToolbarVisible ? "pb-2" : "pb-0"
-            }`}
-          >
+          <div className="min-h-0 min-w-0 space-y-4 pb-2">
             <DealFilterTabs
               value={dealFilter}
               onChange={setDealFilter}

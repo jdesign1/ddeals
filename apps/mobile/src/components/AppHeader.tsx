@@ -62,10 +62,10 @@ import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
  *    `BottomNav`'s `z-40` and below the app's `z-50` overlay tier), while
  *    the sheet and scrim render outside that shell at their own `z-50` /
  *    `z-[51]` values. They must remain outside the shell because the shell
- *    also uses `overflow: hidden` to collapse the header during scroll;
- *    keeping a fixed overlay inside it would clip the sheet to the nav
- *    height. This preserves the correct stacking order without coupling
- *    the sheet to the header's clipping container.
+ *    is part of the sticky chrome that translates during scroll; keeping a
+ *    fixed overlay inside it would couple the sheet to that scrolling layer
+ *    and could clip it to the nav height. This preserves the correct stacking
+ *    order without coupling the sheet to the sticky chrome.
  *  - The prototype's avatar circle is hardcoded to the letter "S" (a
  *    leftover from its mock data, never actually wired to the signed-in
  *    user's name). This version computes the initial from the real

@@ -8,20 +8,18 @@
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Check Deals docks the nav and search bar as one sticky stack. When the nav
-   hides, collapse its layout height as well as translating it away so the
-   search bar moves into the top slot without changing its own sticky inset. */
+/* Check Deals docks the nav and search bar as one sticky stack. The nav keeps
+   its layout slot while it hides so iOS never has to re-anchor the scrolling
+   list; the search slot moves visually into its place via a transform. */
 .app-header-shell.check-deals-collapsible {
-  max-height: 6rem;
-  will-change: max-height, transform;
-  transition:
-    max-height 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .app-header-shell.check-deals-header-collapsed {
-  max-height: 0;
-  overflow: hidden;
+  /* Kept as a state class for the existing header subscription. Do not
+     collapse or clip this box: changing its height moves the list. */
+  max-height: none;
+  overflow: visible;
 }
 
 .app-header-shell.is-hidden {
@@ -39,6 +37,36 @@
     will-change: auto;
     transition: none;
   }
+
+  .check-deals-search-slot,
+  .check-deals-toolbar {
+    will-change: auto;
+    transition: none;
+  }
+}
+
+/* Check Deals' search control occupies the header's reserved slot in normal
+   flow. When the header hides, only this slot moves visually; its height
+   remains unchanged so the card list cannot jump during the transition. */
+.check-deals-search-slot {
+  will-change: transform;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.check-deals-chrome-header-hidden .check-deals-search-slot {
+  transform: translateY(calc(-1 * var(--check-deals-header-height, 64px)));
+}
+
+/* The tab/pill toolbar also keeps its full flow height while hidden. It is
+   translated behind the fixed header/search chrome rather than collapsed,
+   which leaves the scrolling list at the same document offset. */
+.check-deals-toolbar {
+  will-change: transform;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.check-deals-toolbar-hidden {
+  transform: translateY(calc(-1 * var(--check-deals-header-height, 64px) - 100%));
 }
 
 /* Google Material Symbols used by the bottom navigation. The glyph's FILL

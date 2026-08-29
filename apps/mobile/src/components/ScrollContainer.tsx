@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
@@ -54,9 +54,13 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const headerScrollAnchorRef = useRef(0);
   const headerAnimationGuardRef = useRef(false);
   const headerAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkDealsChromeRef = useRef<HTMLDivElement>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<"updated" | "throttled" | null>(null);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(64);
+  const [chromeHeight, setChromeHeight] = useState(128);
   const checkDealsSearchBackground =
     dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "bg-stone-100";
   useEffect(
@@ -68,11 +72,28 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (pathname !== "/") return;
+    const chrome = checkDealsChromeRef.current;
+    const header = chrome?.querySelector<HTMLElement>(".app-header-shell");
+    if (!chrome || !header) return;
+
+    const updateChromeMetrics = () => {
+      setHeaderHeight(header.offsetHeight || 64);
+      setChromeHeight(chrome.offsetHeight || 128);
+    };
+    updateChromeMetrics();
+    const observer = new ResizeObserver(updateChromeMetrics);
+    observer.observe(chrome);
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  useEffect(() => {
     if (headerAnimationTimeoutRef.current) clearTimeout(headerAnimationTimeoutRef.current);
     headerAnimationGuardRef.current = false;
     lastScrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
     headerScrollAnchorRef.current = lastScrollTopRef.current;
     headerHiddenRef.current = false;
+    setIsHeaderHidden(false);
     publishCheckDealsHeaderVisibility(false);
     publishCheckDealsScrollPosition(lastScrollTopRef.current);
   }, [pathname]);
@@ -84,6 +105,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const setHeaderHidden = (hidden: boolean) => {
     if (headerHiddenRef.current === hidden) return;
     headerHiddenRef.current = hidden;
+    setIsHeaderHidden(hidden);
     publishCheckDealsHeaderVisibility(hidden);
     headerAnimationGuardRef.current = true;
     if (headerAnimationTimeoutRef.current) clearTimeout(headerAnimationTimeoutRef.current);
@@ -171,11 +193,17 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       // keeps a drag that starts on a tappable product card from being
       // interpreted as card interaction instead of page scrolling.
       className="mobile-scroll-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
-      // Check Deals changes the heights/offsets of several sticky siblings
-      // together. Prevent scroll anchoring from converting those layout
-      // changes into compensating scroll events, which can look like a
-      // reversal during a slow drag and make the header dock/undock repeatedly.
-      style={{ touchAction: "pan-y", overflowAnchor: pathname === "/" ? "none" : undefined }}
+      // Check Deals keeps the header/search/toolbar layout slots fixed while
+      // their visual hide/show transitions use transforms. The explicit
+      // metrics are inherited by the sticky siblings for their fixed insets.
+      style={
+        {
+          touchAction: "pan-y",
+          overflowAnchor: pathname === "/" ? "none" : undefined,
+          "--check-deals-header-height": `${headerHeight}px`,
+          "--check-deals-chrome-height": `${chromeHeight}px`,
+        } as CSSProperties
+      }
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => void handleTouchEnd()}
@@ -183,18 +211,22 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       onScroll={handleScroll}
     >
       {pathname === "/" ? (
-        /* Keep Check Deals' nav and search bar in one sticky stack. The nav
-           collapses its layout height when hidden, which lets the bar move
-           into the top slot without changing the bar's sticky inset. */
-        <div className="sticky top-0 z-[45]">
+        /* Keep Check Deals' nav and search bar in one sticky stack. Its layout
+           height stays fixed while the child chrome translates on scroll. */
+        <div
+          ref={checkDealsChromeRef}
+          className={`sticky top-0 z-[45] ${isHeaderHidden ? "check-deals-chrome-header-hidden" : ""}`}
+        >
           <AppHeader sticky={false} collapseOnCheckDeals />
-          <SearchBar
-            variant="shadow"
-            bordered
-            compact
-            sticky={false}
-            backgroundClassName={checkDealsSearchBackground}
-          />
+          <div className="check-deals-search-slot">
+            <SearchBar
+              variant="shadow"
+              bordered
+              compact
+              sticky={false}
+              backgroundClassName={checkDealsSearchBackground}
+            />
+          </div>
         </div>
       ) : (
         <AppHeader />
