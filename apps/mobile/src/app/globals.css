@@ -61,12 +61,15 @@
    translated behind the fixed header/search chrome rather than collapsed,
    which leaves the scrolling list at the same document offset. */
 .check-deals-toolbar {
+  --check-deals-toolbar-gap: 14px;
   will-change: transform;
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .check-deals-toolbar-hidden {
-  transform: translateY(calc(-1 * var(--check-deals-header-height, 64px) - 100%));
+  transform: translateY(
+    calc(-1 * var(--check-deals-header-height, 64px) - 100% - var(--check-deals-toolbar-gap))
+  );
 }
 
 /* Google Material Symbols used by the bottom navigation. The glyph's FILL

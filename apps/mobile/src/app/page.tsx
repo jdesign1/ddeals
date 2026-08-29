@@ -277,7 +277,7 @@ export default function HomePage() {
           className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 transition-[background-color] duration-300 ease-out ${
             dealFilterTintClass || "bg-stone-100"
           } ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"}`}
-          style={{ top: "var(--check-deals-chrome-height, 128px)" }}
+          style={{ top: "calc(var(--check-deals-chrome-height, 128px) + var(--check-deals-toolbar-gap, 14px))" }}
         >
           <div className="min-h-0 min-w-0 space-y-4 pb-2">
             <DealFilterTabs
