@@ -466,6 +466,13 @@ select {
   color: var(--dd-badge-alert-text);
 }
 
+/* Compact verdict/quantity pills used inside the dense list-item rows. */
+.dd-badge-compact {
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
 /* "BUTTONS": full pill radius, Inter bold 16px.
    - primary ("Compare my trolley"): ink fill, paper text -- the app's one
      full-width primary action per screen.

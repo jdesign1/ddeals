@@ -300,8 +300,8 @@ export default function ListItemProductCard({
             <span className={`select-none rounded-md px-1.5 py-0.5 text-[10px] font-black ${storeMeta.bg} ${storeMeta.text}`}>
               {storeMeta.short}
             </span>
-            {badge && <span className={`dd-badge ${badge.className}`}>{badge.label}</span>}
-            {quantity > 1 && <span className="dd-badge dd-badge-neutral">×{quantity}</span>}
+            {badge && <span className={`dd-badge dd-badge-compact ${badge.className}`}>{badge.label}</span>}
+            {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}
           </div>
         </div>
       )}

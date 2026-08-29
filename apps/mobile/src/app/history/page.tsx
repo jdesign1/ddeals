@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { CalendarDays, Search } from "lucide-react";
+import { motion } from "motion/react";
 import {
   collapseConsecutiveDealChecks,
   fetchDealCheckHistory,
@@ -17,7 +18,6 @@ import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
-import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
 
@@ -158,25 +158,7 @@ export default function HistoryPage() {
   const monthOptions = useMemo(() => buildHistoryMonthOptions(availableMonthKeys), [availableMonthKeys]);
 
   if (authLoading) {
-    return (
-      <main className="flex flex-col gap-3 pb-8">
-        {/* `blurred` added 2026-08-20, per Jay: "All checks and Deal stats
-            pages - remove the search bar's white background (container
-            fill) to match the Check deals page." -- was a bare
-            `<SearchBar />` (default variant, not blurred), which renders
-            an opaque `bg-white` sticky wrapper (`SearchBar.tsx`'s own
-            ternary); `blurred` swaps that for the same transparent +
-            `backdrop-blur-md` treatment Home's search bar already uses.
-            Scoped to just the wrapper fill -- this page's pill still keeps
-            its own `border-stone-300` at rest (unlike Home's, see
-            `page.tsx`'s own same-day `variant="shadow"` change) since Jay's
-            two asks were separate: this one about the container fill only,
-            not the pill's stroke. */}
-        <div className="flex flex-col gap-3 px-5 pt-4">
-          <LoadingMascot loading />
-        </div>
-      </main>
-    );
+    return <main className="pb-8" />;
   }
 
   // 2026-08-19, per Jay: bottom sheet, not a full-page swap -- see
@@ -287,7 +269,6 @@ export default function HistoryPage() {
         </div>
       )}
 
-      <LoadingMascot loading={history === null && !error} />
       {error && <ErrorState message="Couldn't load your check history." detail={error} onRetry={retry} />}
 
       {history !== null && !error && (
@@ -308,7 +289,12 @@ export default function HistoryPage() {
             <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">Try searching for a different product name or brand.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 px-5">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex flex-col gap-3 px-5"
+          >
             {filteredHistory.map((h, index) => {
               const product = productById.get(h.product_id);
               if (!product) return null;
@@ -327,7 +313,7 @@ export default function HistoryPage() {
                 </div>
               );
             })}
-          </div>
+          </motion.div>
         )
       )}
     </main>

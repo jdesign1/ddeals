@@ -22,7 +22,6 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { supabaseConfig } from "@/lib/config";
-import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import SearchBar from "@/components/SearchBar";
 import ListItemProductCard from "@/components/ListItemProductCard";
@@ -281,11 +280,9 @@ export default function ListsPage() {
 
   // Used by the handlers below (not effects), so calling setState directly is
   // fine. Also the ErrorState retry action (2026-08-11) -- toggles
-  // `loadingLists` around the fetch (caught in peer review: without this,
-  // Try Again refetched correctly but left the error card sitting there
-  // motionless with no feedback, unlike every other retry added this
-  // session) so `LoadingMascot` reappears the same way it does on the
-  // initial load, for create/delete's own reload() calls too, not just retry.
+  // `loadingLists` still gates the initial empty state and tracks an active
+  // fetch, but loading feedback stays out of the document flow so the cards
+  // never move upward when the request completes.
   const reload = useCallback(async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
     if (!user) return;
     if (showLoading) setLoadingLists(true);
@@ -394,9 +391,6 @@ export default function ListsPage() {
     return (
       <main className="flex flex-col gap-3 pb-8">
         <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
-        <div className="flex flex-col gap-3 px-5 pt-4">
-          <LoadingMascot loading />
-        </div>
       </main>
     );
   }
@@ -464,8 +458,6 @@ export default function ListsPage() {
         <ErrorState message="Something went wrong with your lists." detail={error} onRetry={() => reload()} />
       )}
 
-      <LoadingMascot loading={loadingLists} />
-
       {!loadingLists && lists.length === 0 && (
         <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
           <Image
@@ -483,25 +475,32 @@ export default function ListsPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 px-5">
-        {lists.map((list) => (
-          <ListCard
-            key={list.id}
-            list={list}
-            items={itemsByList.get(list.id) ?? []}
-            summary={summaries.get(list.id)}
-            productMeta={productMeta}
-            itemCards={itemCards}
-            onDelete={() => handleDelete(list.id)}
-            onRename={(name) => handleRename(list.id, name)}
-            onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
-            onRefresh={reload}
-            isDeleting={deletingListId === list.id}
-            isNew={newlyCreatedListId === list.id}
-            onNewAnimationComplete={() => setNewlyCreatedListId(null)}
-          />
-        ))}
-      </div>
+      {lists.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="flex flex-col gap-3 px-5"
+        >
+          {lists.map((list) => (
+            <ListCard
+              key={list.id}
+              list={list}
+              items={itemsByList.get(list.id) ?? []}
+              summary={summaries.get(list.id)}
+              productMeta={productMeta}
+              itemCards={itemCards}
+              onDelete={() => handleDelete(list.id)}
+              onRename={(name) => handleRename(list.id, name)}
+              onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
+              onRefresh={reload}
+              isDeleting={deletingListId === list.id}
+              isNew={newlyCreatedListId === list.id}
+              onNewAnimationComplete={() => setNewlyCreatedListId(null)}
+            />
+          ))}
+        </motion.div>
+      )}
 
       {/* Create-list FAB (2026-08-14, see this file's own doc comment) --
           fixed bottom-right, same `mx-auto` capped-column trick every other
@@ -731,8 +730,8 @@ function ListCard({
         ...(confirmingDelete && deleteCardHeight ? { minHeight: deleteCardHeight } : {}),
         touchAction: "pan-y",
       }}
-      initial={isNew ? { opacity: 0, y: 8 } : false}
-      animate={{ opacity: 1, y: 0 }}
+      initial={isNew ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       onAnimationComplete={isNew ? onNewAnimationComplete : undefined}
       drag={confirmingDelete ? false : "x"}
@@ -1001,11 +1000,6 @@ function ListCard({
             )}
           </AnimatePresence>
         </>
-      )}
-      {isDeleting && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/90">
-          <LoadingMascot loading />
-        </div>
       )}
     </motion.article>
   );
