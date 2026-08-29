@@ -2,11 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
-import { subscribeToCheckDealsHeaderVisibility, subscribeToCheckDealsScrollPosition } from "@/lib/scroll-events";
 
 /**
  * Global search bar — extracted 2026-08-11 from Home's own inline block
@@ -187,34 +183,13 @@ export default function SearchBar({
   compact?: boolean;
 }) {
   const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
-  const { isAnonymousSession } = useAuth();
-  const pathname = usePathname();
-  const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
-  const [isCheckDealsScrolled, setIsCheckDealsScrolled] = useState(false);
 
-  useEffect(() => {
-    if (pathname !== "/") return;
-    return subscribeToCheckDealsHeaderVisibility(setIsCheckDealsHeaderHidden);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (pathname !== "/") return;
-    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
-    const frame = window.requestAnimationFrame(() => setIsCheckDealsScrolled((scrollSurface?.scrollTop ?? 0) > 8));
-    const unsubscribe = subscribeToCheckDealsScrollPosition((scrollTop) => setIsCheckDealsScrolled(scrollTop > 8));
-    return () => {
-      window.cancelAnimationFrame(frame);
-      unsubscribe();
-    };
-  }, [pathname]);
-
-  // Check Deals has two sticky siblings: AppHeader and this search bar. When
-  // the header returns while scrolling upward, dock the search bar beneath
-  // the 64px nav instead of letting both sticky elements claim top: 0. Once
-  // the header slides away, the search bar returns to the top of the viewport.
-  const stickyPositionClass = sticky
-    ? `sticky z-30 ${pathname === "/" && isCheckDealsScrolled && !isCheckDealsHeaderHidden ? (isAnonymousSession ? "top-[88px]" : "top-16") : "top-0"}`
-    : "";
+  // Keep the native sticky inset fixed, matching FullScreenSearch's toolbar.
+  // Changing `top` during an iOS momentum scroll can cause WebKit to release
+  // and re-anchor the element instead of keeping it docked. The global nav
+  // remains its own sticky layer above this bar and handles its hide/reveal
+  // transition independently.
+  const stickyPositionClass = sticky ? "sticky top-0 z-30" : "";
 
   return (
     <AnimatePresence>
