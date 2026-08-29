@@ -182,19 +182,22 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       onTouchCancel={resetPull}
       onScroll={handleScroll}
     >
-      <AppHeader />
-      {/* Keep Check Deals' search bar in the same scroll container and at the
-          same DOM level as the global sticky nav. WebKit can fail to dock a
-          sticky descendant when it is nested below the route content wrapper;
-          FullScreenSearch avoids that by placing its toolbar directly in the
-          scrolling element, so Check Deals follows the same structure. */}
-      {pathname === "/" && (
-        <SearchBar
-          variant="shadow"
-          bordered
-          compact
-          backgroundClassName={checkDealsSearchBackground}
-        />
+      {pathname === "/" ? (
+        /* Keep Check Deals' nav and search bar in one sticky stack. The nav
+           collapses its layout height when hidden, which lets the bar move
+           into the top slot without changing the bar's sticky inset. */
+        <div className="sticky top-0 z-[45]">
+          <AppHeader sticky={false} collapseOnCheckDeals />
+          <SearchBar
+            variant="shadow"
+            bordered
+            compact
+            sticky={false}
+            backgroundClassName={checkDealsSearchBackground}
+          />
+        </div>
+      ) : (
+        <AppHeader />
       )}
       {(pullDistance > 0 || refreshing || feedback) && (
         <div

@@ -8,6 +8,22 @@
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Check Deals docks the nav and search bar as one sticky stack. When the nav
+   hides, collapse its layout height as well as translating it away so the
+   search bar moves into the top slot without changing its own sticky inset. */
+.app-header-shell.check-deals-collapsible {
+  max-height: 6rem;
+  will-change: max-height, transform;
+  transition:
+    max-height 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-header-shell.check-deals-header-collapsed {
+  max-height: 0;
+  overflow: hidden;
+}
+
 .app-header-shell.is-hidden {
   transform: translateY(-100%);
   pointer-events: none;
@@ -15,6 +31,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .app-header-shell {
+    will-change: auto;
+    transition: none;
+  }
+
+  .app-header-shell.check-deals-collapsible {
     will-change: auto;
     transition: none;
   }

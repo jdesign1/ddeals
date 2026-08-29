@@ -164,7 +164,13 @@ function greetingName(user: { email?: string | null; user_metadata?: Record<stri
   return first || "there";
 }
 
-export default function AppHeader() {
+export default function AppHeader({
+  sticky = true,
+  collapseOnCheckDeals = false,
+}: {
+  sticky?: boolean;
+  collapseOnCheckDeals?: boolean;
+}) {
   const pathname = usePathname();
   const { user, loading, signOut, isAnonymousSession, openAuthSheet } = useAuth();
   const { override } = useHeaderOverride();
@@ -231,7 +237,7 @@ export default function AppHeader() {
     // itself became real.
     <>
     <div
-      className={`app-header-shell sticky top-0 z-[45] w-full flex-shrink-0 ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
+      className={`app-header-shell ${sticky ? "sticky top-0" : ""} z-[45] w-full flex-shrink-0 ${collapseOnCheckDeals && pathname === "/" ? "check-deals-collapsible" : ""} ${collapseOnCheckDeals && pathname === "/" && isHiddenOnCheckDeals ? "check-deals-header-collapsed" : ""} ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
       aria-hidden={pathname === "/" && isHiddenOnCheckDeals}
     >
       <div>
