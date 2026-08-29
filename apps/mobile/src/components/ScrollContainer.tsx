@@ -6,7 +6,7 @@ import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useSearch } from "@/lib/search-context";
-import { publishCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { publishCheckDealsHeaderVisibility, publishCheckDealsScrollPosition } from "@/lib/scroll-events";
 
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
@@ -71,6 +71,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     headerScrollAnchorRef.current = lastScrollTopRef.current;
     headerHiddenRef.current = false;
     publishCheckDealsHeaderVisibility(false);
+    publishCheckDealsScrollPosition(lastScrollTopRef.current);
   }, [pathname]);
 
   // Collapsing the sticky header/search/toolbar changes the layout above the
@@ -91,6 +92,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const handleScroll = () => {
     const currentScrollTop = scrollRef.current?.scrollTop ?? 0;
     lastScrollTopRef.current = currentScrollTop;
+    publishCheckDealsScrollPosition(currentScrollTop);
 
     if (pathname !== "/") return;
 

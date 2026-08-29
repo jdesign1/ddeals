@@ -27,7 +27,7 @@ import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
-import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { subscribeToCheckDealsHeaderVisibility, subscribeToCheckDealsScrollPosition } from "@/lib/scroll-events";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -176,11 +176,13 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const [isCheckDealsScrolled, setIsCheckDealsScrolled] = useState(false);
 
   // Check Deals uses the same direction signal as the global header and the
   // full-screen search toolbar: scrolling down collapses the toolbar, while
   // scrolling back up expands it smoothly at the top of the screen.
   useEffect(() => subscribeToCheckDealsHeaderVisibility((hidden) => setIsToolbarVisible(!hidden)), []);
+  useEffect(() => subscribeToCheckDealsScrollPosition((scrollTop) => setIsCheckDealsScrolled(scrollTop > 8)), []);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
   // session (2026-08-09, full-screen search build) from this exact inline
@@ -289,9 +291,11 @@ export default function HomePage() {
             dealFilterTintClass || "bg-stone-100"
           } ${
             isToolbarVisible
-              ? isAnonymousSession
-                ? "top-[164px] pt-2"
-                : "top-[140px] pt-2"
+              ? isCheckDealsScrolled
+                ? isAnonymousSession
+                  ? "top-[164px] pt-2"
+                  : "top-[140px] pt-2"
+                : "top-0 pt-2"
               : "top-[62px] pt-0"
           }`}
           style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}

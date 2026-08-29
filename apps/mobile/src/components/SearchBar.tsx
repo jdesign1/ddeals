@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
-import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { subscribeToCheckDealsHeaderVisibility, subscribeToCheckDealsScrollPosition } from "@/lib/scroll-events";
 
 /**
  * Global search bar — extracted 2026-08-11 from Home's own inline block
@@ -190,10 +190,22 @@ export default function SearchBar({
   const { isAnonymousSession } = useAuth();
   const pathname = usePathname();
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
+  const [isCheckDealsScrolled, setIsCheckDealsScrolled] = useState(false);
 
   useEffect(() => {
     if (pathname !== "/") return;
     return subscribeToCheckDealsHeaderVisibility(setIsCheckDealsHeaderHidden);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
+    const frame = window.requestAnimationFrame(() => setIsCheckDealsScrolled((scrollSurface?.scrollTop ?? 0) > 8));
+    const unsubscribe = subscribeToCheckDealsScrollPosition((scrollTop) => setIsCheckDealsScrolled(scrollTop > 8));
+    return () => {
+      window.cancelAnimationFrame(frame);
+      unsubscribe();
+    };
   }, [pathname]);
 
   // Check Deals has two sticky siblings: AppHeader and this search bar. When
@@ -201,7 +213,7 @@ export default function SearchBar({
   // the 64px nav instead of letting both sticky elements claim top: 0. Once
   // the header slides away, the search bar returns to the top of the viewport.
   const stickyPositionClass = sticky
-    ? `sticky z-30 ${pathname === "/" && !isCheckDealsHeaderHidden ? (isAnonymousSession ? "top-[88px]" : "top-16") : "top-0"}`
+    ? `sticky z-30 ${pathname === "/" && isCheckDealsScrolled && !isCheckDealsHeaderHidden ? (isAnonymousSession ? "top-[88px]" : "top-16") : "top-0"}`
     : "";
 
   return (
