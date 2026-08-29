@@ -236,11 +236,23 @@ export default function HomePage() {
           as one surface once the shared catalogue request has resolved, so
           the search bar, store pills, tabs, and cards never appear in stages. */}
       <PageLoader loading={loadingProducts} />
+      {/* Keep the docked search bar outside the animated content surface. It
+          must remain a direct child of the page scroll surface, matching the
+          full-screen search toolbar's sticky structure, so iOS can resolve
+          its sticky inset consistently while the results surface fades. */}
+      {!isSearchActive && (
+        <SearchBar
+          variant="shadow"
+          bordered
+          compact
+          backgroundClassName={dealFilterTintClass || "bg-stone-100"}
+        />
+      )}
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
+        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${!isSearchActive ? "mt-[14px]" : ""} ${dealFilterTintClass || "bg-stone-100"}`}
       >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
@@ -270,15 +282,6 @@ export default function HomePage() {
           than adding a 3rd variant/new prop just for the border -- no page
           needs the two concerns (wrapper fill vs. pill border) decoupled
           today. */}
-      {!isSearchActive && (
-        <SearchBar
-          variant="shadow"
-          bordered
-          compact
-          backgroundClassName={dealFilterTintClass || "bg-stone-100"}
-        />
-      )}
-
       {/* Store filter pills -- ported from Prototype/index.html's global
           supermarket filter. `StorePill` (extracted 2026-08-09) is the same
           component the full-screen search overlay's own store pills now
