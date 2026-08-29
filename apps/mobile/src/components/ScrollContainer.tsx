@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
@@ -56,22 +56,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<"updated" | "throttled" | null>(null);
-  const [headerHeight, setHeaderHeight] = useState(64);
-
-  // The anonymous test banner can change the real header height, especially
-  // in a narrow iOS WebView. Measure the mounted sticky shell so sibling
-  // sticky controls always dock beneath the actual nav instead of relying on
-  // a hard-coded offset.
-  useEffect(() => {
-    const header = scrollRef.current?.querySelector<HTMLElement>(".app-header-shell");
-    if (!header) return;
-    const updateHeaderHeight = () => setHeaderHeight(header.getBoundingClientRect().height);
-    updateHeaderHeight();
-    const observer = new ResizeObserver(updateHeaderHeight);
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
-
   useEffect(
     () => () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -186,13 +170,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       // together. Prevent scroll anchoring from converting those layout
       // changes into compensating scroll events, which can look like a
       // reversal during a slow drag and make the header dock/undock repeatedly.
-      style={
-        {
-          touchAction: "pan-y",
-          overflowAnchor: pathname === "/" ? "none" : undefined,
-          "--app-header-height": `${headerHeight}px`,
-        } as CSSProperties
-      }
+      style={{ touchAction: "pan-y", overflowAnchor: pathname === "/" ? "none" : undefined }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => void handleTouchEnd()}

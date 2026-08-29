@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 
@@ -186,6 +187,7 @@ export default function SearchBar({
   compact?: boolean;
 }) {
   const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
+  const { isAnonymousSession } = useAuth();
   const pathname = usePathname();
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
 
@@ -198,12 +200,9 @@ export default function SearchBar({
   // the header returns while scrolling upward, dock the search bar beneath
   // the 64px nav instead of letting both sticky elements claim top: 0. Once
   // the header slides away, the search bar returns to the top of the viewport.
-  const stickyPositionClass = sticky ? "sticky z-20" : "";
-  const stickyTop = sticky
-    ? pathname === "/" && !isCheckDealsHeaderHidden
-      ? "var(--app-header-height, 64px)"
-      : "0px"
-    : undefined;
+  const stickyPositionClass = sticky
+    ? `sticky z-30 ${pathname === "/" && !isCheckDealsHeaderHidden ? (isAnonymousSession ? "top-[88px]" : "top-16") : "top-0"}`
+    : "";
 
   return (
     <AnimatePresence>
@@ -212,7 +211,6 @@ export default function SearchBar({
           initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          style={{ top: stickyTop }}
           className={`${stickyPositionClass} ${compact ? "search-bar-gap-fill" : ""} px-5 transition-[top,background-color] duration-300 ease-out ${topSpacing ? "pb-2 pt-4" : compact ? "pb-0 pt-2" : "py-2"} ${
             blurred
               ? "backdrop-blur-md"
