@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "re
 import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
+import SearchBar from "@/components/SearchBar";
 import { useSearch } from "@/lib/search-context";
 import { publishCheckDealsHeaderVisibility, publishCheckDealsScrollPosition } from "@/lib/scroll-events";
 
@@ -43,7 +44,7 @@ const HEADER_TRANSITION_MS = 300;
 export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hasBottomNav = !pathname.startsWith("/deal/");
-  const { refreshCatalogue } = useSearch();
+  const { refreshCatalogue, dealFilter } = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
@@ -56,6 +57,8 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<"updated" | "throttled" | null>(null);
+  const checkDealsSearchBackground =
+    dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "bg-stone-100";
   useEffect(
     () => () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -180,6 +183,19 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       onScroll={handleScroll}
     >
       <AppHeader />
+      {/* Keep Check Deals' search bar in the same scroll container and at the
+          same DOM level as the global sticky nav. WebKit can fail to dock a
+          sticky descendant when it is nested below the route content wrapper;
+          FullScreenSearch avoids that by placing its toolbar directly in the
+          scrolling element, so Check Deals follows the same structure. */}
+      {pathname === "/" && (
+        <SearchBar
+          variant="shadow"
+          bordered
+          compact
+          backgroundClassName={checkDealsSearchBackground}
+        />
+      )}
       {(pullDistance > 0 || refreshing || feedback) && (
         <div
           className="pointer-events-none fixed inset-x-0 top-8 z-[9999] flex -translate-y-1/2 justify-center"

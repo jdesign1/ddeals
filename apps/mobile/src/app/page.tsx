@@ -22,7 +22,6 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import StorePill from "@/components/StorePill";
-import SearchBar from "@/components/SearchBar";
 import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
@@ -236,18 +235,6 @@ export default function HomePage() {
           as one surface once the shared catalogue request has resolved, so
           the search bar, store pills, tabs, and cards never appear in stages. */}
       <PageLoader loading={loadingProducts} />
-      {/* Keep the docked search bar outside the animated content surface. It
-          must remain a direct child of the page scroll surface, matching the
-          full-screen search toolbar's sticky structure, so iOS can resolve
-          its sticky inset consistently while the results surface fades. */}
-      {!isSearchActive && (
-        <SearchBar
-          variant="shadow"
-          bordered
-          compact
-          backgroundClassName={dealFilterTintClass || "bg-stone-100"}
-        />
-      )}
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
@@ -257,11 +244,12 @@ export default function HomePage() {
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
           restyle session).
-          The search bar itself moved out to `components/SearchBar.tsx`
+          The shared search bar moved to `components/SearchBar.tsx`
           (2026-08-11, per Jay's ask to reuse "the same component" at the top
-          of `/lists`, `/history`, `/me` too) -- see that file's own doc
-          comment for the full reasoning; this page just renders it now,
-          same as the other three.
+          of `/lists`, `/history`, `/me` too). On Check Deals it is mounted by
+          `ScrollContainer.tsx` beside the global nav so it shares the exact
+          scrolling element used by the sticky behavior; this page owns the
+          toolbar and results content below it.
           The mascot-logo + "Spot if today's deals are dodgy" tagline row
           that used to sit above this bar was removed 2026-08-12, per Jay's
           ask, now that the mascot logo lives in the global `AppHeader` nav
