@@ -157,6 +157,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/me": "Deal stats",
   "/history": "All Checks",
   "/settings": "Settings",
+  "/privacy": "Privacy policy",
+  "/terms": "Terms of use",
 };
 
 function greetingName(user: { email?: string | null; user_metadata?: Record<string, unknown> }): string {
@@ -222,7 +224,8 @@ export default function AppHeader({
   // navigation here instead of never showing it. Every OTHER route (Home,
   // My List, Specials, Deal stats, All Checks) keeps the mascot per the
   // 2026-08-13 "every screen" revert documented below.
-  const showLogoMark = !["/account", "/how-it-works", "/settings"].includes(pathname) && !pathname.startsWith("/deal/");
+  const showLogoMark =
+    !["/account", "/how-it-works", "/settings", "/privacy", "/terms"].includes(pathname) && !pathname.startsWith("/deal/");
 
   return (
     // Sticky wrapper (not the <header> itself, see below) so the test-mode

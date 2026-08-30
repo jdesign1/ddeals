@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -375,7 +376,7 @@ export default function AuthPanel({
    * view. */
   onModeChange: (mode: "signin" | "signup") => void;
 }) {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, closeAuthSheet } = useAuth();
   const [name, setName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -803,6 +804,27 @@ export default function AuthPanel({
         {error && (
           <p className="text-[13px] leading-4 font-medium" style={{ color: "var(--color-brand-error)" }}>
             {error}
+          </p>
+        )}
+        {mode === "signup" && (
+          <p className="text-[12px] leading-relaxed text-stone-500">
+            By creating an account, you acknowledge our{" "}
+            <Link
+              href="/privacy"
+              onClick={closeAuthSheet}
+              className="font-bold text-ink-600 underline underline-offset-2"
+            >
+              Privacy policy
+            </Link>
+            {" "}and agree to our{" "}
+            <Link
+              href="/terms"
+              onClick={closeAuthSheet}
+              className="font-bold text-ink-600 underline underline-offset-2"
+            >
+              Terms of use
+            </Link>
+            .
           </p>
         )}
         {/* Brand Guide v1.0 "06 — UI KIT / BUTTONS" primary pill
