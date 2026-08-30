@@ -78,6 +78,48 @@ export default function SettingsPage() {
           <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
         </Link>
       </section>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="font-display text-lg font-black tracking-normal text-stone-900">Help</h2>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            Get help or let us know when something needs fixing.
+          </p>
+        </div>
+        <Link
+          href="/support"
+          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-sm font-black text-stone-800"
+        >
+          <span>
+            <span className="block">Contact support</span>
+            <span className="mt-0.5 block text-[13px] font-semibold leading-4 text-stone-500">
+              Get help with the app
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/report-deal"
+          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-sm font-black text-stone-800"
+        >
+          <span>
+            <span className="block">Report an incorrect deal</span>
+            <span className="mt-0.5 block text-[13px] font-semibold leading-4 text-stone-500">
+              Help us keep prices and specials accurate
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
+        </Link>
+        <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-sm font-black text-stone-800">
+          <span>
+            <span className="block">App version</span>
+            <span className="mt-0.5 block text-[13px] font-semibold leading-4 text-stone-500">
+              Dodgy Deal mobile app
+            </span>
+          </span>
+          <span className="text-sm font-bold tabular-nums text-stone-500">0.1.0</span>
+        </div>
+      </section>
     </main>
   );
 }

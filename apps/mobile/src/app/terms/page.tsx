@@ -44,7 +44,7 @@ export default function TermsPage() {
         <dl className="mt-3 space-y-2 rounded-xl bg-stone-50 p-4 text-sm">
           <ContactRow label="Operator" value="[insert legal entity or individual name]" />
           <ContactRow label="Address" value="[insert physical or postal address]" />
-          <ContactRow label="Support contact" value="[insert support email address]" />
+          <ContactRow label="Support contact" value="dodgydealnz@gmail.com" />
         </dl>
       </TermsSection>
 
@@ -229,7 +229,10 @@ export default function TermsPage() {
       <TermsSection title="15. Complaints and contact">
         <p>
           If you have a question, complaint, or report about the app, a deal, or these terms, contact us at{" "}
-          <strong>[insert support email address]</strong>. We will review the issue and try to resolve it fairly.
+          <a href="mailto:dodgydealnz@gmail.com" className="font-bold text-ink-600 underline underline-offset-2">
+            dodgydealnz@gmail.com
+          </a>
+          . We will review the issue and try to resolve it fairly.
         </p>
         <p className="mt-3">
           If your concern relates to privacy, use the contact process in our Privacy policy. You may also contact the

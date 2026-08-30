@@ -159,6 +159,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/settings": "Settings",
   "/privacy": "Privacy policy",
   "/terms": "Terms of use",
+  "/support": "Contact support",
+  "/report-deal": "Report an incorrect deal",
 };
 
 function greetingName(user: { email?: string | null; user_metadata?: Record<string, unknown> }): string {
@@ -225,7 +227,8 @@ export default function AppHeader({
   // My List, Specials, Deal stats, All Checks) keeps the mascot per the
   // 2026-08-13 "every screen" revert documented below.
   const showLogoMark =
-    !["/account", "/how-it-works", "/settings", "/privacy", "/terms"].includes(pathname) && !pathname.startsWith("/deal/");
+    !["/account", "/how-it-works", "/settings", "/privacy", "/terms", "/support", "/report-deal"].includes(pathname) &&
+    !pathname.startsWith("/deal/");
 
   return (
     // Sticky wrapper (not the <header> itself, see below) so the test-mode
