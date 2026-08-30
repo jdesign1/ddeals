@@ -227,12 +227,11 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { isActive: isSearchActive, closeSearch } = useSearch();
 
-  if (pathname.startsWith("/deal/")) return null;
+  if (pathname.startsWith("/deal/") || pathname === "/settings") return null;
 
   return (
     <nav
       className="fixed inset-x-3 bottom-safe-nav z-40 mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10"
-      style={{ zIndex: isSearchActive ? 55 : undefined }}
     >
       {TABS.map(({ href, label, icon }) => {
         const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -247,7 +246,9 @@ export default function BottomNav() {
             className="flex min-w-0 flex-1 items-center justify-center py-1.5"
           >
             <span
-              className="bottom-nav-tab relative flex w-full min-w-0 flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full px-0 py-2.5 text-[12px] leading-4 font-medium transition-colors"
+              className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 text-[12px] leading-4 font-medium transition-colors ${
+                isActive ? "w-max min-w-full px-2" : "w-full min-w-0 px-0"
+              }`}
               style={{ color: isActive ? "#ffffff" : "#57534e" }}
             >
               {/* initial={false} (2026-08-20, per Jay: "don't animate the

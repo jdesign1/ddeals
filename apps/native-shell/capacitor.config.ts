@@ -19,6 +19,10 @@ const config: CapacitorConfig = {
   appId: "nz.dodgydeals.app",
   appName: "Dodgy Deals",
   webDir: "www",
+  // Match the WebView/loading surface to the app's base background so the
+  // iOS safe-area region below the floating bottom nav does not show as a
+  // separate pale strip.
+  backgroundColor: "#efefed",
   server: {
     // TODO(Phase 2): point at the real production apps/mobile Vercel domain
     // once it's deployed. Use the Vercel preview URL during development.
@@ -26,7 +30,7 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
-    contentInset: "automatic",
+    contentInset: "never",
   },
   plugins: {
     SplashScreen: {

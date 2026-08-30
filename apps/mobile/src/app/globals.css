@@ -5,7 +5,7 @@
    avoids changing scroll geometry during iOS momentum scrolling. */
 .app-header-shell {
   will-change: transform;
-  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms ease-out;
 }
 
 /* Check Deals docks the nav and search bar as one sticky stack. The nav keeps
@@ -54,7 +54,7 @@
    remains unchanged so the card list cannot jump during the transition. */
 .check-deals-search-slot {
   will-change: transform;
-  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms ease-out;
 }
 
 .check-deals-chrome-header-hidden .check-deals-search-slot {
@@ -66,14 +66,16 @@
    which leaves the scrolling list at the same document offset. */
 .check-deals-toolbar {
   --check-deals-toolbar-gap: 14px;
-  will-change: transform;
-  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms ease-out;
 }
 
 .check-deals-toolbar-hidden {
   transform: translateY(
     calc(-1 * var(--check-deals-header-height, 64px) - 100% - var(--check-deals-toolbar-gap))
   );
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Google Material Symbols used by the bottom navigation. The glyph's FILL
@@ -116,7 +118,7 @@
      Was `#ffffff`, plain Next.js boilerplate default, never intentionally
      chosen. The app stays on this light surface even when the device uses
      dark mode so the mobile browser never reveals a black base layer. */
-  --background: #f5f5f4;
+  --background: #efefed;
   --foreground: #171717;
 
   /* Stitch brand palette. `--color-brand-primary`/`-error` used to be their
@@ -269,11 +271,11 @@
 /* The mobile app intentionally keeps its light surface in every browser
    appearance; the UI is designed around this grey background and light cards. */
 html {
-  background-color: #f5f5f4;
+  background-color: var(--background);
 }
 
 body {
-  background-color: #f5f5f4;
+  background-color: var(--background);
   color: var(--foreground);
   /* Brand Guide v1.0 ("04 — TYPE"): Inter for body/UI copy. This was
      hardcoded to Arial/Helvetica before (2026-08-13 UI tidy-up) -- the
@@ -288,6 +290,23 @@ body {
   /* Mobile-only surface — apps/marketing is the desktop-only counterpart. */
   max-width: 480px;
   margin: 0 auto;
+}
+
+/* Keep the app's broad stone-100 page surfaces aligned with the slightly
+   darker base surface. Cards and other explicit white surfaces remain white. */
+.bg-stone-100 {
+  background-color: var(--background);
+}
+
+/* The selected deal-filter surface is a little deeper than the base
+   background so Real deals and Dodgy remain visually distinct without
+   becoming saturated. */
+.deal-filter-real-surface {
+  background-color: #e8f3ea;
+}
+
+.deal-filter-dodgy-surface {
+  background-color: #f5e6e8;
 }
 
 /* Ported from Prototype/index.html verbatim (search bar + top nav port,

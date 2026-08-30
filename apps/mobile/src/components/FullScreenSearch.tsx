@@ -544,7 +544,7 @@ export default function FullScreenSearch() {
   const getStoreDisplayName = (key: string) => STORE_DISPLAY_FALLBACK[key] || key;
 
   const dealFilterTintClass =
-    dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "";
+    dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
 
   /** Shared "Categories" button + "Sort" button row, used above both the
    * pre-3-char popular list and the post-3-char results grid -- factored out

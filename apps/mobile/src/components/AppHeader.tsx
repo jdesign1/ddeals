@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, X, UserCog, LogOut, Settings } from "lucide-react";
+import { ArrowLeft, X, UserCog, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
@@ -339,7 +339,8 @@ export default function AppHeader({
           </span>
         </div>
 
-        <div className="relative flex flex-shrink-0 items-center gap-3">
+        {pathname !== "/settings" && (
+          <div className="relative flex flex-shrink-0 items-center gap-3">
           {loading ? null : user ? (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}
@@ -394,7 +395,8 @@ export default function AppHeader({
               </span>
             </button>
           )}
-        </div>
+          </div>
+        )}
       </header>
       </div>
     </div>
@@ -469,7 +471,13 @@ export default function AppHeader({
                 onClick={() => setIsMenuOpen(false)}
                 className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
               >
-                <Settings className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
+                <span
+                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
+                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                  aria-hidden="true"
+                >
+                  settings
+                </span>
                 Settings
               </Link>
               {user ? (

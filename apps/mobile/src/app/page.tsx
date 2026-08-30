@@ -224,7 +224,7 @@ export default function HomePage() {
   }, [dealsAllCategories, dealCategoryFilter]);
 
   const dealFilterTintClass =
-    dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "";
+    dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
 
   return (
     <>

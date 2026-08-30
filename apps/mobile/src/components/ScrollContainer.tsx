@@ -13,7 +13,7 @@ const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
 const HEADER_SHOW_AT_TOP = 8;
 const HEADER_SCROLL_DELTA = 4;
-const HEADER_TRANSITION_MS = 300;
+const HEADER_TRANSITION_MS = 380;
 
 /**
  * Extracted 2026-08-17 from `layout.tsx`'s own inline
@@ -43,7 +43,7 @@ const HEADER_TRANSITION_MS = 300;
  */
 export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hasBottomNav = !pathname.startsWith("/deal/");
+  const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings";
   const { refreshCatalogue, dealFilter } = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -62,7 +62,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [headerHeight, setHeaderHeight] = useState(64);
   const [chromeHeight, setChromeHeight] = useState(128);
   const checkDealsSearchBackground =
-    dealFilter === "real" ? "bg-fair-50" : dealFilter === "dodgy" ? "bg-alert-50" : "bg-stone-100";
+    dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "bg-stone-100";
   useEffect(
     () => () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
