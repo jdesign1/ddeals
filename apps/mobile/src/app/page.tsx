@@ -276,12 +276,17 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
         <div
-          className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 transition-[background-color] duration-300 ease-out ${
+          className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
             dealFilterTintClass || "bg-stone-100"
-          } ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"}`}
-          style={{ top: "calc(var(--check-deals-chrome-height, 128px) + var(--check-deals-toolbar-gap, 14px))" }}
+          } ${isToolbarVisible ? "pt-4" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"}`}
+          style={{
+            top: "calc(var(--check-deals-chrome-height, 128px) + var(--check-deals-toolbar-gap, 14px))",
+            gridTemplateRows: isToolbarVisible ? "1fr" : "0fr",
+          }}
         >
-          <div className="min-h-0 min-w-0 space-y-4 pb-2">
+          <div
+            className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${isToolbarVisible ? "pb-2" : "pb-0"}`}
+          >
             <DealFilterTabs
               value={dealFilter}
               onChange={setDealFilter}

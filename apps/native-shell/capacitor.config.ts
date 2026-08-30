@@ -30,7 +30,9 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
-    contentInset: "never",
+    // Let iOS keep the WebView below the status bar instead of allowing the
+    // app shell and sticky header to start underneath it.
+    contentInset: "automatic",
   },
   plugins: {
     SplashScreen: {

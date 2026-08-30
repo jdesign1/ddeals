@@ -13,7 +13,7 @@ const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
 const HEADER_SHOW_AT_TOP = 8;
 const HEADER_SCROLL_DELTA = 4;
-const HEADER_TRANSITION_MS = 380;
+const HEADER_TRANSITION_MS = 480;
 
 /**
  * Extracted 2026-08-17 from `layout.tsx`'s own inline
@@ -194,7 +194,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       // interpreted as card interaction instead of page scrolling.
       className="mobile-scroll-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
       // Check Deals keeps the header/search/toolbar layout slots fixed while
-      // their visual hide/show transitions use transforms. The explicit
+      // their visual hide/show transitions run independently. The explicit
       // metrics are inherited by the sticky siblings for their fixed insets.
       style={
         {
@@ -212,7 +212,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     >
       {pathname === "/" ? (
         /* Keep Check Deals' nav and search bar in one sticky stack. Its layout
-           height stays fixed while the child chrome translates on scroll. */
+           height stays fixed while the child chrome animates on scroll. */
         <div
           ref={checkDealsChromeRef}
           className={`sticky top-0 z-[45] ${isHeaderHidden ? "check-deals-chrome-header-hidden" : ""}`}
