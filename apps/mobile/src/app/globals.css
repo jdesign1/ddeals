@@ -65,9 +65,9 @@
    full-screen search toolbar, so slow iOS scrolling does not cause an
    abrupt off-screen jump or lose the pill row's layout state. */
 .check-deals-toolbar {
-  --check-deals-toolbar-gap: 14px;
-  will-change: grid-template-rows, padding-top, background-color;
+  will-change: transform, grid-template-rows, padding-top, background-color;
   transition:
+    transform 480ms cubic-bezier(0.4, 0, 0.2, 1),
     grid-template-rows 420ms cubic-bezier(0.4, 0, 0.2, 1),
     padding-top 420ms cubic-bezier(0.4, 0, 0.2, 1),
     background-color 300ms ease-out;
@@ -77,9 +77,11 @@
   /* The toolbar stays mounted and collapses like FullScreenSearch. Keeping
      its flow position stable avoids a sudden off-screen jump on slow iOS
      scrolling while overflow clipping hides the zero-height row. */
-  transform: none;
-  opacity: 1;
   pointer-events: none;
+}
+
+.check-deals-toolbar-header-hidden {
+  transform: translateY(calc(-1 * var(--check-deals-header-height, 64px)));
 }
 
 .check-deals-toolbar-content {

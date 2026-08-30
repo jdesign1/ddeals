@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
@@ -26,9 +26,18 @@ import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
-import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import {
+  subscribeToCheckDealsHeaderVisibility,
+  subscribeToCheckDealsScrollPosition,
+} from "@/lib/scroll-events";
 import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
+
+const CHECK_DEALS_TOOLBAR_SHOW_AT_TOP = 8;
+// Give the toolbar time to travel with the search bar while the top nav is
+// leaving; FullScreenSearch has no second nav layer that needs this handoff.
+const CHECK_DEALS_TOOLBAR_SCROLL_DELTA = 24;
+const CHECK_DEALS_TOOLBAR_TRANSITION_MS = 420;
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -175,11 +184,62 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
+  const toolbarVisibleRef = useRef(true);
+  const toolbarScrollAnchorRef = useRef(0);
+  const toolbarAnimationGuardRef = useRef(false);
+  const toolbarAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Check Deals uses the same direction signal as the global header and the
-  // full-screen search toolbar: scrolling down collapses the toolbar, while
-  // scrolling back up expands it smoothly at the top of the screen.
-  useEffect(() => subscribeToCheckDealsHeaderVisibility((hidden) => setIsToolbarVisible(!hidden)), []);
+  // The top nav and the tabs/pills share the same scroll direction, but they
+  // do not collapse at the same moment. Keeping the toolbar visible while
+  // the nav leaves lets it move up with the search bar as one pinned stack;
+  // its own direction threshold then collapses the tabs/pills using the same
+  // grid-row animation as FullScreenSearch.
+  useEffect(() => {
+    const unsubscribeHeader = subscribeToCheckDealsHeaderVisibility(setIsCheckDealsHeaderHidden);
+    const unsubscribeScroll = subscribeToCheckDealsScrollPosition((scrollTop) => {
+      if (toolbarAnimationGuardRef.current) {
+        toolbarScrollAnchorRef.current = scrollTop;
+        return;
+      }
+
+      if (scrollTop <= CHECK_DEALS_TOOLBAR_SHOW_AT_TOP) {
+        toolbarScrollAnchorRef.current = scrollTop;
+        if (!toolbarVisibleRef.current) {
+          toolbarVisibleRef.current = true;
+          setIsToolbarVisible(true);
+        }
+        return;
+      }
+
+      const delta = scrollTop - toolbarScrollAnchorRef.current;
+      if (delta > CHECK_DEALS_TOOLBAR_SCROLL_DELTA && toolbarVisibleRef.current) {
+        toolbarVisibleRef.current = false;
+        setIsToolbarVisible(false);
+        toolbarScrollAnchorRef.current = scrollTop;
+        toolbarAnimationGuardRef.current = true;
+        if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
+        toolbarAnimationTimeoutRef.current = setTimeout(() => {
+          toolbarAnimationGuardRef.current = false;
+        }, CHECK_DEALS_TOOLBAR_TRANSITION_MS + 50);
+      } else if (delta < -CHECK_DEALS_TOOLBAR_SCROLL_DELTA && !toolbarVisibleRef.current) {
+        toolbarVisibleRef.current = true;
+        setIsToolbarVisible(true);
+        toolbarScrollAnchorRef.current = scrollTop;
+        toolbarAnimationGuardRef.current = true;
+        if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
+        toolbarAnimationTimeoutRef.current = setTimeout(() => {
+          toolbarAnimationGuardRef.current = false;
+        }, CHECK_DEALS_TOOLBAR_TRANSITION_MS + 50);
+      }
+    });
+
+    return () => {
+      unsubscribeHeader();
+      unsubscribeScroll();
+      if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
+    };
+  }, []);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
   // session (2026-08-09, full-screen search build) from this exact inline
@@ -278,9 +338,11 @@ export default function HomePage() {
         <div
           className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
             dealFilterTintClass || "bg-stone-100"
-          } ${isToolbarVisible ? "pt-4" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"}`}
+          } ${isToolbarVisible ? "pt-4" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+            isCheckDealsHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
+          }`}
           style={{
-            top: "calc(var(--check-deals-chrome-height, 128px) + var(--check-deals-toolbar-gap, 14px))",
+            top: "var(--check-deals-chrome-height, 128px)",
             gridTemplateRows: isToolbarVisible ? "1fr" : "0fr",
           }}
         >
