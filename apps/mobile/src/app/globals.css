@@ -309,6 +309,24 @@ body {
   background-color: #f5e6e8;
 }
 
+/* Settings-linked documents use a calm, readable reading measure. The
+   hierarchy stays clear at larger text sizes: headings carry the weight,
+   while body copy gets roomier leading and smaller supporting labels remain
+   secondary. */
+.settings-document-copy {
+  font-size: 1rem;
+  line-height: 1.75rem;
+}
+
+.settings-document-copy > * + * {
+  margin-top: 1rem !important;
+}
+
+.settings-document-copy strong {
+  font-weight: 650;
+  color: var(--foreground);
+}
+
 /* Ported from Prototype/index.html verbatim (search bar + top nav port,
    2026-08-08). Mobile WebKit (iOS Safari/Chrome) auto-zooms the whole page
    on focus of any input whose computed font-size is under 16px — the

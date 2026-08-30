@@ -18,19 +18,19 @@ export default function TermsPage() {
   usePageHeader("Terms of use", () => router.back());
 
   return (
-    <main className="flex flex-col gap-5 px-5 py-6 pb-10">
+    <main className="flex flex-col gap-4 px-5 py-5 pb-10">
       <section className="rounded-2xl border border-dodgy-200 bg-dodgy-50 p-5 shadow-sm">
-        <p className="text-[11px] font-black tracking-widest text-dodgy-800">Please read</p>
-        <p className="mt-2 text-sm leading-relaxed text-stone-700">
+        <p className="text-[13px] font-semibold text-dodgy-900">Please read</p>
+        <p className="mt-2 text-[15px] leading-6 text-stone-700">
           This draft must be completed with the operator&rsquo;s legal name, address, contact details, and any
           confirmed paid-service terms before Dodgy Deal is released publicly.
         </p>
       </section>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-bold text-stone-500">Last updated: 30 August 2026</p>
-        <h1 className="mt-2 font-display text-xl font-black text-stone-900">Terms of use</h1>
-        <p className="mt-3 text-sm leading-relaxed text-stone-600">
+        <p className="text-[13px] font-medium text-stone-500">Last updated: 30 August 2026</p>
+        <h1 className="mt-2 font-display text-2xl font-extrabold leading-7 text-stone-900">Terms of use</h1>
+        <p className="mt-3 text-base leading-7 text-stone-600">
           These Terms of Use explain the rules that apply when you use the Dodgy Deal app and related services. By
           using Dodgy Deal, you agree to these terms. If you do not agree, please do not use the app.
         </p>
@@ -41,7 +41,7 @@ export default function TermsPage() {
           Dodgy Deal is operated by <strong>[insert legal entity or individual name]</strong> (referred to as
           “Dodgy Deal”, “we”, “us”, or “our”).
         </p>
-        <dl className="mt-3 space-y-2 rounded-xl bg-stone-50 p-4 text-sm">
+        <dl className="mt-3 space-y-3 rounded-xl bg-stone-50 p-4 text-[15px] leading-6 text-stone-600">
           <ContactRow label="Operator" value="[insert legal entity or individual name]" />
           <ContactRow label="Address" value="[insert physical or postal address]" />
           <ContactRow label="Support contact" value="dodgydealnz@gmail.com" />
@@ -257,8 +257,8 @@ export default function TermsPage() {
       </TermsSection>
 
       <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <h2 className="font-display text-base font-black text-stone-900">Related information</h2>
-        <div className="mt-3 flex flex-col gap-2 text-sm font-bold">
+        <h2 className="font-display text-lg font-extrabold leading-6 text-stone-900">Related information</h2>
+        <div className="mt-3 flex flex-col gap-3 text-[15px] font-semibold leading-6">
           <Link href="/settings" className="text-ink-600 underline underline-offset-2">
             Back to settings
           </Link>
@@ -274,8 +274,8 @@ export default function TermsPage() {
 function TermsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
-      <h2 className="font-display text-base font-black text-stone-900">{title}</h2>
-      <div className="mt-3 space-y-3 text-sm leading-relaxed text-stone-600">{children}</div>
+      <h2 className="font-display text-lg font-extrabold leading-6 text-stone-900">{title}</h2>
+      <div className="settings-document-copy mt-3 text-stone-600">{children}</div>
     </section>
   );
 }
@@ -287,7 +287,7 @@ function BulletList({ children }: { children: ReactNode }) {
 function ContactRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-      <dt className="font-black text-stone-700">{label}</dt>
+      <dt className="font-semibold text-stone-700">{label}</dt>
       <dd className="sm:text-right">{value}</dd>
     </div>
   );

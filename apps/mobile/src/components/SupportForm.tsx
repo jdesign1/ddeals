@@ -59,7 +59,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={mode + "-name"} className="font-display text-[11px] font-black tracking-widest text-stone-500">
+        <label htmlFor={mode + "-name"} className="text-[13px] font-semibold leading-5 text-stone-700">
           Your name <span className="font-semibold tracking-normal text-stone-400">(optional)</span>
         </label>
         <input
@@ -68,12 +68,12 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
           autoComplete="name"
           value={form.name}
           onChange={(event) => updateField("name", event.target.value)}
-          className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm focus:border-stone-900 focus:outline-none"
+          className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm focus:border-stone-900 focus:outline-none"
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={mode + "-email"} className="font-display text-[11px] font-black tracking-widest text-stone-500">
+        <label htmlFor={mode + "-email"} className="text-[13px] font-semibold leading-5 text-stone-700">
           Email address
         </label>
         <input
@@ -84,14 +84,14 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
           value={form.email}
           onChange={(event) => updateField("email", event.target.value)}
           placeholder="name@example.com"
-          className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
+          className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
         />
       </div>
 
       {isReport && (
         <>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="report-product" className="font-display text-[11px] font-black tracking-widest text-stone-500">
+            <label htmlFor="report-product" className="text-[13px] font-semibold leading-5 text-stone-700">
               Product
             </label>
             <input
@@ -101,13 +101,13 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
               value={form.product}
               onChange={(event) => updateField("product", event.target.value)}
               placeholder="e.g. Coffee beans 1kg"
-              className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
+              className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="report-retailer" className="font-display text-[11px] font-black tracking-widest text-stone-500">
+              <label htmlFor="report-retailer" className="text-[13px] font-semibold leading-5 text-stone-700">
                 Retailer <span className="font-semibold tracking-normal text-stone-400">(optional)</span>
               </label>
               <input
@@ -116,11 +116,11 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
                 value={form.retailer}
                 onChange={(event) => updateField("retailer", event.target.value)}
                 placeholder="e.g. Woolworths"
-                className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
+                className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="report-store" className="font-display text-[11px] font-black tracking-widest text-stone-500">
+              <label htmlFor="report-store" className="text-[13px] font-semibold leading-5 text-stone-700">
                 Store or area <span className="font-semibold tracking-normal text-stone-400">(optional)</span>
               </label>
               <input
@@ -129,13 +129,13 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
                 value={form.store}
                 onChange={(event) => updateField("store", event.target.value)}
                 placeholder="e.g. Auckland"
-                className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
+                className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="report-price" className="font-display text-[11px] font-black tracking-widest text-stone-500">
+            <label htmlFor="report-price" className="text-[13px] font-semibold leading-5 text-stone-700">
               Price shown <span className="font-semibold tracking-normal text-stone-400">(optional)</span>
             </label>
             <input
@@ -145,14 +145,14 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
               value={form.displayedPrice}
               onChange={(event) => updateField("displayedPrice", event.target.value)}
               placeholder="e.g. $8.99"
-              className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
+              className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
             />
           </div>
         </>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={mode + "-message"} className="font-display text-[11px] font-black tracking-widest text-stone-500">
+        <label htmlFor={mode + "-message"} className="text-[13px] font-semibold leading-5 text-stone-700">
           {isReport ? "What needs correcting?" : "How can we help?"}
         </label>
         <textarea
@@ -166,11 +166,11 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
               ? "Tell us what looks wrong and what you expected to see."
               : "Tell us what happened or what you need help with."
           }
-          className="resize-y rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium leading-relaxed text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
+          className="resize-y rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal leading-6 text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
         />
       </div>
 
-      <p className="text-[12px] leading-relaxed text-stone-500">
+      <p className="text-[13px] leading-5 text-stone-500">
         Tapping the button opens your email app with the details filled in. You can review the message before sending
         it to {SUPPORT_EMAIL}.
       </p>
