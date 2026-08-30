@@ -27,6 +27,8 @@ import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfinit
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import { useCardLayout } from "@/lib/card-layout-context";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -106,7 +108,7 @@ interface FlatDeal {
   deal: CurrentDeal;
 }
 
-type DealSortBy = "price-asc" | "latest";
+type DealSortBy = CheckDealsSortBy;
 type SortBy = "discount" | "dodgy";
 
 /** Ported from Prototype/index.html's `ProductCard` call sites: other
@@ -424,10 +426,7 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 // Trending-only sort options, added 2026-08-21 -- see `TrendingSortBy`'s own
 // comment above for why Trending no longer shares `SORT_OPTIONS`/`SortBy`
 // with My List.
-const TRENDING_SORT_OPTIONS: { value: DealSortBy; label: string }[] = [
-  { value: "price-asc", label: "Lowest to highest price" },
-  { value: "latest", label: "Latest specials" },
-];
+const TRENDING_SORT_OPTIONS = CHECK_DEALS_SORT_OPTIONS;
 
 // Made generic over `T extends string` 2026-08-21 so Trending's own
 // `TrendingSortBy` options could reuse this same dropdown/bottom-sheet
@@ -544,6 +543,7 @@ function TrendingSection({
   availableCategories: string[];
   categoryCounts: Map<string, number>;
 }) {
+  const { isGridLayout } = useCardLayout();
   const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
   const sectionCopy =
     filter === "dodgy"
@@ -622,7 +622,7 @@ function TrendingSection({
             <EmptyState>{sectionCopy.categoryEmpty}</EmptyState>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4">
+              <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
                 {visible.map(({ product, deal }) => (
                   <ProductListCard
                     key={`${product.id}-${deal.store}`}
@@ -770,6 +770,7 @@ function MyListSection({
   sortBy: SortBy;
   onSortByChange: (value: SortBy) => void;
 }) {
+  const { isGridLayout } = useCardLayout();
   const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
   const { openAuthSheet } = useAuth();
 
@@ -860,7 +861,7 @@ function MyListSection({
             </span>
             <SortDropdown value={sortBy} onChange={onSortByChange} options={SORT_OPTIONS} />
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
             {sorted.map(({ product, deal }) => (
               <ProductListCard
                 key={`${product.id}-${deal.store}`}

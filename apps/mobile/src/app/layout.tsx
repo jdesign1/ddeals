@@ -6,6 +6,7 @@ import ScrollContainer from "@/components/ScrollContainer";
 import { AuthProvider } from "@/lib/auth-context";
 import { HeaderOverrideProvider } from "@/lib/header-context";
 import { SearchProvider } from "@/lib/search-context";
+import { CardLayoutProvider } from "@/lib/card-layout-context";
 import "./globals.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
@@ -64,7 +65,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 can reach it via `useSearch()`, same pattern
                 HeaderOverrideProvider already uses for AppHeader's title
                 override. */}
-            <SearchProvider>
+            <CardLayoutProvider>
+              <SearchProvider>
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
                   normal flex sibling (its own row, reserving space below
                   this scroll container) to `fixed` (see that component's
@@ -134,7 +136,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   available regardless of which route is active -- previously
                   both only existed inside Home's own page.tsx. */}
               <GlobalOverlays />
-            </SearchProvider>
+              </SearchProvider>
+            </CardLayoutProvider>
           </HeaderOverrideProvider>
         </AuthProvider>
       </body>

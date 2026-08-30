@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, X, UserCog, LogOut } from "lucide-react";
+import { ArrowLeft, X, UserCog, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
@@ -27,7 +27,8 @@ import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
  *    first -- so until 2026-08-12 this menu only offered what was real: log
  *    out (signed in) or a link to /lists (signed out). Since then, per
  *    Jay's ask to "add the profile menu options from the prototype," two of
- *    those three now have real pages here too (`/how-it-works`, `/account`
+ *    those three now have real pages here too (`/how-it-works`, `/account`,
+ *    `/settings`
  *    -- see those files' own doc comments) and are wired into the menu
  *    below. "Store Settings" is deliberately still skipped -- Jay's own
  *    call when asked, since there's no real store-preferences feature in
@@ -70,9 +71,9 @@ import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
  *    leftover from its mock data, never actually wired to the signed-in
  *    user's name). This version computes the initial from the real
  *    Supabase user instead, since a real user is available here.
- *  - The `showCloseButton` variant (used by the prototype for its
- *    manage-account/settings/how-it-works sub-pages) isn't ported — those
- *    sub-pages don't exist in apps/mobile yet.
+ *  - The `showCloseButton` variant used by the prototype for its
+ *    manage-account/settings/how-it-works sub-pages isn't ported. These are
+ *    real routes here and use the shared `usePageHeader()` back-button flow.
  *  - `onBack`/back-arrow support *is* ported (added 2026-08-09 for the deal-
  *    assessment page), but not as a prop — since this header is mounted
  *    once in layout.tsx above the router outlet, pages instead publish an
@@ -155,6 +156,7 @@ const ROUTE_TITLES: Record<string, string> = {
   // for the one screen.
   "/me": "Deal stats",
   "/history": "All Checks",
+  "/settings": "Settings",
 };
 
 function greetingName(user: { email?: string | null; user_metadata?: Record<string, unknown> }): string {
@@ -220,7 +222,7 @@ export default function AppHeader({
   // navigation here instead of never showing it. Every OTHER route (Home,
   // My List, Specials, Deal stats, All Checks) keeps the mascot per the
   // 2026-08-13 "every screen" revert documented below.
-  const showLogoMark = !["/account", "/how-it-works"].includes(pathname) && !pathname.startsWith("/deal/");
+  const showLogoMark = !["/account", "/how-it-works", "/settings"].includes(pathname) && !pathname.startsWith("/deal/");
 
   return (
     // Sticky wrapper (not the <header> itself, see below) so the test-mode
@@ -455,6 +457,14 @@ export default function AppHeader({
                   help_center
                 </span>
                 How Dodgy Deal works
+              </Link>
+              <Link
+                href="/settings"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
+              >
+                <Settings className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
+                Settings
               </Link>
               {user ? (
                 <>

@@ -23,6 +23,8 @@ import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
+import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 
 /**
@@ -94,11 +96,10 @@ import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfinit
  *    words 'clear'") -- same ask, same change, as `SearchBar.tsx`'s own
  *    clear button; `X` was already imported here for the category/sort
  *    sheets' own close buttons, so no new import needed.
- *  - "Popular specials now" ranks by *discount* (prototype's own
- *    `popularSpecials` picks the biggest-discount deal per product); the
- *    post-3-character results list ranks by *cheapest applicable price*
- *    (prototype's `sortedProducts`) -- both intentionally ported exactly as
- *    asymmetric as the prototype has them, not "fixed" to be consistent.
+ *  - Both the browse list and the post-3-character results list use the same
+ *    two sort choices as Check Deals: lowest to highest price and latest
+ *    specials. Typed results still use search relevance as the primary
+ *    ordering, with the selected sort used as the tie-breaker.
  *  - The post-3-character results section's Categories/Sort controls sit
  *    directly above the results grid (2026-08-09, per Jay's ask to match
  *    "the home page" -- see TrendingSection/MyListSection in page.tsx,
@@ -117,13 +118,9 @@ import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfinit
  *    mascot mark, per Jay: "In the active search bar state, replace the
  *    search icon with the dodgy man icon" -- see that block's own comment,
  *    just above the input row further down this file.
- *  - `popularTab`/`popularSortBy` now default to "specials"/"discount"
- *    (were "dodgy"/"recent"), and `handleBack` now resets both alongside
- *    `priceFilter` -- per Jay's follow-up: "Full screen search mode should
- *    always default to 'All Specials' not dodgy, and be the same for any
- *    entry point to search." See the `popularTab` state declaration's own
- *    comment for why this was left alone the first time and changed this
- *    time.
+ *  - Full-screen search defaults to "Latest specials", matching Check Deals,
+ *    for both the browse list and typed results. The selected sort is reset
+ *    when a fresh search session or deal-filter change starts.
  *
  * 2026-08-21: `textMatched`/`getSearchRelevance` (below) are now synonym-
  * aware -- per Jay: "search terms like milk, egg, eggs, dairy, cheese etc
@@ -143,8 +140,8 @@ interface PopularEntry {
   bestDeal: CurrentDeal;
 }
 
-type PopularSortBy = "discount" | "dodgy" | "recent" | "price-desc" | "price-asc";
-type ResultsSortBy = "cheapest" | "discount" | "dodgy-rating";
+type PopularSortBy = CheckDealsSortBy;
+type ResultsSortBy = CheckDealsSortBy;
 
 // `CATEGORY_SECTIONS` promoted to `@dodgey-deals/shared` (`deal-detail.ts`)
 // 2026-08-21 once Home's Trending tab needed the identical section list for
@@ -220,6 +217,7 @@ export default function FullScreenSearch() {
     dealFilter,
     setDealFilter,
   } = useSearch();
+  const { isGridLayout } = useCardLayout();
 
   // Scroll position (2026-08-10, per Jay's ask to keep it across a
   // deal-page detour): the scrollable results container below unmounts
@@ -317,7 +315,7 @@ export default function FullScreenSearch() {
     };
   }, []);
 
-  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("cheapest");
+  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("latest");
   // The selected deal filter is shared with Check Deals through
   // SearchProvider, so switching screens keeps the same tab selected and
   // applies the same filter to both surfaces.
@@ -325,7 +323,7 @@ export default function FullScreenSearch() {
 
   // Match Check Deals' default "Latest specials" ordering when search opens.
   // Users can still choose a different sort from the sheet below.
-  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("recent");
+  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("latest");
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
 
   // Track the open transition for scroll restoration. The shared deal filter
@@ -335,13 +333,15 @@ export default function FullScreenSearch() {
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
-      setPopularSortBy("recent");
+      setPopularSortBy("latest");
+      setResultsSortBy("latest");
     }
   }
 
   const handleDealFilterChange = (filter: DealFilter) => {
     setDealFilter(filter);
-    setPopularSortBy("recent");
+    setPopularSortBy("latest");
+    setResultsSortBy("latest");
   };
 
   const [categorySheetTarget, setCategorySheetTarget] = useState<"popular" | "results" | null>(null);
@@ -356,10 +356,8 @@ export default function FullScreenSearch() {
   // matching the Categories sheet right above this that already replaced the
   // Prototype's plain scrim-less popover). Same `null`-means-closed /
   // string-target-means-open shape as `categorySheetTarget`, but the option
-  // list + current value + setter differ per target (Popular's options also
-  // depend on `popularTab`, same branching the old inline `sortOptions` arg
-  // at each call site used to do), so a single derived config object is
-  // computed here instead of threading 3 separate props through
+  // list + current value + setter differ per target, so a single derived
+  // config object is computed here instead of threading 3 separate props through
   // `renderCategoriesAndSort` the way the pre-sheet `<select>` version did.
   const [sortSheetTarget, setSortSheetTarget] = useState<"popular" | "results" | null>(null);
   const activeSortConfig =
@@ -367,28 +365,13 @@ export default function FullScreenSearch() {
       ? {
           value: popularSortBy as string,
           onChange: (v: string) => setPopularSortBy(v as PopularSortBy),
-          options:
-            dealFilter === "dodgy"
-              ? [
-                  { value: "recent", label: "Most recent" },
-                  { value: "price-desc", label: "Highest price" },
-                  { value: "price-asc", label: "Lowest price" },
-                ]
-              : [
-                  { value: "discount", label: "Biggest discount" },
-                  { value: "recent", label: "Most recent" },
-                  { value: "dodgy", label: "Dodgy first" },
-                ],
+          options: CHECK_DEALS_SORT_OPTIONS,
         }
       : sortSheetTarget === "results"
         ? {
             value: resultsSortBy as string,
             onChange: (v: string) => setResultsSortBy(v as ResultsSortBy),
-            options: [
-              { value: "cheapest", label: "Cheapest" },
-              { value: "discount", label: "Biggest discount" },
-              { value: "dodgy-rating", label: "Dodgy rating" },
-            ],
+            options: CHECK_DEALS_SORT_OPTIONS,
           }
         : null;
 
@@ -476,16 +459,10 @@ export default function FullScreenSearch() {
       return true;
     });
     const sorted = [...filtered];
-    if (popularSortBy === "recent") {
+    if (popularSortBy === "latest") {
       sorted.sort((a, b) => new Date(b.bestDeal.saleStartedAt || 0).getTime() - new Date(a.bestDeal.saleStartedAt || 0).getTime());
-    } else if (popularSortBy === "discount") {
-      sorted.sort((a, b) => b.bestDeal.discountPercentage - a.bestDeal.discountPercentage);
-    } else if (popularSortBy === "price-desc") {
-      sorted.sort((a, b) => b.bestDeal.price - a.bestDeal.price);
     } else if (popularSortBy === "price-asc") {
       sorted.sort((a, b) => a.bestDeal.price - b.bestDeal.price);
-    } else if (popularSortBy === "dodgy") {
-      sorted.sort((a, b) => (b.bestDeal.dealType === "Dodgy Deal" ? 1 : 0) - (a.bestDeal.dealType === "Dodgy Deal" ? 1 : 0));
     }
     return sorted;
   }, [popularSpecials, popularSortBy, dealFilter, popularCategoryFilter, selectedStores]);
@@ -521,13 +498,10 @@ export default function FullScreenSearch() {
     });
 
     const getBestPrice = (p: ProductCardData) => Math.min(...applicableDealsFor(p, selectedStores, dealFilter).map((d) => d.price));
-    const getMaxDiscount = (p: ProductCardData) => Math.max(...applicableDealsFor(p, selectedStores, dealFilter).map((d) => d.discountPercentage));
-    const getDodgyScore = (p: ProductCardData) =>
-      applicableDealsFor(p, selectedStores, dealFilter).some((d) => d.dealType === "Dodgy Deal")
-        ? 2
-        : applicableDealsFor(p, selectedStores, dealFilter).some((d) => d.dealType === "Fair Price")
-          ? 1
-          : 0;
+    const getLatestStart = (p: ProductCardData) => {
+      const deals = applicableDealsFor(p, selectedStores, dealFilter);
+      return Math.max(...deals.map((d) => new Date(d.saleStartedAt || 0).getTime()));
+    };
 
     return matched
       .map((product) => ({
@@ -536,10 +510,8 @@ export default function FullScreenSearch() {
       }))
       .sort((a, b) => {
         if (b.relevance !== a.relevance) return b.relevance - a.relevance;
-        if (resultsSortBy === "cheapest") return getBestPrice(a.product) - getBestPrice(b.product);
-        if (resultsSortBy === "discount") return getMaxDiscount(b.product) - getMaxDiscount(a.product);
-        if (resultsSortBy === "dodgy-rating") return getDodgyScore(b.product) - getDodgyScore(a.product);
-        return 0;
+        if (resultsSortBy === "price-asc") return getBestPrice(a.product) - getBestPrice(b.product);
+        return getLatestStart(b.product) - getLatestStart(a.product);
       })
       .map((x) => x.product);
   }, [products, trimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter]);
@@ -1076,7 +1048,7 @@ export default function FullScreenSearch() {
                         () => setSortSheetTarget("popular")
                       )}
                     </div>
-                    <div className="space-y-4">
+                    <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                       {visiblePopularSpecials.map(({ product, bestDeal }) => (
                         <ProductListCard
                           key={product.id}
@@ -1276,7 +1248,7 @@ export default function FullScreenSearch() {
                     )}
                   </div>
 
-                  <div className="space-y-4">
+                  <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                     {sortedProducts.length > 0 ? (
                       visibleSearchResults.map((product) => {
                         const bestDeal = cheapestApplicableDeal(product, selectedStores, dealFilter);

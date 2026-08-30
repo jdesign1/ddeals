@@ -7,14 +7,15 @@ import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/
 import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import { getStoreLogoMeta } from "@/lib/store-meta";
+import { useCardLayout } from "@/lib/card-layout-context";
 
 /**
- * Single-column product card — ported from Prototype/index.html's shared
+ * Product card — ported from Prototype/index.html's shared
  * `ProductCard` (see project.md, "Restyled the prototype to the new 'Dodgy
  * Deal · Mobile UI Kit' design system", 2026-08-04: "five rows: ... image +
  * brand/name/size; price; a factual one-line callout about the store ...;
  * and a badges row"). Used by Home's search results, Trending, and My List
- * sections (page.tsx) — kept separate from DealCard.tsx, which is the
+ * sections (page.tsx), with a stacked grid variant — kept separate from DealCard.tsx, which is the
  * 2-column grid card /specials still uses (a different, still-current
  * Stitch-designed screen this session wasn't asked to touch).
  *
@@ -77,6 +78,7 @@ export default function ProductListCard({
   const isFairDeal = deal.dealType === "Fair Price";
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const storeMeta = getStoreLogoMeta(deal.store);
+  const { isGridLayout } = useCardLayout();
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
   // `product.brand` already arrives Title Cased from `packages/shared/src/
@@ -153,53 +155,37 @@ export default function ProductListCard({
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
       style={{ touchAction: "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
-      className="group relative flex cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95 ${
+        isGridLayout ? "flex flex-col" : "flex"
+      }`}
     >
       <AddToListButton productId={product.id} />
 
-      {/* Two full-height panels (2026-08-12, per Jay's ask for a subtle
-          grey fill behind the image and a plain white fill for the text
-          side): outer card stays a plain `flex` row (no `flex-col` wrapper
-          any more) so both panels stretch to the row's full height via
-          flex's own default `items-stretch` -- the panel heights are never
-          set explicitly, they just match whichever of the two is
-          naturally taller (normally the text side, once the "Also on
-          special at" pills are showing). `overflow-hidden` on the outer
-          card (unchanged) clips both panels' outer corners to the card's
-          own `rounded-2xl`, so neither panel needs its own rounded-corner
-          classes. Image panel is `w-36` with `p-4` padding, sized to fit
-          a `h-28 w-28` (112px) image at full size with the same `p-4`
-          (16px/side) inset all round -- bumped up from the original
-          96px/`w-32` same day, per Jay's "can the images be a bit larger
-          and still fit the padding?" (that original 96px size was itself
-          already a same-day revert of an even-earlier accidental 80px
-          shrink -- see project.md for the full back-and-forth). `bg-stone-50`
-          (not `-100`) per Jay's same-day "make the grey slightly lighter"
-          ask. Text panel's extra vertical padding for multi-supermarket
-          cards is symmetric (top and bottom equal) so
-          `justify-center` genuinely centers the text block with equal
-          space above and below, per Jay's same-day ask -- an earlier
-          draft added an extra `pb-6` spacer *inside* the centered group
-          (for badge clearance below), which broke that symmetry by making
-          the centered content-plus-spacer block sit visibly higher than
-          center. Removed that spacer; the verdict badge (bottom-2 right-3)
-          now just sits within this panel's own bottom inset
-          instead. */}
-      <div className="flex w-36 flex-shrink-0 select-none items-center justify-center bg-stone-50 p-4">
-        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl">
+      {/* Single layout keeps the horizontal image-and-text card currently
+          used by the app. Grid layout switches this same card to a stacked,
+          image-first card: the grey image panel fills the card width and all
+          text sits underneath it. */}
+      <div
+        className={`flex flex-shrink-0 select-none items-center justify-center bg-stone-50 ${
+          isGridLayout ? "aspect-[4/3] w-full p-3" : "w-36 p-4"
+        }`}
+      >
+        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isGridLayout ? "h-full w-full" : "h-28 w-28"}`}>
           <Image
             src={product.image}
             alt={product.name}
             width={112}
             height={112}
-            sizes="112px"
+            sizes={isGridLayout ? "(max-width: 480px) 45vw, 220px" : "112px"}
             className="h-full w-full object-contain mix-blend-multiply"
           />
         </div>
       </div>
       <div
-        className={`flex min-w-0 flex-1 flex-col justify-center bg-white pl-4 pr-9 ${
-          alsoSpecialStores.length > 0 ? "py-8" : "py-5"
+        className={`flex min-w-0 flex-1 flex-col justify-center bg-white ${
+          isGridLayout
+            ? `px-3 pb-9 ${alsoSpecialStores.length > 0 ? "pt-4" : "pt-3"}`
+            : `pl-4 pr-9 ${alsoSpecialStores.length > 0 ? "py-8" : "py-5"}`
         }`}
       >
         <div className={`flex flex-col justify-center gap-0.5 ${alsoSpecialStores.length > 0 ? "flex-1" : ""}`}>
@@ -251,7 +237,7 @@ export default function ProductListCard({
         )}
       </div>
 
-      <div className="absolute bottom-2 left-40 right-3 z-10 flex min-w-0 items-center justify-end gap-2">
+      <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
         {isDodgy && (
           <span className="shrink-0 select-none rounded-md bg-alert-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
             Dodgy
