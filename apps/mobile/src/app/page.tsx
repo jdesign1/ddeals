@@ -187,6 +187,7 @@ export default function HomePage() {
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
   const toolbarVisibleRef = useRef(true);
   const toolbarScrollAnchorRef = useRef(0);
+  const toolbarLatestScrollTopRef = useRef(0);
   const toolbarAnimationGuardRef = useRef(false);
   const toolbarAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -196,8 +197,21 @@ export default function HomePage() {
   // its own direction threshold then collapses the tabs/pills using the same
   // grid-row animation as FullScreenSearch.
   useEffect(() => {
-    const unsubscribeHeader = subscribeToCheckDealsHeaderVisibility(setIsCheckDealsHeaderHidden);
+    const unsubscribeHeader = subscribeToCheckDealsHeaderVisibility((hidden) => {
+      setIsCheckDealsHeaderHidden(hidden);
+      if (!hidden && !toolbarVisibleRef.current) {
+        // Reveal the tabs/pills in the same scroll event as the top nav. Reset
+        // the toolbar anchor at the current position so the next small
+        // upward event cannot immediately toggle it back again.
+        toolbarVisibleRef.current = true;
+        setIsToolbarVisible(true);
+        toolbarScrollAnchorRef.current = toolbarLatestScrollTopRef.current;
+        toolbarAnimationGuardRef.current = false;
+        if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
+      }
+    });
     const unsubscribeScroll = subscribeToCheckDealsScrollPosition((scrollTop) => {
+      toolbarLatestScrollTopRef.current = scrollTop;
       if (toolbarAnimationGuardRef.current) {
         toolbarScrollAnchorRef.current = scrollTop;
         return;
@@ -338,7 +352,7 @@ export default function HomePage() {
         <div
           className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
             dealFilterTintClass || "bg-stone-100"
-          } ${isToolbarVisible ? "pt-4" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+          } ${isToolbarVisible ? "pt-2" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
             isCheckDealsHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
           }`}
           style={{
@@ -347,7 +361,7 @@ export default function HomePage() {
           }}
         >
           <div
-            className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${isToolbarVisible ? "pb-2" : "pb-0"}`}
+            className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-2 ${isToolbarVisible ? "pb-2" : "pb-0"}`}
           >
             <DealFilterTabs
               value={dealFilter}

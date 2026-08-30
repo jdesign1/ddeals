@@ -386,12 +386,9 @@ select {
   -webkit-overflow-scrolling: touch;
 }
 
-/* The compact Check Deals search bar sits 14px above its sticky toolbar so
-   the tabs and pills retain their normal-flow spacing. Extend the bar's own
-   background through that dock gap without adding layout height, which keeps
-   the iOS WebView from exposing a white/transparent strip while the toolbar
-   reappears during upward scrolling. `inherit` keeps the active fair/dodgy
-   tint in sync with the search bar itself. */
+/* Extend the compact Check Deals search bar's background through its 8px
+   dock gap without adding layout height. This keeps the active fair/dodgy
+   tint in sync while the toolbar follows the search bar during scrolling. */
 .search-bar-gap-fill {
   position: relative;
 }
@@ -399,9 +396,9 @@ select {
 .search-bar-gap-fill::after {
   position: absolute;
   right: 0;
-  bottom: -14px;
+  bottom: -8px;
   left: 0;
-  height: 14px;
+  height: 8px;
   background-color: inherit;
   content: "";
   pointer-events: none;
