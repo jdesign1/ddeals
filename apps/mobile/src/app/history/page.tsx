@@ -178,7 +178,7 @@ export default function HistoryPage() {
             height={512}
             sizes="144px"
             preload
-            className="h-auto w-full max-w-[9rem]"
+            className="mascot-wave h-auto w-full max-w-[9rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>
           <button

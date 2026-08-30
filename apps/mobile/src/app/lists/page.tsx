@@ -412,7 +412,7 @@ export default function ListsPage() {
             height={512}
             sizes="144px"
             preload
-            className="h-auto w-full max-w-[8.5rem]"
+            className="mascot-wave h-auto w-full max-w-[8.5rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">Log in to create and save shopping lists.</p>
           <button
@@ -466,7 +466,7 @@ export default function ListsPage() {
             width={482}
             height={512}
             sizes="128px"
-            className="mb-2 h-auto w-full max-w-[8rem]"
+            className="mascot-wave mb-2 h-auto w-full max-w-[8rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
           <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">

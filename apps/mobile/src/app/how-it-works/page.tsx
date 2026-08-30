@@ -91,7 +91,7 @@ export default function HowItWorksPage() {
             width={720}
             height={768}
             preload
-            className="h-auto w-full max-w-[9rem]"
+            className="mascot-wave h-auto w-full max-w-[9rem]"
           />
         </div>
         <h2 className="text-center font-display text-lg font-black tracking-normal text-stone-900">Empowering shoppers</h2>

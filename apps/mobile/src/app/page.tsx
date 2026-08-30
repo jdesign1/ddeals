@@ -786,7 +786,7 @@ function MyListSection({
           height={512}
           sizes="144px"
           preload
-          className="h-auto w-full max-w-[9rem]"
+          className="mascot-wave h-auto w-full max-w-[9rem]"
         />
         {/* `max-w-xs` (320px) dropped and `px-4` (16px) -> `px-5` (20px),
             2026-08-21, per Jay's ask on this exact copy: "Increase the

@@ -44,7 +44,7 @@
     transition: none;
   }
 
-  .auth-wave-image {
+  .mascot-wave {
     animation: none;
   }
 }
@@ -433,9 +433,9 @@ select {
   transform-origin: center;
 }
 
-/* The auth illustration is already drawn in a waving pose. A tiny, slow
-   sway makes the wave feel alive without distracting from the form. */
-@keyframes authWave {
+/* The full-size mascot illustrations are already drawn in expressive poses.
+   A tiny, slow sway makes them feel alive without distracting from the page. */
+@keyframes mascotWave {
   0%,
   100% {
     transform: translateY(0) rotate(0deg);
@@ -451,8 +451,8 @@ select {
   }
 }
 
-.auth-wave-image {
-  animation: authWave 3.2s ease-in-out infinite;
+.mascot-wave {
+  animation: mascotWave 3.2s ease-in-out infinite;
   transform-origin: 50% 92%;
   will-change: transform;
 }

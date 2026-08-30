@@ -710,7 +710,7 @@ export default function AuthPanel({
         height={1350}
         sizes="115px"
         preload
-        className="auth-wave-image mx-auto h-auto w-full max-w-[7.2rem]"
+        className="mascot-wave mx-auto h-auto w-full max-w-[7.2rem]"
       />
     </div>
   );
