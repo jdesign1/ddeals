@@ -35,10 +35,9 @@ const config: CapacitorConfig = {
   appId: "nz.dodgydeals.app",
   appName: "Dodgy Deals",
   webDir: "www",
-  // Match the WebView/loading surface to the app's base background so the
-  // iOS safe-area region below the floating bottom nav does not show as a
-  // separate pale strip.
-  backgroundColor: "#efefed",
+  // Match the WebView/loading surface to the app and native launch
+  // backgrounds so the iOS safe-area region never shows a colour seam.
+  backgroundColor: "#faf8f4",
   server: {
     // Set CAPACITOR_SERVER_URL to the deployed apps/mobile URL before syncing
     // or archiving. The config intentionally has no fallback: an unreachable
@@ -55,7 +54,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: "#faf9f5",
+      backgroundColor: "#faf8f4",
     },
     StatusBar: {
       style: "DARK",

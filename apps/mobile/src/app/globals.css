@@ -140,18 +140,12 @@
   --dd-type-badge-size: 0.75rem;
   --dd-type-badge-leading: 1rem;
 
-  /* Slightly darker subtle grey, not pure white (2026-08-14, Jay: "give the app base
-     background a very subtle grey fill colour") -- this is the `body`
-     background below, the base layer every scroll container sits on top
-     of (no page sets its own full-page background, confirmed by grepping
-     `apps/mobile/src/app` for one). `#f5f5f4` is the app's slightly darker
-     near-`stone-100` base surface; the lighter `stone-50` utility remains
-     available for secondary surfaces such as AppHeader's bar and hover
-     states.
-     Was `#ffffff`, plain Next.js boilerplate default, never intentionally
-     chosen. The app stays on this light surface even when the device uses
+  /* The shared warm paper surface used by the app, the animated startup
+     splash, and the native iOS launch storyboard. Keeping one base colour
+     across all three prevents a visible flash during the native-to-WebView
+     handoff. The app stays on this light surface even when the device uses
      dark mode so the mobile browser never reveals a black base layer. */
-  --background: #efefed;
+  --background: #faf8f4;
   --foreground: #171717;
 
   /* Stitch brand palette. `--color-brand-primary`/`-error` used to be their
@@ -551,6 +545,189 @@ select {
 }
 .animate-mascot-turn {
   animation: mascotTurn 1.8s ease-in-out infinite;
+}
+
+/* One-time startup animation (components/LaunchSplash.tsx): the native
+   storyboard is intentionally plain, then this WebView layer plays the
+   approved small-to-large, left glance, and longer wink sequence. */
+.launch-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #faf8f4;
+}
+
+.launch-splash--exit {
+  animation: launchSplashExit 260ms ease-out forwards;
+}
+
+.launch-splash__mascot {
+  width: 98px;
+  height: 98px;
+  position: relative;
+  animation: launchMascotCycle 4.8s ease-in-out 1 both;
+}
+
+.launch-splash__mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.launch-splash__mark .mark-fill,
+.launch-splash__mark .pupil-fill {
+  fill: #171710;
+}
+
+.launch-splash__mark .eye-fill {
+  fill: #faf8f4;
+}
+
+.launch-splash__pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: launchPupilScan 4.8s ease-in-out 1 both;
+}
+
+.launch-splash__wink-mask {
+  width: 33px;
+  height: 33px;
+  position: absolute;
+  top: 49px;
+  left: 52px;
+  z-index: 2;
+  border-radius: 50%;
+  background: #faf8f4;
+  opacity: 0;
+  transform: scale(0.94);
+  transform-origin: center;
+  animation: launchWinkMask 4.8s ease-in-out 1 both;
+}
+
+.launch-splash__wink-line {
+  width: 23px;
+  height: 12px;
+  position: absolute;
+  top: 59px;
+  left: 57px;
+  z-index: 3;
+  overflow: visible;
+  opacity: 0;
+  transform-origin: center;
+  animation: launchWinkLine 4.8s ease-in-out 1 both;
+}
+
+.launch-splash__wink-line path {
+  fill: none;
+  stroke: #171710;
+  stroke-linecap: round;
+  stroke-width: 4.5;
+}
+
+@keyframes launchMascotCycle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.56);
+  }
+  7% {
+    opacity: 0.72;
+    transform: scale(0.88);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  13% {
+    opacity: 1;
+    transform: scale(0.98);
+  }
+  16%,
+  82% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  94% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes launchPupilScan {
+  0%,
+  23% {
+    transform: translateX(0);
+  }
+  29%,
+  37% {
+    transform: translateX(-22px);
+  }
+  43%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes launchWinkMask {
+  0%,
+  55% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  59%,
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  84%,
+  100% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes launchWinkLine {
+  0%,
+  58% {
+    opacity: 0;
+    transform: scaleX(0.7);
+  }
+  62%,
+  78% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  84%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.7);
+  }
+}
+
+@keyframes launchSplashExit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-splash__mascot,
+  .launch-splash__pupil,
+  .launch-splash__wink-mask,
+  .launch-splash__wink-line {
+    animation: none;
+  }
+
+  .launch-splash__mascot {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes mascotBlink {

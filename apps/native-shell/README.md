@@ -30,9 +30,15 @@ current upload requirements.
 
 ## Remaining release polish
 
-- App icon and branded stacked splash screen assets are included; the splash
-  source lockup lives at `branding/dodgy-deal-splash.svg`.
-- Native plugins are declared in `package.json` (status bar, splash screen, haptics, share, app) but not yet wired into any UI code — that happens once `apps/mobile` screens exist to call them from.
+- The iOS launch storyboard is intentionally a plain paper-colour screen so
+  it does not show a second static logo before the animated web splash.
+  `apps/mobile/src/components/LaunchSplash.tsx` owns the one-time branded
+  small-to-large, glance-left, wink, and fade-out sequence after the WebView
+  loads. The original lockup remains available as a source asset at
+  `branding/dodgy-deal-splash.svg`.
+- Native plugins are declared in `package.json` (status bar, splash screen,
+  haptics, share, app); the splash configuration is now wired to hand off to
+  the web animation automatically.
 - Barcode scanning plugin isn't added yet — the Stitch design has a "Scan Barcode" entry point (S4, S8) that will need `@capacitor/barcode-scanning` or similar once that screen is built.
 
 ## Commands (once platforms are added)

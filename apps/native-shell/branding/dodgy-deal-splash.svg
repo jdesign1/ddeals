@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732" role="img" aria-labelledby="title">
   <title id="title">Dodgy Deal</title>
-  <rect width="2732" height="2732" fill="#faf9f5"/>
+  <rect width="2732" height="2732" fill="#faf8f4"/>
 
   <!-- The source mark is the same neutral Ink logo used by the mobile app. -->
   <image href="../../mobile/public/logo.svg" x="1086" y="700" width="560" height="560" preserveAspectRatio="xMidYMid meet"/>

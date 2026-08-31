@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import GlobalOverlays from "@/components/GlobalOverlays";
+import LaunchSplash from "@/components/LaunchSplash";
 import ScrollContainer from "@/components/ScrollContainer";
 import { AuthProvider } from "@/lib/auth-context";
 import { HeaderOverrideProvider } from "@/lib/header-context";
@@ -46,7 +47,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#efefed",
+  themeColor: "#faf8f4",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">
+        <LaunchSplash />
         <AuthProvider>
           <HeaderOverrideProvider>
             {/* SearchProvider (lib/search-context.tsx, 2026-08-09) -- global
