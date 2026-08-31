@@ -63,7 +63,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">
-        <LaunchSplash />
         <AuthProvider>
           <HeaderOverrideProvider>
             {/* SearchProvider (lib/search-context.tsx, 2026-08-09) -- global
@@ -75,6 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 override. */}
             <CardLayoutProvider>
               <SearchProvider>
+              <LaunchSplash />
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
                   normal flex sibling (its own row, reserving space below
                   this scroll container) to `fixed` (see that component's

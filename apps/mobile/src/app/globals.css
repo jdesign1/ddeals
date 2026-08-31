@@ -526,10 +526,9 @@ select {
   animation: fadeIn 0.2s ease-out;
 }
 
-/* Loading-state mascot (components/LoadingMascot.tsx, 2026-08-09): the
-   mascot mark turns to face left/right in a loop, pausing briefly at each
-   side rather than spinning continuously, so it reads as "looking around"
-   while something loads instead of a generic spinner. */
+/* Legacy in-app loading mascot (components/LoadingMascot.tsx and
+   components/PageLoader.tsx): keep the established side-to-side look for
+   normal loading states. The new wink animation is reserved for startup. */
 @keyframes mascotTurn {
   0%,
   38% {
@@ -543,8 +542,64 @@ select {
     transform: scaleX(1);
   }
 }
+
 .animate-mascot-turn {
   animation: mascotTurn 1.8s ease-in-out infinite;
+}
+
+/* Startup-only wink mark (components/WinkMascot.tsx). */
+.wink-mascot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.wink-mascot--startup {
+  width: 98px;
+  height: 98px;
+  --wink-glance: -22px;
+  animation: launchMascotCycle 4.8s ease-in-out infinite both;
+}
+
+.wink-mascot__mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wink-mascot__mark-fill,
+.wink-mascot__pupil-fill {
+  fill: #171710;
+}
+
+.wink-mascot__eye-fill {
+  fill: #faf8f4;
+}
+
+.wink-mascot__pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: launchPupilScan 4.8s ease-in-out 1 both;
+}
+
+.wink-mascot__wink-mask {
+  fill: #faf8f4;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: launchWinkMask 4.8s ease-in-out 1 both;
+}
+
+.wink-mascot__wink-line {
+  fill: none;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  stroke: #171710;
+  stroke-linecap: round;
+  stroke-width: 23.5;
+  animation: launchWinkLine 4.8s ease-in-out 1 both;
 }
 
 /* One-time startup animation (components/LaunchSplash.tsx): the native
@@ -562,69 +617,6 @@ select {
 
 .launch-splash--exit {
   animation: launchSplashExit 260ms ease-out forwards;
-}
-
-.launch-splash__mascot {
-  width: 98px;
-  height: 98px;
-  position: relative;
-  animation: launchMascotCycle 4.8s ease-in-out 1 both;
-}
-
-.launch-splash__mark {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.launch-splash__mark .mark-fill,
-.launch-splash__mark .pupil-fill {
-  fill: #171710;
-}
-
-.launch-splash__mark .eye-fill {
-  fill: #faf8f4;
-}
-
-.launch-splash__pupil {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: launchPupilScan 4.8s ease-in-out 1 both;
-}
-
-.launch-splash__wink-mask {
-  width: 33px;
-  height: 33px;
-  position: absolute;
-  top: 49px;
-  left: 52px;
-  z-index: 2;
-  border-radius: 50%;
-  background: #faf8f4;
-  opacity: 0;
-  transform: scale(0.94);
-  transform-origin: center;
-  animation: launchWinkMask 4.8s ease-in-out 1 both;
-}
-
-.launch-splash__wink-line {
-  width: 23px;
-  height: 12px;
-  position: absolute;
-  top: 59px;
-  left: 57px;
-  z-index: 3;
-  overflow: visible;
-  opacity: 0;
-  transform-origin: center;
-  animation: launchWinkLine 4.8s ease-in-out 1 both;
-}
-
-.launch-splash__wink-line path {
-  fill: none;
-  stroke: #171710;
-  stroke-linecap: round;
-  stroke-width: 4.5;
 }
 
 @keyframes launchMascotCycle {
@@ -663,7 +655,7 @@ select {
   }
   29%,
   37% {
-    transform: translateX(-22px);
+    transform: translateX(var(--wink-glance, -22px));
   }
   43%,
   100% {
@@ -717,14 +709,14 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launch-splash__mascot,
-  .launch-splash__pupil,
-  .launch-splash__wink-mask,
-  .launch-splash__wink-line {
+  .wink-mascot--startup,
+  .wink-mascot__pupil,
+  .wink-mascot__wink-mask,
+  .wink-mascot__wink-line {
     animation: none;
   }
 
-  .launch-splash__mascot {
+  .wink-mascot--startup {
     opacity: 1;
     transform: none;
   }
