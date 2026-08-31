@@ -559,7 +559,7 @@ select {
   width: 98px;
   height: 98px;
   --wink-glance: -22px;
-  animation: launchMascotCycle 4.8s ease-in-out infinite both;
+  animation: launchMascotCycle 4.8s ease-in-out 1 both;
 }
 
 .wink-mascot__mark {
