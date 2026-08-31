@@ -562,6 +562,16 @@ function TrendingSection({
   categoryCounts: Map<string, number>;
 }) {
   const { isGridLayout } = useCardLayout();
+  const noResultsIllustration = (
+    <Image
+      src="/empty-results-mascot.png"
+      alt="Dodgy Deal mascot looking into an empty shopping basket"
+      width={1413}
+      height={1113}
+      sizes="128px"
+      className="mascot-wave h-auto w-full max-w-[8rem]"
+    />
+  );
   const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
   const sectionCopy =
     filter === "dodgy"
@@ -617,7 +627,7 @@ function TrendingSection({
     <section className="flex flex-col gap-4 px-5">
       <DealFilterSummary filter={filter} />
       {deals.length === 0 && categoryFilter.length === 0 ? (
-        <EmptyState>{sectionCopy.empty}</EmptyState>
+        <EmptyState illustration={noResultsIllustration}>{sectionCopy.empty}</EmptyState>
       ) : (
         <>
           <div className="flex items-center justify-between gap-2">
@@ -637,7 +647,7 @@ function TrendingSection({
             </div>
           </div>
           {sorted.length === 0 ? (
-            <EmptyState>{sectionCopy.categoryEmpty}</EmptyState>
+            <EmptyState illustration={noResultsIllustration}>{sectionCopy.categoryEmpty}</EmptyState>
           ) : (
             <>
               <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
