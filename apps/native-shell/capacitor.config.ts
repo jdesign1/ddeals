@@ -47,9 +47,10 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
-    // Let iOS keep the WebView below the status bar instead of allowing the
-    // app shell and sticky header to start underneath it.
-    contentInset: "automatic",
+    // The web UI owns safe-area spacing via env(safe-area-inset-*).
+    // Automatic UIScrollView insets would apply the iPhone bottom inset twice,
+    // leaving the floating navigation pill too high on physical devices.
+    contentInset: "never",
   },
   plugins: {
     SplashScreen: {

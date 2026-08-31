@@ -134,6 +134,10 @@ type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leader
  * time rather than a comment placeholder. Plain CSS isn't scanned, so it
  * isn't exposed to the bug.
  *
+ * Raised above the full-screen search overlay while search is active so the
+ * global navigation remains available there too; category/sort sheets still
+ * sit above it at z-[60]/z-[61].
+ *
  * Hidden entirely on the deal-assessment page (2026-08-17, per Jay: "Remove
  * the bottom nav bar from deal assessment pages") -- `pathname.startsWith(
  * "/deal/")` returns `null` before the `<nav>` renders at all, reusing the
@@ -225,7 +229,9 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-3 bottom-safe-nav z-40 mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10"
+      className={`fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${
+        isSearchActive ? "z-[55]" : "z-40"
+      }`}
     >
       {TABS.map(({ href, label, icon }) => {
         const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);

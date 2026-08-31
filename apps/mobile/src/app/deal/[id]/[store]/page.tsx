@@ -1204,16 +1204,32 @@ export default function DealAssessmentPage() {
                 How this price compares to each store&apos;s recent average, and to its own last 90 days.
               </p>
             </div>
-            <div className="flex rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Price history views">
+            <div
+              className="flex items-center gap-0.5 rounded-lg bg-stone-100 p-1 shadow-inner shadow-black/5"
+              role="tablist"
+              aria-label="Price history views"
+            >
               <button
                 type="button"
                 role="tab"
                 aria-selected={priceHistoryTab === "90-days"}
                 onClick={() => setPriceHistoryTab("90-days")}
-                className={`flex-1 rounded-lg px-3 py-2 dd-type-control transition-colors ${
-                  priceHistoryTab === "90-days" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
+                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                  priceHistoryTab === "90-days" ? "text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
+                <AnimatePresence initial={false}>
+                  {priceHistoryTab === "90-days" && (
+                    <motion.span
+                      className="pointer-events-none absolute inset-0 rounded-md bg-white"
+                      style={{ zIndex: -1 }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </AnimatePresence>
                 90 days
               </button>
               <button
@@ -1221,10 +1237,22 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryTab === "insights"}
                 onClick={() => setPriceHistoryTab("insights")}
-                className={`flex-1 rounded-lg px-3 py-2 dd-type-control transition-colors ${
-                  priceHistoryTab === "insights" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
+                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                  priceHistoryTab === "insights" ? "text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
+                <AnimatePresence initial={false}>
+                  {priceHistoryTab === "insights" && (
+                    <motion.span
+                      className="pointer-events-none absolute inset-0 rounded-md bg-white"
+                      style={{ zIndex: -1 }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </AnimatePresence>
                 Insights
               </button>
             </div>

@@ -306,7 +306,6 @@ export default function HomePage() {
               value={dealFilter}
               onChange={setDealFilter}
               backgroundClassName={dealFilterTintClass || "bg-stone-100"}
-              inactiveBackgroundClassName="bg-white"
             />
             <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
               <StorePill
