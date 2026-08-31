@@ -90,11 +90,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   own doc comment) instead of sitting flush against the
                   bottom edge -- clearance now needs to cover the pill's
                   full floating footprint, not just its own height: the
-                  same 4.5rem nav height, PLUS the 1rem gap BottomNav now
-                  floats above the bottom edge by, PLUS the same safe-area
-                  inset as before (still needed so a device's
-                  home-indicator inset doesn't eat into this clearance
-                  either) -- 5.5rem total, using underscores in place of
+                  same 4.5rem nav height, PLUS the same safe-area inset as
+                  before (still needed so a device's home-indicator inset
+                  doesn't eat into this clearance either) -- 4.5rem total,
+                  using underscores in place of
                   spaces around the calc() operators (Tailwind's own
                   convention for arbitrary values; not load-bearing for
                   this app's build, see BottomNav.tsx's own doc comment for
@@ -126,7 +125,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   Update (2026-08-17): this div moved into its own small
                   client component, `ScrollContainer.tsx` -- per Jay's ask to
                   remove `BottomNav` from the deal-assessment page,
-                  `pb-safe-nav`'s 5.5rem reservation needs to drop to
+                  `pb-safe-nav`'s nav-height reservation needs to drop to
                   `pb-safe-sm` specifically on that route (no nav there
                   anymore to reserve space for), which needs `usePathname()`;
                   this file itself is a server component (exports

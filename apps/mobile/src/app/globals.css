@@ -68,8 +68,8 @@
   will-change: transform, grid-template-rows, padding-top, background-color;
   transition:
     transform 480ms cubic-bezier(0.4, 0, 0.2, 1),
-    grid-template-rows 420ms cubic-bezier(0.4, 0, 0.2, 1),
-    padding-top 420ms cubic-bezier(0.4, 0, 0.2, 1),
+    grid-template-rows 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    padding-top 480ms cubic-bezier(0.4, 0, 0.2, 1),
     background-color 300ms ease-out;
 }
 
@@ -86,7 +86,7 @@
 
 .check-deals-toolbar-content {
   will-change: padding-bottom;
-  transition: padding-bottom 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding-bottom 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Google Material Symbols used by the bottom navigation. The glyph's FILL
@@ -763,19 +763,24 @@ select {
    sidesteps the scanner bug entirely instead of tip-toeing around comment
    length near it. */
 .pb-safe-nav {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
 }
 .pb-safe-sm {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
 }
 .bottom-safe-nav {
-  bottom: calc(1rem + env(safe-area-inset-bottom));
+  /* Align with the bottom edge of the usable iOS content area. The
+     home-indicator inset remains below it without an extra floating gap. */
+  bottom: env(safe-area-inset-bottom);
 }
-/* iOS: bring the floating nav 4px closer to the home-indicator safe area. */
-@supports (-webkit-touch-callout: none) {
-  .bottom-safe-nav {
-    bottom: calc(0.75rem + env(safe-area-inset-bottom));
-  }
+
+/* Bottom sheets must cover the fixed navigation pill, including when they
+   are opened from a nested card or route. */
+.dd-bottom-sheet-backdrop {
+  z-index: 80;
+}
+.dd-bottom-sheet {
+  z-index: 81;
 }
 /* Keep the longest tab label inside its equal-width cell on compact iPhones. */
 @media (max-width: 360px) {
@@ -784,13 +789,9 @@ select {
   }
 }
 /* Same family, added 2026-08-14 for the /lists create-list FAB
-   (app/lists/page.tsx) -- BottomNav's own top edge sits at `5.5rem +
-   env(safe-area-inset-bottom)` from the viewport bottom (its `1rem`
-   bottom-safe-nav offset plus its own 4.5rem height, the same total
-   `.pb-safe-nav` above already accounts for), so this adds one more `1rem`
-   gap on top of that -- floats the FAB just clear of BottomNav's pill with
-   the same visual gap BottomNav itself floats above the screen edge by,
-   rather than sitting flush against it. */
+   (app/lists/page.tsx) -- BottomNav's own top edge sits at `4.5rem +
+   env(safe-area-inset-bottom)` from the viewport bottom, so this keeps the
+   FAB two rem above the nav pill with a deliberate touch-safe gap. */
 .bottom-safe-fab {
   bottom: calc(6.5rem + env(safe-area-inset-bottom));
 }

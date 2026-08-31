@@ -1068,9 +1068,9 @@ export default function DealAssessmentPage() {
                                 user data), so this ceiling is a real
                                 worst case, not a guess against unbounded
                                 content. */}
-                            <div className="relative flex min-h-72 flex-col justify-between gap-4 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
+                            <div className="relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
                               <AddToListButton productId={altProd.id} />
-                              <div className="flex gap-4">
+                              <div className="flex items-start gap-4">
                                 <div className="flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
                                   <Image
                                     src={altProd.image}
@@ -1081,7 +1081,7 @@ export default function DealAssessmentPage() {
                                     className="h-full w-full object-contain mix-blend-multiply"
                                   />
                                 </div>
-                                <div className="flex min-w-0 flex-grow flex-col justify-between py-1">
+                                <div className="min-w-0 flex-grow py-1">
                                   <div className="space-y-1">
                                     <p className="dd-type-secondary dd-type-secondary-strong text-ink-600">
                                       {altProd.brand
@@ -1097,22 +1097,20 @@ export default function DealAssessmentPage() {
                                     <h3 className="mt-1 line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
                                       {altProd.name}
                                     </h3>
-                                    <span className="mt-2 inline-block rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
-                                      Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
-                                    </span>
-                                  </div>
-                                  <div className="mt-3.5 flex flex-wrap items-center gap-3">
-                                    <div className="flex flex-shrink-0 items-baseline gap-1 whitespace-nowrap">
+                                    <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
                                       <span className="font-display text-base font-extrabold text-stone-900">${altPrice.toFixed(2)}</span>
                                     </div>
                                   </div>
                                 </div>
                               </div>
+                              <span className="block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
+                                Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
+                              </span>
                               <a
                                 href={findDealForStore(altProd.currentDeals, altStore)?.productUrl || getStoreProductUrl(altStore, altProd.name)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
+                                className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
                               >
                                 <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>
                                   {meta.short}

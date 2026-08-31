@@ -122,7 +122,7 @@ export default function AccountPage() {
             <motion.button
               type="button"
               aria-label="Close log out confirmation"
-              className="fixed inset-0 z-50 bg-black/40"
+              className="dd-bottom-sheet-backdrop fixed inset-0 z-50 bg-black/40"
               onClick={() => setIsLogoutSheetOpen(false)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -132,7 +132,7 @@ export default function AccountPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="logout-sheet-title"
-              className="fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl bg-white px-5 pb-8 pt-6 shadow-2xl"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl bg-white px-5 pb-8 pt-6 shadow-2xl"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}

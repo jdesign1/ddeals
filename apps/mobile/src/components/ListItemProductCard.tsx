@@ -351,7 +351,7 @@ function NotOnSpecialSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
+            className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
           />
           <motion.div
             initial={{ y: "100%" }}
@@ -361,7 +361,7 @@ function NotOnSpecialSheet({
             role="dialog"
             aria-modal="true"
             aria-label="Not currently on special"
-            className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[30vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl pb-safe-sm"
+            className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[30vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl pb-safe-sm"
           >
             <div className="flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
               <h3 className="dd-type-sheet-title text-stone-900">

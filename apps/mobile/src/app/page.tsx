@@ -28,16 +28,9 @@ import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import {
   subscribeToCheckDealsHeaderVisibility,
-  subscribeToCheckDealsScrollPosition,
 } from "@/lib/scroll-events";
 import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
-
-const CHECK_DEALS_TOOLBAR_SHOW_AT_TOP = 8;
-// Give the toolbar time to travel with the search bar while the top nav is
-// leaving; FullScreenSearch has no second nav layer that needs this handoff.
-const CHECK_DEALS_TOOLBAR_SCROLL_DELTA = 24;
-const CHECK_DEALS_TOOLBAR_TRANSITION_MS = 420;
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -185,73 +178,19 @@ export default function HomePage() {
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
-  const toolbarVisibleRef = useRef(true);
-  const toolbarScrollAnchorRef = useRef(0);
-  const toolbarLatestScrollTopRef = useRef(0);
-  const toolbarAnimationGuardRef = useRef(false);
-  const toolbarAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // The top nav and the tabs/pills share the same scroll direction, but they
-  // do not collapse at the same moment. Keeping the toolbar visible while
-  // the nav leaves lets it move up with the search bar as one pinned stack;
-  // its own direction threshold then collapses the tabs/pills using the same
-  // grid-row animation as FullScreenSearch.
+  // The top nav and the tabs/pills are one collapsing stack. The scroll
+  // container publishes the header state after the same direction threshold
+  // used by the top nav; mirroring that event here keeps the tabs/pills from
+  // lagging behind on long lists or during slow iOS scrolling.
   useEffect(() => {
     const unsubscribeHeader = subscribeToCheckDealsHeaderVisibility((hidden) => {
       setIsCheckDealsHeaderHidden(hidden);
-      if (!hidden && !toolbarVisibleRef.current) {
-        // Reveal the tabs/pills in the same scroll event as the top nav. Reset
-        // the toolbar anchor at the current position so the next small
-        // upward event cannot immediately toggle it back again.
-        toolbarVisibleRef.current = true;
-        setIsToolbarVisible(true);
-        toolbarScrollAnchorRef.current = toolbarLatestScrollTopRef.current;
-        toolbarAnimationGuardRef.current = false;
-        if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
-      }
-    });
-    const unsubscribeScroll = subscribeToCheckDealsScrollPosition((scrollTop) => {
-      toolbarLatestScrollTopRef.current = scrollTop;
-      if (toolbarAnimationGuardRef.current) {
-        toolbarScrollAnchorRef.current = scrollTop;
-        return;
-      }
-
-      if (scrollTop <= CHECK_DEALS_TOOLBAR_SHOW_AT_TOP) {
-        toolbarScrollAnchorRef.current = scrollTop;
-        if (!toolbarVisibleRef.current) {
-          toolbarVisibleRef.current = true;
-          setIsToolbarVisible(true);
-        }
-        return;
-      }
-
-      const delta = scrollTop - toolbarScrollAnchorRef.current;
-      if (delta > CHECK_DEALS_TOOLBAR_SCROLL_DELTA && toolbarVisibleRef.current) {
-        toolbarVisibleRef.current = false;
-        setIsToolbarVisible(false);
-        toolbarScrollAnchorRef.current = scrollTop;
-        toolbarAnimationGuardRef.current = true;
-        if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
-        toolbarAnimationTimeoutRef.current = setTimeout(() => {
-          toolbarAnimationGuardRef.current = false;
-        }, CHECK_DEALS_TOOLBAR_TRANSITION_MS + 50);
-      } else if (delta < -CHECK_DEALS_TOOLBAR_SCROLL_DELTA && !toolbarVisibleRef.current) {
-        toolbarVisibleRef.current = true;
-        setIsToolbarVisible(true);
-        toolbarScrollAnchorRef.current = scrollTop;
-        toolbarAnimationGuardRef.current = true;
-        if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
-        toolbarAnimationTimeoutRef.current = setTimeout(() => {
-          toolbarAnimationGuardRef.current = false;
-        }, CHECK_DEALS_TOOLBAR_TRANSITION_MS + 50);
-      }
+      setIsToolbarVisible(!hidden);
     });
 
     return () => {
       unsubscribeHeader();
-      unsubscribeScroll();
-      if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
     };
   }, []);
 
@@ -546,14 +485,14 @@ function SortDropdown<T extends string>({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
+              className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
             />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                 {/* Bottom-sheet title style unified app-wide 2026-08-19, per
@@ -739,14 +678,14 @@ function TrendingSection({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsCategorySheetOpen(false)}
-              className="fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
+              className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
             />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
             >
               <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                 <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>

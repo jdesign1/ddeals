@@ -1330,14 +1330,14 @@ export default function FullScreenSearch() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setCategorySheetTarget(null)}
-                  className="fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
+                  className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
                 />
                 <motion.div
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={{ type: "spring", damping: 25, stiffness: 220 }}
-                  className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+                  className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
                 >
                   <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                     {/* Bottom-sheet title style unified app-wide 2026-08-19
@@ -1446,14 +1446,14 @@ export default function FullScreenSearch() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setSortSheetTarget(null)}
-                  className="fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
+                  className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
                 />
                 <motion.div
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={{ type: "spring", damping: 25, stiffness: 220 }}
-                  className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+                  className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
                 >
                   <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                     {/* Bottom-sheet title style unified app-wide 2026-08-19

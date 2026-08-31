@@ -76,17 +76,11 @@ type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leader
  * valid CSS), breaking the whole app's build. Describe classes in prose
  * instead, as below.
  *
- * The nav's positioning classes offset it 1 CSS rem down from the top of
- * its own bottom margin and inset it a matching amount from the safe-area
- * inset at the bottom of the screen, using underscores in place of spaces
- * around the calc() operators (Tailwind's own convention for arbitrary
- * values) -- not load-bearing for this app's build, since Tailwind
- * normalizes calc() spacing itself when it compiles an arbitrary-value
- * class into real CSS (confirmed by the fact the pre-existing unspaced
- * equivalent padding classes elsewhere in the app -- `FullScreenSearch.tsx`,
- * `AppHeader.tsx`, `app/page.tsx` -- already compile to correctly-spaced
- * CSS today), but kept anyway since it's the documented Tailwind
- * convention and makes no difference either way once compiled.
+ * The nav's positioning class aligns its bottom edge with the bottom of the
+ * usable content area; the safe-area inset remains below it for the iOS home
+ * indicator. The concrete offset lives in plain CSS (`.bottom-safe-nav`) so
+ * it is shared with the layout's content clearance and is not dependent on
+ * Tailwind arbitrary-value scanning.
  *
  * The `overflow-hidden` does double duty: it's what actually makes this read as
  * one continuous pill instead of a rounded-corner rectangle with square
