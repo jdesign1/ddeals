@@ -32,7 +32,7 @@ export default function DealFilterTabs({
             id={buttonIdPrefix ? `${buttonIdPrefix}-${tab.id}` : undefined}
             aria-pressed={isActive}
             onClick={() => onChange(tab.id)}
-            className={`relative z-0 flex-1 cursor-pointer rounded-lg py-2 text-[13px] leading-4 font-bold transition-colors ${
+            className={`relative z-0 flex-1 cursor-pointer rounded-lg py-2 dd-type-control transition-colors ${
               isActive ? "text-white" : `${inactiveBackgroundClassName} text-stone-600 hover:text-stone-900`
             }`}
           >

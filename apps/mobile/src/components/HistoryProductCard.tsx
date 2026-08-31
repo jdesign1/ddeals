@@ -62,11 +62,11 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-8">
-        <span className="truncate text-[11px] font-bold text-stone-600">{brandSentenceCase}</span>
-        <h3 className="line-clamp-1 text-[13px] font-bold leading-4 text-stone-900">{product.name}</h3>
+        <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
+        <h3 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-          <span className="font-display text-sm font-black text-stone-900">${deal.price.toFixed(2)}</span>
-          <span className={`select-none rounded-md px-1.5 py-0.5 text-[10px] font-black ${storeMeta.bg} ${storeMeta.text}`}>
+          <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+          <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
           {badge && <span className={`dd-badge ${badge.className}`}>{badge.label}</span>}

@@ -148,7 +148,7 @@ export default function MePage() {
         {/* An infrequent blink keeps the mascot lively without making the
             static Deal Stats header feel like a loading indicator. */}
         <Image src="/logo.svg" alt="" width={48} height={48} className="animate-mascot-blink mx-auto mb-2 h-12 w-12" />
-        <h1 className="font-display text-lg font-black tracking-normal text-stone-900">
+        <h1 className="dd-type-section text-stone-900">
           This is how Dodgy Deal works for you
         </h1>
       </header>
@@ -162,8 +162,8 @@ export default function MePage() {
         // no longer claims stats "will always show zero," it just flags
         // the account itself has no email attached.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
-          <p className="text-sm font-black tracking-widest text-amber-700">Test mode</p>
-          <p className="text-sm leading-relaxed text-amber-700">
+          <p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p>
+          <p className="dd-type-secondary text-amber-700">
             You&rsquo;re using an anonymous test account — the stats below are real, but this account has no email
             attached, so you can&rsquo;t sign back into it from another device.
           </p>
@@ -182,8 +182,8 @@ export default function MePage() {
           </div>
 
           <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-            <h2 className="text-sm font-black text-stone-900">Break down by supermarket</h2>
-            <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 text-sm font-black text-stone-500">
+            <h2 className="dd-type-section text-stone-900">Break down by supermarket</h2>
+            <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
               <span className="col-span-6">Supermarket</span>
               <span className="col-span-3 text-center">Real savers</span>
               <span className="col-span-3 text-center">Dodgy deals</span>
@@ -191,14 +191,14 @@ export default function MePage() {
             <div className="flex flex-col gap-2">
               {stats.storeStats.map((store) => (
                 <div key={store.store} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
-                  <span className="col-span-6 font-display text-sm font-bold text-stone-800">{store.store}</span>
+                  <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
                   <div className="col-span-3 text-center">
-                    <span className="inline-block min-w-[32px] rounded-md bg-fair-50 px-2.5 py-0.5 text-sm font-black tabular-nums text-fair-600">
+                    <span className="inline-block min-w-[32px] rounded-md bg-fair-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-fair-600">
                       {store.real}
                     </span>
                   </div>
                   <div className="col-span-3 text-center">
-                    <span className="inline-block min-w-[32px] rounded-md bg-alert-50 px-2.5 py-0.5 text-sm font-black tabular-nums text-alert-600">
+                    <span className="inline-block min-w-[32px] rounded-md bg-alert-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-alert-600">
                       {store.dodgy}
                     </span>
                   </div>
@@ -209,14 +209,14 @@ export default function MePage() {
 
           <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
             <div className="flex items-center justify-between">
-              <span className="font-display text-sm font-extrabold text-fair-950">Estimated Savings</span>
-              <span className="font-display text-3xl font-black tabular-nums text-fair-700">
+              <span className="dd-type-control text-fair-950">Estimated Savings</span>
+              <span className="dd-type-display tabular-nums text-fair-700">
                 ${stats.moneySaved.toFixed(2)}
               </span>
             </div>
             <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
-              <p className="mb-1.5 text-sm font-black tracking-wider text-fair-800">How we calculate this</p>
-              <p className="text-sm font-semibold leading-relaxed text-stone-600">
+              <p className="mb-1.5 dd-type-meta dd-type-meta-strong text-fair-800">How we calculate this</p>
+              <p className="dd-type-secondary text-stone-600">
                 Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
                 from. This is the sum of every real saving across everything you&rsquo;ve checked.
               </p>
@@ -225,7 +225,7 @@ export default function MePage() {
 
           <Link
             href="/history"
-            className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 text-sm font-bold text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
+            className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 dd-type-control text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
           >
             <span>See all your checked deals</span>
             <ChevronRight className="h-4 w-4 text-stone-400" aria-hidden="true" />
@@ -249,10 +249,10 @@ function StatCell({
 }) {
   return (
     <div className="flex flex-col items-center justify-between gap-2 px-1 text-center">
-      <span className={`flex min-h-[32px] items-center justify-center text-sm font-black tracking-widest leading-tight ${labelClassName}`}>
+      <span className={`flex min-h-[32px] items-center justify-center dd-type-meta dd-type-meta-strong leading-tight ${labelClassName}`}>
         {label}
       </span>
-      <span className={`font-display text-2xl font-black tabular-nums ${valueClassName}`}>{value}</span>
+      <span className={`dd-type-page-title tabular-nums ${valueClassName}`}>{value}</span>
     </div>
   );
 }

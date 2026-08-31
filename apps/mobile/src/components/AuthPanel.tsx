@@ -431,13 +431,13 @@ export default function AuthPanel({
   // `uppercase` dropped 2026-08-20 (see this file's top-of-file doc
   // comment) -- was CSS-forcing every label to caps regardless of the
   // string's own case; the labels below are now real sentence case.
-  const labelClass = "block font-display text-[11px] font-black tracking-widest text-stone-500";
+  const labelClass = "block dd-type-meta dd-type-meta-strong text-stone-500";
   // Black outline matching `SearchBar.tsx`'s own pill, 2026-08-20 (see this
   // file's top-of-file doc comment) -- `border-stone-300` at rest,
   // `shadow-sm`, `focus:border-stone-900` (solid border color change, no
   // ring) instead of the old `focus:ring-2 focus:ring-ink-200` glow.
   const inputClass =
-    "rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition-colors placeholder:text-stone-500 focus:border-stone-900 focus:outline-none";
+    "rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 shadow-sm transition-colors placeholder:text-stone-500 focus:border-stone-900 focus:outline-none";
   // Red-state variants of the two classes above, swapped in per-field once
   // that field's error is actually visible (see `visibleErrors` below) --
   // matches the docx's own error mock: red border on the input, the label
@@ -445,7 +445,7 @@ export default function AuthPanel({
   // line (bold but NOT the uppercase/tracking-widest micro-label style
   // `labelClass` uses for a real label -- a full sentence in that style
   // would read as shouting).
-  const errorLabelClass = "block font-display text-[12px] font-bold leading-4 text-alert-600";
+  const errorLabelClass = "block dd-type-meta dd-type-meta-strong text-alert-600";
   const errorInputClass = inputClass
     .replace("border-stone-300", "border-alert-600")
     .replace("focus:border-stone-900", "focus:border-alert-600");
@@ -526,8 +526,8 @@ export default function AuthPanel({
   if (confirmationSent) {
     return (
       <div className="flex flex-col gap-2 rounded-2xl border border-stone-200 bg-ink-50 p-5">
-        <p className="font-display text-sm font-black tracking-normal text-stone-900">Check your email</p>
-        <p className="text-sm text-stone-600">
+        <p className="dd-type-section text-stone-900">Check your email</p>
+        <p className="dd-type-secondary text-stone-600">
           We sent a confirmation link to <span className="font-semibold text-stone-800">{email}</span>. Confirm it,
           then sign in below.
         </p>
@@ -536,7 +536,7 @@ export default function AuthPanel({
             setConfirmationSent(false);
             onModeChange("signin");
           }}
-          className="mt-1 w-fit cursor-pointer text-[13px] leading-4 font-black tracking-widest text-ink-600 transition-colors hover:text-ink-800 hover:underline"
+          className="mt-1 w-fit cursor-pointer dd-type-control text-ink-600 transition-colors hover:text-ink-800 hover:underline"
         >
           Back to sign in
         </button>

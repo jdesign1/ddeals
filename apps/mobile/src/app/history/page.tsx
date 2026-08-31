@@ -261,8 +261,8 @@ export default function HistoryPage() {
         // claims history "will always be empty," it just flags the account
         // itself has no email attached.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
-          <p className="text-[11px] font-black tracking-widest text-amber-700">Test mode</p>
-          <p className="text-[13px] leading-relaxed text-amber-700">
+          <p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p>
+          <p className="dd-type-secondary text-amber-700">
             You&rsquo;re using an anonymous test account — checks you make here really do save to your history, but
             this account has no email attached, so you can&rsquo;t sign back into it from another device.
           </p>
@@ -274,19 +274,19 @@ export default function HistoryPage() {
       {history !== null && !error && (
         history.length === 0 ? (
           <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-200 bg-white py-12 text-center">
-            <p className="max-w-xs px-4 text-[13px] leading-4 font-bold tracking-widest text-stone-500">
+            <p className="max-w-xs px-4 dd-type-control text-stone-500">
               Your checking history is empty
             </p>
-            <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">
+            <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
               Search for a product or scan a barcode from Home to check your first deal.
             </p>
           </div>
         ) : filteredHistory.length === 0 ? (
           <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-200 bg-white py-12 text-center">
-            <p className="max-w-xs px-4 text-[13px] leading-4 font-bold tracking-widest text-stone-500">
+            <p className="max-w-xs px-4 dd-type-control text-stone-500">
               No matching checks found
             </p>
-            <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">Try searching for a different product name or brand.</p>
+            <p className="max-w-xs px-4 dd-type-secondary text-stone-500">Try searching for a different product name or brand.</p>
           </div>
         ) : (
           <motion.div
@@ -305,7 +305,7 @@ export default function HistoryPage() {
               return (
                 <div key={h.id} className="flex flex-col gap-2">
                   {dayKey !== previousDayKey && (
-                    <p className="pt-2 text-xs font-black uppercase tracking-[0.14em] text-stone-500">
+                    <p className="pt-2 dd-type-meta dd-type-meta-strong text-stone-500">
                       {formatHistoryDay(h.checked_at)}
                     </p>
                   )}

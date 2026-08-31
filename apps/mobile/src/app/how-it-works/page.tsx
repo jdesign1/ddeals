@@ -94,15 +94,15 @@ export default function HowItWorksPage() {
             className="mascot-wave h-auto w-full max-w-[9rem]"
           />
         </div>
-        <h2 className="text-center font-display text-lg font-black tracking-normal text-stone-900">Empowering shoppers</h2>
-        <p className="text-center text-sm font-medium leading-relaxed text-stone-600">
+        <h2 className="dd-type-section text-center text-stone-900">Empowering shoppers</h2>
+        <p className="dd-type-body text-center text-stone-600">
           Supermarket specials aren&rsquo;t always what they seem. We track real price history across NZ supermarkets
           to help you spot genuine bargains and avoid fake sales.
         </p>
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-center font-display text-base leading-5 font-black tracking-wide text-stone-900">Our deal rating system</h2>
+        <h2 className="dd-type-section text-center text-stone-900">Our deal rating system</h2>
         <div className="flex flex-col gap-3">
           <RatingCard
             icon={<WarningFilledIcon className="text-[28px]" />}
@@ -135,7 +135,7 @@ export default function HowItWorksPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-center font-display text-base leading-5 font-black tracking-wide text-stone-900">How to use Dodgy Deal</h2>
+        <h2 className="dd-type-section text-center text-stone-900">How to use Dodgy Deal</h2>
         <div className="flex flex-col gap-3">
           <Step number={1} title="Search grocery products">
             Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
@@ -177,10 +177,10 @@ function RatingCard({
       <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center ${iconBg}`}>{icon}</div>
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className={`font-display text-[13px] leading-4 font-black tracking-wider ${labelClassName}`}>{label}</span>
-          <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${tagClassName}`}>{tag}</span>
+          <span className={`dd-type-control ${labelClassName}`}>{label}</span>
+          <span className={`rounded-md px-1.5 py-0.5 dd-type-badge ${tagClassName}`}>{tag}</span>
         </div>
-        <p className="text-[13px] font-semibold leading-relaxed text-stone-600">{description}</p>
+        <p className="dd-type-secondary text-stone-600">{description}</p>
       </div>
     </div>
   );
@@ -197,12 +197,12 @@ function Step({
 }) {
   return (
     <div className="flex gap-4 rounded-2xl bg-white p-4 shadow-sm">
-      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-ink-600 text-[13px] leading-4 font-black text-white">
+      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-ink-600 dd-type-badge text-white">
         {number}
       </span>
       <div className="space-y-1">
-        <h3 className="text-[13px] leading-4 font-black tracking-wider text-stone-900">{title}</h3>
-        <p className="text-[13px] font-semibold leading-relaxed text-stone-600">{children}</p>
+        <h3 className="dd-type-control text-stone-900">{title}</h3>
+        <p className="dd-type-secondary text-stone-600">{children}</p>
       </div>
     </div>
   );

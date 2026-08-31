@@ -118,6 +118,28 @@
 :root {
   color-scheme: light;
 
+  /* App typography scale. These are CSS px/rem values for the mobile
+     WebView, not a one-to-one claim about native iOS points. Keep the number
+     of roles small so page copy, controls, cards, and sheets share a visible
+     hierarchy. The branded display face remains reserved for headings and
+     prominent values; Inter handles close-reading UI text. */
+  --dd-type-display-size: 2rem;
+  --dd-type-display-leading: 2.25rem;
+  --dd-type-page-title-size: 1.5rem;
+  --dd-type-page-title-leading: 1.875rem;
+  --dd-type-section-size: 1.125rem;
+  --dd-type-section-leading: 1.5rem;
+  --dd-type-body-size: 1rem;
+  --dd-type-body-leading: 1.5rem;
+  --dd-type-secondary-size: 0.875rem;
+  --dd-type-secondary-leading: 1.25rem;
+  --dd-type-control-size: 0.9375rem;
+  --dd-type-control-leading: 1.25rem;
+  --dd-type-meta-size: 0.8125rem;
+  --dd-type-meta-leading: 1.125rem;
+  --dd-type-badge-size: 0.75rem;
+  --dd-type-badge-leading: 1rem;
+
   /* Slightly darker subtle grey, not pure white (2026-08-14, Jay: "give the app base
      background a very subtle grey fill colour") -- this is the `body`
      background below, the base layer every scroll container sits on top
@@ -336,6 +358,80 @@ body {
 .settings-document-copy strong {
   font-weight: 650;
   color: var(--foreground);
+}
+
+/* Shared typography roles. Prefer these semantic classes over another
+   arbitrary text-[...] value when a component needs a standard role. */
+.dd-type-display,
+.dd-type-page-title,
+.dd-type-section,
+.dd-type-sheet-title {
+  font-family: var(--font-display);
+}
+
+.dd-type-display {
+  font-size: var(--dd-type-display-size);
+  line-height: var(--dd-type-display-leading);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dd-type-page-title {
+  font-size: var(--dd-type-page-title-size);
+  line-height: var(--dd-type-page-title-leading);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.dd-type-section,
+.dd-type-sheet-title {
+  font-size: var(--dd-type-section-size);
+  line-height: var(--dd-type-section-leading);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.dd-type-body {
+  font-size: var(--dd-type-body-size);
+  line-height: var(--dd-type-body-leading);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.dd-type-secondary {
+  font-size: var(--dd-type-secondary-size);
+  line-height: var(--dd-type-secondary-leading);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.dd-type-secondary-strong {
+  font-weight: 600;
+}
+
+.dd-type-control {
+  font-size: var(--dd-type-control-size);
+  line-height: var(--dd-type-control-leading);
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+.dd-type-meta {
+  font-size: var(--dd-type-meta-size);
+  line-height: var(--dd-type-meta-leading);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+.dd-type-meta-strong {
+  font-weight: 600;
+}
+
+.dd-type-badge {
+  font-size: var(--dd-type-badge-size);
+  line-height: var(--dd-type-badge-leading);
+  font-weight: 600;
+  letter-spacing: normal;
 }
 
 /* Ported from Prototype/index.html verbatim (search bar + top nav port,
@@ -574,7 +670,8 @@ select {
 .dd-badge-compact {
   gap: 4px;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1rem;
 }
 
 /* "BUTTONS": full pill radius, Inter bold 16px.

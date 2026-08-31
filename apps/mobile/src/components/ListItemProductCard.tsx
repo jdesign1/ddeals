@@ -293,11 +293,11 @@ export default function ListItemProductCard({
         </div>
       ) : (
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5">
-          <span className="truncate text-[11px] font-bold text-stone-600">{brandSentenceCase}</span>
-          <h4 className="line-clamp-1 text-[13px] leading-4 font-bold text-stone-900">{product.name}</h4>
+          <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
+          <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h4>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span className="font-display text-sm font-black text-stone-900">${deal.price.toFixed(2)}</span>
-            <span className={`select-none rounded-md px-1.5 py-0.5 text-[10px] font-black ${storeMeta.bg} ${storeMeta.text}`}>
+            <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+            <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
               {storeMeta.short}
             </span>
             {badge && <span className={`dd-badge dd-badge-compact ${badge.className}`}>{badge.label}</span>}
@@ -364,7 +364,7 @@ function NotOnSpecialSheet({
             className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[30vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl pb-safe-sm"
           >
             <div className="flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-              <h3 className="font-display text-lg font-black tracking-normal text-stone-900">
+              <h3 className="dd-type-sheet-title text-stone-900">
                 Not currently on special
               </h3>
               <button
@@ -386,7 +386,7 @@ function NotOnSpecialSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 text-[13px] leading-4 font-black tracking-widest text-white transition-colors hover:bg-ink-600"
+                className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
               >
                 Got it
               </button>

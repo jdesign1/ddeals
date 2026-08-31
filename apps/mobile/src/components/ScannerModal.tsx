@@ -91,7 +91,7 @@ export default function ScannerModal({
                     text-lg/font-black/tracking-tight every bottom sheet's
                     title uses (see app/page.tsx's Sort sheet for the full
                     cross-reference). */}
-                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">
+                <h3 className="dd-type-sheet-title text-stone-900">
                   Price tag scanner
                 </h3>
               </div>
@@ -107,7 +107,7 @@ export default function ScannerModal({
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
               {!capturedImage && (
                 <div className="space-y-4">
-                  <p className="text-[13px] font-medium leading-relaxed text-stone-500">
+                  <p className="dd-type-secondary text-stone-500">
                     Point your camera at a shelf price tag or barcode to check it in-store, or upload a photo
                     you&rsquo;ve already taken.
                   </p>
@@ -127,15 +127,15 @@ export default function ScannerModal({
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink-600 shadow-md">
                       <Camera className="h-6 w-6 text-white" aria-hidden="true" />
                     </div>
-                    <p className="text-[13px] leading-4 font-bold tracking-wider text-stone-800">Scan barcode</p>
-                    <p className="text-[11px] font-black tracking-widest text-stone-500">
+                    <p className="dd-type-control text-stone-800">Scan barcode</p>
+                    <p className="dd-type-meta text-stone-500">
                       Opens your camera
                     </p>
                   </button>
 
                   <div className="my-4 flex items-center">
                     <div className="grow border-t border-stone-200" />
-                    <span className="mx-3 text-[10px] font-black tracking-widest text-stone-500">Or</span>
+                    <span className="mx-3 dd-type-meta text-stone-500">Or</span>
                     <div className="grow border-t border-stone-200" />
                   </div>
 
@@ -151,8 +151,8 @@ export default function ScannerModal({
                     className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-300 py-6 transition-all hover:border-stone-400 hover:bg-stone-50"
                   >
                     <Upload className="h-8 w-8 text-stone-400" aria-hidden="true" />
-                    <p className="text-[13px] leading-4 font-bold tracking-wider text-stone-800">Upload photo</p>
-                    <p className="text-[11px] font-black tracking-widest text-stone-500">
+                    <p className="dd-type-control text-stone-800">Upload photo</p>
+                    <p className="dd-type-meta text-stone-500">
                       Supports JPG, PNG, WEBP
                     </p>
                   </button>
@@ -168,7 +168,7 @@ export default function ScannerModal({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={capturedImage} alt="Captured price tag" className="h-full w-full object-cover" />
                   </div>
-                  <p className="text-center text-[13px] font-medium leading-relaxed text-stone-500">
+                  <p className="dd-type-secondary text-center text-stone-500">
                     Now search for this item to see its real price history and whether the current price is a
                     genuine deal.
                   </p>

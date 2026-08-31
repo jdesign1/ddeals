@@ -533,7 +533,7 @@ function SortDropdown<T extends string>({
         // Border -> shadow-sm, 2026-08-21, per Jay's pills/tabs/sort/category
         // no-border ask -- see the Home tab track's own doc comment just
         // above for the full cross-reference.
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -566,7 +566,7 @@ function SortDropdown<T extends string>({
                     AppHeader's account sheet, AddToListButton's and
                     lists/page.tsx's create-list sheet -- see each file's
                     own title element for the same class). */}
-                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Sort by</h3>
+                <h3 className="dd-type-sheet-title text-stone-900">Sort by</h3>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
@@ -587,7 +587,7 @@ function SortDropdown<T extends string>({
                         onChange(opt.value);
                         setIsOpen(false);
                       }}
-                      className={`flex w-full cursor-pointer items-center justify-between px-5 py-3.5 text-left text-sm font-bold transition-colors ${
+                      className={`flex w-full cursor-pointer items-center justify-between px-5 py-3.5 text-left dd-type-control transition-colors ${
                         isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"
                       }`}
                     >
@@ -684,14 +684,14 @@ function TrendingSection({
       ) : (
         <>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] leading-4 font-bold text-stone-500">
+            <span className="dd-type-meta dd-type-meta-strong text-stone-500">
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsCategorySheetOpen(true)}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
               >
                 <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -723,7 +723,7 @@ function TrendingSection({
                 <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />
               )}
               {isCapped && (
-                <p className="py-2 text-center text-[13px] leading-4 font-semibold text-stone-500">
+                <p className="py-2 text-center dd-type-secondary text-stone-500">
                   Showing top {INFINITE_REVEAL_MAX_ITEMS} of {sorted.length} — narrow with a store filter or search to see more.
                 </p>
               )}
@@ -749,13 +749,13 @@ function TrendingSection({
               className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
             >
               <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Categories</h3>
+                <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>
                 <div className="flex items-center gap-1">
                   {categoryFilter.length > 0 && (
                     <button
                       type="button"
                       onClick={() => onCategoryFilterChange([])}
-                      className="cursor-pointer px-2 py-1 text-[13px] leading-4 font-bold text-ink-600 hover:text-ink-800 hover:underline"
+                      className="cursor-pointer px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
                     >
                       Clear all
                     </button>
@@ -774,7 +774,7 @@ function TrendingSection({
                 <button
                   type="button"
                   onClick={() => onCategoryFilterChange([])}
-                  className={`cursor-pointer rounded-full px-3 py-2 text-[13px] leading-4 font-bold shadow-sm transition-colors ${
+                  className={`cursor-pointer rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
                     categoryFilter.length === 0 ? "bg-ink-600 text-white" : "bg-white text-stone-600 hover:bg-stone-50"
                   }`}
                 >
@@ -785,7 +785,7 @@ function TrendingSection({
                   if (!sectionCats.length) return null;
                   return (
                     <div key={section.title} className="space-y-2">
-                      <h4 className="text-[11px] font-black tracking-widest text-stone-500">{section.title}</h4>
+                      <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">{section.title}</h4>
                       <div className="flex flex-wrap gap-2">
                         {sectionCats.map((cat) => {
                           const isSelected = categoryFilter.includes(cat);
@@ -798,7 +798,7 @@ function TrendingSection({
                               aria-disabled={!hasDealResults}
                               title={hasDealResults ? undefined : sectionCopy.categoryEmpty}
                               onClick={() => toggleCategory(cat)}
-                              className={`rounded-full px-3 py-2 text-[13px] leading-4 font-bold shadow-sm transition-colors ${
+                              className={`rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
                                 !hasDealResults
                                   ? "cursor-not-allowed bg-stone-50 text-stone-300"
                                   : isSelected
@@ -819,7 +819,7 @@ function TrendingSection({
                 <button
                   type="button"
                   onClick={() => setIsCategorySheetOpen(false)}
-                  className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 text-[13px] leading-4 font-black tracking-widest text-white transition-colors hover:bg-ink-600"
+                  className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
                 >
                   Done
                 </button>
@@ -923,8 +923,8 @@ function MyListSection({
     <section className="flex flex-col gap-4 px-5">
       {sorted.length > 0 && (
         <div className="space-y-1 pb-1 text-center">
-          <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Current specials in your lists</h3>
-          <p className="text-[13px] leading-4 font-semibold text-stone-500">Items from your lists currently on special.</p>
+          <h3 className="dd-type-section text-stone-900">Current specials in your lists</h3>
+          <p className="dd-type-secondary text-stone-500">Items from your lists currently on special.</p>
         </div>
       )}
       {sorted.length === 0 ? (
@@ -937,7 +937,7 @@ function MyListSection({
       ) : (
         <>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] leading-4 font-bold text-stone-500">
+            <span className="dd-type-meta dd-type-meta-strong text-stone-500">
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>
             <SortDropdown value={sortBy} onChange={onSortByChange} options={SORT_OPTIONS} />

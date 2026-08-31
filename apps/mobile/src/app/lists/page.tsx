@@ -440,7 +440,7 @@ export default function ListsPage() {
         // longer claims otherwise; it just flags that this particular
         // account has no email attached to it.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
-          <p className="text-[11px] font-black tracking-widest text-amber-700">Test mode</p>
+          <p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p>
           <p className="text-[13px] leading-relaxed text-amber-700">
             You&rsquo;re using an anonymous test account — lists you create here really do save, but this account
             has no email attached, so you can&rsquo;t sign back into it from another device.
@@ -469,7 +469,7 @@ export default function ListsPage() {
             className="mascot-wave mb-2 h-auto w-full max-w-[8rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
-          <p className="max-w-xs px-4 text-[13px] leading-4 text-stone-500">
+          <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
             Tap the + button below, or tap the + on a Specials card to start one.
           </p>
         </div>
@@ -581,7 +581,7 @@ export default function ListsPage() {
                     used to be; now a real title, same class every bottom
                     sheet's top title uses (see app/page.tsx's Sort sheet for
                     the full cross-reference). `<h3>`, not `<span>`, to match. */}
-                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">New list</h3>
+                <h3 className="dd-type-sheet-title text-stone-900">New list</h3>
                 <button
                   onClick={() => {
                     setIsCreateSheetOpen(false);
@@ -600,10 +600,10 @@ export default function ListsPage() {
                   placeholder="List name"
                   autoFocus
                   disabled={creating}
-                  className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                  className="rounded-xl border border-stone-300 px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
                 {createError && (
-                  <p className="text-[11px] font-semibold leading-relaxed text-alert-700">{createError}</p>
+                  <p className="dd-type-meta dd-type-meta-strong text-alert-700">{createError}</p>
                 )}
                 <button
                   type="submit"
@@ -752,7 +752,7 @@ function ListCard({
         // are now `h-12 w-12` circles with `h-6 w-6` icons (was `h-6 w-6`/
         // `h-3.5 w-3.5`).
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-3 text-center">
-          <span className="text-sm font-black tracking-wide text-alert-700">Delete “{list.name}”?</span>
+          <span className="dd-type-control text-alert-700">Delete “{list.name}”?</span>
           <div className="flex items-center gap-5">
             <button
               onClick={onDelete}
@@ -857,10 +857,10 @@ function ListCard({
             )}
           </div>
 
-          {renameError && <p className="text-[11px] font-semibold leading-relaxed text-alert-700">{renameError}</p>}
+          {renameError && <p className="dd-type-meta dd-type-meta-strong text-alert-700">{renameError}</p>}
 
           {itemCount === 0 ? (
-            <p className="text-[13px] leading-4 text-stone-500">
+            <p className="dd-type-secondary text-stone-500">
               Empty — add items from Specials.
             </p>
           ) : (
@@ -963,7 +963,7 @@ function ListCard({
               })}
               {notOnSpecialItems.length > 0 && (
                 <div className="mt-2 flex flex-col gap-1.5 border-t border-stone-100 pt-3">
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-stone-500">Not on special</h3>
+                  <h3 className="dd-type-meta dd-type-meta-strong text-stone-500">Not on special</h3>
                   {notOnSpecialItems.map((item) => {
                     const card = itemCards.get(item.product_id);
                     const meta = productMeta.get(item.product_id);

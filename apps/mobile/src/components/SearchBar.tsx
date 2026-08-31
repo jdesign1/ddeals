@@ -245,7 +245,7 @@ export default function SearchBar({
               }}
               onFocus={openSearch}
               placeholder={placeholder}
-              className={`mobile-zoom-safe-input ${compact ? "h-9" : "h-10"} w-full border-none bg-transparent font-sans text-sm font-medium text-stone-600 placeholder:text-stone-600 focus:outline-none`}
+              className={`mobile-zoom-safe-input ${compact ? "h-9" : "h-10"} w-full border-none bg-transparent font-sans text-base text-stone-600 placeholder:text-stone-600 focus:outline-none`}
               enterKeyHint="search"
             />
             {searchInput && (

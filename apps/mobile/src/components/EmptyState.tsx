@@ -63,7 +63,7 @@ export default function EmptyState({
     <div
       className={`flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white px-4 py-10 text-center ${className}`}
     >
-      <p className="max-w-xs text-sm text-stone-500">{children}</p>
+      <p className="max-w-xs dd-type-secondary text-stone-500">{children}</p>
     </div>
   );
 }

@@ -58,7 +58,7 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
         />
         {(isTrueSpecial || isDodgy) && (
           <span
-            className="absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold tracking-wide text-white"
+            className="absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 dd-type-badge text-white"
             style={{
               backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
             }}
@@ -74,10 +74,10 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
         <AddToListButton productId={product.id} />
       </div>
       <div className="flex flex-col gap-0.5 p-3">
-        <span className="text-[12px] font-semibold text-stone-500">{deal.store}</span>
-        <span className="line-clamp-2 text-sm font-semibold text-stone-900">{product.name}</span>
+        <span className="dd-type-meta text-stone-500">{deal.store}</span>
+        <span className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</span>
         <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+            <span className="text-lg leading-6 font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
           {showWasPrice && (
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>
           )}

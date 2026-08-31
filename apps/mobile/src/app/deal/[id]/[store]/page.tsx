@@ -563,7 +563,7 @@ export default function DealAssessmentPage() {
 
       <div className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         <div className="flex items-center justify-between">
-          <h2 className={`font-display text-xl font-black tracking-tight ${verdictColorClass}`}>
+          <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
             {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Needs more evidence" : verdict}
           </h2>
           {/* Add-to-list + Share, side by side (2026-08-12, per Jay's ask
@@ -688,9 +688,9 @@ export default function DealAssessmentPage() {
           </button>
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h3>
-            <p className="mt-0.5 text-sm font-bold tracking-wider text-stone-500">{product.unit}</p>
+            <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
             <div className="mt-1 flex items-baseline gap-1">
-              <span className={`font-display text-2xl font-black ${dealPriceColorClass}`}>${deal.price.toFixed(2)}</span>
+              <span className={`font-display text-2xl font-extrabold ${dealPriceColorClass}`}>${deal.price.toFixed(2)}</span>
               <span className="text-sm font-bold text-stone-500">ea</span>
             </div>
             <p
@@ -721,7 +721,7 @@ export default function DealAssessmentPage() {
         <div>
           {verdict === "Dodgy Deal" ? (
             <>
-              <h4 className="mb-1 text-base font-black text-stone-900">Dodgy discount special</h4>
+              <h4 className="dd-type-section mb-1 text-stone-900">Dodgy discount special</h4>
               <p className="text-sm leading-relaxed text-stone-600">
                 The lowest genuine price is offered by {cheapestStoreItem?.store}. However, this price is{" "}
                 {cheapestDiscountPct === 0 ? (
@@ -742,7 +742,7 @@ export default function DealAssessmentPage() {
             </>
           ) : verdict === "Fair Deal" ? (
             <>
-              <h4 className="mb-1 text-base font-black text-stone-900">
+              <h4 className="dd-type-section mb-1 text-stone-900">
                 {cheapestDiscountPct === 0 ? "No real savings" : `${Math.abs(cheapestDiscountPct)}% off the recent normal price`}
               </h4>
               <p className="text-sm leading-relaxed text-stone-600">
@@ -764,7 +764,7 @@ export default function DealAssessmentPage() {
             </>
           ) : uncertain ? (
             <>
-              <h4 className="mb-1 text-base font-black text-stone-900">Why this isn&rsquo;t confirmed yet</h4>
+              <h4 className="dd-type-section mb-1 text-stone-900">Why this isn&rsquo;t confirmed yet</h4>
               <p className="text-sm leading-relaxed text-stone-600">
                 {verdict === "Early read"
                   ? "This looks like a saving compared with an older regular price, but we need more recent checks before we can confirm it."
@@ -773,7 +773,7 @@ export default function DealAssessmentPage() {
             </>
           ) : (
             <>
-              <h4 className="mb-1 text-base font-black text-stone-900">{cheapestDiscountPct}% off the recent normal price</h4>
+              <h4 className="dd-type-section mb-1 text-stone-900">{cheapestDiscountPct}% off the recent normal price</h4>
               <p className="text-sm leading-relaxed text-stone-600">
                 This price is a genuine saving compared to the recent normal price at {cheapestStoreItem?.store}.
               </p>
@@ -800,7 +800,7 @@ export default function DealAssessmentPage() {
             href={findDealForStore(product.currentDeals, cheapestStoreItem.store)?.productUrl || getStoreProductUrl(cheapestStoreItem.store, product.name)}
             target="_blank"
             rel="noopener noreferrer"
-            className={`block w-full rounded-full border bg-white py-3 px-4 text-center text-[13px] leading-4 font-black transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
+            className={`block w-full rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
           >
             View at {cheapestStoreItem.store}
           </a>
@@ -808,7 +808,7 @@ export default function DealAssessmentPage() {
 
         {visibleRanking.length >= 2 && (
           <div>
-            <h4 className={`mb-1 border-b pb-2 text-sm font-black text-stone-900 ${verdictBorderClass}`}>Price ranking</h4>
+            <h4 className={`mb-1 border-b pb-2 dd-type-control text-stone-900 ${verdictBorderClass}`}>Price ranking</h4>
             <div>
               {/* Cheapest-price tie handling added 2026-08-21, per Jay:
                   "If best price is the same across two supermarkets, there
@@ -853,7 +853,7 @@ export default function DealAssessmentPage() {
                       <span className={`flex flex-1 items-center gap-1.5 text-sm ${isCheapest ? "font-extrabold text-fair-700" : "font-semibold text-stone-600"}`}>
                         {item.store}
                         {showBestBadge && (
-                          <span className="rounded-[4px] bg-fair-600 px-1.5 py-0.5 text-[9px] font-black tracking-widest text-white">Best</span>
+                          <span className="rounded-[4px] bg-fair-600 px-1.5 py-0.5 dd-type-badge text-white">Best</span>
                         )}
                       </span>
                       {/* text-[13px] -> text-sm (14px), 2026-08-20 body-text
@@ -910,15 +910,15 @@ export default function DealAssessmentPage() {
 
         {cheaperAlternatives.length > 0 && (
           <div>
-            <h4 className="mb-1 text-sm font-black text-stone-900">Cheaper alternatives available</h4>
+            <h4 className="mb-1 dd-type-control text-stone-900">Cheaper alternatives available</h4>
             <p className="mb-3 text-sm text-stone-600">See other cheaper alternatives on special</p>
             <button
               onClick={() => setShowCheaperCarousel((open) => !open)}
               aria-expanded={showCheaperCarousel}
-              className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center text-[13px] leading-4 font-black transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
+              className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
             >
               <span>See cheaper options</span>
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fair-600 text-[12px] font-black text-white">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
                 {cheaperAlternatives.length}
               </span>
               <ChevronDown
@@ -1083,7 +1083,7 @@ export default function DealAssessmentPage() {
                                 </div>
                                 <div className="flex min-w-0 flex-grow flex-col justify-between py-1">
                                   <div className="space-y-1">
-                                    <p className="text-sm font-black tracking-wider text-ink-600">
+                                    <p className="dd-type-secondary dd-type-secondary-strong text-ink-600">
                                       {altProd.brand
                                         ? altProd.brand.charAt(0).toUpperCase() + altProd.brand.slice(1).toLowerCase()
                                         : altProd.brand}{" "}
@@ -1097,13 +1097,13 @@ export default function DealAssessmentPage() {
                                     <h3 className="mt-1 line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
                                       {altProd.name}
                                     </h3>
-                                    <span className="mt-2 inline-block rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 text-sm leading-4 font-semibold tracking-wider text-white">
+                                    <span className="mt-2 inline-block rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
                                       Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
                                     </span>
                                   </div>
                                   <div className="mt-3.5 flex flex-wrap items-center gap-3">
                                     <div className="flex flex-shrink-0 items-baseline gap-1 whitespace-nowrap">
-                                      <span className="font-display text-base font-black text-stone-900">${altPrice.toFixed(2)}</span>
+                                      <span className="font-display text-base font-extrabold text-stone-900">${altPrice.toFixed(2)}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -1114,7 +1114,7 @@ export default function DealAssessmentPage() {
                                 rel="noopener noreferrer"
                                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
                               >
-                                <span className={`select-none rounded-md px-1.5 py-0.5 text-[10px] leading-none font-black ${meta.bg} ${meta.text}`}>
+                                <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>
                                   {meta.short}
                                 </span>
                                 Go to {altStore}
@@ -1149,7 +1149,7 @@ export default function DealAssessmentPage() {
                   IN HERE (2026-08-20, per Jay's ask) from a standalone
                   heading above both cards -- now sits inside this first
                   card specifically, not floating above the whole section. */}
-              <h4 className="font-display text-lg font-black tracking-tight text-stone-900">Price History Insights</h4>
+              <h4 className="dd-type-section text-stone-900">Price History Insights</h4>
               {/* text-[13px] -> text-sm (14px) below, 2026-08-20, per Jay:
                   "Increase all body texts on the deal assessment page to be
                   14px for readability" -- scoped to actual sentence-level
@@ -1212,7 +1212,7 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryTab === "90-days"}
                 onClick={() => setPriceHistoryTab("90-days")}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
+                className={`flex-1 rounded-lg px-3 py-2 dd-type-control transition-colors ${
                   priceHistoryTab === "90-days" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
                 }`}
               >
@@ -1223,7 +1223,7 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryTab === "insights"}
                 onClick={() => setPriceHistoryTab("insights")}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-black transition-colors ${
+                className={`flex-1 rounded-lg px-3 py-2 dd-type-control transition-colors ${
                   priceHistoryTab === "insights" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
                 }`}
               >

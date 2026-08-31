@@ -338,7 +338,7 @@ export default function AddToListButton({
                         sheet's top title uses (see app/page.tsx's Sort sheet
                         for the full cross-reference). `<h3>`, not `<span>`,
                         to match. */}
-                    <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Add to list</h3>
+                    <h3 className="dd-type-sheet-title text-stone-900">Add to list</h3>
                     <button
                       onClick={(e) => {
                         e.preventDefault();

@@ -48,8 +48,8 @@ export default function ErrorState({
         aria-hidden="true"
       />
       <div className="max-w-xs px-4">
-        <p className="text-sm font-bold text-alert-700">{message}</p>
-        {detail && <p className="mt-1 text-[13px] leading-4 text-stone-500">{detail}</p>}
+        <p className="dd-type-secondary dd-type-secondary-strong text-alert-700">{message}</p>
+        {detail && <p className="mt-1 dd-type-meta text-stone-500">{detail}</p>}
       </div>
       {/* Brand Guide v1.0 "06 — UI KIT / BUTTONS" primary pill
           (2026-08-13 UI tidy-up). */}

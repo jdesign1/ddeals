@@ -186,8 +186,8 @@ export default function PriceHistoryInsightCard({
           labels specifically (each literally a "tile" in the grid, plural
           "titles"), not this card-level heading, which matches "Price
           History Insights" above it stylistically either way. */}
-      <h4 className="font-display text-lg font-black tracking-normal text-stone-900">90-Day Price Tips</h4>
-      <p className="text-sm leading-relaxed text-stone-600">{getPriceTipsStatement(verdict, frequency)}</p>
+      <h4 className="dd-type-section text-stone-900">90-Day Price Tips</h4>
+      <p className="dd-type-secondary text-stone-600">{getPriceTipsStatement(verdict, frequency)}</p>
       <div className="grid h-56 w-full grid-cols-2 grid-rows-2 divide-x divide-y divide-stone-100 rounded-xl border border-stone-100">
         {insights.map((insight) => {
           const tile = TILE_STYLE[insight.key];
@@ -208,15 +208,15 @@ export default function PriceHistoryInsightCard({
                   way (unchanged since the "simplify the 4th tile" pass). */}
               {insight.key === "frequency"
                 ? insight.detail && (
-                    <p className="text-sm font-black tracking-wide text-stone-500">{insight.detail}</p>
+                    <p className="dd-type-meta text-stone-500">{insight.detail}</p>
                   )
-                : insight.label && <p className="text-sm font-black tracking-wide text-stone-500">{insight.label}</p>}
+                : insight.label && <p className="dd-type-meta text-stone-500">{insight.label}</p>}
               {/* text-lg (18px) -> text-base (16px), 2026-08-21, scoped to
                   JUST the frequency tile (see this file's header comment) --
                   every other tile's `value` is a short $ amount and stays
                   text-lg. */}
               <p
-                className={`font-display leading-tight font-black text-stone-900 ${
+                className={`font-display leading-tight font-extrabold text-stone-900 ${
                   insight.key === "frequency" ? "text-base" : "text-lg"
                 }`}
               >

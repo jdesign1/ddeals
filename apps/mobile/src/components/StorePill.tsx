@@ -73,7 +73,7 @@ export default function StorePill({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`relative z-0 flex-shrink-0 whitespace-nowrap rounded-xl border border-stone-300 px-3 py-2 text-[13px] leading-4 font-bold tracking-wider shadow-none transition-colors duration-150 ${
+      className={`relative z-0 flex-shrink-0 whitespace-nowrap rounded-xl border border-stone-300 px-3 py-2 dd-type-control shadow-none transition-colors duration-150 ${
         active ? meta.text : `${backgroundClassName} text-stone-600 hover:bg-stone-50`
       }`}
     >

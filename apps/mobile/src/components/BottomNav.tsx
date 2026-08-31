@@ -246,7 +246,7 @@ export default function BottomNav() {
             className="flex min-w-0 flex-1 items-center justify-center py-1.5"
           >
             <span
-              className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 text-[12px] leading-4 font-medium transition-colors ${
+              className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
                 isActive ? "w-max min-w-full px-2" : "w-full min-w-0 px-0"
               }`}
               style={{ color: isActive ? "#ffffff" : "#57534e" }}

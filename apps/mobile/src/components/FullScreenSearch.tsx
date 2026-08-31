@@ -569,7 +569,7 @@ export default function FullScreenSearch() {
       <button
         type="button"
         onClick={onOpenCategorySheet}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -577,7 +577,7 @@ export default function FullScreenSearch() {
       <button
         type="button"
         onClick={onOpenSortSheet}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] leading-4 font-bold text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -744,7 +744,7 @@ export default function FullScreenSearch() {
               <input
                 id="full-search-input"
                 autoFocus
-                className="mobile-zoom-safe-input h-9 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
+                className="mobile-zoom-safe-input h-9 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
                 placeholder="Search for a product or brand"
                 type="text"
                 value={query}
@@ -839,8 +839,8 @@ export default function FullScreenSearch() {
                 {query.length > 0 && (
                   <div className="mb-8 space-y-1.5 py-4 text-center">
                     <Image src="/logo.svg" alt="" width={40} height={40} className="mx-auto h-10 w-10 animate-logo-blink" />
-                    <p className="text-[11px] font-bold tracking-widest text-stone-500">Keep typing...</p>
-                    <p className="text-[13px] leading-4 text-stone-500">Enter at least 3 characters to see suggested items</p>
+                    <p className="dd-type-meta text-stone-500">Keep typing...</p>
+                    <p className="dd-type-secondary text-stone-500">Enter at least 3 characters to see suggested items</p>
                   </div>
                 )}
 
@@ -1039,7 +1039,7 @@ export default function FullScreenSearch() {
                           default, `letter-spacing: normal`) rather than a
                           smaller positive tracking value, since Jay asked
                           for "normal" specifically, not just "less wide." */}
-                      <h3 className="font-sans text-[13px] leading-4 font-black tracking-normal text-stone-600">
+                      <h3 className="dd-type-control text-stone-600">
                         {sortedPopularSpecials.length} {dealFilter === "dodgy" ? "dodgy signals" : dealFilter === "real" ? "real deals" : "deals"} found
                       </h3>
                       {renderCategoriesAndSort(
@@ -1068,7 +1068,7 @@ export default function FullScreenSearch() {
                       <div ref={popularSentinelRef} aria-hidden="true" className="h-px w-full" />
                     )}
                     {isPopularCapped && (
-                      <p className="py-2 text-center text-[13px] leading-4 font-semibold text-stone-500">
+                      <p className="py-2 text-center dd-type-secondary text-stone-500">
                         Showing top {INFINITE_REVEAL_MAX_ITEMS} of {sortedPopularSpecials.length} — narrow with a store or
                         category filter to see more.
                       </p>
@@ -1076,14 +1076,14 @@ export default function FullScreenSearch() {
                   </div>
                 ) : (
                   <div className="mt-8 space-y-1 py-8 text-center">
-                    <p className="text-[13px] leading-4 font-bold tracking-widest text-stone-500">
+                    <p className="dd-type-secondary dd-type-secondary-strong text-stone-500">
                       {dealFilter === "dodgy"
                         ? "No Dodgy deals or review signals found right now"
                         : dealFilter === "real"
                           ? "No real deals found right now"
                           : "No deals found right now"}
                     </p>
-                    <p className="text-[13px] leading-4 text-stone-500">Try widening the supermarket filter above.</p>
+                    <p className="dd-type-secondary text-stone-500">Try widening the supermarket filter above.</p>
                   </div>
                 )}
               </div>
@@ -1092,10 +1092,10 @@ export default function FullScreenSearch() {
             {!loading && !error && trimmedQuery.length >= 3 && (
               <>
                 <section className="space-y-2 pt-5 text-center">
-                  <h2 id="search-title" className="font-display text-lg font-black leading-none tracking-normal text-stone-900">
+                  <h2 id="search-title" className="dd-type-section text-stone-900">
                     Results for &lsquo;{trimmedQuery}&rsquo;
                   </h2>
-                  <p id="search-subtitle" className="text-[13px] leading-4 font-bold tracking-wide text-stone-500">
+                  <p id="search-subtitle" className="dd-type-meta text-stone-500">
                     {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"} found · {totalRetailersCount}{" "}
                     {totalRetailersCount === 1 ? "retailer" : "retailers"}
                   </p>
@@ -1238,7 +1238,7 @@ export default function FullScreenSearch() {
                       label that used to sit above the pill row is dropped
                       entirely, also per Jay's ask. */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] leading-4 font-bold text-stone-500">
+                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">
                       {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"}
                     </span>
                     {renderCategoriesAndSort(
@@ -1266,7 +1266,7 @@ export default function FullScreenSearch() {
                     ) : (
                       <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-6 py-12 text-center">
                         <AlertCircle className="mx-auto h-12 w-12 text-stone-300" aria-hidden="true" />
-                        <p className="text-[13px] leading-4 font-bold tracking-widest text-stone-500">
+                        <p className="dd-type-control text-stone-500">
                           {!selectedStores.includes("all")
                             ? selectedStores.length === 1
                               ? `No ${trimmedQuery || "grocery"} items were found at ${getStoreDisplayName(selectedStores[0])}`
@@ -1275,7 +1275,7 @@ export default function FullScreenSearch() {
                                   .join(", ")})`
                             : `No items matching '${trimmedQuery}'`}
                         </p>
-                        <p className="text-[13px] leading-4 text-stone-500">
+                        <p className="dd-type-secondary text-stone-500">
                           {!selectedStores.includes("all")
                             ? "Try selecting 'All' or search for another item."
                             : 'Try searching for "milk", "bread" or "eggs"'}
@@ -1288,7 +1288,7 @@ export default function FullScreenSearch() {
                       <div ref={searchResultsSentinelRef} aria-hidden="true" className="h-px w-full" />
                     )}
                     {isSearchResultsCapped && (
-                      <p className="py-2 text-center text-[13px] leading-4 font-semibold text-stone-500">
+                      <p className="py-2 text-center dd-type-secondary text-stone-500">
                         Showing top {INFINITE_REVEAL_MAX_ITEMS} of {sortedProducts.length} — narrow your search or filters to
                         see more.
                       </p>
@@ -1344,13 +1344,13 @@ export default function FullScreenSearch() {
                         -- was text-sm, now text-lg, same class every bottom
                         sheet's top title uses (see app/page.tsx's Sort sheet
                         for the full cross-reference). */}
-                    <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Categories</h3>
+                    <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>
                     <div className="flex items-center gap-1">
                       {activeCategoryFilter.length > 0 && (
                         <button
                           type="button"
                           onClick={() => setActiveCategoryFilter([])}
-                          className="cursor-pointer px-2 py-1 text-[13px] leading-4 font-bold text-ink-600 hover:text-ink-800 hover:underline"
+                          className="cursor-pointer px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
                         >
                           Clear all
                         </button>
@@ -1374,7 +1374,7 @@ export default function FullScreenSearch() {
                     <button
                       type="button"
                       onClick={() => setActiveCategoryFilter([])}
-                      className={`cursor-pointer rounded-full px-3 py-2 text-[13px] leading-4 font-bold shadow-sm transition-colors ${
+                      className={`cursor-pointer rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
                         activeCategoryFilter.length === 0 ? "bg-ink-600 text-white" : "bg-white text-stone-600 hover:bg-stone-50"
                       }`}
                     >
@@ -1385,7 +1385,7 @@ export default function FullScreenSearch() {
                       if (!sectionCats.length) return null;
                       return (
                         <div key={section.title} className="space-y-2">
-                          <h4 className="text-[11px] font-black tracking-widest text-stone-500">{section.title}</h4>
+                          <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">{section.title}</h4>
                           <div className="flex flex-wrap gap-2">
                             {sectionCats.map((cat) => {
                               const isSelected = activeCategoryFilter.includes(cat);
@@ -1398,7 +1398,7 @@ export default function FullScreenSearch() {
                                   aria-disabled={!hasMatchingResults}
                                   title={hasMatchingResults ? undefined : "No matching deals in this category right now"}
                                   onClick={() => toggleActiveCategory(cat)}
-                                  className={`rounded-full px-3 py-2 text-[13px] leading-4 font-bold shadow-sm transition-colors ${
+                                  className={`rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
                                     !hasMatchingResults
                                       ? "cursor-not-allowed bg-stone-50 text-stone-300"
                                       : isSelected
@@ -1419,7 +1419,7 @@ export default function FullScreenSearch() {
                     <button
                       type="button"
                       onClick={() => setCategorySheetTarget(null)}
-                      className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 text-[13px] leading-4 font-black tracking-widest text-white transition-colors hover:bg-ink-600"
+                      className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
                     >
                       Done
                     </button>
@@ -1460,7 +1460,7 @@ export default function FullScreenSearch() {
                         -- was text-sm, now text-lg, same class every bottom
                         sheet's top title uses (see app/page.tsx's Sort sheet
                         for the full cross-reference). */}
-                    <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Sort by</h3>
+                    <h3 className="dd-type-sheet-title text-stone-900">Sort by</h3>
                     <button
                       type="button"
                       onClick={() => setSortSheetTarget(null)}
@@ -1481,7 +1481,7 @@ export default function FullScreenSearch() {
                             activeSortConfig.onChange(opt.value);
                             setSortSheetTarget(null);
                           }}
-                          className={`flex w-full cursor-pointer items-center justify-between px-5 py-3.5 text-left text-sm font-bold transition-colors ${
+                          className={`flex w-full cursor-pointer items-center justify-between px-5 py-3.5 text-left dd-type-control transition-colors ${
                             isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"
                           }`}
                         >

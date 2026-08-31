@@ -87,13 +87,13 @@ export default function AccountPage() {
       <main className="flex flex-col gap-4 px-5 py-6 pb-10">
       <div className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-xs">
         <div>
-          <p className="text-[11px] font-black tracking-widest text-stone-500">Email</p>
-          <p className="mt-0.5 text-sm font-bold text-stone-900">{user.email}</p>
+          <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
+          <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{user.email}</p>
         </div>
         {joined && (
           <div>
-            <p className="text-[11px] font-black tracking-widest text-stone-500">Member since</p>
-            <p className="mt-0.5 text-sm font-bold text-stone-900">{joined}</p>
+            <p className="dd-type-meta dd-type-meta-strong text-stone-500">Member since</p>
+            <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{joined}</p>
           </div>
         )}
       </div>
@@ -139,10 +139,10 @@ export default function AccountPage() {
               transition={{ type: "spring", stiffness: 380, damping: 32 }}
             >
               <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-stone-200" />
-              <h2 id="logout-sheet-title" className="text-xl font-black text-stone-900">
+              <h2 id="logout-sheet-title" className="dd-type-sheet-title text-stone-900">
                 Log out?
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-stone-600">
+              <p className="mt-2 dd-type-body text-stone-600">
                 Are you sure you want to log out of Dodgy Deals?
               </p>
               <div className="mt-6 grid grid-cols-2 gap-3">

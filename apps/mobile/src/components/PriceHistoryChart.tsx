@@ -121,12 +121,12 @@ export default function PriceHistoryChart({
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-100 bg-stone-50 p-2">
         <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
-          <span className="text-sm font-bold text-stone-700">
-            Current price: <span className="font-display font-black text-stone-900">${currentPrice.toFixed(2)}</span>
+          <span className="dd-type-control text-stone-700">
+            Current price: <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
           </span>
           {hasComparisonPrice && comparisonPct !== 0 && (
             <span
-              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[13px] leading-4 font-black text-white ${
+              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 dd-type-badge text-white ${
                 isCheaperThanComparison ? "bg-fair-600" : "bg-alert-600"
               }`}
               aria-label={`${Math.abs(comparisonPct)}% ${isCheaperThanComparison ? "below" : "above"} the recent average`}

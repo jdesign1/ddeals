@@ -190,7 +190,7 @@ export default function AuthSheet({
                     the same text-lg/font-black/tracking-tight class every
                     bottom sheet's title uses (see app/page.tsx's Sort sheet
                     for the full cross-reference). */}
-                <h3 className="font-display text-lg font-black tracking-normal text-stone-900">{title}</h3>
+                <h3 className="dd-type-sheet-title text-stone-900">{title}</h3>
               </div>
               <button
                 onClick={onClose}
@@ -279,7 +279,7 @@ export default function AuthSheet({
                       type="button"
                       onClick={() => setMode(tab.id)}
                       aria-pressed={isActive}
-                      className={`relative z-0 flex h-9 flex-1 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg text-[13px] leading-4 font-bold transition-colors ${
+                      className={`relative z-0 flex h-9 flex-1 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg dd-type-control transition-colors ${
                         isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
                       }`}
                     >

@@ -136,8 +136,8 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
               aria-label={ariaLabel}
             >
               {hovered === idx && (
-                <div className="absolute bottom-full left-1/2 z-10 mb-2 w-40 -translate-x-1/2 space-y-1 rounded-xl border border-stone-800 bg-stone-900 p-3 text-[13px] leading-4 text-white shadow-lg">
-                  <p className="text-[11px] font-extrabold tracking-wider text-stone-400">{row.storeName}</p>
+                <div className="absolute bottom-full left-1/2 z-10 mb-2 w-40 -translate-x-1/2 space-y-1 rounded-xl border border-stone-800 bg-stone-900 p-3 dd-type-meta text-white shadow-lg">
+                  <p className="dd-type-meta dd-type-meta-strong text-stone-400">{row.storeName}</p>
                   <div className="flex justify-between gap-4">
                     <span className="text-stone-300">Current Price:</span>
                     <span className="font-extrabold text-white">${row.currentPrice.toFixed(2)}</span>
@@ -149,15 +149,15 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
                   <div className="mt-1 flex justify-between gap-4 border-t border-stone-800 pt-1">
                     <span className="font-semibold text-stone-400">Status:</span>
                     {isCheaper ? (
-                      <span className="font-black text-fair-400">
+                      <span className="font-extrabold text-fair-400">
                         ${(row.averagePrice - row.currentPrice).toFixed(2)} Below Avg
                       </span>
                     ) : isPricier ? (
-                      <span className="font-black text-alert-400">
+                      <span className="font-extrabold text-alert-400">
                         ${(row.currentPrice - row.averagePrice).toFixed(2)} Above Avg
                       </span>
                     ) : (
-                      <span className="font-black text-stone-300">Equal to Avg</span>
+                      <span className="font-extrabold text-stone-300">Equal to Avg</span>
                     )}
                   </div>
                 </div>
@@ -166,10 +166,10 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
               {/* Always-visible price + delta — not gated behind hover, so
                   this reads on a phone with no mouse (see file header). */}
               <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <span className="text-sm font-black text-stone-900">${row.currentPrice.toFixed(2)}</span>
+                <span className="dd-type-control text-stone-900">${row.currentPrice.toFixed(2)}</span>
                 {pct !== 0 && (
                   <span
-                    className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[13px] leading-4 font-black text-white ${deltaClass}`}
+                    className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 dd-type-badge text-white ${deltaClass}`}
                   >
                     {isCheaper ? (
                       <ArrowDown className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
@@ -195,7 +195,7 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
               </motion.div>
 
               <span
-                className="rounded-md px-2.5 py-1 text-[10px] font-black text-white"
+                className="rounded-md px-2.5 py-1 dd-type-badge text-white"
                 style={{ backgroundColor: STORE_TICK_COLORS[row.name] || "#78716c" }}
               >
                 {row.name}

@@ -202,14 +202,14 @@ export default function ProductListCard({
             +1px on top of that, specifically for this label, per this new
             ask, landing at `text-[12px]`, not evidence the earlier sweep
             missed it. */}
-        <span className="text-[12px] font-bold tracking-normal text-stone-600">{brandSentenceCase}</span>
+        <span className="dd-type-meta text-stone-600">{brandSentenceCase}</span>
         <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
           {product.name}
         </h3>
-        {product.unit && <span className="text-[13px] leading-4 font-medium text-stone-500">{product.unit}</span>}
-        <span className="mt-1 font-display text-2xl font-black text-stone-900">${deal.price.toFixed(2)}</span>
+        {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
+        <span className="mt-1 font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-[13px] leading-4 font-bold text-stone-600">
+            <span className="dd-type-meta dd-type-meta-strong text-stone-600">
             {storeLinePrefix == null
               ? storeLabel
               : storeLinePrefix === "Lowest at"
@@ -220,14 +220,14 @@ export default function ProductListCard({
         </div>
         {alsoSpecialStores.length > 0 && (
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-[10px]">
-            <span className="shrink-0 text-[11px] font-bold tracking-normal text-stone-600">Also at:</span>
+            <span className="shrink-0 dd-type-meta text-stone-600">Also at:</span>
             {alsoSpecialStores.map((store) => {
               const meta = getStoreLogoMeta(store);
               return (
                 <div
                   key={store}
                   title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                  className={`select-none rounded-md px-2 py-1 text-[10px] font-black ${meta.bg} ${meta.text}`}
+                  className={`select-none rounded-md px-2 py-1 dd-type-badge ${meta.bg} ${meta.text}`}
                 >
                   {meta.short}
                 </div>
@@ -239,17 +239,17 @@ export default function ProductListCard({
 
       <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
         {isDodgy && (
-          <span className="shrink-0 select-none rounded-md bg-alert-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
+          <span className="shrink-0 select-none rounded-md bg-alert-600 px-2 py-1 dd-type-badge text-white shadow-xs">
             Dodgy
           </span>
         )}
         {isRealSaver && (
-          <span className="shrink-0 select-none rounded-md bg-fair-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
+          <span className="shrink-0 select-none rounded-md bg-fair-600 px-2 py-1 dd-type-badge text-white shadow-xs">
             Real
           </span>
         )}
         {isFairDeal && (
-          <span className="shrink-0 select-none rounded-md bg-dodgy-600 px-2 py-1 text-[10px] font-black tracking-wider text-white shadow-xs">
+          <span className="shrink-0 select-none rounded-md bg-dodgy-600 px-2 py-1 dd-type-badge text-white shadow-xs">
             Fair
           </span>
         )}
@@ -261,7 +261,7 @@ export default function ProductListCard({
           same way DealCard.tsx's own verdict badge already sits over its
           image. */}
       <span
-        className={`absolute left-3 top-2 z-10 select-none rounded-md px-2 py-1 text-[10px] font-black shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
+        className={`absolute left-3 top-2 z-10 select-none rounded-md px-2 py-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
       >
         {storeMeta.short}
       </span>

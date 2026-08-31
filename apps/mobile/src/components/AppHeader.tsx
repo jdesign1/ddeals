@@ -250,7 +250,7 @@ export default function AppHeader({
     >
       <div>
       {isAnonymousSession && (
-        <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center text-[11px] font-black tracking-widest text-amber-950">
+        <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center dd-type-meta dd-type-meta-strong text-amber-950">
           Test mode — anonymous test account, not linked to an email
         </div>
       )}
@@ -334,7 +334,7 @@ export default function AppHeader({
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
           )}
-          <span className="min-w-0 flex-1 truncate font-display text-base font-black tracking-normal text-ink-900">
+          <span className="min-w-0 flex-1 truncate font-display text-base font-extrabold tracking-normal text-ink-900">
             {title}
           </span>
         </div>
@@ -346,7 +346,7 @@ export default function AppHeader({
               onClick={() => setIsMenuOpen((open) => !open)}
               id="global-header-profile-btn"
               aria-label="Account menu"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-fair-600 text-base font-black text-white transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-fair-600 text-base font-bold text-white transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               {avatarInitial}
             </button>
@@ -430,7 +430,7 @@ export default function AppHeader({
                   now a real title, same class every bottom sheet's top
                   title uses (see app/page.tsx's Sort sheet for the full
                   cross-reference). `<h3>`, not `<span>`, to match. */}
-              <h3 className="font-display text-lg font-black tracking-normal text-stone-900">Account</h3>
+              <h3 className="dd-type-sheet-title text-stone-900">Account</h3>
               <button
                 onClick={() => setIsMenuOpen(false)}
                 aria-label="Close"
@@ -455,7 +455,7 @@ export default function AppHeader({
               <Link
                 href="/how-it-works"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
+                className="flex w-full items-center gap-3 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
               >
                 <span
                   className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
@@ -469,7 +469,7 @@ export default function AppHeader({
               <Link
                 href="/settings"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
+                className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
               >
                 <span
                   className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
@@ -485,7 +485,7 @@ export default function AppHeader({
                   <Link
                     href="/account"
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-stone-700 transition-colors hover:bg-stone-50"
+                    className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
                   >
                     <UserCog className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
                     Manage account
@@ -495,7 +495,7 @@ export default function AppHeader({
                       setIsMenuOpen(false);
                       signOut();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-alert-600 transition-colors hover:bg-alert-50 hover:text-alert-700"
+                    className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-alert-600 transition-colors hover:bg-alert-50 hover:text-alert-700"
                   >
                     <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
                     Log out
@@ -523,7 +523,7 @@ export default function AppHeader({
                     setIsMenuOpen(false);
                     openAuthSheet();
                   }}
-                  className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left text-sm font-black tracking-wider text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
+                  className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
                 >
                   <span
                     className="material-symbols-outlined shrink-0 text-[22px]"
