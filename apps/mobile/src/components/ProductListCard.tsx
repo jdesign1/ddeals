@@ -167,10 +167,10 @@ export default function ProductListCard({
           text sits underneath it. */}
       <div
         className={`flex flex-shrink-0 select-none items-center justify-center bg-stone-50 ${
-          isGridLayout ? "aspect-[4/3] w-full p-3" : "w-36 p-4"
+          isGridLayout ? "aspect-[5/3] w-full p-3" : "h-[115px] w-36 p-3"
         }`}
       >
-        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isGridLayout ? "h-full w-full" : "h-28 w-28"}`}>
+        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isGridLayout ? "h-full w-full" : "h-[90px] w-[90px]"}`}>
           <Image
             src={product.image}
             alt={product.name}
