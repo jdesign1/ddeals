@@ -238,6 +238,40 @@ test("buildProductCardsFromSpecials: structured unit-price evidence survives fut
   assert.equal(deal.wasArtificiallyInflated, true);
 });
 
+test("buildProductCardsFromSpecials: stale duration-only unit signal is not trusted during rollout", () => {
+  const rows = [
+    row({
+      sale_price: 4.5,
+      normal_price: 5.1,
+      saving_pct: 11.8,
+      unit_price_change_pct: 0,
+      verdict: "DODGY",
+      reason: "Price per 100mL barely moved — possible unit-value manipulation",
+      evidence_status: "SUFFICIENT",
+      evidence_strength: "DURATION_ONLY",
+      unit_price_samples: null,
+    }),
+  ];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Real Deal");
+  assert.equal(cards[0].currentDeals[0].wasArtificiallyInflated, false);
+});
+
+test("buildProductCardsFromSpecials: current reason-specific duration-only Dodgy verdict is preserved", () => {
+  const rows = [row({
+    sale_price: 12,
+    normal_price: 10,
+    saving_pct: -20,
+    verdict: "DODGY",
+    reason: "Sale price is above the recent normal price",
+    evidence_status: "SUFFICIENT",
+    evidence_strength: "DURATION_ONLY",
+    classifier_version: "20260830-v2",
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Dodgy Deal");
+});
+
 test("buildProductCardsFromSpecials: UNKNOWN verdict maps to 'Unverified Deal'", () => {
   const rows = [row({ verdict: "UNKNOWN" })];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
@@ -325,7 +359,7 @@ test("buildProductCardsFromSpecials: limited store evidence stays neutral", () =
   assert.equal(deal.storeHistoryReady, false);
 });
 
-test("buildProductCardsFromSpecials: weak-evidence Dodgy rows are neutralized client-side", () => {
+test("buildProductCardsFromSpecials: unsupported duration-only Dodgy rows fall back to the price comparison", () => {
   const rows = [row({
     verdict: "DODGY",
     evidence_status: "SUFFICIENT",
@@ -335,11 +369,11 @@ test("buildProductCardsFromSpecials: weak-evidence Dodgy rows are neutralized cl
   })];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
   const deal = cards[0].currentDeals[0];
-  assert.equal(deal.dealType, "Unverified Deal");
+  assert.equal(deal.dealType, "Real Deal");
   assert.equal(deal.wasArtificiallyInflated, false);
 });
 
-test("buildProductCardsFromSpecials: duration-only shrinkflation evidence remains Dodgy", () => {
+test("buildProductCardsFromSpecials: duration-only shrinkflation with explicit unit evidence remains Dodgy", () => {
   const rows = [row({
     verdict: "DODGY",
     evidence_status: "SUFFICIENT",
@@ -348,6 +382,8 @@ test("buildProductCardsFromSpecials: duration-only shrinkflation evidence remain
     normal_price: 9.7,
     saving_pct: 12.4,
     unit_price_change_pct: 0,
+    unit_price_samples: 2,
+    unit_price_coverage_days: 7,
     regular_price_samples: 1,
     regular_history_days: 20,
   })];

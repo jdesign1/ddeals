@@ -47,6 +47,10 @@ export const PUMP_INFLATION_THRESHOLD = 10;
 export const REAL_SAVER_THRESHOLD = 10;
 /** % saving floor for "fair" */
 export const FAIR_THRESHOLD = 3;
+/** A unit-price warning needs at least a fair-sized nominal saving to become Dodgy. */
+export const MIN_MATERIAL_UNIT_SAVING_THRESHOLD = FAIR_THRESHOLD;
+/** Repeated pre-sale lifts can still be deceptive below the real-saver threshold. */
+export const PUMP_MAX_APPARENT_SAVING_THRESHOLD = REAL_SAVER_THRESHOLD;
 /** min % the $/unit must actually drop */
 export const SHRINKFLATION_THRESHOLD = 1;
 /** Legacy row-count threshold retained for compatibility; duration is now the primary evidence signal. */
@@ -66,6 +70,46 @@ function median(nums: number[]): number | null {
   const sorted = [...nums].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function pricesMatch(a: number | null | undefined, b: number | null | undefined): boolean {
+  return a != null && b != null && Math.abs(a - b) < 0.005;
+}
+
+// Comparative labels such as 100g and 1kg can be safely normalized to the
+// same base unit. A bare number is deliberately rejected because retailers
+// use it for different things (for example sheets, wipes, or tea bags).
+function parseComparativeUnitLabel(label: string | null | undefined): { baseQuantity: number; baseUnit: string } | null {
+  const text = String(label ?? '').trim().toLowerCase()
+    .replace(/^\$\s*\/\s*/, '')
+    .replace(/^\/\s*/, '')
+    .replace(/^per\s+/, '');
+  const match = text.match(/^(\d+(?:\.\d+)?)?\s*(kg|g|l|ml|m|cm|mm|ea|each|sheets?|ss)$/i);
+  if (!match) return null;
+  const quantity = match[1] ? Number(match[1]) : 1;
+  if (!Number.isFinite(quantity) || quantity <= 0) return null;
+  const unit = match[2].toLowerCase() === 'each' ? 'ea'
+    : /^(sheets?|ss)$/i.test(match[2]) ? 'sheet' : match[2].toLowerCase();
+  const conversions: Record<string, { quantity: number; unit: string }> = {
+    kg: { quantity: quantity * 1000, unit: 'g' },
+    g: { quantity, unit: 'g' },
+    l: { quantity: quantity * 1000, unit: 'ml' },
+    ml: { quantity, unit: 'ml' },
+    m: { quantity: quantity * 100, unit: 'cm' },
+    cm: { quantity, unit: 'cm' },
+    mm: { quantity: quantity / 10, unit: 'cm' },
+    ea: { quantity, unit: 'ea' },
+    sheet: { quantity, unit: 'sheet' },
+  };
+  const base = conversions[unit];
+  return base && base.quantity > 0 ? { baseQuantity: base.quantity, baseUnit: base.unit } : null;
+}
+
+function normalizedComparativeUnitPrice(unitPrice: number | null | undefined, unitLabel: string | null | undefined): number | null {
+  const value = Number(unitPrice);
+  const basis = parseComparativeUnitLabel(unitLabel);
+  if (!Number.isFinite(value) || value <= 0 || !basis) return null;
+  return value / basis.baseQuantity;
 }
 
 /**
@@ -93,16 +137,16 @@ export function classifySpecial(
     (a, b) => +new Date(a.scraped_at) - +new Date(b.scraped_at)
   );
 
-  // Walk backwards while is_special=true to find when the current streak began.
-  let saleStartedAt: Date | null = null;
+  // Walk backwards while is_special=true to find the current special streak.
+  let specialStreakStartIndex: number | null = null;
   for (let i = sorted.length - 1; i >= 0; i--) {
     if (sorted[i].is_special) {
-      saleStartedAt = new Date(sorted[i].scraped_at);
+      specialStreakStartIndex = i;
     } else {
       break;
     }
   }
-  if (saleStartedAt === null) {
+  if (specialStreakStartIndex === null) {
     return {
       verdict: "UNKNOWN",
       reason: "Not enough price history to judge",
@@ -113,6 +157,20 @@ export function classifySpecial(
       evidenceStrength: "INSUFFICIENT",
     };
   }
+
+  // A retailer can flip only the special flag while leaving the price
+  // unchanged. That is not a new price event, so find the first special row
+  // in the contiguous current-price block. This prevents a one-day
+  // same-price status row becoming the unit-price baseline without erasing
+  // the start date when the special flag first appeared.
+  let saleStartIndex = specialStreakStartIndex;
+  while (saleStartIndex > 0 && pricesMatch(sorted[saleStartIndex - 1].price, salePrice)) {
+    saleStartIndex -= 1;
+  }
+  while (saleStartIndex < specialStreakStartIndex && !sorted[saleStartIndex].is_special) {
+    saleStartIndex += 1;
+  }
+  const saleStartedAt = new Date(sorted[saleStartIndex].scraped_at);
 
   const preSale = sorted.filter(
     (r) => !r.is_special && new Date(r.scraped_at) < saleStartedAt! && r.price != null
@@ -214,18 +272,45 @@ export function classifySpecial(
 
   const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : 0;
 
-  // Step 4 -- shrinkflation check. Only runs when both sides have a $/unit
-  // figure under the SAME unit label (exact match: "$/kg" is never compared
-  // to "$/100g") -- live coverage is ~16%, so this silently no-ops otherwise.
+  // Step 4 -- unit-value check. Use the same recent/fallback evidence window
+  // as the normal-price baseline and require either two observations with
+  // seven days of coverage or one matching unit-price state held for 14 days.
+  // A single short-lived status row must never be enough to accuse a retailer.
   let unitPriceChangePct: number | null = null;
   if (saleUnitPrice != null && saleUnitLabel) {
-    const baselineUnitRows = preSale.filter(
-      (r) => r.unit_price != null && r.unit_label === saleUnitLabel
+    const saleUnitBasis = parseComparativeUnitLabel(saleUnitLabel);
+    const recentUnitSpans = recentRegularSpans.filter(
+      ({ row }) => row.unit_price != null
+        && saleUnitBasis != null
+        && parseComparativeUnitLabel(row.unit_label)?.baseUnit === saleUnitBasis.baseUnit
     );
-    if (baselineUnitRows.length >= 2) {
-      const baselineUnitPrice = median(baselineUnitRows.map((r) => r.unit_price as number));
-      if (baselineUnitPrice) {
-        unitPriceChangePct = ((saleUnitPrice - baselineUnitPrice) / baselineUnitPrice) * 100;
+    const fallbackUnitSpans = fallbackRegularSpans.filter(
+      ({ row }) => row.unit_price != null
+        && saleUnitBasis != null
+        && parseComparativeUnitLabel(row.unit_label)?.baseUnit === saleUnitBasis.baseUnit
+    );
+    const selectedUnitSpans = recentUnitSpans.length ? recentUnitSpans : fallbackUnitSpans;
+    const baselineUnitRows = selectedUnitSpans.map(({ row }) => row);
+    const selectedCutoff = selectedUnitSpans === recentUnitSpans ? lookbackCutoff : fallbackCutoff;
+    const unitPriceSamples = baselineUnitRows.length;
+    const unitPriceCoverageDays = selectedUnitSpans.reduce(
+      (total, { start, end }) => total + overlapDays(start, end, selectedCutoff),
+      0
+    );
+    const maxUnitSpanDays = selectedUnitSpans.reduce(
+      (max, { start, end }) => Math.max(max, overlapDays(start, end, selectedCutoff)),
+      0
+    );
+    const hasSufficientUnitEvidence =
+      (unitPriceSamples >= 2 && unitPriceCoverageDays >= 7) || maxUnitSpanDays >= 14;
+    if (hasSufficientUnitEvidence) {
+      const baselineUnitPrices = baselineUnitRows
+        .map((r) => normalizedComparativeUnitPrice(r.unit_price, r.unit_label))
+        .filter((value): value is number => value != null);
+      const normalizedSaleUnitPrice = normalizedComparativeUnitPrice(saleUnitPrice, saleUnitLabel);
+      const baselineUnitPrice = median(baselineUnitPrices);
+      if (normalizedSaleUnitPrice != null && baselineUnitPrice) {
+        unitPriceChangePct = ((normalizedSaleUnitPrice - baselineUnitPrice) / baselineUnitPrice) * 100;
       }
     }
   }
@@ -249,19 +334,10 @@ export function classifySpecial(
       evidenceStrength,
     };
   }
-  // A sale price that is equal to, or only slightly above, the normal price
-  // is not automatically deceptive. Scrapes and retailer rounding can move
-  // a price by a few percent, so reserve Dodgy for a material increase.
-  const hasDodgySignal =
-    salePrice > normalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100) ||
-    (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD && savingPct > 0) ||
-    (inflatePct >= PUMP_INFLATION_THRESHOLD && repeatedLiftSamples >= 2 && savingPct < FAIR_THRESHOLD);
-
-  // A single long-held baseline is useful for a possible saving, but never
-  // strong enough to accuse a retailer of a Dodgy deal. Conservative stores
-  // (for example New World while its history is immature) also require the
-  // stronger multi-observation baseline before publishing any verdict.
-  if (!canPublishDirectionalVerdict || (hasDodgySignal && evidenceStrength !== "STRONG")) {
+  // A single long-held baseline can support a directional verdict when the
+  // data spans the minimum duration. Conservative stores (for example New
+  // World while its history is immature) still require stronger evidence.
+  if (!canPublishDirectionalVerdict) {
     return {
       verdict: "UNKNOWN",
       reason: "Limited price history -- more independent regular prices are needed to confirm this deal",
@@ -288,12 +364,14 @@ export function classifySpecial(
       evidenceStrength,
     };
   }
-  if (unitPriceChangePct != null && unitPriceChangePct > -SHRINKFLATION_THRESHOLD && savingPct > 0) {
+  if (
+    unitPriceChangePct != null &&
+    unitPriceChangePct > -SHRINKFLATION_THRESHOLD &&
+    savingPct >= MIN_MATERIAL_UNIT_SAVING_THRESHOLD
+  ) {
     return {
       verdict: "DODGY",
-      reason: `Pack size shrank -- the $/unit price barely moved (${
-        unitPriceChangePct >= 0 ? "+" : ""
-      }${unitPriceChangePct.toFixed(1)}%) despite the nominal ${savingPct.toFixed(1)}% saving`,
+      reason: `Unit price barely moved (${unitPriceChangePct >= 0 ? "+" : ""}${unitPriceChangePct.toFixed(1)}%) despite the nominal ${savingPct.toFixed(1)}% saving`,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,
@@ -305,13 +383,29 @@ export function classifySpecial(
     inflatePct >= PUMP_INFLATION_THRESHOLD &&
     repeatedLiftSamples >= 2 &&
     repeatedLiftSamples === preSaleRecent.length &&
-    savingPct < FAIR_THRESHOLD
+    savingPct < PUMP_MAX_APPARENT_SAVING_THRESHOLD
   ) {
     return {
       verdict: "DODGY",
       reason: `Price was raised ${inflatePct.toFixed(
         1
       )}% just before the sale -- you're only saving ${savingPct.toFixed(1)}%`,
+      normalPrice,
+      savingPct: Math.round(savingPct * 10) / 10,
+      saleStartedAt,
+      evidenceStatus: "SUFFICIENT",
+      evidenceStrength,
+    };
+  }
+  if (
+    unitPriceChangePct != null &&
+    unitPriceChangePct > -SHRINKFLATION_THRESHOLD &&
+    savingPct > 0 &&
+    savingPct < MIN_MATERIAL_UNIT_SAVING_THRESHOLD
+  ) {
+    return {
+      verdict: "FAIR",
+      reason: `Only a small saving (${savingPct.toFixed(1)}%) -- the price per ${saleUnitLabel} stayed about the same`,
       normalPrice,
       savingPct: Math.round(savingPct * 10) / 10,
       saleStartedAt,

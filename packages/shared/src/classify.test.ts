@@ -59,15 +59,15 @@ test("REAL_SAVER when one regular price was held for at least 14 days before the
   assert.equal(result.normalPrice, 10);
 });
 
-test("duration-only evidence never publishes a Dodgy verdict", () => {
+test("duration-only evidence can publish a data-supported above-normal Dodgy verdict", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [
     { scraped_at: day(now, -60), price: 10, is_special: false },
     { scraped_at: day(now, -1), price: 12, is_special: true },
   ];
   const result = classifySpecial(12, rows);
-  assert.equal(result.verdict, "UNKNOWN");
-  assert.equal(result.evidenceStatus, "LIMITED");
+  assert.equal(result.verdict, "DODGY");
+  assert.equal(result.evidenceStatus, "SUFFICIENT");
   assert.equal(result.evidenceStrength, "DURATION_ONLY");
 });
 
@@ -121,7 +121,69 @@ test("DODGY shrinkflation: nominal saving but $/unit barely moves", () => {
   // Sale unit price barely drops (< 1% threshold) despite a 20% nominal saving.
   const result = classifySpecial(8, rows, 9.95, "$/kg");
   assert.equal(result.verdict, "DODGY");
-  assert.match(result.reason, /Pack size shrank/);
+  assert.match(result.reason, /Unit price barely moved/);
+});
+
+test("keeps tiny unit-price savings fair with user-friendly wording", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -30), price: 5.5, is_special: false, unit_price: 5.5, unit_label: "100g" },
+    { scraped_at: day(now, -20), price: 5.5, is_special: false, unit_price: 5.5, unit_label: "100g" },
+    { scraped_at: day(now, -10), price: 5.5, is_special: false, unit_price: 5.5, unit_label: "100g" },
+    { scraped_at: day(now, -1), price: 5.49, is_special: true },
+  ];
+  const result = classifySpecial(5.49, rows, 5.49, "100g");
+  assert.equal(result.verdict, "FAIR");
+  assert.match(result.reason, /Only a small saving \(0.2%\).*price per 100g stayed about the same/);
+});
+
+test("normalizes convertible unit labels before checking shrinkflation", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -30), price: 10, is_special: false, unit_price: 0.50, unit_label: "100g" },
+    { scraped_at: day(now, -20), price: 10, is_special: false, unit_price: 0.50, unit_label: "100g" },
+    { scraped_at: day(now, -10), price: 10, is_special: false, unit_price: 0.50, unit_label: "100g" },
+    { scraped_at: day(now, -1), price: 8, is_special: true },
+  ];
+  const result = classifySpecial(8, rows, 4, "1kg");
+  assert.equal(result.verdict, "REAL_SAVER");
+});
+
+test("does not guess the meaning of a bare numeric unit label", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -30), price: 10, is_special: false, unit_price: 1.0, unit_label: "100" },
+    { scraped_at: day(now, -20), price: 10, is_special: false, unit_price: 1.0, unit_label: "100" },
+    { scraped_at: day(now, -10), price: 10, is_special: false, unit_price: 1.0, unit_label: "100" },
+    { scraped_at: day(now, -1), price: 8, is_special: true },
+  ];
+  const result = classifySpecial(8, rows, 0.8, "100 sheets");
+  assert.equal(result.verdict, "REAL_SAVER");
+});
+
+test("status-only special flip does not reset the price baseline", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -35), price: 5.69, is_special: false, unit_price: 0.57, unit_label: "100mL" },
+    { scraped_at: day(now, -7), price: 4.50, is_special: true, unit_price: 0.45, unit_label: "100mL" },
+    { scraped_at: day(now, -1), price: 4.50, is_special: false, unit_price: 0.45, unit_label: "100mL" },
+    { scraped_at: day(now, 0), price: 4.50, is_special: true, unit_price: 0.45, unit_label: "100mL" },
+  ];
+  const result = classifySpecial(4.50, rows, 0.45, "100mL");
+  assert.equal(result.verdict, "REAL_SAVER");
+  assert.equal(result.saleStartedAt?.getTime(), rows[1].scraped_at instanceof Date ? rows[1].scraped_at.getTime() : new Date(rows[1].scraped_at).getTime());
+  assert.doesNotMatch(result.reason, /Pack size shrank/);
+});
+
+test("one-day same-price unit baseline does not create a shrinkflation Dodgy verdict", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -31), price: 5.69, is_special: false, unit_price: 0.57, unit_label: "100mL" },
+    { scraped_at: day(now, -2), price: 4.50, is_special: false, unit_price: 0.45, unit_label: "100mL" },
+    { scraped_at: day(now, -1), price: 4.50, is_special: true, unit_price: 0.45, unit_label: "100mL" },
+  ];
+  const result = classifySpecial(4.50, rows, 0.45, "100mL");
+  assert.notEqual(result.verdict, "DODGY");
 });
 
 test("DODGY pump-and-discount: price raised just before sale, saving stays under real-saver threshold", () => {
@@ -138,6 +200,23 @@ test("DODGY pump-and-discount: price raised just before sale, saving stays under
   // are 20% higher than the earlier baseline. That is enough repeated
   // evidence for the pump-and-discount rule.
   const result = classifySpecial(4.9, rows);
+  assert.equal(result.verdict, "DODGY");
+  assert.match(result.reason, /raised/);
+});
+
+test("DODGY pump-and-discount still catches a 5% apparent saving", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -20), price: 5, is_special: false },
+    { scraped_at: day(now, -19), price: 5, is_special: false },
+    { scraped_at: day(now, -18), price: 5, is_special: false },
+    { scraped_at: day(now, -6), price: 6, is_special: false },
+    { scraped_at: day(now, -5), price: 6, is_special: false },
+    { scraped_at: day(now, -4), price: 6, is_special: false },
+    { scraped_at: day(now, -3), price: 6, is_special: false },
+    { scraped_at: day(now, -1), price: 5.7, is_special: true },
+  ];
+  const result = classifySpecial(5.7, rows);
   assert.equal(result.verdict, "DODGY");
   assert.match(result.reason, /raised/);
 });

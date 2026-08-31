@@ -5,6 +5,7 @@
   "description": "Capacitor wrapper for the iOS/Android apps. Loads apps/mobile's deployed Vercel URL remotely (see capacitor.config.ts) rather than bundling a static export — see project.md 'Native iOS/Android App' plan for why. Holds no app logic of its own.",
   "scripts": {
     "sync": "cap sync",
+    "sync:ios": "cap sync ios",
     "open:ios": "cap open ios",
     "open:android": "cap open android",
     "add:ios": "cap add ios",

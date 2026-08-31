@@ -15,6 +15,22 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * `www/` is a placeholder only — Capacitor's CLI tooling expects a webDir
  * to exist even though `server.url` overrides it at runtime.
  */
+const configuredMobileAppUrl =
+  process.env.CAPACITOR_SERVER_URL?.trim() ||
+  "https://dodgy-deal-mobile.vercel.app";
+
+let mobileAppUrl: string;
+try {
+  const parsedUrl = new URL(configuredMobileAppUrl);
+  if (parsedUrl.protocol !== "https:" || parsedUrl.hostname.endsWith(".example.com")) {
+    throw new Error("the URL must be a real HTTPS deployment, not a placeholder domain");
+  }
+  mobileAppUrl = parsedUrl.toString();
+} catch (error) {
+  const detail = error instanceof Error ? error.message : "invalid URL";
+  throw new Error(`Invalid CAPACITOR_SERVER_URL: ${detail}`);
+}
+
 const config: CapacitorConfig = {
   appId: "nz.dodgydeals.app",
   appName: "Dodgy Deals",
@@ -24,9 +40,10 @@ const config: CapacitorConfig = {
   // separate pale strip.
   backgroundColor: "#efefed",
   server: {
-    // TODO(Phase 2): point at the real production apps/mobile Vercel domain
-    // once it's deployed. Use the Vercel preview URL during development.
-    url: "https://app.dodgydeals.example.com",
+    // Set CAPACITOR_SERVER_URL to the deployed apps/mobile URL before syncing
+    // or archiving. The config intentionally has no fallback: an unreachable
+    // placeholder leaves Capacitor's launch splash visible forever.
+    url: mobileAppUrl,
     cleartext: false,
   },
   ios: {
@@ -37,11 +54,12 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: "#006948",
+      backgroundColor: "#faf9f5",
     },
     StatusBar: {
       style: "DARK",
-      backgroundColor: "#006948",
+      backgroundColor: "#17170f",
+      overlaysWebView: false,
     },
   },
 };

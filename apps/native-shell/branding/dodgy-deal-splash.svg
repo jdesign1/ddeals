@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732" role="img" aria-labelledby="title">
+  <title id="title">Dodgy Deal</title>
+  <rect width="2732" height="2732" fill="#faf9f5"/>
+
+  <!-- The source mark is the same neutral Ink logo used by the mobile app. -->
+  <image href="../../mobile/public/logo.svg" x="1086" y="700" width="560" height="560" preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- Stacked lockup follows the brand guide's 64:32 mark-to-wordmark ratio. -->
+  <text
+    x="1366"
+    y="1637"
+    text-anchor="middle"
+    fill="#17170f"
+    font-family="Manrope, Avenir Next, sans-serif"
+    font-size="280"
+    font-weight="800"
+    letter-spacing="-5.6">Dodgy Deal</text>
+</svg>

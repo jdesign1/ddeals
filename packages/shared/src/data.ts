@@ -24,7 +24,7 @@
  */
 
 import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
-import { MATERIAL_OVER_NORMAL_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
+import { MATERIAL_OVER_NORMAL_THRESHOLD, REAL_SAVER_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -41,6 +41,9 @@ export interface DodgyDealsRow {
   sale_unit_price?: number | null;
   sale_unit_label?: string | null;
   unit_price_change_pct?: number | null;
+  unit_price_samples?: number | null;
+  unit_price_coverage_days?: number | null;
+  unit_price_max_span_days?: number | null;
   history_days?: number | null;
   special_label: string | null;
   was_price: number | null;
@@ -130,6 +133,9 @@ export interface CurrentDeal {
   evidenceStrength?: EvidenceStrength | null;
   storeHistoryReady?: boolean | null;
   classifierVersion?: string | null;
+  unitPriceSamples?: number | null;
+  unitPriceCoverageDays?: number | null;
+  unitPriceMaxSpanDays?: number | null;
 }
 
 /** A sparse price/special-state transition from the retailer history table. */
@@ -220,12 +226,11 @@ export function isDodgyReviewCandidate(row: Pick<
 }
 
 /**
- * Applies the new materiality floor to legacy cache rows until the upstream
- * view/cache producer is regenerated. Older rows called every equal-or-higher
- * price Dodgy; rows that are now equal, lower, or within the 5% tolerance are
- * Fair unless their reason carries an independent unit-price or repeated-lift
- * signal. This keeps a current client from showing the old false-positive
- * verdict while the backend source is rolled forward.
+ * Keeps client-side compatibility during the view/cache rollout. Evidence-aware
+ * rows trust the backend's reason-specific verdict. Older evidence-aware cache
+ * rows that called a duration-only unit signal Dodgy are downgraded until the
+ * new unit coverage fields arrive; genuinely above-normal prices remain Dodgy.
+ * Completely legacy rows retain their old text fallback until they are replaced.
  */
 function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
   // Rows from the migration window have no evidence_status at all; preserve
@@ -233,6 +238,18 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
   // evidence may publish a directional verdict.
   if (row.evidence_status != null && row.evidence_status !== "SUFFICIENT") return "UNKNOWN";
   if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
+
+  if (
+    row.evidence_status != null &&
+    row.evidence_strength === "DURATION_ONLY" &&
+    row.unit_price_samples == null &&
+    row.classifier_version !== "20260830-v2" &&
+    row.classifier_version !== "20260830-v3" &&
+    row.classifier_version !== "20260830-v4" &&
+    row.sale_price <= row.normal_price * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)
+  ) {
+    return row.saving_pct != null && row.saving_pct >= REAL_SAVER_THRESHOLD ? "GENUINE" : "MARGINAL";
+  }
 
   const reason = (row.reason || "").toLowerCase();
   // Prefer the structured numeric signal so future retailer wording changes
@@ -245,18 +262,9 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
     row.unit_price_change_pct != null &&
     row.unit_price_change_pct > -SHRINKFLATION_THRESHOLD;
   const hasLegacyTextDodgySignal =
+    row.evidence_status == null &&
     /pack size|smaller pack|unit price|price per|\$\/unit|raised|inflated|pump/.test(reason);
   const hasIndependentDodgySignal = hasStructuredShrinkflationSignal || hasLegacyTextDodgySignal;
-
-  // Defence in depth for the permanent Dodgy safety rule. A duration-only
-  // baseline may not publish a price-pump or fake-sale accusation, but a
-  // populated unit-price comparison is an independent shrinkflation signal
-  // and must remain visible (including Woolworths' current rows).
-  if (
-    row.evidence_strength != null &&
-    row.evidence_strength !== "STRONG" &&
-    !hasStructuredShrinkflationSignal
-  ) return "UNKNOWN";
 
   const increasePct = ((row.sale_price - row.normal_price) / row.normal_price) * 100;
 
@@ -493,6 +501,9 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     evidenceStrength: row.evidence_strength ?? null,
     storeHistoryReady: row.store_history_ready ?? null,
     classifierVersion: row.classifier_version ?? null,
+    unitPriceSamples: row.unit_price_samples ?? null,
+    unitPriceCoverageDays: row.unit_price_coverage_days ?? null,
+    unitPriceMaxSpanDays: row.unit_price_max_span_days ?? null,
   };
 }
 
@@ -655,7 +666,7 @@ interface LiveProductsCacheEntry {
 }
 
 const ENRICHED_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
 
 const LEGACY_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
