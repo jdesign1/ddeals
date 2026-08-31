@@ -1205,7 +1205,7 @@ export default function DealAssessmentPage() {
               </p>
             </div>
             <div
-              className="flex items-center gap-0.5 rounded-lg bg-stone-100 p-1 shadow-inner shadow-black/5"
+              className="flex items-center gap-0.5 rounded-lg bg-stone-200 p-1 shadow-inner shadow-black/5"
               role="tablist"
               aria-label="Price history views"
             >

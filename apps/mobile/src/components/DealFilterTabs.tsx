@@ -13,7 +13,7 @@ export default function DealFilterTabs({
   value,
   onChange,
   buttonIdPrefix,
-  backgroundClassName = "bg-stone-100",
+  backgroundClassName = "bg-stone-200",
 }: {
   value: DealFilter;
   onChange: (value: DealFilter) => void;
