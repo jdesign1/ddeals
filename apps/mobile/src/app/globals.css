@@ -947,10 +947,14 @@ select {
 /* Bottom sheets must cover the fixed navigation pill, including when they
    are opened from a nested card or route. */
 .dd-bottom-sheet-backdrop {
-  z-index: 80;
+  /* Keep this above BottomNav's normal z-40 and search-active z-55 layers.
+     `!important` makes the shared layer win over each sheet's legacy
+     z-50/z-[60]/z-[70] utility class, so new sheets cannot accidentally
+     regress behind the nav by choosing a lower local value. */
+  z-index: 90 !important;
 }
 .dd-bottom-sheet {
-  z-index: 81;
+  z-index: 91 !important;
 }
 /* Keep the longest tab label inside its equal-width cell on compact iPhones. */
 @media (max-width: 360px) {

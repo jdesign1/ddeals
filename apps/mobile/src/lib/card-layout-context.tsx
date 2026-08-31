@@ -15,9 +15,9 @@ interface CardLayoutContextValue {
 const CardLayoutContext = createContext<CardLayoutContextValue | null>(null);
 
 export function CardLayoutProvider({ children }: { children: ReactNode }) {
-  // Single-column is the SSR-safe default and preserves the current layout
-  // until a saved preference is read in the browser.
-  const [cardLayout, setCardLayoutState] = useState<CardLayout>("single");
+  // Grid is the default layout. Users can switch to the single-column view
+  // from Settings, and a saved preference still takes priority in the browser.
+  const [cardLayout, setCardLayoutState] = useState<CardLayout>("grid");
 
   useEffect(() => {
     try {

@@ -3,16 +3,33 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { useRef, useState } from "react";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { usePageHeader } from "@/lib/header-context";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
-  usePageHeader("Settings", () => router.back());
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const backNavigationStartedRef = useRef(false);
+
+  const onBack = () => {
+    if (backNavigationStartedRef.current) return;
+    backNavigationStartedRef.current = true;
+    setIsNavigatingBack(true);
+    window.setTimeout(() => router.back(), 280);
+  };
+
+  usePageHeader("Settings", onBack);
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-5 pb-10">
+    <motion.main
+      initial={{ x: "100%" }}
+      animate={{ x: isNavigatingBack ? "100%" : 0 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className="min-h-full w-full flex flex-col gap-4 px-5 py-5 pb-10"
+    >
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
           <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Layout</h1>
@@ -120,6 +137,6 @@ export default function SettingsPage() {
           <span className="text-[13px] font-semibold tabular-nums text-stone-500">0.1.0</span>
         </div>
       </section>
-    </main>
+    </motion.main>
   );
 }
