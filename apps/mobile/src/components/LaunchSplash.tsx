@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import WinkMascot from "@/components/WinkMascot";
-import { useSearch } from "@/lib/search-context";
 
 const SPLASH_DURATION_MS = 4_800;
 const SPLASH_EXIT_MS = 260;
 
 /** One-time branded startup layer shown after the native launch storyboard. */
 export default function LaunchSplash() {
-  const { loadingProducts } = useSearch();
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
@@ -22,7 +20,7 @@ export default function LaunchSplash() {
   }, []);
 
   useEffect(() => {
-    if (!minimumElapsed || loadingProducts || exiting) return;
+    if (!minimumElapsed || exiting) return;
 
     let removeTimer = 0;
     const exitTimer = window.setTimeout(() => {
@@ -34,7 +32,7 @@ export default function LaunchSplash() {
       window.clearTimeout(exitTimer);
       window.clearTimeout(removeTimer);
     };
-  }, [exiting, loadingProducts, minimumElapsed]);
+  }, [exiting, minimumElapsed]);
 
   if (!visible) return null;
 

@@ -617,6 +617,7 @@ select {
 
 .launch-splash--exit {
   animation: launchSplashExit 260ms ease-out forwards;
+  pointer-events: none;
 }
 
 @keyframes launchMascotCycle {
