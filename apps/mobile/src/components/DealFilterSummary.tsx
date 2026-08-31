@@ -23,7 +23,7 @@ export default function DealFilterSummary({ filter }: { filter: DealFilter }) {
 
   return (
     <div className="space-y-2 pb-1 text-center">
-      <span className={`text-sm font-bold leading-none ${summary.textClass}`}>{summary.label}</span>
+      <span className={`text-base font-bold leading-none ${summary.textClass}`}>{summary.label}</span>
       <p className="text-[13px] leading-4 font-semibold text-stone-600">{summary.description}</p>
     </div>
   );

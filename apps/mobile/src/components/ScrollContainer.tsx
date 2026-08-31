@@ -192,7 +192,9 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       // Explicitly reserve vertical gestures for this scroll surface. This
       // keeps a drag that starts on a tappable product card from being
       // interpreted as card interaction instead of page scrolling.
-      className="mobile-scroll-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+      className={`mobile-scroll-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain transition-[background-color] duration-300 ease-out ${
+        pathname === "/" ? checkDealsSearchBackground : ""
+      }`}
       // Check Deals keeps the header/search/toolbar layout slots fixed while
       // their visual hide/show transitions run independently. The explicit
       // metrics are inherited by the sticky siblings for their fixed insets.
