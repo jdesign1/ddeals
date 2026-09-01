@@ -977,6 +977,11 @@ body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav,
 body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav {
   display: none !important;
 }
+/* Remove Safari's default tap highlight from custom segmented controls so
+   the selected segment uses the app's dark ink state consistently on iOS. */
+.dd-segmented-control {
+  -webkit-tap-highlight-color: transparent;
+}
 /* Keep the authentication tabs in one stable bottom-sheet frame. The
    sign-up form is taller than the sign-in form, so both modes share the same
    viewport-sized panel and scroll their content inside it. */
