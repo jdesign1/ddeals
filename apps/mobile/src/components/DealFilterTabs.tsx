@@ -13,7 +13,7 @@ export default function DealFilterTabs({
   value,
   onChange,
   buttonIdPrefix,
-  backgroundClassName = "bg-stone-200",
+  backgroundClassName = "bg-white ring-1 ring-stone-200",
 }: {
   value: DealFilter;
   onChange: (value: DealFilter) => void;
@@ -24,7 +24,7 @@ export default function DealFilterTabs({
     <div
       role="radiogroup"
       aria-label="Deal filters"
-      className={`dd-segmented-control flex items-center gap-0.5 rounded-lg p-1 shadow-inner shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
+      className={`dd-segmented-control flex items-center gap-0.5 rounded-lg p-1 shadow-sm shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
     >
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
