@@ -10,18 +10,20 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "a.fsimg.co.nz" },
       { protocol: "https", hostname: "placehold.co" },
     ],
-    // Product photos are independent of the frequently changing price data,
-    // so retain their transformed CDN variants for 30 days. This reduces
-    // stale re-transformations without changing catalogue refresh behavior.
-    minimumCacheTTL: 60 * 60 * 24 * 30,
+    // Product photos are independent of the frequently changing price data
+    // and the catalogue supplies a new URL when an image is replaced. Keep
+    // transformed variants for a year so stable supermarket imagery is not
+    // re-transformed every month.
+    minimumCacheTTL: 60 * 60 * 24 * 365,
     // Keep one browser format so the same remote image does not create
     // separate AVIF/WebP transformation variants.
     formats: ["image/webp"],
-    // The app is capped at 480px wide. These are the only responsive widths
-    // needed for its 1x/2x/3x mobile cards, instead of Next's desktop-wide
-    // defaults. Fixed thumbnail widths are listed separately below.
-    deviceSizes: [384, 640, 768],
-    imageSizes: [56, 64, 96, 112, 128, 192, 256],
+    // The app is capped at 480px wide. A single 512px responsive candidate
+    // covers the larger 1x/2x/3x card requests; the fixed candidates below
+    // cover the 56/64px list rows, the 90px single-layout card, and the
+    // approximately 240px grid card.
+    deviceSizes: [512],
+    imageSizes: [64, 96, 256],
     // All current optimized images use the default quality; keep the
     // allowlist explicit so future callers cannot create extra variants.
     qualities: [75],

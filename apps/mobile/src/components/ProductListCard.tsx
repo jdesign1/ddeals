@@ -176,7 +176,7 @@ export default function ProductListCard({
             alt={product.name}
             width={112}
             height={112}
-            sizes={isGridLayout ? "(max-width: 480px) 45vw, 220px" : "112px"}
+            sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "96px"}
             className="h-full w-full object-contain mix-blend-multiply"
           />
         </div>

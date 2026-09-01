@@ -53,7 +53,7 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
           src={product.image}
           alt={product.name}
           fill
-          sizes="(max-width: 480px) 50vw, 240px"
+          sizes="(max-width: 480px) 50vw, 256px"
           className="object-contain p-3"
         />
         {(isTrueSpecial || isDodgy) && (
