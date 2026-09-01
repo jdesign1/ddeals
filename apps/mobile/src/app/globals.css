@@ -945,16 +945,25 @@ select {
 }
 
 /* Bottom sheets must cover the fixed navigation pill, including when they
-   are opened from a nested card or route. */
+   are opened from a nested card or route. The portal layer establishes a
+   viewport-level stacking context above all app chrome; this matters on iOS
+   where a route or animated ancestor can otherwise constrain a fixed sheet's
+   z-index even when the sheet itself has a larger value. */
+.dd-bottom-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000 !important;
+  isolation: isolate;
+  pointer-events: none;
+}
+.dd-bottom-sheet-layer > * {
+  pointer-events: auto;
+}
 .dd-bottom-sheet-backdrop {
-  /* Keep this above BottomNav's normal z-40 and search-active z-55 layers.
-     `!important` makes the shared layer win over each sheet's legacy
-     z-50/z-[60]/z-[70] utility class, so new sheets cannot accidentally
-     regress behind the nav by choosing a lower local value. */
-  z-index: 90 !important;
+  z-index: 1000 !important;
 }
 .dd-bottom-sheet {
-  z-index: 91 !important;
+  z-index: 1001 !important;
 }
 /* Keep the authentication tabs in one stable bottom-sheet frame. The
    sign-up form is taller than the sign-in form, so both modes share the same
