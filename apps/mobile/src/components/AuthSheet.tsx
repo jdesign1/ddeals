@@ -162,7 +162,7 @@ export default function AuthSheet({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0.5 }}
             transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className={`dd-bottom-sheet fixed bottom-0 left-0 right-0 z-[71] mx-auto flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-x border-t border-stone-200 bg-white shadow-2xl ${mode === "signin" ? "min-h-0" : "min-h-[45vh]"}`}
+            className="dd-bottom-sheet dd-auth-sheet fixed bottom-0 left-0 right-0 z-[71] mx-auto flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-x border-t border-stone-200 bg-white shadow-2xl"
           >
             <div className="flex flex-shrink-0 items-center justify-between px-6 py-4">
               <div className="flex items-center gap-3">
@@ -316,7 +316,7 @@ export default function AuthSheet({
 
             <div
               ref={formScrollRef}
-              className={`p-6 ${mode === "signin" ? "flex-none overflow-hidden" : "min-h-0 flex-1 overflow-y-auto"}`}
+              className="min-h-0 flex-1 overflow-y-auto p-6"
             >
               <AuthPanel prompt={prompt} onSuccess={onClose} mode={mode} onModeChange={setMode} />
             </div>

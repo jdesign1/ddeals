@@ -956,6 +956,12 @@ select {
 .dd-bottom-sheet {
   z-index: 91 !important;
 }
+/* Keep the authentication tabs in one stable bottom-sheet frame. The
+   sign-up form is taller than the sign-in form, so both modes share the same
+   viewport-sized panel and scroll their content inside it. */
+.dd-auth-sheet {
+  height: 92dvh;
+}
 /* Keep the longest tab label inside its equal-width cell on compact iPhones. */
 @media (max-width: 360px) {
   .bottom-nav-tab {
