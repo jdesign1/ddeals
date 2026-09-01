@@ -167,28 +167,49 @@ export default function ProductListCard({
           text sits underneath it. */}
       <div
         className={`flex flex-shrink-0 select-none items-center justify-center bg-stone-50 ${
-          isGridLayout ? "aspect-[5/3] w-full p-3" : "h-[115px] w-36 p-3"
+          isGridLayout ? "aspect-[5/2.75] w-full p-3" : "h-[96px] w-36 p-2.5"
         }`}
       >
-        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isGridLayout ? "h-full w-full" : "h-[90px] w-[90px]"}`}>
+        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isGridLayout ? "h-full w-full" : "h-[76px] w-[76px]"}`}>
           <Image
             src={product.image}
             alt={product.name}
             width={112}
             height={112}
             sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "96px"}
-            className="h-full w-full object-contain mix-blend-multiply"
+            className={`h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
           />
         </div>
       </div>
       <div
         className={`flex min-w-0 flex-1 flex-col justify-center bg-white ${
           isGridLayout
-            ? `px-3 pb-9 ${alsoSpecialStores.length > 0 ? "pt-4" : "pt-3"}`
-            : `pl-4 pr-9 ${alsoSpecialStores.length > 0 ? "py-8" : "py-5"}`
+            ? "px-3 pb-8 pt-3"
+            : "pb-8 pl-4 pr-9 pt-4"
         }`}
       >
-        <div className={`flex flex-col justify-center gap-0.5 ${alsoSpecialStores.length > 0 ? "flex-1" : ""}`}>
+        <div className="flex flex-col justify-center gap-0.5">
+        {/* Retailer badges sit immediately above the product name so the
+            bottom-right verdict badge has its own clear area. The main
+            retailer is followed inline by any other supermarkets carrying
+            the same product on special. */}
+        <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className={`shrink-0 select-none rounded-md px-2 py-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
+            {storeMeta.short}
+          </span>
+          {alsoSpecialStores.map((store) => {
+            const meta = getStoreLogoMeta(store);
+            return (
+              <span
+                key={store}
+                title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
+                className={`shrink-0 select-none rounded-md px-2 py-1 dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
+              >
+                {meta.short}
+              </span>
+            );
+          })}
+        </div>
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same
@@ -218,23 +239,6 @@ export default function ProductListCard({
           </span>
         </div>
         </div>
-        {alsoSpecialStores.length > 0 && (
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-[10px]">
-            <span className="shrink-0 dd-type-meta text-stone-600">Also at:</span>
-            {alsoSpecialStores.map((store) => {
-              const meta = getStoreLogoMeta(store);
-              return (
-                <div
-                  key={store}
-                  title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                  className={`select-none rounded-md px-2 py-1 dd-type-badge ${meta.bg} ${meta.text}`}
-                >
-                  {meta.short}
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
@@ -254,17 +258,6 @@ export default function ProductListCard({
           </span>
         )}
       </div>
-      {/* Supermarket badge -- moved top-left (2026-08-12, per Jay's ask; was
-          bottom-left, alongside the dodgy/real/fair verdict badge which
-          stays bottom-right, unchanged). Sits opposite `AddToListButton`
-          (top-2 right-2), over the product image's top-left corner the
-          same way DealCard.tsx's own verdict badge already sits over its
-          image. */}
-      <span
-        className={`absolute left-3 top-2 z-10 select-none rounded-md px-2 py-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}
-      >
-        {storeMeta.short}
-      </span>
     </div>
   );
 }
