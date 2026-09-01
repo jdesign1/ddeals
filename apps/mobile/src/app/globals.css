@@ -965,6 +965,14 @@ select {
 .dd-bottom-sheet {
   z-index: 1001 !important;
 }
+/* WKWebView can still paint the fixed bottom navigation above a portalized
+   sheet despite the sheet's stacking layer. Hide the global nav whenever a
+   bottom-sheet panel is mounted so it cannot cover the sheet or receive
+   touches intended for the sheet. `display: none` removes its render,
+   accessibility, and hit-testing layers while the panel is open. */
+body:has(.dd-bottom-sheet) .app-bottom-nav {
+  display: none !important;
+}
 /* Keep the authentication tabs in one stable bottom-sheet frame. The
    sign-up form is taller than the sign-in form, so both modes share the same
    viewport-sized panel and scroll their content inside it. */

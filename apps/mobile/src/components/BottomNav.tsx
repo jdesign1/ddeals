@@ -229,7 +229,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className={`fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${
+      className={`app-bottom-nav fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${
         isSearchActive ? "z-[55]" : "z-40"
       }`}
     >
