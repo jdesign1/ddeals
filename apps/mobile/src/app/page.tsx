@@ -418,6 +418,7 @@ export default function HomePage() {
             onCategoryFilterChange={setDealCategoryFilter}
             availableCategories={availableCategories}
             categoryCounts={categoryCounts}
+            revealPersistenceKey={`check-deals:${selectedStores.join(",")}:${dealFilter}:${dealSortBy}:${dealCategoryFilter.join(",")}`}
           />
         </>
       )}
@@ -551,6 +552,7 @@ function TrendingSection({
   onCategoryFilterChange,
   availableCategories,
   categoryCounts,
+  revealPersistenceKey,
 }: {
   deals: FlatDeal[];
   filter: DealFilter;
@@ -560,6 +562,7 @@ function TrendingSection({
   onCategoryFilterChange: (value: string[]) => void;
   availableCategories: string[];
   categoryCounts: Map<string, number>;
+  revealPersistenceKey: string;
 }) {
   const { isGridLayout } = useCardLayout();
   const noResultsIllustration = (
@@ -604,6 +607,7 @@ function TrendingSection({
     chunkSize: TRENDING_PAGE_SIZE,
     maxItems: INFINITE_REVEAL_MAX_ITEMS,
     resetKey: sorted,
+    persistenceKey: revealPersistenceKey,
   });
   const visible = sorted.slice(0, visibleCount);
 

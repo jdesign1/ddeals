@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
@@ -50,6 +50,8 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pullDistanceRef = useRef(0);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollTopRef = useRef(0);
+  const checkDealsScrollTopRef = useRef(0);
+  const previousPathnameRef = useRef(pathname);
   const headerHiddenRef = useRef(false);
   const headerScrollAnchorRef = useRef(0);
   const headerAnimationGuardRef = useRef(false);
@@ -63,6 +65,46 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [chromeHeight, setChromeHeight] = useState(128);
   const checkDealsSearchBackground =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "bg-stone-100";
+
+  // The outer scroll surface stays mounted while App Router swaps the Home
+  // page for a deal page. Save Check Deals' last position independently of
+  // the live element because iOS clamps that element when the deal content
+  // replaces the longer list. Restore after the route returns, with one
+  // extra frame for the list's preserved reveal count to be in the DOM.
+  useLayoutEffect(() => {
+    const previousPathname = previousPathnameRef.current;
+    previousPathnameRef.current = pathname;
+
+    if (previousPathname === "/" && pathname !== "/") {
+      checkDealsScrollTopRef.current = lastScrollTopRef.current;
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      return;
+    }
+
+    if (pathname !== "/" || previousPathname === "/") return;
+
+    let secondFrame: number | null = null;
+    const restore = () => {
+      const element = scrollRef.current;
+      if (!element) return;
+      const top = Math.min(checkDealsScrollTopRef.current, Math.max(0, element.scrollHeight - element.clientHeight));
+      element.scrollTop = top;
+      lastScrollTopRef.current = top;
+      publishCheckDealsScrollPosition(top);
+    };
+
+    restore();
+    const firstFrame = window.requestAnimationFrame(() => {
+      restore();
+      secondFrame = window.requestAnimationFrame(restore);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [pathname]);
+
   useEffect(
     () => () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -117,6 +159,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const handleScroll = () => {
     const currentScrollTop = scrollRef.current?.scrollTop ?? 0;
     lastScrollTopRef.current = currentScrollTop;
+    if (pathname === "/") checkDealsScrollTopRef.current = currentScrollTop;
     publishCheckDealsScrollPosition(currentScrollTop);
 
     if (pathname !== "/") return;

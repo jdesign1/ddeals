@@ -75,9 +75,21 @@ interface UseInfiniteRevealArgs {
    * changes — pass the memoized result array itself (see top-of-file
    * comment), not a derived primitive. */
   resetKey: unknown;
+  /** Optional stable key for keeping the revealed count when a route
+   * temporarily unmounts the list (for example, while opening a deal and
+   * returning to Check Deals). The key should include the list's filters and
+   * sort order so a different result set still starts at its first page. */
+  persistenceKey?: string;
 }
 
-export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey }: UseInfiniteRevealArgs): {
+// App-router route changes unmount Home's list, but the user experience for
+// returning from a deal should be the same as returning to the existing list.
+// Keep this small in-memory cache alongside the hook rather than using
+// sessionStorage: it survives the route transition in the iOS webview without
+// serialising the result set or leaking state across a fresh app launch.
+const persistedVisibleCounts = new Map<string, number>();
+
+export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey, persistenceKey }: UseInfiniteRevealArgs): {
   visibleCount: number;
   /** Ref callback — attach to the sentinel element that should trigger the
    * next reveal when it scrolls into view. */
@@ -87,7 +99,9 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey }:
    * instead of a sentinel (there's nothing left this hook will reveal). */
   isCapped: boolean;
 } {
-  const [visibleCount, setVisibleCount] = useState(chunkSize);
+  const [visibleCount, setVisibleCount] = useState(() =>
+    persistenceKey ? persistedVisibleCounts.get(persistenceKey) ?? chunkSize : chunkSize
+  );
 
   // Kept current every render so the IntersectionObserver callback below
   // (attached once per sentinel-mount via the ref callback, not re-created
@@ -99,9 +113,11 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey }:
   const totalCountRef = useRef(totalCount);
   const chunkSizeRef = useRef(chunkSize);
   const maxItemsRef = useRef(maxItems);
+  const persistenceKeyRef = useRef(persistenceKey);
   totalCountRef.current = totalCount;
   chunkSizeRef.current = chunkSize;
   maxItemsRef.current = maxItems;
+  persistenceKeyRef.current = persistenceKey;
 
   // Guards against one scroll gesture firing the observer callback more
   // than once before `visibleCount`'s DOM growth has had a chance to move
@@ -111,7 +127,9 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey }:
   const loadingRef = useRef(false);
 
   useEffect(() => {
-    setVisibleCount(chunkSize);
+    const restoredCount = persistenceKey ? persistedVisibleCounts.get(persistenceKey) ?? chunkSize : chunkSize;
+    setVisibleCount(restoredCount);
+    if (persistenceKey) persistedVisibleCounts.set(persistenceKey, restoredCount);
     // Deliberately NOT depending on totalCount/maxItems here -- resetKey
     // (the memoized result array itself) already changes exactly when the
     // result set does, and chunkSize is the one other value a caller might
@@ -120,7 +138,7 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey }:
     // two different page sizes for what can otherwise be the same resetKey
     // shape) and should also restart the reveal from the top.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey, chunkSize]);
+  }, [resetKey, chunkSize, persistenceKey]);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useCallback((node: HTMLDivElement | null) => {
@@ -131,9 +149,11 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey }:
       (entries) => {
         if (!entries[0]?.isIntersecting || loadingRef.current) return;
         loadingRef.current = true;
-        setVisibleCount((prev) =>
-          Math.min(prev + chunkSizeRef.current, totalCountRef.current, maxItemsRef.current)
-        );
+        setVisibleCount((prev) => {
+          const next = Math.min(prev + chunkSizeRef.current, totalCountRef.current, maxItemsRef.current);
+          if (persistenceKeyRef.current) persistedVisibleCounts.set(persistenceKeyRef.current, next);
+          return next;
+        });
         // Released next frame -- long enough for the just-grown DOM to push
         // the sentinel out of the viewport in the normal case, short enough
         // that a sentinel still genuinely on-screen (short chunk, tall

@@ -231,9 +231,28 @@ export default function FullScreenSearch() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   useLayoutEffect(() => {
-    if (isOpen && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = lastScrollTopRef.current;
-    }
+    if (!isOpen) return;
+
+    // On iOS, the overlay's scroll content can finish its first layout one
+    // frame after the fixed container is mounted. Retry across two frames so
+    // a deep result offset is not clamped against that initial layout.
+    let secondFrame: number | null = null;
+    const restore = () => {
+      const element = scrollContainerRef.current;
+      if (!element) return;
+      element.scrollTop = Math.min(lastScrollTopRef.current, Math.max(0, element.scrollHeight - element.clientHeight));
+    };
+
+    restore();
+    const firstFrame = window.requestAnimationFrame(() => {
+      restore();
+      secondFrame = window.requestAnimationFrame(restore);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+    };
   }, [isOpen]);
 
   // Toolbar (the tab track + StorePill row above each list) show/hide on
