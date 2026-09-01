@@ -763,7 +763,7 @@ export default function AuthPanel({
       : "Login to Dodgy deals with your email and password";
 
   return (
-    <div className={`flex flex-col gap-4 ${mode === "signup" ? "min-h-full" : ""}`}>
+    <div className="flex min-h-full flex-col gap-4">
       {/* The illustration belongs to the Login experience only; the Create account
           tab keeps the form focused and avoids repeating the artwork. */}
       {mode === "signin" && authIllustration}
@@ -771,7 +771,7 @@ export default function AuthPanel({
       <form
         onSubmit={handleSubmit}
         noValidate
-        className={`flex flex-col gap-3 ${mode === "signup" ? "min-h-full flex-1" : ""}`}
+        className="flex min-h-full flex-1 flex-col gap-3"
       >
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login
             tab move email and password fields to the top below the log in
@@ -779,9 +779,9 @@ export default function AuthPanel({
             order (Name/Select age/NZ ZIP Code, Email, Password, Confirm
             Password); sign-in surfaces Email/Password FIRST (right after
             the prompt paragraph above, when there is one), with the other
-            sign-in keeps only the fields it uses, so its sheet can wrap
-            tightly around the actual login content instead of retaining
-            sign-up-only empty space. */}
+            sign-in keeps only the fields it uses, while both modes retain
+            the same full-height action frame so the primary button stays
+            anchored at the bottom of the sheet. */}
         {mode === "signup" ? (
           <>
             {extraFieldsBlock}
