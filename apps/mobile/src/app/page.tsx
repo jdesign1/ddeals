@@ -31,6 +31,7 @@ import {
 } from "@/lib/scroll-events";
 import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -476,9 +477,10 @@ function SortDropdown<T extends string>({
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
-      <AnimatePresence>
-        {isOpen && (
-          <>
+      <BottomSheetPortal open={isOpen}>
+        <AnimatePresence>
+          {isOpen && (
+            <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -536,9 +538,10 @@ function SortDropdown<T extends string>({
                 })}
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
     </>
   );
 }
@@ -682,9 +685,10 @@ function TrendingSection({
           )}
         </>
       )}
-      <AnimatePresence>
-        {isCategorySheetOpen && (
-          <>
+      <BottomSheetPortal open={isCategorySheetOpen}>
+        <AnimatePresence>
+          {isCategorySheetOpen && (
+            <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -776,9 +780,10 @@ function TrendingSection({
                 </button>
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
     </section>
   );
 }

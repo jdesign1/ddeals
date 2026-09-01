@@ -26,6 +26,7 @@ import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -1341,9 +1342,10 @@ export default function FullScreenSearch() {
                    independently `fixed` (not nested in a flex `items-end`
                    wrapper the way this used to be) so the panel's own
                    transform animates freely. */}
-          <AnimatePresence>
-            {categorySheetTarget !== null && (
-              <>
+          <BottomSheetPortal open={categorySheetTarget !== null}>
+            <AnimatePresence>
+              {categorySheetTarget !== null && (
+                <>
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1444,9 +1446,10 @@ export default function FullScreenSearch() {
                     </button>
                   </div>
                 </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+                </>
+              )}
+            </AnimatePresence>
+          </BottomSheetPortal>
 
           {/* Sort bottom sheet (2026-08-13, per Jay's ask) -- same
               scrim + spring slide-up pattern as the Categories sheet right
@@ -1457,9 +1460,10 @@ export default function FullScreenSearch() {
               the sheet immediately (matching the native `<select>` this
               replaced -- picking an option there closed the picker too),
               no separate "Done" footer needed. */}
-          <AnimatePresence>
-            {sortSheetTarget !== null && activeSortConfig && (
-              <>
+          <BottomSheetPortal open={sortSheetTarget !== null && activeSortConfig !== null}>
+            <AnimatePresence>
+              {sortSheetTarget !== null && activeSortConfig && (
+                <>
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1511,9 +1515,10 @@ export default function FullScreenSearch() {
                     })}
                   </div>
                 </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+                </>
+              )}
+            </AnimatePresence>
+          </BottomSheetPortal>
         </motion.div>
       )}
     </AnimatePresence>

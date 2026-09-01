@@ -9,6 +9,7 @@ import { ArrowLeft, X, UserCog, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -404,9 +405,10 @@ export default function AppHeader({
     {/* Keep the profile overlay outside `.app-header-shell` so the sheet is
         independent from the sticky header's hide/show transform and can
         always cover the full viewport. */}
-    <AnimatePresence>
-      {isMenuOpen && (
-        <>
+    <BottomSheetPortal open={isMenuOpen}>
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
           <motion.div
             key="profile-menu-scrim"
             initial={{ opacity: 0 }}
@@ -537,9 +539,10 @@ export default function AppHeader({
               )}
             </div>
           </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </AnimatePresence>
+    </BottomSheetPortal>
     </>
   );
 }

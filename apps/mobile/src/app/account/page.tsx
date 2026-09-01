@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import LoadingMascot from "@/components/LoadingMascot";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { useAuth } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
 
@@ -116,9 +117,10 @@ export default function AccountPage() {
       </button>
       </main>
 
-      <AnimatePresence>
-        {isLogoutSheetOpen && (
-          <>
+      <BottomSheetPortal open={isLogoutSheetOpen}>
+        <AnimatePresence>
+          {isLogoutSheetOpen && (
+            <>
             <motion.button
               type="button"
               aria-label="Close log out confirmation"
@@ -164,9 +166,10 @@ export default function AccountPage() {
                 </button>
               </div>
             </motion.section>
-          </>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
     </>
   );
 }

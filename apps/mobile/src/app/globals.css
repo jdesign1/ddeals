@@ -966,11 +966,15 @@ select {
   z-index: 1001 !important;
 }
 /* WKWebView can still paint the fixed bottom navigation above a portalized
-   sheet despite the sheet's stacking layer. Hide the global nav whenever a
-   bottom-sheet panel is mounted so it cannot cover the sheet or receive
-   touches intended for the sheet. `display: none` removes its render,
-   accessibility, and hit-testing layers while the panel is open. */
-body:has(.dd-bottom-sheet) .app-bottom-nav {
+   sheet despite the sheet's stacking layer. Hide the global nav while a
+   sheet is open so it cannot cover the sheet or receive its touches.
+   `data-sheet-open` changes as soon as the close action runs, before
+   AnimatePresence finishes the panel's exit animation, so the nav returns
+   almost immediately instead of waiting for the exit animation to unmount
+   the panel. The second selector preserves the same behavior for legacy
+   non-portal sheets. */
+body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav,
+body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav {
   display: none !important;
 }
 /* Keep the authentication tabs in one stable bottom-sheet frame. The

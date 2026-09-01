@@ -14,12 +14,20 @@ const getServerSnapshot = () => false;
  * intact for enter/exit animations. The wrapper also gives every sheet a
  * shared viewport-level stacking layer above the fixed bottom navigation.
  */
-export default function BottomSheetPortal({ children }: { children: ReactNode }) {
+export default function BottomSheetPortal({
+  children,
+  open,
+}: {
+  children: ReactNode;
+  open: boolean;
+}) {
   const mounted = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 
   if (!mounted) return null;
   return createPortal(
-    <div className="dd-bottom-sheet-layer">{children}</div>,
+    <div className="dd-bottom-sheet-layer" data-sheet-open={open ? "true" : "false"}>
+      {children}
+    </div>,
     document.body,
   );
 }
