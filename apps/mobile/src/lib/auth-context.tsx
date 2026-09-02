@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@dodgey-deals/shared";
 import { getSupabaseClient } from "./supabase-client";
 
@@ -60,6 +60,8 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** Login event metadata used by the global welcome toast. */
+  loginNotice: { id: number; since: number | null } | null;
   /** Whether the global auth bottom sheet (`AuthSheet.tsx`) is open. */
   isAuthSheetOpen: boolean;
   /** The prompt text shown inside the sheet -- whichever page's `openAuthSheet` call last set it. */
@@ -95,6 +97,18 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const LAST_LOGIN_STORAGE_KEY = "dd-last-login-at";
+
+function readLastLoginAt(): number | null {
+  if (typeof window === "undefined") return null;
+  const value = Number(window.localStorage.getItem(LAST_LOGIN_STORAGE_KEY));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function writeLastLoginAt(): void {
+  if (typeof window !== "undefined") window.localStorage.setItem(LAST_LOGIN_STORAGE_KEY, String(Date.now()));
+}
 
 /**
  * Dev-only "test account" button (2026-08-09, per Jay's ask: "create a fake
@@ -155,8 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loginNotice, setLoginNotice] = useState<{ id: number; since: number | null } | null>(null);
   const [isAuthSheetOpen, setIsAuthSheetOpen] = useState(false);
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
+  const pendingLoginRef = useRef(false);
+  const pendingLoginSinceRef = useRef<number | null>(null);
 
   useEffect(() => {
     const client = getSupabaseClient();
@@ -178,6 +195,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // state back to null -- removed 2026-08-13 along with the fake login
     // itself, see this file's top-of-file doc comment).
     const { data: subscription } = client.auth.onAuthStateChange((_event, newSession) => {
+      if (_event === "SIGNED_IN" && pendingLoginRef.current) {
+        setLoginNotice({ id: Date.now(), since: pendingLoginSinceRef.current });
+        pendingLoginRef.current = false;
+        pendingLoginSinceRef.current = null;
+      }
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setLoading(false);
@@ -194,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       session,
       loading,
+      loginNotice,
       isAuthSheetOpen,
       authSheetPrompt,
       openAuthSheet: (prompt) => {
@@ -216,7 +239,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       signIn: async (email, password) => {
         const client = getSupabaseClient();
+        pendingLoginSinceRef.current = readLastLoginAt();
+        pendingLoginRef.current = true;
         const { error } = await client.auth.signInWithPassword({ email, password });
+        if (error) {
+          pendingLoginRef.current = false;
+          pendingLoginSinceRef.current = null;
+        } else {
+          writeLastLoginAt();
+        }
         return { error: error ? error.message : null };
       },
       signOut: async () => {
@@ -240,13 +271,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: null };
         }
         const client = getSupabaseClient();
+        pendingLoginSinceRef.current = readLastLoginAt();
+        pendingLoginRef.current = true;
         const { error } = await client.auth.signInAnonymously({
           options: { data: { full_name: "Test Shopper" } },
         });
+        if (error) {
+          pendingLoginRef.current = false;
+          pendingLoginSinceRef.current = null;
+        } else {
+          writeLastLoginAt();
+        }
         return { error: error ? error.message : null };
       },
     }),
-    [user, session, loading, isAuthSheetOpen, authSheetPrompt]
+    [user, session, loading, loginNotice, isAuthSheetOpen, authSheetPrompt]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

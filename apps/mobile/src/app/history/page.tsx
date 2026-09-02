@@ -200,9 +200,6 @@ export default function HistoryPage() {
           sites for the full "why" (same change, same reasoning, all 3
           branches of this page). */}
       <header className="flex flex-col gap-3 px-5 pt-6">
-        <p className="text-sm leading-relaxed text-stone-600">
-          Every supermarket deal and price you&rsquo;ve checked, most recent first.
-        </p>
         <div className="flex items-center rounded-full border border-transparent bg-white py-2.5 pl-5 pr-3 shadow-sm transition-colors focus-within:border-stone-900">
           <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
           <input
@@ -213,6 +210,9 @@ export default function HistoryPage() {
             className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
           />
         </div>
+        <p className="text-center text-sm leading-relaxed text-stone-600">
+          Every supermarket deal and price you&rsquo;ve checked, most recent first.
+        </p>
       </header>
 
       {isAnonymousSession && (

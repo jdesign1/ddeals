@@ -638,7 +638,7 @@ export default function FullScreenSearch() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
           className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-[background-color] duration-300 ease-out ${
-            dealFilterTintClass || "bg-stone-50"
+            dealFilterTintClass || "page-paper-surface"
           } ${
             categorySheetTarget !== null || sortSheetTarget !== null ? "z-[70]" : "z-50"
           }`}
@@ -908,7 +908,7 @@ export default function FullScreenSearch() {
                     `isActive`. */}
                 <div
                   className={`sticky top-0 z-20 -mx-5 grid overflow-hidden px-5 transition-[grid-template-rows,padding-top,background-color] duration-300 ease-out ${
-                    dealFilterTintClass || "bg-stone-50"
+                    dealFilterTintClass || "page-paper-surface"
                   } ${isToolbarVisible ? "pt-4" : "pt-0"}`}
                   style={{ gridTemplateRows: isToolbarVisible ? "1fr" : "0fr" }}
                 >
@@ -1173,7 +1173,7 @@ export default function FullScreenSearch() {
                     // of bug `pt-1`/`pt-4` just above had with padding.
                     // Dropped to no border at all when collapsed.
                     className={`sticky top-0 z-20 -mx-5 grid overflow-hidden px-5 transition-[grid-template-rows,padding-top,background-color] duration-300 ease-out ${
-                      dealFilterTintClass || "bg-stone-50"
+                      dealFilterTintClass || "page-paper-surface"
                     } ${
                       isToolbarVisible ? "border-b border-stone-200 pt-1" : "border-none pt-0"
                     }`}

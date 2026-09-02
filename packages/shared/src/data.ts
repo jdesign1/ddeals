@@ -113,6 +113,8 @@ export interface CurrentDeal {
   isOnSpecial: boolean;
   saleStartedAt: string | null;
   specialEndDate: string | null;
+  /** Timestamp of the catalogue scrape that produced this current deal. */
+  scrapedAt?: string | null;
   /** Canonical retailer product page URL, when the scraper captured one. */
   productUrl?: string | null;
   /** Price History Insights (2026-08-19) -- see DodgyDealsRow's own doc
@@ -489,6 +491,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     isOnSpecial: true,
     saleStartedAt: row.sale_started_at || null,
     specialEndDate: row.special_end_date || null,
+    scrapedAt: row.cache_refreshed_at ?? null,
     productUrl: row.product_url ?? null,
     ninetyDayLow: row.price_history_90d_low ?? null,
     ninetyDayHigh: row.price_history_90d_high ?? null,

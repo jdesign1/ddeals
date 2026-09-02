@@ -6,9 +6,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, X } from "lucide-react";
+import type { ProductCard } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { useSearch } from "@/lib/search-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
@@ -171,6 +173,18 @@ function greetingName(user: { email?: string | null; user_metadata?: Record<stri
   return first || "there";
 }
 
+function countNewDeals(products: ProductCard[], since: number | null): number {
+  return products.filter((product) =>
+    product.currentDeals.some((deal) => {
+      if (since === null) return true;
+      const scrapedAt = Date.parse(deal.scrapedAt ?? "");
+      if (Number.isFinite(scrapedAt)) return scrapedAt > since;
+      const saleStartedAt = Date.parse(deal.saleStartedAt ?? "");
+      return Number.isFinite(saleStartedAt) && saleStartedAt > since;
+    })
+  ).length;
+}
+
 export default function AppHeader({
   sticky = true,
   collapseOnCheckDeals = false,
@@ -179,10 +193,25 @@ export default function AppHeader({
   collapseOnCheckDeals?: boolean;
 }) {
   const pathname = usePathname();
-  const { user, loading, isAnonymousSession, openAuthSheet } = useAuth();
+  const { user, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
   const { override } = useHeaderOverride();
+  const { products, loadingProducts } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
+  const [dismissedLoginNoticeId, setDismissedLoginNoticeId] = useState<number | null>(null);
+
+  const newDealsCount = loginNotice ? countNewDeals(products, loginNotice.since) : 0;
+  const showLoginToast =
+    !!user &&
+    !loadingProducts &&
+    !!loginNotice &&
+    loginNotice.id !== dismissedLoginNoticeId;
+
+  useEffect(() => {
+    if (!showLoginToast || !loginNotice) return;
+    const timer = window.setTimeout(() => setDismissedLoginNoticeId(loginNotice.id), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [loginNotice, showLoginToast]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
@@ -207,9 +236,7 @@ export default function AppHeader({
   const title = override
     ? override.title
     : pathname === "/"
-      ? user
-        ? `Kia ora, ${greetingName(user)}`
-        : "Dodgy Deal"
+      ? "Dodgy Deal"
       : ROUTE_TITLES[pathname] || "Dodgy Deal";
 
   const avatarInitial = user ? greetingName(user).charAt(0).toUpperCase() : null;
@@ -401,6 +428,39 @@ export default function AppHeader({
       </header>
       </div>
     </div>
+
+    <AnimatePresence>
+      {showLoginToast && loginNotice && user && (
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ type: "spring", damping: 26, stiffness: 260 }}
+          className="pointer-events-none fixed inset-x-0 z-[44] mx-auto w-full max-w-[480px] px-4"
+          style={{ top: isAnonymousSession ? "5.75rem" : "4rem" }}
+          aria-live="polite"
+        >
+          <div className="pointer-events-auto relative rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-md">
+            <div className="pr-8">
+              <p className="dd-type-control text-stone-900">
+                Kia ora, {greetingName(user)}, {newDealsCount} new deals to check!
+              </p>
+              <p className="mt-0.5 dd-type-secondary text-stone-600">
+                Let&rsquo;s see what&rsquo;s dodgy and what&rsquo;s real
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDismissedLoginNoticeId(loginNotice.id)}
+              aria-label="Dismiss new deals message"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
 
     {/* Keep the profile overlay outside `.app-header-shell` so the sheet is
         independent from the sticky header's hide/show transform and can

@@ -237,6 +237,7 @@ export default function ListsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
   const [newlyCreatedListId, setNewlyCreatedListId] = useState<string | null>(null);
+  const [expandAll, setExpandAll] = useState(true);
   const [expandAllRequest, setExpandAllRequest] = useState(0);
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
@@ -395,7 +396,12 @@ export default function ListsPage() {
   if (authLoading) {
     return (
       <main className="flex flex-col gap-3 pb-8">
-        <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
+        <SearchBar
+          variant="shadow"
+          placeholder="Search items to add to your lists"
+          sticky={false}
+          backgroundClassName="page-paper-surface"
+        />
       </main>
     );
   }
@@ -441,18 +447,24 @@ export default function ListsPage() {
 
   return (
     <main className="flex min-h-full flex-col gap-4 pb-20">
-      <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
+      <SearchBar
+        variant="shadow"
+        placeholder="Search items to add to your lists"
+        sticky={false}
+        backgroundClassName="page-paper-surface"
+      />
 
       <div className="flex items-center justify-between gap-2 px-5">
         <button
           type="button"
           onClick={() => {
+            setExpandAll((expanded) => !expanded);
             setExpandAllRequest((request) => request + 1);
           }}
           disabled={loadingLists || lists.length === 0}
           className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Expand all
+          {expandAll ? "Collapse all" : "Expand all"}
         </button>
         <button
           type="button"
@@ -523,7 +535,7 @@ export default function ListsPage() {
           >
             {sortedLists.map((list) => (
               <ListCard
-                key={`${list.id}-expanded-${expandAllRequest}`}
+                key={`${list.id}-${expandAll ? "expanded" : "collapsed"}-${expandAllRequest}`}
                 list={list}
                 items={itemsByList.get(list.id) ?? []}
                 summary={summaries.get(list.id)}
@@ -533,7 +545,7 @@ export default function ListsPage() {
                 onRename={(name) => handleRename(list.id, name)}
                 onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
                 onRefresh={reload}
-                expandAll={true}
+                expandAll={expandAll}
                 pricesLoading={loadingLists}
                 isDeleting={deletingListId === list.id}
                 isNew={newlyCreatedListId === list.id}
