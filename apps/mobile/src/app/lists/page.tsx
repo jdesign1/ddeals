@@ -237,7 +237,7 @@ export default function ListsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
   const [newlyCreatedListId, setNewlyCreatedListId] = useState<string | null>(null);
-  const [expandAll, setExpandAll] = useState(true);
+  const [expandAllRequest, setExpandAllRequest] = useState(0);
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
 
@@ -443,26 +443,27 @@ export default function ListsPage() {
     <main className="flex min-h-full flex-col gap-4 pb-20">
       <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
 
-      <div className="flex items-center justify-between gap-3 px-5">
+      <div className="flex items-center justify-between gap-2 px-5">
         <button
           type="button"
-          onClick={() => setExpandAll((expanded) => !expanded)}
+          onClick={() => {
+            setExpandAllRequest((request) => request + 1);
+          }}
           disabled={loadingLists || lists.length === 0}
-          className="dd-btn dd-btn-outline flex-1 cursor-pointer px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {expandAll ? "Collapse all" : "Expand all"}
+          Expand all
         </button>
         <button
           type="button"
           onClick={() => setIsSortSheetOpen(true)}
           disabled={loadingLists || lists.length === 0}
-          className="dd-btn dd-btn-outline flex-1 cursor-pointer px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Sort by: {sortMode === "recent" ? "Most recent" : "Most savings"}
+          <span>Sort by</span>
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
-
-      <LoadingMascot loading={loadingLists} />
 
       {isAnonymousSession && (
         // Same amber "dev tool" language/styling as AuthPanel.tsx's own
@@ -491,51 +492,57 @@ export default function ListsPage() {
         <ErrorState message="Something went wrong with your lists." detail={error} onRetry={() => reload()} />
       )}
 
-      {!loadingLists && lists.length === 0 && (
-        <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
-          <Image
-            src="/lists-login.webp"
-            alt="Dodgey mascot with an empty shopping list"
-            width={482}
-            height={512}
-            sizes="128px"
-            className="mascot-wave mb-2 h-auto w-full max-w-[8rem]"
-          />
-          <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
-          <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
-            Tap the + button below, or tap the + on a Specials card to start one.
-          </p>
+      <div className={`relative ${loadingLists ? "min-h-[112px]" : ""}`}>
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <LoadingMascot loading={loadingLists} />
         </div>
-      )}
 
-      {lists.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="flex flex-col gap-3 px-5"
-        >
-          {sortedLists.map((list) => (
-            <ListCard
-              key={`${list.id}-${expandAll ? "expanded" : "collapsed"}`}
-              list={list}
-              items={itemsByList.get(list.id) ?? []}
-              summary={summaries.get(list.id)}
-              productMeta={productMeta}
-              itemCards={itemCards}
-              onDelete={() => handleDelete(list.id)}
-              onRename={(name) => handleRename(list.id, name)}
-              onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
-              onRefresh={reload}
-              expandAll={expandAll}
-              pricesLoading={loadingLists}
-              isDeleting={deletingListId === list.id}
-              isNew={newlyCreatedListId === list.id}
-              onNewAnimationComplete={() => setNewlyCreatedListId(null)}
+        {!loadingLists && lists.length === 0 && (
+          <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
+            <Image
+              src="/lists-login.webp"
+              alt="Dodgey mascot with an empty shopping list"
+              width={482}
+              height={512}
+              sizes="128px"
+              className="mascot-wave mb-2 h-auto w-full max-w-[8rem]"
             />
-          ))}
-        </motion.div>
-      )}
+            <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>
+            <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
+              Tap the + button below, or tap the + on a Specials card to start one.
+            </p>
+          </div>
+        )}
+
+        {lists.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex flex-col gap-3 px-5"
+          >
+            {sortedLists.map((list) => (
+              <ListCard
+                key={`${list.id}-expanded-${expandAllRequest}`}
+                list={list}
+                items={itemsByList.get(list.id) ?? []}
+                summary={summaries.get(list.id)}
+                productMeta={productMeta}
+                itemCards={itemCards}
+                onDelete={() => handleDelete(list.id)}
+                onRename={(name) => handleRename(list.id, name)}
+                onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
+                onRefresh={reload}
+                expandAll={true}
+                pricesLoading={loadingLists}
+                isDeleting={deletingListId === list.id}
+                isNew={newlyCreatedListId === list.id}
+                onNewAnimationComplete={() => setNewlyCreatedListId(null)}
+              />
+            ))}
+          </motion.div>
+        )}
+      </div>
 
       {/* Create-list FAB (2026-08-14, see this file's own doc comment) --
           fixed bottom-right, same `mx-auto` capped-column trick every other
@@ -987,12 +994,8 @@ function ListCard({
                   <span className="dd-badge dd-badge-fair shrink-0">
                     -${summary.savingsAmount.toFixed(2)} saved
                   </span>
-                ) : summary?.hasPriceData ? (
-                  <span className="dd-badge dd-badge-neutral shrink-0">No savings found</span>
                 ) : (
-                  <span className="dd-badge dd-badge-neutral shrink-0">
-                    Price unavailable
-                  </span>
+                  null
                 )}
                 <ChevronDown
                   className={`ml-auto h-5 w-5 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}

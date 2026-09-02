@@ -251,7 +251,7 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${!isSearchActive ? "mt-2" : ""} ${dealFilterTintClass || "bg-stone-100"}`}
+        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
       >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
@@ -292,7 +292,7 @@ export default function HomePage() {
         <div
           className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
             dealFilterTintClass || "bg-stone-100"
-          } ${isToolbarVisible ? "pt-2" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+          } ${isToolbarVisible ? "pt-4" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
             isCheckDealsHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
           }`}
           style={{
@@ -301,9 +301,11 @@ export default function HomePage() {
           }}
         >
           {/* Keep the tabs equidistant from the search bar and supermarket
-              pills. Check Deals uses 8px of page margin + 8px of toolbar
-              padding above the tabs; this 16px row gap mirrors the full
-              screen search toolbar's spacing. */}
+              pills. Both spaces are direct 16px gaps: `pt-4` on this
+              toolbar and `space-y-4` between the two rows. Keeping both
+              measurements inside the same sticky toolbar avoids the iOS
+              scroll/reveal transition treating a parent margin differently
+              from the toolbar's own spacing. */}
           <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${isToolbarVisible ? "pb-2" : "pb-0"}`}>
             <DealFilterTabs
               value={dealFilter}

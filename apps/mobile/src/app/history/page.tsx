@@ -156,6 +156,7 @@ export default function HistoryPage() {
     });
   }, [displayHistory, searchQuery, productById]);
   const monthOptions = useMemo(() => buildHistoryMonthOptions(availableMonthKeys), [availableMonthKeys]);
+  const firstRenderableHistoryIndex = filteredHistory.findIndex((row) => productById.has(row.product_id));
 
   if (authLoading) {
     return <main className="pb-8" />;
@@ -214,48 +215,6 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      <div className="flex items-center justify-between px-5">
-        <p className="dd-type-meta dd-type-meta-strong text-stone-500">Date</p>
-        <div className="flex items-center gap-2">
-          <label className="relative flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-xs font-bold text-stone-700 shadow-sm">
-            <CalendarDays className="h-4 w-4 flex-shrink-0 text-stone-500" aria-hidden="true" />
-            {selectedMonth && <span>{formatSelectedMonth(selectedMonth)}</span>}
-            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-stone-500" aria-hidden="true" />
-            <span className="sr-only">Jump to month</span>
-            <select
-              id="history-month"
-              value={selectedMonth ?? ""}
-              onChange={(event) => {
-                setHistory(null);
-                setSelectedMonth(event.target.value || null);
-              }}
-              aria-label="Jump to month"
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            >
-              <option value="">All dates</option>
-              {monthOptions.map((month) => (
-                <option key={month.value} value={month.value} disabled={month.disabled}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {selectedMonth && (
-            <button
-              type="button"
-              onClick={() => {
-                setHistory(null);
-                setSelectedMonth(null);
-              }}
-              aria-label="Clear date filter"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-100 hover:text-stone-900"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </div>
-
       {isAnonymousSession && (
         // Same amber "dev tool" language/styling as lists/page.tsx and
         // /me's own Test Mode notice. Copy updated 2026-08-13 -- the test
@@ -309,9 +268,51 @@ export default function HistoryPage() {
               return (
                 <div key={h.id} className="flex flex-col gap-2">
                   {dayKey !== previousDayKey && (
-                    <p className="pt-2 dd-type-meta dd-type-meta-strong text-stone-500">
-                      {formatHistoryDay(h.checked_at)}
-                    </p>
+                    <div className="flex items-center justify-between gap-3 pt-2">
+                      <p className="dd-type-meta dd-type-meta-strong text-stone-500">
+                        {formatHistoryDay(h.checked_at)}
+                      </p>
+                      {index === firstRenderableHistoryIndex && (
+                        <div className="flex items-center gap-2">
+                          <label className="relative flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-xs font-bold text-stone-700 shadow-sm">
+                            <CalendarDays className="h-4 w-4 flex-shrink-0 text-stone-500" aria-hidden="true" />
+                            {selectedMonth && <span>{formatSelectedMonth(selectedMonth)}</span>}
+                            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-stone-500" aria-hidden="true" />
+                            <span className="sr-only">Jump to month</span>
+                            <select
+                              id="history-month"
+                              value={selectedMonth ?? ""}
+                              onChange={(event) => {
+                                setHistory(null);
+                                setSelectedMonth(event.target.value || null);
+                              }}
+                              aria-label="Jump to month"
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            >
+                              <option value="">All dates</option>
+                              {monthOptions.map((month) => (
+                                <option key={month.value} value={month.value} disabled={month.disabled}>
+                                  {month.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {selectedMonth && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHistory(null);
+                                setSelectedMonth(null);
+                              }}
+                              aria-label="Clear date filter"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-100 hover:text-stone-900"
+                            >
+                              <X className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                   <HistoryProductCard product={product} deal={deal} />
                 </div>

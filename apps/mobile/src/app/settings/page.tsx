@@ -46,40 +46,6 @@ export default function SettingsPage() {
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="min-h-full w-full flex flex-col gap-4 px-5 py-5 pb-10"
     >
-      {!authLoading && user && (
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Account</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-600">Manage your account details and sign-in.</p>
-          </div>
-          <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
-            <div>
-              <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
-              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{user.email}</p>
-            </div>
-            {user.created_at && (
-              <div>
-                <p className="dd-type-meta dd-type-meta-strong text-stone-500">Member since</p>
-                <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">
-                  {new Date(user.created_at).toLocaleDateString("en-NZ", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setIsLogoutSheetOpen(true)}
-              className="dd-btn dd-btn-outline-alert mt-1 w-full cursor-pointer"
-            >
-              Log out
-            </button>
-          </div>
-        </section>
-      )}
-
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
           <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Layout</h1>
@@ -187,6 +153,40 @@ export default function SettingsPage() {
           <span className="text-[13px] font-semibold tabular-nums text-stone-500">0.1.0</span>
         </div>
       </section>
+
+      {!authLoading && user && (
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Account</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-600">Manage your account details and sign-in.</p>
+          </div>
+          <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
+            <div>
+              <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
+              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{user.email}</p>
+            </div>
+            {user.created_at && (
+              <div>
+                <p className="dd-type-meta dd-type-meta-strong text-stone-500">Member since</p>
+                <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">
+                  {new Date(user.created_at).toLocaleDateString("en-NZ", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsLogoutSheetOpen(true)}
+              className="dd-btn dd-btn-outline-alert mt-1 w-full cursor-pointer"
+            >
+              Log out
+            </button>
+          </div>
+        </section>
+      )}
 
       <BottomSheetPortal open={isLogoutSheetOpen}>
         <AnimatePresence>
