@@ -205,6 +205,7 @@ export default function AppHeader({
     !!user &&
     !loadingProducts &&
     !!loginNotice &&
+    newDealsCount > 0 &&
     loginNotice.id !== dismissedLoginNoticeId;
 
   useEffect(() => {
