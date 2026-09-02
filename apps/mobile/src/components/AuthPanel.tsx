@@ -578,7 +578,7 @@ export default function AuthPanel({
   // the pointer-events side in one attribute, so no per-field
   // `tabIndex={-1}`/`aria-hidden` needed on top of it.
   const extraFieldsBlock = (
-    <div className={`flex flex-col gap-3 ${mode === "signup" ? "" : "invisible"}`} inert={mode !== "signup"}>
+    <div className={`flex min-w-0 flex-col gap-3 ${mode === "signup" ? "" : "invisible"}`} inert={mode !== "signup"}>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="authpanel-name" className={visibleErrors.name ? errorLabelClass : labelClass}>
           {visibleErrors.name || "Name"}
@@ -607,7 +607,7 @@ export default function AuthPanel({
             inputs render their own locale placeholder, e.g. "dd/mm/yyyy",
             not a custom one) -- tapping it opens the phone's native date
             picker. */}
-        <div className="relative">
+        <div className="relative min-w-0">
           <input
             id="authpanel-dob"
             type="date"
@@ -618,7 +618,7 @@ export default function AuthPanel({
             onChange={(e) => setDateOfBirth(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, dob: true }))}
             aria-invalid={!!visibleErrors.dob}
-            className={`${visibleErrors.dob ? errorInputClass : inputClass} w-full pr-11`}
+            className={`${visibleErrors.dob ? errorInputClass : inputClass} auth-date-input min-w-0 w-full max-w-full pr-11`}
           />
           <CalendarDays
             className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500"
@@ -773,7 +773,7 @@ export default function AuthPanel({
       : "Login to Dodgy deals with your email and password";
 
   return (
-    <div className="flex min-h-full flex-col gap-4">
+    <div className="flex min-h-full min-w-0 flex-col gap-4">
       {/* The illustration belongs to the Login experience only; the Create account
           tab keeps the form focused and avoids repeating the artwork. */}
       {mode === "signin" && authIllustration}
@@ -781,7 +781,7 @@ export default function AuthPanel({
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="flex min-h-full flex-1 flex-col gap-3"
+        className="flex min-h-full min-w-0 flex-1 flex-col gap-3"
       >
         {/* Field order flips per mode (2026-08-20, per Jay: "for the login
             tab move email and password fields to the top below the log in

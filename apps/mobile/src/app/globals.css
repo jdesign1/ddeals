@@ -1103,6 +1103,14 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 .dd-auth-sheet {
   height: 92dvh;
 }
+/* iOS date inputs can retain a native intrinsic width that is wider than
+   their flex-column parent. Keep the Create account date field inside the
+   sheet while retaining the native picker behavior. */
+.auth-date-input {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
 /* Keep the longest tab label inside its equal-width cell on compact iPhones. */
 @media (max-width: 360px) {
   .bottom-nav-tab {
