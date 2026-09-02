@@ -58,7 +58,7 @@ export default function LoadingMascot({
         alt=""
         width={48}
         height={48}
-        className="h-12 w-12 flex-shrink-0 animate-mascot-turn"
+        className="theme-logo h-12 w-12 flex-shrink-0 animate-mascot-turn"
       />
     </div>
   );

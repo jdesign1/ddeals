@@ -44,7 +44,7 @@ export default function ErrorState({
         alt=""
         width={40}
         height={40}
-        className="h-10 w-10 flex-shrink-0 opacity-60 grayscale"
+        className="theme-logo h-10 w-10 flex-shrink-0 opacity-60 grayscale"
         aria-hidden="true"
       />
       <div className="max-w-xs px-4">

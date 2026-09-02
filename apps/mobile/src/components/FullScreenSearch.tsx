@@ -760,7 +760,7 @@ export default function FullScreenSearch() {
                   is); this was `Search`'s only usage in this file, so it's
                   dropped from the `lucide-react` import above rather than
                   left there unused. */}
-              <Image src="/logo.svg" alt="" width={22} height={22} className="mr-3 h-[22px] w-[22px] flex-shrink-0" />
+              <Image src="/logo.svg" alt="" width={22} height={22} className="theme-logo mr-3 h-[22px] w-[22px] flex-shrink-0" />
               <input
                 id="full-search-input"
                 autoFocus
@@ -858,7 +858,7 @@ export default function FullScreenSearch() {
               <div>
                 {query.length > 0 && (
                   <div className="mb-8 space-y-1.5 py-4 text-center">
-                    <Image src="/logo.svg" alt="" width={40} height={40} className="mx-auto h-10 w-10 animate-logo-blink" />
+                    <Image src="/logo.svg" alt="" width={40} height={40} className="theme-logo mx-auto h-10 w-10 animate-logo-blink" />
                     <p className="dd-type-meta text-stone-500">Keep typing...</p>
                     <p className="dd-type-secondary text-stone-500">Enter at least 3 characters to see suggested items</p>
                   </div>

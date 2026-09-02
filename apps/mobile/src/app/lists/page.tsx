@@ -238,7 +238,6 @@ export default function ListsPage() {
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
   const [newlyCreatedListId, setNewlyCreatedListId] = useState<string | null>(null);
   const [expandAll, setExpandAll] = useState(true);
-  const [expandAllRequest, setExpandAllRequest] = useState(0);
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
 
@@ -459,7 +458,6 @@ export default function ListsPage() {
           type="button"
           onClick={() => {
             setExpandAll((expanded) => !expanded);
-            setExpandAllRequest((request) => request + 1);
           }}
           disabled={loadingLists || lists.length === 0}
           className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -535,7 +533,7 @@ export default function ListsPage() {
           >
             {sortedLists.map((list) => (
               <ListCard
-                key={`${list.id}-${expandAll ? "expanded" : "collapsed"}-${expandAllRequest}`}
+                key={list.id}
                 list={list}
                 items={itemsByList.get(list.id) ?? []}
                 summary={summaries.get(list.id)}
@@ -605,72 +603,74 @@ export default function ListsPage() {
           sheet already uses -- the one other sheet in this app real enough
           to call a "default" -- so this now matches it instead of
           inventing its own shorter convention. */}
-      <AnimatePresence>
-        {isCreateSheetOpen && (
-          <>
-            <motion.div
-              key="create-list-scrim"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => {
-                setIsCreateSheetOpen(false);
-                setCreateError(null);
-              }}
-              className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
-            />
-            <motion.div
-              key="create-list-sheet"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
-            >
-              <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+      <BottomSheetPortal open={isCreateSheetOpen}>
+        <AnimatePresence>
+          {isCreateSheetOpen && (
+            <>
+              <motion.div
+                key="create-list-scrim"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => {
+                  setIsCreateSheetOpen(false);
+                  setCreateError(null);
+                }}
+                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+              />
+              <motion.div
+                key="create-list-sheet"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+              >
+                <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
                 {/* Bottom-sheet title style unified app-wide 2026-08-19 --
                     was a small tracking-widest text-stone-500 eyebrow label,
                     same as AppHeader's/AddToListButton's own sheet titles
                     used to be; now a real title, same class every bottom
                     sheet's top title uses (see app/page.tsx's Sort sheet for
                     the full cross-reference). `<h3>`, not `<span>`, to match. */}
-                <h3 className="dd-type-sheet-title text-stone-900">New list</h3>
-                <button
-                  onClick={() => {
-                    setIsCreateSheetOpen(false);
-                    setCreateError(null);
-                  }}
-                  aria-label="Close"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-              <form onSubmit={handleCreate} className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
-                <input
-                  value={newListName}
-                  onChange={(e) => setNewListName(e.target.value)}
-                  placeholder="List name"
-                  autoFocus
-                  disabled={creating}
-                  className="rounded-xl border border-stone-300 px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
-                />
-                {createError && (
-                  <p className="dd-type-meta dd-type-meta-strong text-alert-700">{createError}</p>
-                )}
-                <button
-                  type="submit"
-                  disabled={creating || !newListName.trim()}
-                  className="dd-btn dd-btn-primary mt-auto mb-2 w-full cursor-pointer font-display"
-                >
-                  {creating ? "Creating…" : "Create list"}
-                </button>
-              </form>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                  <h3 className="dd-type-sheet-title text-stone-900">New list</h3>
+                  <button
+                    onClick={() => {
+                      setIsCreateSheetOpen(false);
+                      setCreateError(null);
+                    }}
+                    aria-label="Close"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                  >
+                    <X className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+                <form onSubmit={handleCreate} className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                  <input
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    placeholder="List name"
+                    autoFocus
+                    disabled={creating}
+                    className="rounded-xl border border-stone-300 px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                  />
+                  {createError && (
+                    <p className="dd-type-meta dd-type-meta-strong text-alert-700">{createError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={creating || !newListName.trim()}
+                    className="dd-btn dd-btn-primary mt-auto mb-2 w-full cursor-pointer font-display"
+                  >
+                    {creating ? "Creating…" : "Create list"}
+                  </button>
+                </form>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
 
       <BottomSheetPortal open={isSortSheetOpen}>
         <AnimatePresence>
@@ -800,6 +800,16 @@ function ListCard({
   // value each `ListCard` instance's own `useState` starts at, not
   // anything about how the toggle itself behaves.
   const [isExpanded, setIsExpanded] = useState(expandAll);
+
+  // Keep each card mounted when the page-level control changes. Remounting
+  // here would make React insert/remove the item list instantly, bypassing
+  // the AnimatePresence height transition below. A frame-delayed sync gives
+  // the current render a stable starting height, then lets every card animate
+  // its own expansion or collapse on the same frame.
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => setIsExpanded(expandAll));
+    return () => window.cancelAnimationFrame(frameId);
+  }, [expandAll]);
   const itemCount = items.length;
   const liveItems = items.filter((item) => itemCards.get(item.product_id)?.currentDeals[0]?.isOnSpecial === true);
   const notOnSpecialItems = items.filter((item) => !liveItems.includes(item));

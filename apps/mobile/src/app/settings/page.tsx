@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useCardLayout } from "@/lib/card-layout-context";
+import { useTheme } from "@/lib/theme-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useAuth } from "@/lib/auth-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -14,6 +15,7 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
+  const { isDarkMode, setTheme } = useTheme();
   const { user, loading: authLoading, signOut } = useAuth();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
@@ -72,7 +74,7 @@ export default function SettingsPage() {
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <Image src="/logo.svg" alt="" width={40} height={40} className="h-10 w-10" />
+                <Image src="/logo.svg" alt="" width={40} height={40} className="theme-logo h-10 w-10" />
               )}
             </div>
             <div className="min-w-0">
@@ -91,9 +93,9 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
-          <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Layout</h1>
+          <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Display</h1>
           <p className="mt-1 text-sm leading-6 text-stone-600">
-            Choose how deal cards are displayed across Check Deals and search.
+            Choose how the app and deal cards are displayed.
           </p>
         </div>
 
@@ -110,13 +112,37 @@ export default function SettingsPage() {
             aria-checked={isGridLayout}
             aria-label="Grid layout"
             onClick={() => setCardLayout(isGridLayout ? "single" : "grid")}
-            className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
+            className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
               isGridLayout ? "bg-ink-600" : "bg-stone-300"
             }`}
           >
             <span
               aria-hidden="true"
-              className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isGridLayout ? "translate-x-5" : "translate-x-0"}`}
+              className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isGridLayout ? "translate-x-5" : "translate-x-0"}`}
+            />
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
+          <div>
+            <p className="text-[15px] font-semibold leading-5 text-stone-900">Dark mode</p>
+            <p className="mt-1 text-[13px] leading-5 text-stone-500">
+              {isDarkMode ? "A darker appearance for low light" : "Warm paper appearance"}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isDarkMode}
+            aria-label="Dark mode"
+            onClick={() => setTheme(isDarkMode ? "light" : "dark")}
+            className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
+              isDarkMode ? "bg-ink-600" : "bg-stone-300"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isDarkMode ? "translate-x-5" : "translate-x-0"}`}
             />
           </button>
         </div>

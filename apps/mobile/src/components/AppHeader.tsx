@@ -359,7 +359,7 @@ export default function AppHeader({
                 alt=""
                 width={28}
                 height={28}
-                className={`h-7 w-7 ${pathname === "/me" ? "" : "animate-mascot-header-blink"}`}
+                className={`theme-logo h-7 w-7 ${pathname === "/me" ? "" : "animate-mascot-header-blink"}`}
               />
             </Link>
           )}

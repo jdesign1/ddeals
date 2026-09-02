@@ -22,7 +22,7 @@ export default function FilterPill({
       onClick={onClick}
       aria-pressed={active}
       className="shrink-0 rounded-full px-3.5 py-1.5 dd-type-control shadow-sm"
-      style={active ? { backgroundColor: "var(--color-brand-primary)", color: "white" } : { color: "#57534e" }}
+      style={active ? { backgroundColor: "var(--color-brand-primary)", color: "white" } : { color: "var(--dd-nav-inactive)" }}
     >
       {label}
     </button>

@@ -150,8 +150,8 @@ export default function PriceHistoryChart({
             const y = yFor(value);
             return (
               <g key={value}>
-                <line x1={PLOT_LEFT} x2={PLOT_RIGHT} y1={y} y2={y} stroke="#e7e5e4" strokeDasharray="3 4" />
-                <text x={PLOT_LEFT - 6} y={y + 4} textAnchor="end" fontSize="12" fill="#57534e">
+                <line x1={PLOT_LEFT} x2={PLOT_RIGHT} y1={y} y2={y} stroke="var(--dd-chart-grid)" strokeDasharray="3 4" />
+                <text x={PLOT_LEFT - 6} y={y + 4} textAnchor="end" fontSize="12" fill="var(--dd-chart-axis)">
                   ${value.toFixed(2)}
                 </text>
               </g>
@@ -167,7 +167,7 @@ export default function PriceHistoryChart({
                 x2={next.x}
                 y1={coordinate.y}
                 y2={next.y}
-                stroke={coordinate.point.isSpecial ? "#15803d" : "#a8a29e"}
+                stroke={coordinate.point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
                 strokeWidth="3"
                 strokeLinecap="round"
                 initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
@@ -186,8 +186,8 @@ export default function PriceHistoryChart({
               <motion.circle
                 cx={x}
                 cy={y}
-                fill={point.isSpecial ? "#16a34a" : "#78716c"}
-                stroke="#fafaf9"
+                fill={point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
+                stroke="var(--dd-chart-point-stroke)"
                 strokeWidth="2"
                 initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
                 animate={{ r: 5, opacity: 1 }}
@@ -203,10 +203,10 @@ export default function PriceHistoryChart({
             </g>
           ))}
 
-          <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="12" fontWeight="700" fill="#57534e">
+          <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="12" fontWeight="700" fill="var(--dd-chart-axis)">
             90 days ago
           </text>
-          <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 28} textAnchor="end" fontSize="12" fontWeight="700" fill="#57534e">
+          <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 28} textAnchor="end" fontSize="12" fontWeight="700" fill="var(--dd-chart-axis)">
             Today
           </text>
         </svg>

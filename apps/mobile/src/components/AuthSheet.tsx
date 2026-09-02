@@ -184,7 +184,7 @@ export default function AuthSheet({
                     picking an arbitrary new size, since the doc comment
                     right above already claims parity with that mark and
                     20px never actually matched it. */}
-                <Image src="/logo.svg" alt="" width={28} height={28} className="h-7 w-7 flex-shrink-0" />
+                <Image src="/logo.svg" alt="" width={28} height={28} className="theme-logo h-7 w-7 flex-shrink-0" />
                 {/* Bottom-sheet title style unified app-wide 2026-08-19 --
                     was a static "Log in", now switches with `mode` and uses
                     the same text-lg/font-black/tracking-tight class every

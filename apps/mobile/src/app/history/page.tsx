@@ -199,7 +199,7 @@ export default function HistoryPage() {
       {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>` call
           sites for the full "why" (same change, same reasoning, all 3
           branches of this page). */}
-      <header className="flex flex-col gap-3 px-5 pt-6">
+      <header className="flex flex-col gap-4 px-5 pt-6">
         <div className="flex items-center rounded-full border border-transparent bg-white py-2.5 pl-5 pr-3 shadow-sm transition-colors focus-within:border-stone-900">
           <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
           <input
@@ -268,7 +268,11 @@ export default function HistoryPage() {
               return (
                 <div key={h.id} className="flex flex-col gap-2">
                   {dayKey !== previousDayKey && (
-                    <div className="flex items-center justify-between gap-3 pt-2">
+                    <div
+                      className={`flex items-center justify-between gap-3 ${
+                        index === firstRenderableHistoryIndex ? "pt-0" : "pt-2"
+                      }`}
+                    >
                       <p className="dd-type-meta dd-type-meta-strong text-stone-500">
                         {formatHistoryDay(h.checked_at)}
                       </p>

@@ -143,8 +143,7 @@
   /* The shared warm paper surface used by the app, the animated startup
      splash, and the native iOS launch storyboard. Keeping one base colour
      across all three prevents a visible flash during the native-to-WebView
-     handoff. The app stays on this light surface even when the device uses
-     dark mode so the mobile browser never reveals a black base layer. */
+     handoff. Dark mode supplies a matching deep-paper variant below. */
   --background: #faf8f4;
   --foreground: #171717;
 
@@ -232,6 +231,86 @@
   --color-alert-800: #763238;
   --color-alert-900: #662b31;
   --color-alert-950: #58252a;
+}
+
+/* Dark mode is an explicit user preference exposed in Settings > Display.
+   The palette keeps the brand's warm paper character, uses softer surfaces
+   instead of pure black, and reserves bright text for readable hierarchy.
+   The inline bootstrap in layout.tsx applies the saved preference before the
+   first paint; this selector is therefore also safe during iOS WebView
+   startup and navigation. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #171513;
+  --foreground: #f5f1e8;
+  --color-paper: #171513;
+
+  --color-ink-50: #24211d;
+  --color-ink-100: #2d2923;
+  --color-ink-200: #4a433a;
+  --color-ink-300: #655c50;
+  --color-ink-400: #8f8373;
+  --color-ink-500: #b5a99a;
+  --color-ink-600: #ded6c9;
+  --color-ink-700: #eee8de;
+  --color-ink-800: #f8f4ed;
+  --color-ink-900: #0c0b09;
+  --color-ink-950: #060605;
+
+  --color-fair-50: #162c1e;
+  --color-fair-100: #1d4329;
+  --color-fair-200: #2a6340;
+  --color-fair-300: #3a8050;
+  --color-fair-400: #54a86a;
+  --color-fair-500: #72c287;
+  --color-fair-600: #8fdaa0;
+  --color-fair-700: #a5e5b2;
+  --color-fair-800: #bdeec7;
+  --color-fair-900: #d3f4d8;
+  --color-fair-950: #e1f8e4;
+
+  --color-dodgy-50: #332b19;
+  --color-dodgy-100: #51421f;
+  --color-dodgy-200: #725b25;
+  --color-dodgy-300: #92742c;
+  --color-dodgy-400: #b28e3d;
+  --color-dodgy-500: #d0ad5d;
+  --color-dodgy-600: #e4ca7b;
+  --color-dodgy-700: #ecd795;
+  --color-dodgy-800: #f2e2ad;
+  --color-dodgy-900: #f7ecc5;
+  --color-dodgy-950: #fbf4da;
+
+  --color-alert-50: #351f24;
+  --color-alert-100: #512830;
+  --color-alert-200: #73333d;
+  --color-alert-300: #93434e;
+  --color-alert-400: #b75863;
+  --color-alert-500: #d4767f;
+  --color-alert-600: #f0a0a7;
+  --color-alert-700: #f4b5ba;
+  --color-alert-800: #f7c8cc;
+  --color-alert-900: #f9dadd;
+  --color-alert-950: #fce9eb;
+
+  /* Semantic colours have separate dark-mode roles: bright variants remain
+     readable as text, while solid fills are adjusted below for white text. */
+  --color-brand-primary: #2e7d46;
+  --color-brand-error: #f0a0a7;
+  --color-verdict-real-saver: #2e7d46;
+  --color-verdict-dodgy: #a33f4b;
+  --color-verdict-fair: #d0c8bd;
+  --color-verdict-unknown: #bcb2a4;
+
+  --dd-nav-inactive: #c8beb1;
+  --dd-chart-grid: #514a42;
+  --dd-chart-axis: #b5a99a;
+  --dd-chart-special: #77c98a;
+  --dd-chart-regular: #a59b8d;
+  --dd-chart-point-stroke: #24211d;
+  --dd-mascot-fill: #f5f1e8;
+  --dd-mascot-eye: #171513;
 }
 
 @theme inline {
@@ -576,11 +655,11 @@ select {
 
 .wink-mascot__mark-fill,
 .wink-mascot__pupil-fill {
-  fill: #171710;
+  fill: var(--dd-mascot-fill, #171710);
 }
 
 .wink-mascot__eye-fill {
-  fill: #faf8f4;
+  fill: var(--dd-mascot-eye, #faf8f4);
 }
 
 .wink-mascot__pupil {
@@ -590,7 +669,7 @@ select {
 }
 
 .wink-mascot__wink-mask {
-  fill: #faf8f4;
+  fill: var(--dd-mascot-eye, #faf8f4);
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
@@ -602,7 +681,7 @@ select {
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-  stroke: #171710;
+  stroke: var(--dd-mascot-fill, #171710);
   stroke-linecap: round;
   stroke-width: 23.5;
   animation: launchWinkLine 4.8s ease-in-out 1 both;
@@ -618,7 +697,15 @@ select {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #faf8f4;
+  background: var(--background);
+}
+
+.theme-loader-surface {
+  background-color: var(--background);
+}
+
+[data-theme="dark"] .theme-logo {
+  filter: invert(1) brightness(1.08);
 }
 
 .launch-splash--exit {
@@ -805,6 +892,13 @@ select {
   --dd-btn-success-text: oklch(26% 0.1 145);
   --dd-btn-outline-border: oklch(16% 0.01 90);
   --dd-btn-ghost-text: oklch(42% 0.02 90);
+
+  --dd-nav-inactive: #57534e;
+  --dd-chart-grid: #e7e5e4;
+  --dd-chart-axis: #57534e;
+  --dd-chart-special: #15803d;
+  --dd-chart-regular: #a8a29e;
+  --dd-chart-point-stroke: #fafaf9;
 }
 
 /* "TAGS & BADGES": pill, Inter bold 14px, 8px/16px padding, 6px icon gap.
@@ -1006,4 +1100,187 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    FAB two rem above the nav pill with a deliberate touch-safe gap. */
 .bottom-safe-fab {
   bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
+/* The brand-guide primitives have their own light-tint variables, so they
+   need explicit dark variants in addition to the shared Tailwind surfaces. */
+[data-theme="dark"] {
+  --dd-badge-fair-bg: #1d4329;
+  --dd-badge-fair-text: #bdeec7;
+  --dd-badge-dodgy-bg: #51421f;
+  --dd-badge-dodgy-text: #f2e2ad;
+  --dd-badge-neutral-bg: #3a3630;
+  --dd-badge-neutral-text: #eee7dc;
+  --dd-badge-alert-bg: #512830;
+  --dd-badge-alert-text: #f7c8cc;
+
+  --dd-btn-primary-bg: #0c0b09;
+  --dd-btn-primary-text: #f8f3e9;
+  --dd-btn-success-bg: #2e7d46;
+  --dd-btn-success-text: #e1f8e4;
+  --dd-btn-outline-border: #f0e9dd;
+  --dd-btn-ghost-text: #d9d0c3;
+
+  --dd-nav-inactive: #c8beb1;
+  --dd-chart-grid: #514a42;
+  --dd-chart-axis: #b5a99a;
+  --dd-chart-special: #77c98a;
+  --dd-chart-regular: #a59b8d;
+  --dd-chart-point-stroke: #24211d;
+}
+
+/* Tailwind's default stone/white utilities are literal colours. These small
+   overrides cover the app's shared cards, forms, sheets, dividers, and hover
+   states so existing screens inherit the theme without duplicating markup. */
+[data-theme="dark"] .bg-white {
+  background-color: #24211d;
+}
+
+[data-theme="dark"] .bg-white\/50 {
+  background-color: rgb(36 33 29 / 0.5);
+}
+
+[data-theme="dark"] .bg-white\/80 {
+  background-color: rgb(36 33 29 / 0.8);
+}
+
+[data-theme="dark"] .bg-white\/95 {
+  background-color: rgb(36 33 29 / 0.95);
+}
+
+[data-theme="dark"] .bg-stone-50 {
+  background-color: #211f1b;
+}
+
+[data-theme="dark"] .bg-stone-100 {
+  background-color: var(--background);
+}
+
+[data-theme="dark"] .bg-stone-200 {
+  background-color: #3b3630;
+}
+
+[data-theme="dark"] .bg-stone-300 {
+  background-color: #5b544a;
+}
+
+[data-theme="dark"] .bg-stone-900 {
+  background-color: #0c0b09;
+}
+
+[data-theme="dark"] .bg-ink-600 {
+  background-color: #171710;
+}
+
+[data-theme="dark"] .settings-display-switch.bg-ink-600 {
+  background-color: #2e7d46;
+}
+
+[data-theme="dark"] .theme-switch-thumb {
+  background-color: #f8f3e9;
+}
+
+[data-theme="dark"] .bg-fair-600 {
+  background-color: #2e7d46;
+}
+
+[data-theme="dark"] .bg-alert-600 {
+  background-color: #a33f4b;
+}
+
+[data-theme="dark"] .bg-dodgy-600 {
+  background-color: #896d26;
+}
+
+[data-theme="dark"] .text-stone-900 {
+  color: #f8f3e9;
+}
+
+[data-theme="dark"] .text-stone-800 {
+  color: #eee7dc;
+}
+
+[data-theme="dark"] .text-stone-700 {
+  color: #d9d0c3;
+}
+
+[data-theme="dark"] .text-stone-600 {
+  color: #bfb4a5;
+}
+
+[data-theme="dark"] .text-stone-500 {
+  color: #a89d8d;
+}
+
+[data-theme="dark"] .text-stone-400 {
+  color: #8f8373;
+}
+
+[data-theme="dark"] .text-stone-300 {
+  color: #796e5e;
+}
+
+[data-theme="dark"] .text-ink-900 {
+  color: #f8f3e9;
+}
+
+[data-theme="dark"] .text-ink-800 {
+  color: #f8f4ed;
+}
+
+[data-theme="dark"] .text-ink-700 {
+  color: #eee8de;
+}
+
+[data-theme="dark"] .text-fair-600 {
+  color: #8fdaa0;
+}
+
+[data-theme="dark"] .text-alert-600 {
+  color: #f0a0a7;
+}
+
+[data-theme="dark"] .border-stone-100,
+[data-theme="dark"] .divide-stone-100 > :not(:last-child) {
+  border-color: #37322c;
+}
+
+[data-theme="dark"] .border-stone-200 {
+  border-color: #4a433b;
+}
+
+[data-theme="dark"] .border-stone-300 {
+  border-color: #62594d;
+}
+
+[data-theme="dark"] .border-stone-600 {
+  border-color: #8f8373;
+}
+
+[data-theme="dark"] .hover\:bg-stone-50:hover {
+  background-color: #2b2823;
+}
+
+[data-theme="dark"] .hover\:bg-stone-100:hover {
+  background-color: #302c27;
+}
+
+[data-theme="dark"] .hover\:bg-ink-50:hover {
+  background-color: #2d2923;
+}
+
+[data-theme="dark"] .bg-ink-50\/30 {
+  background-color: rgb(36 33 29 / 0.3);
+}
+
+[data-theme="dark"] .placeholder\:text-stone-500::placeholder {
+  color: #a89d8d;
+}
+
+[data-theme="dark"] .deal-filter-real-surface {
+  background-color: #183022;
+}
+
+[data-theme="dark"] .deal-filter-dodgy-surface {
+  background-color: #352126;
 }

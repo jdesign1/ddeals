@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import { Inter, Manrope } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import GlobalOverlays from "@/components/GlobalOverlays";
@@ -8,6 +9,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { HeaderOverrideProvider } from "@/lib/header-context";
 import { SearchProvider } from "@/lib/search-context";
 import { CardLayoutProvider } from "@/lib/card-layout-context";
+import { ThemeProvider } from "@/lib/theme-context";
 import "./globals.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
@@ -50,13 +52,19 @@ export const viewport: Viewport = {
   themeColor: "#faf8f4",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${manrope.variable} h-full bg-stone-100 antialiased`}
     >
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"||stored==="light"?stored:(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;}catch(e){}})();`,
+          }}
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,search,search_check_2,settings,warning,workspace_premium&display=block"
@@ -64,7 +72,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">
         <AuthProvider>
-          <HeaderOverrideProvider>
+          <ThemeProvider>
+            <HeaderOverrideProvider>
             {/* SearchProvider (lib/search-context.tsx, 2026-08-09) -- global
                 full-screen search state, so tapping the search bar/icon from
                 ANY screen (not just Home) opens the same overlay. Wraps
@@ -72,8 +81,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 can reach it via `useSearch()`, same pattern
                 HeaderOverrideProvider already uses for AppHeader's title
                 override. */}
-            <CardLayoutProvider>
-              <SearchProvider>
+              <CardLayoutProvider>
+                <SearchProvider>
               <LaunchSplash />
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
                   normal flex sibling (its own row, reserving space below
@@ -143,9 +152,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   available regardless of which route is active -- previously
                   both only existed inside Home's own page.tsx. */}
               <GlobalOverlays />
-              </SearchProvider>
-            </CardLayoutProvider>
-          </HeaderOverrideProvider>
+                </SearchProvider>
+              </CardLayoutProvider>
+            </HeaderOverrideProvider>
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

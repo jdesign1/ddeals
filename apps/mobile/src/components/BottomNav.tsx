@@ -249,7 +249,7 @@ export default function BottomNav() {
               className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
                 isActive ? "w-max min-w-full px-2" : "w-full min-w-0 px-0"
               }`}
-              style={{ color: isActive ? "#ffffff" : "#57534e" }}
+              style={{ color: isActive ? "#ffffff" : "var(--dd-nav-inactive)" }}
             >
               {/* initial={false} (2026-08-20, per Jay: "don't animate the
                   tabs into view [on load] ... animation only occurs when
@@ -275,7 +275,7 @@ export default function BottomNav() {
               <span
                 className="material-symbols-outlined h-5 w-5 text-[24px]"
                 style={{
-                  color: isActive ? "#ffffff" : "#57534e",
+                  color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
                   fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
                 }}
                 aria-hidden="true"

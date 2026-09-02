@@ -76,14 +76,14 @@ export default function PageLoader({ loading }: { loading: boolean }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-white"
+          className="theme-loader-surface fixed inset-0 z-[70] flex items-center justify-center"
         >
           <Image
             src="/logo.svg"
             alt=""
             width={48}
             height={48}
-            className={`h-12 w-12 animate-mascot-turn transition-opacity duration-300 ease-out ${
+            className={`theme-logo h-12 w-12 animate-mascot-turn transition-opacity duration-300 ease-out ${
               logoVisible ? "opacity-100" : "opacity-0"
             }`}
           />
