@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -199,6 +199,11 @@ export default function AppHeader({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [dismissedLoginNoticeId, setDismissedLoginNoticeId] = useState<number | null>(null);
+  const loginNoticeRef = useRef(loginNotice);
+
+  useEffect(() => {
+    loginNoticeRef.current = loginNotice;
+  }, [loginNotice]);
 
   const newDealsCount = loginNotice ? countNewDeals(products, loginNotice.since) : 0;
   const showLoginToast =
@@ -206,7 +211,7 @@ export default function AppHeader({
     !loadingProducts &&
     !!loginNotice &&
     newDealsCount > 0 &&
-    pathname !== "/settings" &&
+    pathname === "/" &&
     loginNotice.id !== dismissedLoginNoticeId;
 
   useEffect(() => {
@@ -218,6 +223,9 @@ export default function AppHeader({
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
       setIsHiddenOnCheckDeals(hidden);
+      if (hidden && loginNoticeRef.current) {
+        setDismissedLoginNoticeId(loginNoticeRef.current.id);
+      }
     });
   }, []);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -18,6 +19,15 @@ export default function SettingsPage() {
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const backNavigationStartedRef = useRef(false);
+
+  const profileName =
+    user && typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
+      ? user.user_metadata.full_name.trim()
+      : user?.email?.split("@")[0] || "Dodgy Deal shopper";
+  const profileAvatarUrl =
+    user && typeof user.user_metadata?.avatar_url === "string" && /^https?:\/\//.test(user.user_metadata.avatar_url)
+      ? user.user_metadata.avatar_url
+      : null;
 
   const onBack = () => {
     if (backNavigationStartedRef.current) return;
@@ -46,6 +56,39 @@ export default function SettingsPage() {
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="min-h-full w-full flex flex-col gap-4 px-5 py-5 pb-10"
     >
+      {!authLoading && user && (
+        <section className="rounded-2xl bg-white p-5 shadow-sm" aria-labelledby="settings-profile-title">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-fair-50 ring-1 ring-fair-200">
+              {profileAvatarUrl ? (
+                // User-provided avatar URLs are not limited to the app's
+                // configured Next image hosts, so this intentionally uses a
+                // native image element for metadata-backed profile photos.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profileAvatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <Image src="/logo.svg" alt="" width={40} height={40} className="h-10 w-10" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 id="settings-profile-title" className="font-display text-[19px] font-extrabold leading-6 text-stone-900">
+                {profileName}
+              </h2>
+              <p className="mt-1 truncate dd-type-secondary text-stone-500">{user.email || "Anonymous account"}</p>
+            </div>
+          </div>
+          <div className="mt-5 border-t border-stone-100 pt-4">
+            <p className="dd-type-meta dd-type-meta-strong text-stone-500">Profile</p>
+            <p className="mt-1 dd-type-secondary text-stone-600">Your Dodgy Deal shopper profile</p>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
           <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Layout</h1>

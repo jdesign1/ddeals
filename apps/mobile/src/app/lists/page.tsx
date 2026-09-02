@@ -841,7 +841,7 @@ function ListCard({
     <motion.article
       ref={cardRef}
       style={{
-        ...(confirmingDelete && deleteCardHeight ? { minHeight: deleteCardHeight } : {}),
+        ...(confirmingDelete && deleteCardHeight ? { height: deleteCardHeight } : {}),
         touchAction: "pan-y",
       }}
       initial={isNew ? { opacity: 0 } : false}

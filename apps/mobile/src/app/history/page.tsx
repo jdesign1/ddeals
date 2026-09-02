@@ -211,7 +211,7 @@ export default function HistoryPage() {
           />
         </div>
         <p className="text-center text-sm leading-relaxed text-stone-600">
-          Every supermarket deal and price you&rsquo;ve checked, most recent first.
+          Every supermarket deal you&rsquo;ve checked so far.
         </p>
       </header>
 
