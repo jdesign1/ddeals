@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, X, UserCog, LogOut } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
@@ -179,7 +179,7 @@ export default function AppHeader({
   collapseOnCheckDeals?: boolean;
 }) {
   const pathname = usePathname();
-  const { user, loading, signOut, isAnonymousSession, openAuthSheet } = useAuth();
+  const { user, loading, isAnonymousSession, openAuthSheet } = useAuth();
   const { override } = useHeaderOverride();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
@@ -482,28 +482,7 @@ export default function AppHeader({
                 </span>
                 Settings
               </Link>
-              {user ? (
-                <>
-                  <Link
-                    href="/account"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
-                  >
-                    <UserCog className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
-                    Manage account
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      signOut();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-alert-600 transition-colors hover:bg-alert-50 hover:text-alert-700"
-                  >
-                    <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    Log out
-                  </button>
-                </>
-              ) : (
+              {!user && (
                 // Was `<Link href="/lists">` -- opened the Lists tab
                 // instead of the actual sign-in/create-account sheet, so
                 // tapping this from the profile menu never actually let a

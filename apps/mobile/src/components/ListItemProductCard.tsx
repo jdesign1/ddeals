@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import { getStoreLogoMeta } from "@/lib/store-meta";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
  * Compact product row for a list's own item list on `apps/mobile/src/app/
@@ -343,9 +344,10 @@ function NotOnSpecialSheet({
   onClose: () => void;
 }) {
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <BottomSheetPortal open={open}>
+      <AnimatePresence>
+        {open && (
+          <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -361,7 +363,7 @@ function NotOnSpecialSheet({
             role="dialog"
             aria-modal="true"
             aria-label="Not currently on special"
-            className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[30vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl pb-safe-sm"
+            className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl pb-safe-sm"
           >
             <div className="flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
               <h3 className="dd-type-sheet-title text-stone-900">
@@ -376,8 +378,16 @@ function NotOnSpecialSheet({
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="px-5 py-5">
-              <p className="text-sm leading-relaxed text-stone-600">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-5 text-center">
+              <Image
+                src="/lists-login.webp"
+                alt="Dodgey mascot waiting for a special"
+                width={482}
+                height={512}
+                sizes="112px"
+                className="mascot-wave h-auto w-28"
+              />
+              <p className="max-w-sm text-sm leading-relaxed text-stone-600">
                 <span className="font-bold text-stone-900">{productName}</span> isn&apos;t on special right now.
                 We&apos;ll let you know as soon as it is.
               </p>
@@ -394,6 +404,7 @@ function NotOnSpecialSheet({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </BottomSheetPortal>
   );
 }

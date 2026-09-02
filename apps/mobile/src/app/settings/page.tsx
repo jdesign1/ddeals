@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { usePageHeader } from "@/lib/header-context";
+import { useAuth } from "@/lib/auth-context";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const backNavigationStartedRef = useRef(false);
 
   const onBack = () => {
@@ -23,6 +28,17 @@ export default function SettingsPage() {
 
   usePageHeader("Settings", onBack);
 
+  async function handleLogout() {
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+      setIsLogoutSheetOpen(false);
+      router.replace("/");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   return (
     <motion.main
       initial={{ x: "100%" }}
@@ -30,6 +46,40 @@ export default function SettingsPage() {
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="min-h-full w-full flex flex-col gap-4 px-5 py-5 pb-10"
     >
+      {!authLoading && user && (
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Account</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-600">Manage your account details and sign-in.</p>
+          </div>
+          <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
+            <div>
+              <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
+              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{user.email}</p>
+            </div>
+            {user.created_at && (
+              <div>
+                <p className="dd-type-meta dd-type-meta-strong text-stone-500">Member since</p>
+                <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">
+                  {new Date(user.created_at).toLocaleDateString("en-NZ", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsLogoutSheetOpen(true)}
+              className="dd-btn dd-btn-outline-alert mt-1 w-full cursor-pointer"
+            >
+              Log out
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
           <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Layout</h1>
@@ -137,6 +187,56 @@ export default function SettingsPage() {
           <span className="text-[13px] font-semibold tabular-nums text-stone-500">0.1.0</span>
         </div>
       </section>
+
+      <BottomSheetPortal open={isLogoutSheetOpen}>
+        <AnimatePresence>
+          {isLogoutSheetOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close log out confirmation"
+                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 bg-black/40"
+                onClick={() => setIsLogoutSheetOpen(false)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+              <motion.section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settings-logout-sheet-title"
+                className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl bg-white px-5 pb-8 pt-6 shadow-2xl"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              >
+                <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-stone-200" />
+                <h2 id="settings-logout-sheet-title" className="dd-type-sheet-title text-stone-900">Log out?</h2>
+                <p className="mt-2 dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsLogoutSheetOpen(false)}
+                    disabled={isLoggingOut}
+                    className="dd-btn dd-btn-outline w-full cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="dd-btn dd-btn-outline-alert w-full cursor-pointer"
+                  >
+                    {isLoggingOut ? "Logging out…" : "Log out"}
+                  </button>
+                </div>
+              </motion.section>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
     </motion.main>
   );
 }

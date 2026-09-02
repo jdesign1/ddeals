@@ -222,6 +222,8 @@ export interface ListSummary {
   itemCount: number;
   /** Sum of each item's cheapest current price (quantity-weighted), across any store. Null only for an empty list. */
   totalPrice: number | null;
+  /** True once every product in the list has a current price row. */
+  hasPriceData: boolean;
   /**
    * The single store that could fill the ENTIRE list, if one exists — only
    * populated when every item in the list has a current price at that
@@ -242,6 +244,7 @@ export interface ListSummary {
 const EMPTY_SUMMARY: ListSummary = {
   itemCount: 0,
   totalPrice: null,
+  hasPriceData: true,
   bestPriceStore: null,
   hasSavingsData: false,
   savingsAmount: 0,
@@ -348,6 +351,7 @@ export function computeListSummaryFromLookups(items: ListItemRow[], lookups: Lis
   let baselineTotal = 0;
   let sawAnyBaseline = false;
   let hasVerifiedSpecial = false;
+  const hasPriceData = productIds.every((productId) => cheapestByProduct.has(productId));
 
   for (const productId of productIds) {
     const cheapest = cheapestByProduct.get(productId);
@@ -389,6 +393,7 @@ export function computeListSummaryFromLookups(items: ListItemRow[], lookups: Lis
   return {
     itemCount: items.length,
     totalPrice,
+    hasPriceData,
     bestPriceStore,
     hasSavingsData: sawAnyBaseline,
     savingsAmount: Math.max(0, Math.round((baselineTotal - totalPrice) * 100) / 100),

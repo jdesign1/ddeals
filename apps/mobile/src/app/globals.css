@@ -999,5 +999,5 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    env(safe-area-inset-bottom)` from the viewport bottom, so this keeps the
    FAB two rem above the nav pill with a deliberate touch-safe gap. */
 .bottom-safe-fab {
-  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
 }

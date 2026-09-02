@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { CalendarDays, Search } from "lucide-react";
+import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import {
   collapseConsecutiveDealChecks,
@@ -212,12 +212,15 @@ export default function HistoryPage() {
             className="mobile-zoom-safe-input h-10 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
           />
         </div>
-        <div className="flex items-center justify-end gap-2">
-          <label
-            htmlFor="history-month"
-            className="flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-stone-700 shadow-sm"
-          >
+      </header>
+
+      <div className="flex items-center justify-between px-5">
+        <p className="dd-type-meta dd-type-meta-strong text-stone-500">Date</p>
+        <div className="flex items-center gap-2">
+          <label className="relative flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-xs font-bold text-stone-700 shadow-sm">
             <CalendarDays className="h-4 w-4 flex-shrink-0 text-stone-500" aria-hidden="true" />
+            {selectedMonth && <span>{formatSelectedMonth(selectedMonth)}</span>}
+            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-stone-500" aria-hidden="true" />
             <span className="sr-only">Jump to month</span>
             <select
               id="history-month"
@@ -227,9 +230,9 @@ export default function HistoryPage() {
                 setSelectedMonth(event.target.value || null);
               }}
               aria-label="Jump to month"
-              className="mobile-zoom-safe-input w-max max-w-[calc(100vw-11rem)] border-none bg-transparent text-xs font-bold text-stone-700 focus:outline-none"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             >
-              <option value="">month</option>
+              <option value="">All dates</option>
               {monthOptions.map((month) => (
                 <option key={month.value} value={month.value} disabled={month.disabled}>
                   {month.label}
@@ -244,13 +247,14 @@ export default function HistoryPage() {
                 setHistory(null);
                 setSelectedMonth(null);
               }}
-              className="shrink-0 px-1 py-2.5 text-xs font-bold text-stone-600 underline underline-offset-2 transition-colors hover:text-stone-900"
+              aria-label="Clear date filter"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-100 hover:text-stone-900"
             >
-              Clear all
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
         </div>
-      </header>
+      </div>
 
       {isAnonymousSession && (
         // Same amber "dev tool" language/styling as lists/page.tsx and
@@ -396,6 +400,11 @@ function buildHistoryMonthOptions(monthKeys: string[]): { value: string; label: 
     });
   }
   return options;
+}
+
+function formatSelectedMonth(value: string): string {
+  const [year, month] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat(undefined, { month: "short", year: "2-digit" }).format(new Date(year, month - 1, 1));
 }
 
 function getLocalDayKey(isoDate: string): string {

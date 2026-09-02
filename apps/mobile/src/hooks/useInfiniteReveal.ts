@@ -113,11 +113,9 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey, p
   const totalCountRef = useRef(totalCount);
   const chunkSizeRef = useRef(chunkSize);
   const maxItemsRef = useRef(maxItems);
-  const persistenceKeyRef = useRef(persistenceKey);
   totalCountRef.current = totalCount;
   chunkSizeRef.current = chunkSize;
   maxItemsRef.current = maxItems;
-  persistenceKeyRef.current = persistenceKey;
 
   // Guards against one scroll gesture firing the observer callback more
   // than once before `visibleCount`'s DOM growth has had a chance to move
@@ -137,7 +135,6 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey, p
     // FullScreenSearch's popular tab between "specials"/"dodgy", which uses
     // two different page sizes for what can otherwise be the same resetKey
     // shape) and should also restart the reveal from the top.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey, chunkSize, persistenceKey]);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -151,7 +148,7 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey, p
         loadingRef.current = true;
         setVisibleCount((prev) => {
           const next = Math.min(prev + chunkSizeRef.current, totalCountRef.current, maxItemsRef.current);
-          if (persistenceKeyRef.current) persistedVisibleCounts.set(persistenceKeyRef.current, next);
+          if (persistenceKey) persistedVisibleCounts.set(persistenceKey, next);
           return next;
         });
         // Released next frame -- long enough for the just-grown DOM to push
@@ -169,7 +166,7 @@ export function useInfiniteReveal({ totalCount, chunkSize, maxItems, resetKey, p
     );
     observer.observe(node);
     observerRef.current = observer;
-  }, []);
+  }, [persistenceKey]);
 
   // Clamped on every render (not just after the reset effect runs) so the
   // returned value is always safe even mid-transition -- e.g. `totalCount`

@@ -16,6 +16,18 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <color key="backgroundColor" red="0.980392157" green="0.97254902" blue="0.956862745" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <subviews>
+                            <!-- The Splash asset is a square canvas containing the complete logo-and-text lockup. Fit the whole asset inside portrait phones instead of cropping its sides. -->
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="Splash" translatesAutoresizingMaskIntoConstraints="NO" id="splash-lockup-image">
+                                <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                            </imageView>
+                        </subviews>
+                        <constraints>
+                            <constraint firstItem="splash-lockup-image" firstAttribute="top" secondItem="snD-IY-ifK" secondAttribute="top" constant="20" id="splash-lockup-top"/>
+                            <constraint firstItem="splash-lockup-image" firstAttribute="leading" secondItem="snD-IY-ifK" secondAttribute="leading" constant="20" id="splash-lockup-leading"/>
+                            <constraint firstItem="snD-IY-ifK" firstAttribute="trailing" secondItem="splash-lockup-image" secondAttribute="trailing" constant="20" id="splash-lockup-trailing"/>
+                            <constraint firstItem="snD-IY-ifK" firstAttribute="bottom" secondItem="splash-lockup-image" secondAttribute="bottom" constant="20" id="splash-lockup-bottom"/>
+                        </constraints>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>

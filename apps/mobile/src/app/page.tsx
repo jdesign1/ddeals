@@ -251,7 +251,7 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${!isSearchActive ? "mt-[14px]" : ""} ${dealFilterTintClass || "bg-stone-100"}`}
+        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${!isSearchActive ? "mt-2" : ""} ${dealFilterTintClass || "bg-stone-100"}`}
       >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
@@ -300,9 +300,11 @@ export default function HomePage() {
             gridTemplateRows: isToolbarVisible ? "1fr" : "0fr",
           }}
         >
-          <div
-            className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-2 ${isToolbarVisible ? "pb-2" : "pb-0"}`}
-          >
+          {/* Keep the tabs equidistant from the search bar and supermarket
+              pills. Check Deals uses 8px of page margin + 8px of toolbar
+              padding above the tabs; this 16px row gap mirrors the full
+              screen search toolbar's spacing. */}
+          <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${isToolbarVisible ? "pb-2" : "pb-0"}`}>
             <DealFilterTabs
               value={dealFilter}
               onChange={setDealFilter}

@@ -25,6 +25,8 @@ import { supabaseConfig } from "@/lib/config";
 import ErrorState from "@/components/ErrorState";
 import SearchBar from "@/components/SearchBar";
 import ListItemProductCard from "@/components/ListItemProductCard";
+import LoadingMascot from "@/components/LoadingMascot";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
  * S1 — My Lists, per project.md's Stitch screen inventory. First real
@@ -235,6 +237,9 @@ export default function ListsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
   const [newlyCreatedListId, setNewlyCreatedListId] = useState<string | null>(null);
+  const [expandAll, setExpandAll] = useState(true);
+  const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
+  const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
 
   // The actual composite fetch (fetch this user's lists, their items, price
   // lookups, product meta, and build item cards) moved out of this page
@@ -427,9 +432,37 @@ export default function ListsPage() {
     );
   }
 
+  const sortedLists = [...lists].sort((a, b) => {
+    if (sortMode === "savings") {
+      return (summaries.get(b.id)?.savingsAmount ?? 0) - (summaries.get(a.id)?.savingsAmount ?? 0);
+    }
+    return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
+  });
+
   return (
-    <main className="flex flex-col gap-4 pb-6">
+    <main className="flex min-h-full flex-col gap-4 pb-20">
       <SearchBar variant="shadow" placeholder="Search items to add to your lists" sticky={false} />
+
+      <div className="flex items-center justify-between gap-3 px-5">
+        <button
+          type="button"
+          onClick={() => setExpandAll((expanded) => !expanded)}
+          disabled={loadingLists || lists.length === 0}
+          className="dd-btn dd-btn-outline flex-1 cursor-pointer px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {expandAll ? "Collapse all" : "Expand all"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsSortSheetOpen(true)}
+          disabled={loadingLists || lists.length === 0}
+          className="dd-btn dd-btn-outline flex-1 cursor-pointer px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Sort by: {sortMode === "recent" ? "Most recent" : "Most savings"}
+        </button>
+      </div>
+
+      <LoadingMascot loading={loadingLists} />
 
       {isAnonymousSession && (
         // Same amber "dev tool" language/styling as AuthPanel.tsx's own
@@ -482,9 +515,9 @@ export default function ListsPage() {
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="flex flex-col gap-3 px-5"
         >
-          {lists.map((list) => (
+          {sortedLists.map((list) => (
             <ListCard
-              key={list.id}
+              key={`${list.id}-${expandAll ? "expanded" : "collapsed"}`}
               list={list}
               items={itemsByList.get(list.id) ?? []}
               summary={summaries.get(list.id)}
@@ -494,6 +527,8 @@ export default function ListsPage() {
               onRename={(name) => handleRename(list.id, name)}
               onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
               onRefresh={reload}
+              expandAll={expandAll}
+              pricesLoading={loadingLists}
               isDeleting={deletingListId === list.id}
               isNew={newlyCreatedListId === list.id}
               onNewAnimationComplete={() => setNewlyCreatedListId(null)}
@@ -617,6 +652,62 @@ export default function ListsPage() {
           </>
         )}
       </AnimatePresence>
+
+      <BottomSheetPortal open={isSortSheetOpen}>
+        <AnimatePresence>
+          {isSortSheetOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close sort options"
+                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+                onClick={() => setIsSortSheetOpen(false)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+              <motion.section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="lists-sort-title"
+                className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[30vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white pb-safe-sm shadow-2xl"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              >
+                <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+                  <h3 id="lists-sort-title" className="dd-type-sheet-title text-stone-900">Sort lists by</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsSortSheetOpen(false)}
+                    aria-label="Close"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100"
+                  >
+                    <X className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="py-2">
+                  {([['recent', 'Most recent'], ['savings', 'Most savings']] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setSortMode(value);
+                        setIsSortSheetOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between border-b border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 last:border-b-0 hover:bg-stone-50"
+                    >
+                      {label}
+                      {sortMode === value && <Check className="h-5 w-5 text-ink-900" aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
+              </motion.section>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
     </main>
   );
 }
@@ -631,6 +722,8 @@ function ListCard({
   onRename,
   onRemoveItem,
   onRefresh,
+  expandAll,
+  pricesLoading,
   isDeleting,
   isNew,
   onNewAnimationComplete,
@@ -643,7 +736,9 @@ function ListCard({
   onDelete: () => void;
   onRename: (name: string) => Promise<void>;
   onRemoveItem: (productId: string) => void;
-  onRefresh: () => void;
+  onRefresh: (options?: { showLoading?: boolean }) => void;
+  expandAll: boolean;
+  pricesLoading: boolean;
   isDeleting: boolean;
   isNew: boolean;
   onNewAnimationComplete: () => void;
@@ -685,7 +780,7 @@ function ListCard({
   // toggleable per-card same as before; this only changes the initial
   // value each `ListCard` instance's own `useState` starts at, not
   // anything about how the toggle itself behaves.
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(expandAll);
   const itemCount = items.length;
   const liveItems = items.filter((item) => itemCards.get(item.product_id)?.currentDeals[0]?.isOnSpecial === true);
   const notOnSpecialItems = items.filter((item) => !liveItems.includes(item));
@@ -886,13 +981,17 @@ function ListCard({
                     </>
                   )}
                 </span>
-                {summary?.hasSavingsData && summary.savingsAmount > 0 ? (
+                {pricesLoading ? (
+                  <span className="dd-badge dd-badge-neutral shrink-0">Checking prices…</span>
+                ) : summary?.hasSavingsData && summary.savingsAmount > 0 ? (
                   <span className="dd-badge dd-badge-fair shrink-0">
                     -${summary.savingsAmount.toFixed(2)} saved
                   </span>
+                ) : summary?.hasPriceData ? (
+                  <span className="dd-badge dd-badge-neutral shrink-0">No savings found</span>
                 ) : (
                   <span className="dd-badge dd-badge-neutral shrink-0">
-                    Checking prices…
+                    Price unavailable
                   </span>
                 )}
                 <ChevronDown
@@ -947,7 +1046,7 @@ function ListCard({
                       quantity={item.quantity}
                       onRemove={() => onRemoveItem(item.product_id)}
                       removeLabel={removeLabel}
-                      onAfterNotOnSpecial={onRefresh}
+                      onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
                     />
                   );
                 }
@@ -979,7 +1078,7 @@ function ListCard({
                           quantity={item.quantity}
                           onRemove={() => onRemoveItem(item.product_id)}
                           removeLabel={removeLabel}
-                          onAfterNotOnSpecial={onRefresh}
+                          onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
                         />
                       );
                     }

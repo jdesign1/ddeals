@@ -30,11 +30,11 @@ current upload requirements.
 
 ## Remaining release polish
 
-- The iOS launch storyboard is intentionally a plain paper-colour screen so
-  it does not show a second static logo before the animated web splash.
-  `apps/mobile/src/components/LaunchSplash.tsx` owns the one-time branded
-  small-to-large, glance-left, wink, and fade-out sequence after the WebView
-  loads. The original lockup remains available as a source asset at
+- The iOS launch storyboard shows the static Dodgy Deal logo-and-text lockup
+  on the paper-colour background while the WebView starts. The one-time
+  branded small-to-large, glance-left, wink, and fade-out sequence in
+  `apps/mobile/src/components/LaunchSplash.tsx` follows it once the WebView
+  loads. The lockup source remains available at
   `branding/dodgy-deal-splash.svg`.
 - Native plugins are declared in `package.json` (status bar, splash screen,
   haptics, share, app); the splash configuration is now wired to hand off to
