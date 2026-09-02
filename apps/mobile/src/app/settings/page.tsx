@@ -274,14 +274,16 @@ export default function SettingsPage() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="settings-logout-sheet-title"
-                className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl bg-white px-5 pb-8 pt-6 shadow-2xl"
+                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl px-5 pb-8 pt-6 shadow-2xl"
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
               >
-                <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-stone-200" />
-                <h2 id="settings-logout-sheet-title" className="dd-type-sheet-title text-stone-900">Log out?</h2>
+                <div className="dd-bottom-sheet-titlebar -mx-5 -mt-6 mb-5 px-5 pt-6">
+                  <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-stone-200" />
+                  <h2 id="settings-logout-sheet-title" className="dd-type-sheet-title text-stone-900">Log out?</h2>
+                </div>
                 <p className="mt-2 dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <button

@@ -1065,6 +1065,21 @@ select {
 .dd-bottom-sheet {
   z-index: 1001 !important;
 }
+.dd-bottom-sheet-surface {
+  background-color: var(--color-paper);
+}
+.dd-bottom-sheet-titlebar {
+  background-color: #fff;
+}
+[data-theme="dark"] .dd-bottom-sheet-titlebar {
+  background-color: #24211d;
+}
+.product-image-frame {
+  background-color: #f4f0e8;
+}
+.product-image-content {
+  display: block;
+}
 /* WKWebView can still paint the fixed bottom navigation above a portalized
    sheet despite the sheet's stacking layer. Hide the global nav while a
    sheet is open so it cannot cover the sheet or receive its touches.
@@ -1190,6 +1205,53 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 
 [data-theme="dark"] .bg-dodgy-600 {
   background-color: #896d26;
+}
+
+/* Product photography is content, not a dark-mode surface. A number of the
+   catalogue assets include white pixels around the pack artwork and are
+   intentionally rendered with multiply blending in light mode. Multiply
+   against a charcoal card makes those pixels, and sometimes the whole
+   product, disappear. Use a warm elevated image tile and restore normal
+   blending in dark mode; the slight dimming avoids a harsh white glow while
+   preserving pack colours and text. */
+[data-theme="dark"] .product-image-frame {
+  background-color: #eee8dc;
+  box-shadow: inset 0 0 0 1px #c6bcae;
+}
+[data-theme="dark"] .product-image-content.mix-blend-multiply {
+  mix-blend-mode: normal;
+  filter: brightness(0.92) saturate(1.06);
+}
+
+/* Dark-mode selected controls use the inverse of the light appearance: a
+   light elevated fill with dark ink. This keeps the selected state obvious
+   without making the control look like a primary action button. */
+[data-theme="dark"] .dd-segmented-control-active,
+[data-theme="dark"] .dd-auth-tab-active {
+  color: #171513 !important;
+}
+[data-theme="dark"] .dd-segmented-control-active-fill,
+[data-theme="dark"] .dd-auth-tab-active-fill {
+  background-color: #f5f1e8;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+}
+
+/* Keep the floating navigation as an elevated dark surface and make its
+   selected cell follow the same light-fill/dark-ink convention as segments. */
+[data-theme="dark"] .app-bottom-nav {
+  background-color: rgb(36 33 29 / 0.94);
+  border: 1px solid #4a433b;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.28);
+}
+[data-theme="dark"] .dd-bottom-nav-active {
+  color: #171513 !important;
+}
+[data-theme="dark"] .dd-bottom-nav-active-fill {
+  background-color: #f5f1e8;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+}
+[data-theme="dark"] .dd-bottom-nav-active-icon {
+  color: #171513 !important;
 }
 
 [data-theme="dark"] .text-stone-900 {

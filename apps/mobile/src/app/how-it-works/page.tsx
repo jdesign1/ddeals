@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePageHeader } from "@/lib/header-context";
-import PageLoader from "@/components/PageLoader";
 import { BalanceFilledIcon, WarningFilledIcon, WorkspacePremiumFilledIcon } from "@/components/icons/MaterialSymbols";
 
 /**
@@ -60,9 +59,8 @@ export default function HowItWorksPage() {
   const [pageReady, setPageReady] = useState(false);
   usePageHeader("How Dodgy Deal works", () => router.back());
 
-  // Let the browser paint the route once before revealing it. The mascot cover
-  // stays up for those first two frames, then fades away through PageLoader so
-  // the content appears smoothly instead of flashing in underneath the header.
+  // Let the browser paint the route once before revealing it, so the content
+  // appears smoothly instead of flashing in underneath the header.
   useEffect(() => {
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
@@ -76,7 +74,6 @@ export default function HowItWorksPage() {
 
   return (
     <>
-      <PageLoader loading={!pageReady} />
       <main
         aria-busy={!pageReady}
         className={`flex flex-col gap-6 px-5 py-6 pb-10 transition-opacity duration-300 ease-out ${

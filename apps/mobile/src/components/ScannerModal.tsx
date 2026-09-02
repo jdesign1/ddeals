@@ -81,9 +81,9 @@ export default function ScannerModal({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0.5 }}
             transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="dd-bottom-sheet fixed bottom-0 left-0 right-0 z-[51] mx-auto flex min-h-[45vh] max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-x border-t border-stone-200 bg-white shadow-2xl"
+            className="dd-bottom-sheet dd-bottom-sheet-surface fixed bottom-0 left-0 right-0 z-[51] mx-auto flex min-h-[45vh] max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-x border-t border-stone-200 shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+            <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-200 px-6 py-4">
               <div className="flex items-center gap-3">
                 <Camera className="h-4 w-4 text-ink-600" aria-hidden="true" />
                 {/* Bottom-sheet title style unified app-wide 2026-08-19 --

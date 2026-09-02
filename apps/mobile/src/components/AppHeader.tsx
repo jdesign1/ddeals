@@ -494,9 +494,9 @@ export default function AppHeader({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+            className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+            <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4">
               {/* Bottom-sheet title style unified app-wide 2026-08-19 --
                   was a small tracking-widest text-stone-500 eyebrow label,
                   now a real title, same class every bottom sheet's top

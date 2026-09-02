@@ -166,7 +166,7 @@ export default function ProductListCard({
           image-first card: the grey image panel fills the card width and all
           text sits underneath it. */}
       <div
-        className={`flex flex-shrink-0 select-none items-center justify-center bg-stone-50 ${
+        className={`product-image-frame flex flex-shrink-0 select-none items-center justify-center bg-stone-50 ${
           isGridLayout ? "aspect-[5/2.75] w-full p-3" : "h-[96px] w-36 p-2.5"
         }`}
       >
@@ -177,7 +177,7 @@ export default function ProductListCard({
             width={112}
             height={112}
             sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "96px"}
-            className={`h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
+            className={`product-image-content h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
           />
         </div>
       </div>

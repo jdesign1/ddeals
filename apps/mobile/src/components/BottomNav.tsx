@@ -247,7 +247,7 @@ export default function BottomNav() {
           >
             <span
               className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
-                isActive ? "w-max min-w-full px-2" : "w-full min-w-0 px-0"
+                isActive ? "dd-bottom-nav-active w-max min-w-full px-2" : "w-full min-w-0 px-0"
               }`}
               style={{ color: isActive ? "#ffffff" : "var(--dd-nav-inactive)" }}
             >
@@ -263,7 +263,7 @@ export default function BottomNav() {
               <AnimatePresence initial={false}>
                 {isActive && (
                   <motion.span
-                    className="absolute inset-0 rounded-full bg-ink-900"
+                    className="dd-bottom-nav-active-fill absolute inset-0 rounded-full bg-ink-900"
                     style={{ zIndex: -1 }}
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -273,7 +273,7 @@ export default function BottomNav() {
                 )}
               </AnimatePresence>
               <span
-                className="material-symbols-outlined h-5 w-5 text-[24px]"
+                className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
                 style={{
                   color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
                   fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,

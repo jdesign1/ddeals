@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import AuthPanel from "@/components/AuthPanel";
 
@@ -119,7 +120,10 @@ export default function AuthSheet({
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [isViewingLegal, setIsViewingLegal] = useState(false);
   const formScrollRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const router = useRouter();
 
   // Each Login/Create account tab starts at the top of its form. The sheet
   // keeps one scroll container mounted while the controlled form content
@@ -139,10 +143,24 @@ export default function AuthSheet({
   const [wasOpen, setWasOpen] = useState(isOpen);
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);
-    if (!isOpen) setMode("signin");
+    if (!isOpen) {
+      setMode("signin");
+      setIsViewingLegal(false);
+    }
   }
 
   const title = mode === "signin" ? "Log in" : "Create account";
+  const isLegalRoute = pathname === "/privacy" || pathname === "/terms";
+  const openLegal = (path: "/privacy" | "/terms") => {
+    setIsViewingLegal(true);
+    router.push(path);
+  };
+
+  // The legal pages are real app routes, but the auth sheet remains mounted
+  // and keeps its Create account state. Hiding only the sheet chrome while a
+  // legal route is active means that route's existing back arrow can return
+  // to the page underneath with this sheet still open.
+  if (isOpen && isViewingLegal && isLegalRoute) return null;
 
   return (
     <AnimatePresence>
@@ -162,9 +180,9 @@ export default function AuthSheet({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0.5 }}
             transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="dd-bottom-sheet dd-auth-sheet fixed bottom-0 left-0 right-0 z-[71] mx-auto flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-x border-t border-stone-200 bg-white shadow-2xl"
+            className="dd-bottom-sheet dd-bottom-sheet-surface dd-auth-sheet fixed bottom-0 left-0 right-0 z-[71] mx-auto flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-x border-t border-stone-200 shadow-2xl"
           >
-            <div className="flex flex-shrink-0 items-center justify-between px-6 py-4">
+            <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between px-6 py-4">
               <div className="flex items-center gap-3">
                 {/* Mascot mark replaces the LogIn/UserPlus lucide icon here
                     (2026-08-20, per Jay: "Add the dodgy logo man to the top
@@ -280,7 +298,7 @@ export default function AuthSheet({
                       onClick={() => setMode(tab.id)}
                       aria-pressed={isActive}
                       className={`relative z-0 flex h-9 flex-1 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg dd-type-control transition-colors ${
-                        isActive ? "text-white" : "text-stone-600 hover:text-stone-900"
+                        isActive ? "dd-auth-tab-active text-white" : "text-stone-600 hover:text-stone-900"
                       }`}
                     >
                       {/* initial={false} (2026-08-20, per Jay: "don't
@@ -298,7 +316,7 @@ export default function AuthSheet({
                       <AnimatePresence initial={false}>
                         {isActive && (
                           <motion.span
-                            className="absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
+                            className="dd-auth-tab-active-fill absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
                             style={{ zIndex: -1 }}
                             initial={{ scale: 0.5, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -318,7 +336,13 @@ export default function AuthSheet({
               ref={formScrollRef}
               className="min-h-0 flex-1 overflow-y-auto p-6"
             >
-              <AuthPanel prompt={prompt} onSuccess={onClose} mode={mode} onModeChange={setMode} />
+              <AuthPanel
+                prompt={prompt}
+                onSuccess={onClose}
+                onOpenLegal={openLegal}
+                mode={mode}
+                onModeChange={setMode}
+              />
             </div>
           </motion.div>
         </>

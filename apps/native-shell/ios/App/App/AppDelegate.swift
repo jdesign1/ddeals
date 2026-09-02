@@ -6,14 +6,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Keep the native area outside the WebView in the same grey as the
-        // mobile app. Without this, iOS can expose the window background below
-        // the floating bottom nav as a white strip inside the home-indicator
-        // safe area on every route.
-        let appBackground = UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 237.0 / 255.0, alpha: 1.0)
+    private let themePreferenceKey = "CapacitorStorage.dodgey-deals-theme"
+
+    private func applySavedTheme() {
+        // Capacitor Preferences stores the web app's Display choice in the
+        // CapacitorStorage UserDefaults suite. Read it before the bridge is
+        // ready so the native launch screen and the WebView start in the same
+        // app-owned appearance, independent of the device appearance.
+        let savedTheme = UserDefaults.standard.string(forKey: themePreferenceKey)
+        let interfaceStyle: UIUserInterfaceStyle = savedTheme == "dark" ? .dark : .light
+        window?.overrideUserInterfaceStyle = interfaceStyle
+
+        let appBackground = UIColor(named: "LaunchBackground") ?? UIColor(red: 250.0 / 255.0, green: 248.0 / 255.0, blue: 244.0 / 255.0, alpha: 1.0)
         window?.backgroundColor = appBackground
+        window?.rootViewController?.overrideUserInterfaceStyle = interfaceStyle
         window?.rootViewController?.view.backgroundColor = appBackground
+    }
+
+    func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        applySavedTheme()
+        return true
+    }
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Repeat after the storyboard has connected the window and root view
+        // controller. This also keeps the native safe-area background aligned
+        // with the saved Display choice after the launch storyboard hands off.
+        applySavedTheme()
         return true
     }
 

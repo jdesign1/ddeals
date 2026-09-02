@@ -25,7 +25,6 @@ import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { usePageHeader } from "@/lib/header-context";
-import PageLoader from "@/components/PageLoader";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
@@ -106,20 +105,7 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { returnToSearch, resumeAfterDealBack, clearDealNavigationPending } = useSearch();
-
-  // Clears the globally-mounted nav-transition `<PageLoader>` (see
-  // `GlobalOverlays.tsx`/`search-context.tsx`'s `isDealNavigationPending`
-  // doc comments) now that THIS page -- the thing that flag exists to cover
-  // the wait for -- has actually mounted and is rendering its own local
-  // `<PageLoader>` below (`products === null` is true on first render, same
-  // tick as this effect gets scheduled), so there's no gap between the two
-  // covers handing off. A no-op, safe to call even when this page was
-  // reached some other way (Home, /specials, a direct link) and the flag
-  // was never set true to begin with.
-  useEffect(() => {
-    clearDealNavigationPending();
-  }, [clearDealNavigationPending]);
+  const { returnToSearch, resumeAfterDealBack } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
@@ -234,21 +220,9 @@ export default function DealAssessmentPage() {
     [product, deal, products]
   );
 
-  // `<PageLoader>` is rendered as a sibling on EVERY branch below
-  // (`loading={products === null}`, true only on the "still fetching"
-  // branch) rather than only inside the loading branch itself -- React
-  // reconciles by the rendered tree's shape, not by which `return`
-  // statement produced it, so as long as `<PageLoader>` sits at the same
-  // position (first child of the returned fragment) across every branch,
-  // it's treated as the SAME component instance updating props as
-  // `products`/`product`/`deal` resolve, not unmounted+remounted. That's
-  // what lets it play its exit fade (see its own doc comment) instead of
-  // just vanishing the instant data arrives, without needing to collapse
-  // this file's whole early-return structure into one branching variable.
   if (loadError) {
     return (
       <>
-        <PageLoader loading={false} />
         <div className="flex flex-col items-center gap-3 pt-10 text-center">
           <ErrorState message="Couldn't load this deal." detail={loadError} onRetry={retry} />
           <Link href="/" className="text-[13px] leading-4 font-bold text-ink-600 underline">
@@ -260,13 +234,12 @@ export default function DealAssessmentPage() {
   }
 
   if (products === null) {
-    return <PageLoader loading />;
+    return <div className="min-h-full page-paper-surface" aria-busy="true" />;
   }
 
   if (!product || !deal) {
     return (
       <>
-        <PageLoader loading={false} />
         <div className="flex flex-col items-center gap-3 p-10 text-center">
           <p className="text-sm font-bold text-stone-700">This deal isn&rsquo;t on special right now.</p>
           <p className="text-[13px] leading-4 text-stone-500">It may have ended, or the link is out of date.</p>
@@ -299,7 +272,6 @@ export default function DealAssessmentPage() {
 
   return (
     <>
-      <PageLoader loading={false} />
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
           as the change above that had briefly added the real `SearchBar`
           component here -- see this file's header comment).
@@ -763,4 +735,3 @@ export default function DealAssessmentPage() {
     </>
   );
 }
-

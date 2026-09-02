@@ -22,7 +22,6 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import StorePill from "@/components/StorePill";
-import PageLoader from "@/components/PageLoader";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
@@ -242,11 +241,6 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Keep the first Check Deals render behind the same solid full-screen
-          mascot cover used during deal navigation. The complete page fades in
-          as one surface once the shared catalogue request has resolved, so
-          the search bar, store pills, tabs, and cards never appear in stages. */}
-      <PageLoader loading={loadingProducts} />
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
@@ -497,9 +491,9 @@ function SortDropdown<T extends string>({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
             >
-              <div className="flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
+              <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                 {/* Bottom-sheet title style unified app-wide 2026-08-19, per
                     Jay: "use a slightly bolder larger top title text" for
                     every bottom sheet -- was text-sm/font-black here, now
@@ -705,9 +699,9 @@ function TrendingSection({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
             >
-              <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
+              <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                 <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>
                 <div className="flex items-center gap-1">
                   {categoryFilter.length > 0 && (

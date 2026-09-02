@@ -3,7 +3,6 @@
 import FullScreenSearch from "@/components/FullScreenSearch";
 import ScannerModal from "@/components/ScannerModal";
 import AuthSheet from "@/components/AuthSheet";
-import PageLoader from "@/components/PageLoader";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 
@@ -28,20 +27,9 @@ import { useAuth } from "@/lib/auth-context";
  * /me, /history, /account) now just calls `openAuthSheet(prompt)` instead
  * of rendering `AuthPanel` inline as its entire page content.
  *
- * Second `<PageLoader>` (2026-08-11) -- deliberately a SEPARATE instance
- * from the deal page's own local one, not a shared/lifted one. This one is
- * controlled by `search-context.tsx`'s `isDealNavigationPending` (see that
- * flag's own doc comment for the full "briefly see Home" bug it fixes) and
- * exists specifically to cover the gap between a card tap inside
- * `FullScreenSearch` and the destination deal page actually mounting --
- * since this component, like `FullScreenSearch` itself, lives in
- * `layout.tsx` and is NOT unmounted across a route change, it stays solid
- * through that entire gap without caring how long the route transition
- * takes. The deal page's own local `<PageLoader>` (unchanged) takes over
- * once it mounts and clears this one via `clearDealNavigationPending()`.
  */
 export default function GlobalOverlays() {
-  const { isScannerOpen, closeScanner, openSearch, isDealNavigationPending } = useSearch();
+  const { isScannerOpen, closeScanner, openSearch } = useSearch();
   const { isAuthSheetOpen, authSheetPrompt, closeAuthSheet } = useAuth();
 
   return (
@@ -56,7 +44,6 @@ export default function GlobalOverlays() {
         }}
       />
       <AuthSheet isOpen={isAuthSheetOpen} prompt={authSheetPrompt} onClose={closeAuthSheet} />
-      <PageLoader loading={isDealNavigationPending} />
     </>
   );
 }

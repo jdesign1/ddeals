@@ -35,7 +35,6 @@ import { useSearch } from "@/lib/search-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { usePageHeader } from "@/lib/header-context";
-import PageLoader from "@/components/PageLoader";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
@@ -155,7 +154,7 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { returnToSearch, resumeAfterDealBack, clearDealNavigationPending, isDealNavigationPending } = useSearch();
+  const { returnToSearch, resumeAfterDealBack } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
@@ -314,16 +313,6 @@ export default function DealAssessmentPage() {
     };
   }, [products, loadError, product, deal, productId, dealStore]);
 
-  // Keep the globally-mounted nav-transition `<PageLoader>` (see
-  // `GlobalOverlays.tsx`/`search-context.tsx`) in place until this route's
-  // product assessment data has resolved. Clearing it on route mount meant a
-  // slow first-load could reveal the Check deals page between the mascot and
-  // the actual assessment. The local loader below and the global loader now
-  // hand off only once the destination has content (or an error state) ready.
-  useEffect(() => {
-    if (products !== null || loadError) clearDealNavigationPending();
-  }, [products, loadError, clearDealNavigationPending]);
-
   // Logs this view to `deal_checks` (2026-08-11, backs the ported "All
   // Checks"/"Deal Stats" screens -- see packages/shared/src/deal-checks.ts's
   // own header comment) the first time `product`/`deal` both resolve for a
@@ -366,18 +355,13 @@ export default function DealAssessmentPage() {
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
-  const startedWithPendingNavigationRef = useRef(isDealNavigationPending);
   const backNavigationStartedRef = useRef(false);
 
-  // Full-screen search uses a solid global loader while this route mounts.
-  // Hold the incoming slide until that cover has finished exiting, otherwise
-  // the route transition would complete invisibly underneath the loader.
+  // Hold the incoming slide until this route's data is ready, so the page
+  // appears as one complete surface rather than revealing half-loaded cards.
   useEffect(() => {
     if (isEntryAnimationReady || (products === null && !loadError)) return;
-    const timer = window.setTimeout(
-      () => setIsEntryAnimationReady(true),
-      startedWithPendingNavigationRef.current ? 320 : 0
-    );
+    const timer = window.setTimeout(() => setIsEntryAnimationReady(true), 0);
     return () => window.clearTimeout(timer);
   }, [isEntryAnimationReady, products, loadError]);
 
@@ -446,21 +430,9 @@ export default function DealAssessmentPage() {
   // met.
   const insights = useMemo(() => (deal ? buildPriceHistoryInsights(deal) : []), [deal]);
 
-  // `<PageLoader>` is rendered as a sibling on EVERY branch below
-  // (`loading={products === null}`, true only on the "still fetching"
-  // branch) rather than only inside the loading branch itself -- React
-  // reconciles by the rendered tree's shape, not by which `return`
-  // statement produced it, so as long as `<PageLoader>` sits at the same
-  // position (first child of the returned fragment) across every branch,
-  // it's treated as the SAME component instance updating props as
-  // `products`/`product`/`deal` resolve, not unmounted+remounted. That's
-  // what lets it play its exit fade (see its own doc comment) instead of
-  // just vanishing the instant data arrives, without needing to collapse
-  // this file's whole early-return structure into one branching variable.
   if (loadError) {
     return (
       <>
-        <PageLoader loading={false} />
         <div className="flex flex-col items-center gap-3 pt-10 text-center">
           <ErrorState message="Couldn't load this deal." detail={loadError} onRetry={retry} />
           {/* text-[13px] -> text-sm (14px), 2026-08-20, per Jay: "Increase
@@ -477,13 +449,12 @@ export default function DealAssessmentPage() {
   }
 
   if (products === null) {
-    return <PageLoader loading />;
+    return <div className="min-h-full page-paper-surface" aria-busy="true" />;
   }
 
   if (!product || !deal) {
     return (
       <>
-        <PageLoader loading={false} />
         <div className="flex flex-col items-center gap-3 p-10 text-center">
           <p className="text-sm font-bold text-stone-700">This deal isn&rsquo;t on special right now.</p>
           <p className="text-sm leading-4 text-stone-500">It may have ended, or the link is out of date.</p>
@@ -500,7 +471,7 @@ export default function DealAssessmentPage() {
   const verdictColorClass =
     verdict === "Real Saver" ? "text-fair-800" : verdict === "Dodgy Deal" ? "text-alert-800" : uncertain ? "text-stone-700" : "text-dodgy-900";
   const verdictBgClass =
-    verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : uncertain ? "bg-stone-50" : "bg-dodgy-50";
+    verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : uncertain ? "page-paper-surface" : "bg-dodgy-50";
   const verdictBorderClass =
     verdict === "Real Saver" ? "border-fair-200" : verdict === "Dodgy Deal" ? "border-alert-200" : uncertain ? "border-stone-200" : "border-dodgy-200";
   const verdictButtonBorderClass =
@@ -542,7 +513,6 @@ export default function DealAssessmentPage() {
 
   return (
     <>
-      <PageLoader loading={false} />
       <motion.div
         initial={{ x: "100%" }}
         animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
@@ -682,9 +652,9 @@ export default function DealAssessmentPage() {
             type="button"
             onClick={() => setShowProductImage(true)}
             aria-label={`View larger image of ${product.name}`}
-            className="h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 bg-white p-0"
+            className="product-image-frame h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
           >
-            <Image src={product.image} alt={product.name} width={112} height={112} unoptimized className="h-full w-full object-contain" />
+            <Image src={product.image} alt={product.name} width={112} height={112} unoptimized className="product-image-content h-full w-full object-contain" />
           </button>
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h3>
@@ -1071,14 +1041,14 @@ export default function DealAssessmentPage() {
                             <div className="relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
                               <AddToListButton productId={altProd.id} />
                               <div className="flex items-start gap-4">
-                                <div className="flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
+                                <div className="product-image-frame flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
                                   <Image
                                     src={altProd.image}
                                     alt={altProd.name}
                                     width={96}
                                     height={96}
                                     unoptimized
-                                    className="h-full w-full object-contain mix-blend-multiply"
+                                    className="product-image-content h-full w-full object-contain mix-blend-multiply"
                                   />
                                 </div>
                                 <div className="min-w-0 flex-grow py-1">
@@ -1328,7 +1298,7 @@ export default function DealAssessmentPage() {
             width={768}
             height={768}
             unoptimized
-            className="max-h-[78vh] max-w-[84vw] object-contain"
+            className="product-image-content max-h-[78vh] max-w-[84vw] object-contain"
           />
         </div>
       </div>

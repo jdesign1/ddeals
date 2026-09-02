@@ -257,14 +257,14 @@ export default function ListItemProductCard({
       }`}
       style={{ cursor: confirmingRemove ? "default" : "pointer", touchAction: "pan-y" }}
     >
-      <div className="flex h-14 w-14 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
+      <div className="product-image-frame flex h-14 w-14 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
         <Image
           src={product.image}
           alt={product.name}
           width={56}
           height={56}
           sizes="56px"
-          className="h-full w-full object-contain"
+          className="product-image-content h-full w-full object-contain"
         />
       </div>
 
@@ -363,9 +363,9 @@ function NotOnSpecialSheet({
             role="dialog"
             aria-modal="true"
             aria-label="Not currently on special"
-            className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl bg-white shadow-2xl pb-safe-sm"
+            className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl pb-safe-sm"
           >
-            <div className="flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
+            <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
               <h3 className="dd-type-sheet-title text-stone-900">
                 Not currently on special
               </h3>

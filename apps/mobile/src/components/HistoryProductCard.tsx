@@ -51,14 +51,14 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
       className="group flex min-h-20 cursor-pointer items-stretch gap-3 overflow-hidden rounded-xl bg-white p-2 shadow-sm transition-transform duration-150 active:scale-[0.985]"
     >
       <AddToListButton productId={product.id} />
-      <div className="flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
+      <div className="product-image-frame flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
         <Image
           src={product.image}
           alt={product.name}
           width={64}
           height={64}
           sizes="64px"
-          className="h-full w-full object-contain"
+          className="product-image-content h-full w-full object-contain"
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-8">

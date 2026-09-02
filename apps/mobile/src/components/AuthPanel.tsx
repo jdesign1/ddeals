@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { CalendarDays, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 /**
@@ -358,6 +358,7 @@ function mapSignUpError(message: string): { field?: "email"; message: string } {
 
 export default function AuthPanel({
   onSuccess,
+  onOpenLegal,
   mode,
   onModeChange,
 }: {
@@ -368,6 +369,9 @@ export default function AuthPanel({
    * back later. */
   prompt?: string;
   onSuccess: () => void;
+  /** Opens an in-app legal page while keeping this create-account sheet in
+   * place so that the legal page's back arrow returns here. */
+  onOpenLegal: (path: "/privacy" | "/terms") => void;
   /** Controlled by `AuthSheet.tsx`'s own top Login/Create account tabs. */
   mode: "signin" | "signup";
   /** Same setter backing those tabs -- also used by the post-sign-up "Back
@@ -376,7 +380,7 @@ export default function AuthPanel({
    * view. */
   onModeChange: (mode: "signin" | "signup") => void;
 }) {
-  const { signIn, signUp, closeAuthSheet } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [name, setName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -603,18 +607,24 @@ export default function AuthPanel({
             inputs render their own locale placeholder, e.g. "dd/mm/yyyy",
             not a custom one) -- tapping it opens the phone's native date
             picker. */}
-        <input
-          id="authpanel-dob"
-          type="date"
-          required
-          min={dobMin}
-          max={dobMax}
-          value={dateOfBirth}
-          onChange={(e) => setDateOfBirth(e.target.value)}
-          onBlur={() => setTouched((t) => ({ ...t, dob: true }))}
-          aria-invalid={!!visibleErrors.dob}
-          className={visibleErrors.dob ? errorInputClass : inputClass}
-        />
+        <div className="relative">
+          <input
+            id="authpanel-dob"
+            type="date"
+            required
+            min={dobMin}
+            max={dobMax}
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, dob: true }))}
+            aria-invalid={!!visibleErrors.dob}
+            className={`${visibleErrors.dob ? errorInputClass : inputClass} w-full pr-11`}
+          />
+          <CalendarDays
+            className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500"
+            aria-hidden="true"
+          />
+        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="authpanel-zip" className={visibleErrors.zip ? errorLabelClass : labelClass}>
@@ -811,7 +821,10 @@ export default function AuthPanel({
             By creating an account, you acknowledge our{" "}
             <Link
               href="/privacy"
-              onClick={closeAuthSheet}
+              onClick={(event) => {
+                event.preventDefault();
+                onOpenLegal("/privacy");
+              }}
               className="font-bold text-ink-600 underline underline-offset-2"
             >
               Privacy policy
@@ -819,7 +832,10 @@ export default function AuthPanel({
             {" "}and agree to our{" "}
             <Link
               href="/terms"
-              onClick={closeAuthSheet}
+              onClick={(event) => {
+                event.preventDefault();
+                onOpenLegal("/terms");
+              }}
               className="font-bold text-ink-600 underline underline-offset-2"
             >
               Terms of use

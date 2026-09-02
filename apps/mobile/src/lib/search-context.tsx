@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   loadLiveProducts,
   invalidateLiveProductsPublicationMarker,
@@ -99,34 +99,6 @@ interface SearchContextValue {
   /** True when the next search overlay opening is a return from a deal page,
    * rather than a fresh search entry. */
   preserveSearchStateOnOpen: boolean;
-  /** True from the instant a card tap inside the search overlay calls
-   * `pauseForDealNavigation` until the destination deal page's own mount
-   * effect calls `clearDealNavigationPending` -- see `GlobalOverlays.tsx`'s
-   * globally-mounted `<PageLoader>` (2026-08-11, fixing a real bug: users
-   * briefly saw Home during this exact window). Root cause `PageLoader`'s
-   * own 2026-08-10 doc comment didn't cover: `pauseForDealNavigation` sets
-   * `isActive` false *synchronously*, in the same tick as the tap, which
-   * starts `FullScreenSearch`'s 200ms opacity exit fade immediately --  but
-   * `router.push(...)` (called right after, in `ProductListCard.goToDeal`)
-   * isn't instant, since this card's `onClick` handler (not a `<Link>`)
-   * never triggers Next.js's hover/viewport prefetch, so the destination
-   * route can take meaningfully longer than 200ms to actually mount,
-   * especially the first time it's visited in a `next dev` session (fresh
-   * route compile). The deal page's own local `<PageLoader>` (still
-   * correct, unchanged) only starts existing once THAT mount happens -- so
-   * there was a real, unbounded gap between "search overlay finishes fading
-   * out" and "deal page mounts its own cover" where nothing occluded Home
-   * underneath. This flag plugs exactly that gap with a SEPARATE, globally-
-   * mounted `<PageLoader>` that turns on before the fade starts (so it's
-   * already opaque underneath the fading overlay) and only turns off once
-   * the destination page itself has mounted and is covering the screen
-   * with its own local `<PageLoader>` -- a clean handoff, since both render
-   * the identical full-white-plus-logo visual, so having both mounted for
-   * one frame during the handoff is invisible. */
-  isDealNavigationPending: boolean;
-  /** Called once, on mount, by the deal-assessment page -- see
-   * `isDealNavigationPending`'s own doc comment above. */
-  clearDealNavigationPending: () => void;
   isScannerOpen: boolean;
   openScanner: () => void;
   closeScanner: () => void;
@@ -147,13 +119,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [isActive, setIsActive] = useState(false);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
-  const [isDealNavigationPending, setIsDealNavigationPending] = useState(false);
-  // Guards the timeout safety-net below (peer review, 2026-08-11): a plain
-  // counter, bumped on every `pauseForDealNavigation` call, so a stale
-  // timer from an EARLIER tap can't wrongly clear a LATER, still-genuinely-
-  // in-flight navigation if the user taps a second card within the first
-  // one's own timeout window.
-  const pendingNavRequestIdRef = useRef(0);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   // Bumped by `retry()` below to force the effect to re-run. A plain counter
   // rather than calling the fetch directly from `retry()` so there's still
@@ -307,25 +272,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setIsActive(false);
         setReturnToSearch({ productId, store });
         setPreserveSearchStateOnOpen(false);
-        setIsDealNavigationPending(true);
-        // Safety net (peer review, 2026-08-11): normally
-        // `clearDealNavigationPending` (below) is what turns this back off,
-        // called by the destination deal page's own mount effect. But if
-        // that page never actually mounts -- the user hits back before the
-        // route transition finishes, a chunk-load/network failure, the tab
-        // loses focus mid-navigation -- nothing would ever clear it, and
-        // this flag drives a full-screen opaque loader (GlobalOverlays.tsx)
-        // that would then stay stuck forever, strictly worse than the
-        // flash it exists to prevent. Self-heals after 6s if nothing else
-        // cleared it first; the `requestId` check stops this from wrongly
-        // cancelling a SECOND, still-legitimate navigation if another card
-        // gets tapped within this window (its own call bumps the ref, so
-        // this stale timer's captured id no longer matches by the time it
-        // fires).
-        const requestId = ++pendingNavRequestIdRef.current;
-        setTimeout(() => {
-          if (pendingNavRequestIdRef.current === requestId) setIsDealNavigationPending(false);
-        }, 6000);
       },
       resumeAfterDealBack: () => {
         setPreserveSearchStateOnOpen(true);
@@ -333,13 +279,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setReturnToSearch(null);
       },
       preserveSearchStateOnOpen,
-      isDealNavigationPending,
-      clearDealNavigationPending: () => setIsDealNavigationPending(false),
       isScannerOpen,
       openScanner: () => setIsScannerOpen(true),
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, returnToSearch, preserveSearchStateOnOpen, isDealNavigationPending, isScannerOpen, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already

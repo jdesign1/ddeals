@@ -48,13 +48,13 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
       // by dropping it).
       className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
-      <div className="relative aspect-square w-full bg-stone-100">
+      <div className="product-image-frame relative aspect-square w-full bg-stone-100">
         <Image
           src={product.image}
           alt={product.name}
           fill
           sizes="(max-width: 480px) 50vw, 256px"
-          className="object-contain p-3"
+          className="product-image-content object-contain p-3"
         />
         {(isTrueSpecial || isDodgy) && (
           <span
