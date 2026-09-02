@@ -77,6 +77,89 @@ export function isUncertainAssessment(verdict: AssessmentVerdict): boolean {
   return verdict === "Early read" || verdict === "Limited history";
 }
 
+export interface AssessmentSummaryCopy {
+  heading: string;
+  body: string;
+}
+
+function signedSavingsPercentage(deal: Pick<CurrentDeal, "price" | "originalPrice">): number | null {
+  if (!Number.isFinite(deal.price) || !Number.isFinite(deal.originalPrice) || deal.originalPrice <= 0) return null;
+  return Math.round(((deal.originalPrice - deal.price) / deal.originalPrice) * 100);
+}
+
+function formatAssessmentPrice(value: number | null): string | null {
+  return value != null && Number.isFinite(value) && value > 0 ? `$${value.toFixed(2)}` : null;
+}
+
+function sentenceWithPeriod(value: string): string {
+  const trimmed = value.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * Builds the short explanation beneath the verdict using the SAME deal that
+ * produced the verdict. The previous page copy used the cheapest deal across
+ * all stores for this section, which could make a Woolworths verdict describe
+ * New World's price and baseline instead. `originalPrice` is the store's
+ * recent normal/reference price, never a previous special price.
+ */
+export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummaryCopy {
+  const verdict = getAssessmentVerdict(deal);
+  const store = deal.store;
+  const currentPrice = formatAssessmentPrice(deal.price) ?? "the current price";
+  const normalPrice = formatAssessmentPrice(deal.originalPrice);
+  const savingsPct = signedSavingsPercentage(deal);
+
+  if (verdict === "Dodgy Deal") {
+    return {
+      heading: "Why this special is misleading",
+      body: deal.explanation
+        ? `At ${store}, ${sentenceWithPeriod(deal.explanation)}`
+        : `At ${store}, this special does not represent a reliable saving against the store's recent normal price.`,
+    };
+  }
+
+  if (verdict === "Fair Deal") {
+    if (savingsPct != null && savingsPct > 0 && normalPrice) {
+      return {
+        heading: `${savingsPct}% off the recent normal price`,
+        body: `At ${store}, the current price of ${currentPrice} is ${savingsPct}% below its recent normal price of ${normalPrice}. That's a modest saving.`,
+      };
+    }
+    return {
+      heading: "No meaningful saving",
+      body: normalPrice
+        ? `At ${store}, the current price of ${currentPrice} is about the same as or higher than its recent normal price of ${normalPrice}. There is no meaningful saving.`
+        : `At ${store}, there is no reliable price baseline to show a meaningful saving.`,
+    };
+  }
+
+  if (verdict === "Real Saver") {
+    if (savingsPct != null && savingsPct > 0 && normalPrice) {
+      return {
+        heading: `${savingsPct}% off the recent normal price`,
+        body: `At ${store}, the current price of ${currentPrice} is ${savingsPct}% below its recent normal price of ${normalPrice}. That is a genuine saving.`,
+      };
+    }
+    return {
+      heading: "Genuine saving",
+      body: `At ${store}, this is marked as a genuine saving based on the available price history.`,
+    };
+  }
+
+  if (verdict === "Early read") {
+    return {
+      heading: "Why this isn't confirmed yet",
+      body: `At ${store}, this looks cheaper than an older regular price, but we need more recent checks before we can confirm it.`,
+    };
+  }
+
+  return {
+    heading: "Why this isn't confirmed yet",
+    body: `We don't yet have enough regular-price history at ${store} to tell whether this special is a genuine saving.`,
+  };
+}
+
 /**
  * Same branch order as the prototype's DealModal: a plain (non-special) item
  * always lands as a "Fair Deal" (no discount game being played); a special

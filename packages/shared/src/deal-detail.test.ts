@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPriceHistoryInsights,
+  buildAssessmentSummaryCopy,
   findBestDodgyDeal,
   getAssessmentVerdict,
   getStoreProductUrl,
@@ -48,6 +49,47 @@ test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })), "Early read");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })), "Limited history");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Deal");
+});
+
+test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supermarket", () => {
+  const copy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      store: "Woolworths NZ",
+      price: 4.39,
+      originalPrice: 4.19,
+      dealType: "Dodgy Deal",
+      explanation: "Sale price ($4.39) is 4.8% above the normal price ($4.19)",
+    })
+  );
+
+  assert.equal(copy.heading, "Why this special is misleading");
+  assert.match(copy.body, /At Woolworths NZ/);
+  assert.match(copy.body, /normal price/);
+  assert.doesNotMatch(copy.body, /recent special price/);
+});
+
+test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the selected supermarket", () => {
+  const fairCopy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      store: "New World",
+      price: 3.99,
+      originalPrice: 4.19,
+      dealType: "Fair Price",
+    })
+  );
+  assert.match(fairCopy.body, /At New World/);
+  assert.match(fairCopy.body, /\$4\.19/);
+
+  const realCopy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      store: "Woolworths NZ",
+      price: 3.5,
+      originalPrice: 5,
+      dealType: "Real Deal",
+    })
+  );
+  assert.match(realCopy.body, /At Woolworths NZ/);
+  assert.match(realCopy.body, /\$5\.00/);
 });
 
 test("findBestDodgyDeal: finds a Dodgy retailer deal even when another store has a better discount", () => {

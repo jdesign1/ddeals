@@ -18,6 +18,7 @@ import {
   type AssessmentVerdict,
   isUncertainAssessment,
   getAssessmentVerdict,
+  buildAssessmentSummaryCopy,
   getStoreProductUrl,
   getRealAveragePrice,
   buildRankingList,
@@ -26,6 +27,7 @@ import {
   buildPriceHistoryInsights,
   findCheaperAlternatives,
   findDealForStore,
+  normalizeStoreKey,
   logDealCheck,
   describeFetchError,
 } from "@dodgey-deals/shared";
@@ -112,6 +114,18 @@ const STORE_TEXT_COLOR: Record<string, string> = {
   "bg-green-600": "text-green-600",
   "bg-stone-600": "text-stone-600",
 };
+
+function storesMatch(left: string, right: string): boolean {
+  const normalizedLeft = normalizeStoreKey(left);
+  const normalizedRight = normalizeStoreKey(right);
+  return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
+function joinStoreNames(stores: string[]): string {
+  if (stores.length <= 1) return stores[0] ?? "the listed supermarket";
+  if (stores.length === 2) return `${stores[0]} and ${stores[1]}`;
+  return `${stores.slice(0, -1).join(", ")}, and ${stores[stores.length - 1]}`;
+}
 
 /**
  * Verdict badge, ADDED 2026-08-20, per Jay: "Is there a badge we can use for
@@ -487,24 +501,16 @@ export default function DealAssessmentPage() {
     verdict === "Real Saver" ? "border-fair-700 text-fair-800" : verdict === "Dodgy Deal" ? "border-alert-700 text-alert-800" : uncertain ? "border-stone-600 text-stone-700" : "border-dodgy-700 text-dodgy-800";
   const verdictBadge = VERDICT_BADGE[verdict];
 
-  const cheapestStoreItem = rankingList[0];
-  // `visibleRanking` is already sorted by price and contains only stores
-  // where this item is currently on special. When multiple supermarkets
-  // have the special, the hero label must point to the cheapest special,
-  // rather than the store used to enter this assessment page.
+  // `rankingList` contains each supermarket's current price, while
+  // `visibleRanking` is the special-only subset. Keep these separate: the
+  // verdict and explanation below belong to the supermarket selected for
+  // this page, while the ranking/alternative note is explicitly cross-store.
+  const lowestCurrentPriceItem = rankingList[0];
   const lowestSpecialStoreItem = visibleRanking[0];
   const multipleSpecialSupermarkets = visibleRanking.length > 1;
-  const onlyOneSupermarket = rankingList.length === 1;
-  const cheapestAveragePrice = cheapestStoreItem ? getRealAveragePrice(product, cheapestStoreItem.store) : null;
-  const cheapestDiscountPct =
-    cheapestStoreItem && cheapestAveragePrice && cheapestAveragePrice > 0
-      ? Math.round(((cheapestAveragePrice - cheapestStoreItem.price) / cheapestAveragePrice) * 100)
-      : 0;
 
   // Recent average for THIS deal's own store specifically -- deliberately
-  // NOT `cheapestAveragePrice` just above, which is the CHEAPEST store's own
-  // average (a different comparison, used by the verdict paragraph further
-  // down). Backs the hero price color below (2026-08-21, per Jay: "The item
+  // Backs the hero price color below (2026-08-21, per Jay: "The item
   // price text at top should also be Green if cheaper, Red if pricier, or
   // Black if no change") -- same `text-fair-700`/`text-alert-700` tokens
   // this page's own chart legend already uses for "Cheaper"/"Pricier"
@@ -512,13 +518,28 @@ export default function DealAssessmentPage() {
   // "cheaper"/"pricier" when there's no real average to compare against
   // (`dealAveragePrice` null or `<= 0`) -- same guard `StoreCompareChart`'s
   // own `ariaLabel` logic already uses for the identical edge case.
-  const dealAveragePrice = getRealAveragePrice(product, dealStore);
+  const dealAveragePrice = getRealAveragePrice(product, deal.store);
   const dealPriceColorClass =
     dealAveragePrice == null || dealAveragePrice <= 0 || deal.price === dealAveragePrice
       ? "text-stone-900"
       : deal.price < dealAveragePrice
         ? "text-fair-700"
         : "text-alert-700";
+
+  const assessmentSummary = buildAssessmentSummaryCopy(deal);
+  const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
+  const lowestSpecialStoreNames =
+    lowestSpecialPriceCents == null
+      ? []
+      : visibleRanking
+          .filter((item) => Math.round(item.price * 100) === lowestSpecialPriceCents)
+          .map((item) => item.store)
+          .filter((store, index, stores) => stores.indexOf(store) === index);
+  const selectedStoreHasLowestSpecial = lowestSpecialStoreNames.some((store) => storesMatch(store, deal.store));
+  const crossStoreSpecialSummary =
+    lowestSpecialStoreItem && lowestSpecialStoreNames.length > 0 && !selectedStoreHasLowestSpecial
+      ? `The lowest special price across supermarkets is $${lowestSpecialStoreItem.price.toFixed(2)} at ${joinStoreNames(lowestSpecialStoreNames)}.`
+      : null;
 
   return (
     <>
@@ -674,90 +695,18 @@ export default function DealAssessmentPage() {
             </div>
             <p
               className={`mt-0.5 text-sm font-bold ${
-                STORE_TEXT_COLOR[
-                  getStoreLogoMeta(
-                    multipleSpecialSupermarkets
-                      ? (lowestSpecialStoreItem?.store ?? dealStore)
-                      : verdict === "Dodgy Deal" || uncertain
-                        ? dealStore
-                        : (cheapestStoreItem?.store ?? dealStore)
-                  ).bg
-                ] ||
-                "text-stone-600"
+                STORE_TEXT_COLOR[getStoreLogoMeta(deal.store).bg] || "text-stone-600"
               }`}
             >
-              {multipleSpecialSupermarkets
-                ? `Lowest at ${lowestSpecialStoreItem?.store ?? dealStore}`
-                : onlyOneSupermarket
-                ? (cheapestStoreItem?.store ?? dealStore)
-                : verdict === "Dodgy Deal" || uncertain
-                  ? `at ${dealStore}`
-                  : `Lowest at ${cheapestStoreItem?.store ?? dealStore}`}
+              at {deal.store}
             </p>
           </div>
         </div>
 
         <div>
-          {verdict === "Dodgy Deal" ? (
-            <>
-              <h4 className="dd-type-section mb-1 text-stone-900">Dodgy discount special</h4>
-              <p className="text-sm leading-relaxed text-stone-600">
-                The lowest genuine price is offered by {cheapestStoreItem?.store}. However, this price is{" "}
-                {cheapestDiscountPct === 0 ? (
-                  "equal to a recent special price"
-                ) : (
-                  <>
-                    {Math.abs(cheapestDiscountPct)}% {cheapestDiscountPct > 0 ? "lower" : "higher"} than a recent special price
-                  </>
-                )}
-                {cheapestAveragePrice != null && (
-                  <>
-                    {" "}
-                    <strong className="font-extrabold text-stone-800">${cheapestAveragePrice.toFixed(2)}</strong>
-                  </>
-                )}
-                .
-              </p>
-            </>
-          ) : verdict === "Fair Deal" ? (
-            <>
-              <h4 className="dd-type-section mb-1 text-stone-900">
-                {cheapestDiscountPct === 0 ? "No real savings" : `${Math.abs(cheapestDiscountPct)}% off the recent normal price`}
-              </h4>
-              <p className="text-sm leading-relaxed text-stone-600">
-                {cheapestDiscountPct === 0 ? (
-                  <>This on special price is about the same as a recent special price</>
-                ) : (
-                  <>
-                    This price is {Math.abs(cheapestDiscountPct)}% lower than a recent special price
-                  </>
-                )}
-                {cheapestAveragePrice != null && (
-                  <>
-                    {" "}
-                    <strong className="font-extrabold text-stone-800">${cheapestAveragePrice.toFixed(2)}</strong>
-                  </>
-                )}
-                {cheapestDiscountPct === 0 ? "." : ` at ${cheapestStoreItem?.store}.`}
-              </p>
-            </>
-          ) : uncertain ? (
-            <>
-              <h4 className="dd-type-section mb-1 text-stone-900">Why this isn&rsquo;t confirmed yet</h4>
-              <p className="text-sm leading-relaxed text-stone-600">
-                {verdict === "Early read"
-                  ? "This looks like a saving compared with an older regular price, but we need more recent checks before we can confirm it."
-                  : "We don’t have enough regular price history yet to tell whether this special is a genuine saving."}
-              </p>
-            </>
-          ) : (
-            <>
-              <h4 className="dd-type-section mb-1 text-stone-900">{cheapestDiscountPct}% off the recent normal price</h4>
-              <p className="text-sm leading-relaxed text-stone-600">
-                This price is a genuine saving compared to the recent normal price at {cheapestStoreItem?.store}.
-              </p>
-            </>
-          )}
+          <h4 className="dd-type-section mb-1 text-stone-900">{assessmentSummary.heading}</h4>
+          <p className="text-sm leading-relaxed text-stone-600">{assessmentSummary.body}</p>
+          {crossStoreSpecialSummary && <p className="mt-2 text-sm leading-relaxed text-stone-600">{crossStoreSpecialSummary}</p>}
         </div>
 
         {/* `bg-white` added to both action buttons below (2026-08-17,
@@ -774,20 +723,23 @@ export default function DealAssessmentPage() {
             `hover:bg-stone-50` is the same subtle-grey hover already used
             elsewhere in this app (e.g. the list-picker rows in
             `AddToListButton.tsx`) for a filled element. */}
-        {cheapestStoreItem && (
+        {lowestCurrentPriceItem && (
           <a
-            href={findDealForStore(product.currentDeals, cheapestStoreItem.store)?.productUrl || getStoreProductUrl(cheapestStoreItem.store, product.name)}
+            href={
+              findDealForStore(product.currentDeals, lowestCurrentPriceItem.store)?.productUrl ||
+              getStoreProductUrl(lowestCurrentPriceItem.store, product.name)
+            }
             target="_blank"
             rel="noopener noreferrer"
             className={`block w-full rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
           >
-            View at {cheapestStoreItem.store}
+            Lowest price at {lowestCurrentPriceItem.store}
           </a>
         )}
 
         {visibleRanking.length >= 2 && (
           <div>
-            <h4 className={`mb-1 border-b pb-2 dd-type-control text-stone-900 ${verdictBorderClass}`}>Price ranking</h4>
+            <h4 className={`mb-1 border-b pb-2 dd-type-control text-stone-900 ${verdictBorderClass}`}>Special price ranking</h4>
             <div>
               {/* Cheapest-price tie handling added 2026-08-21, per Jay:
                   "If best price is the same across two supermarkets, there
