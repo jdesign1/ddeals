@@ -12,7 +12,7 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
  * plain rounded-full, single brand-primary-green active state, no
  * per-store coloring), a different established convention this app already
  * has for a different screen; this one is specifically Home's own look
- * (rounded-xl border, per-store brand color via `getStoreLogoMeta` when
+ * (rounded-full border, per-store brand color via `getStoreLogoMeta` when
  * active).
  *
  * Purely presentational -- `active`/`onClick` are the only behavioural
@@ -73,14 +73,14 @@ export default function StorePill({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`relative z-0 flex-shrink-0 whitespace-nowrap rounded-xl border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors duration-150 ${
+      className={`relative z-0 flex-shrink-0 whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors duration-150 ${
         active ? meta.text : `${backgroundClassName} text-stone-600 hover:bg-stone-50`
       }`}
     >
       <AnimatePresence>
         {active && (
           <motion.span
-            className={`absolute inset-0 rounded-xl ${meta.bg}`}
+            className={`absolute inset-0 rounded-full ${meta.bg}`}
             style={{ zIndex: -1 }}
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
