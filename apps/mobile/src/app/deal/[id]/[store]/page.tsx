@@ -154,7 +154,7 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { returnToSearch, resumeAfterDealBack } = useSearch();
+  const { products: catalogueProducts, returnToSearch, resumeAfterDealBack } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
@@ -206,6 +206,15 @@ export default function DealAssessmentPage() {
   }, []);
 
   const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
+  // The deal route fetches its own validated snapshot, but the tapped card's
+  // product is already in the global catalogue. Use that name immediately so
+  // the shared header never publishes a temporary "Deal" title while the
+  // detail fetch is in flight. Direct/deep links fall back to the app title
+  // until their product snapshot resolves.
+  const headerProduct = useMemo(
+    () => product ?? catalogueProducts.find((p) => p.id === productId) ?? null,
+    [catalogueProducts, product, productId]
+  );
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
 
   const priceHistoryKey =
@@ -407,7 +416,7 @@ export default function DealAssessmentPage() {
   // first as a sheet layered over this view, now as a section that expands
   // in place within it, so the global header stays on this page's own
   // title/back button throughout either way.
-  const headerTitle = product ? product.name : "Deal";
+  const headerTitle = headerProduct?.name ?? null;
   usePageHeader(headerTitle, onBack);
 
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);

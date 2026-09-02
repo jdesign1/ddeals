@@ -1207,20 +1207,21 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   background-color: #896d26;
 }
 
-/* Product photography is content, not a dark-mode surface. A number of the
-   catalogue assets include white pixels around the pack artwork and are
-   intentionally rendered with multiply blending in light mode. Multiply
-   against a charcoal card makes those pixels, and sometimes the whole
-   product, disappear. Use a warm elevated image tile and restore normal
-   blending in dark mode; the slight dimming avoids a harsh white glow while
-   preserving pack colours and text. */
+/* Product photography is content, not a dark-mode surface. Apple recommends
+   slightly darkening content images with white backgrounds in Dark Mode so
+   they do not glow against the surrounding interface. Use a warm elevated
+   charcoal-grey tile rather than the light-mode cream tile, restore normal
+   blending so catalogue artwork stays visible, and gently dim all product
+   images (including opaque white-backed assets) to keep the result cohesive. */
 [data-theme="dark"] .product-image-frame {
-  background-color: #eee8dc;
-  box-shadow: inset 0 0 0 1px #c6bcae;
+  background-color: #3b3935;
+  box-shadow: inset 0 0 0 1px #514d47;
+}
+[data-theme="dark"] .product-image-content {
+  filter: brightness(0.82) saturate(1.06);
 }
 [data-theme="dark"] .product-image-content.mix-blend-multiply {
   mix-blend-mode: normal;
-  filter: brightness(0.92) saturate(1.06);
 }
 
 /* Dark-mode selected controls use the inverse of the light appearance: a
