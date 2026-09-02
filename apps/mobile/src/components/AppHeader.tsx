@@ -206,6 +206,7 @@ export default function AppHeader({
     !loadingProducts &&
     !!loginNotice &&
     newDealsCount > 0 &&
+    pathname !== "/settings" &&
     loginNotice.id !== dismissedLoginNoticeId;
 
   useEffect(() => {
@@ -438,10 +439,10 @@ export default function AppHeader({
           exit={{ opacity: 0, y: -16 }}
           transition={{ type: "spring", damping: 26, stiffness: 260 }}
           className="pointer-events-none fixed inset-x-0 z-[44] mx-auto w-full max-w-[480px] px-4"
-          style={{ top: isAnonymousSession ? "5.75rem" : "4rem" }}
+          style={{ top: isAnonymousSession ? "6.25rem" : "4.5rem" }}
           aria-live="polite"
         >
-          <div className="pointer-events-auto relative rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-md">
+          <div className="pointer-events-auto relative rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 backdrop-blur-md">
             <div className="pr-8">
               <p className="dd-type-control text-stone-900">
                 Kia ora, {greetingName(user)}, {newDealsCount} new deals to check!
@@ -497,7 +498,7 @@ export default function AppHeader({
               <button
                 onClick={() => setIsMenuOpen(false)}
                 aria-label="Close"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
@@ -521,7 +522,7 @@ export default function AppHeader({
                 className="flex w-full items-center gap-3 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
               >
                 <span
-                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
+                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
                   style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
                   aria-hidden="true"
                 >
@@ -535,7 +536,7 @@ export default function AppHeader({
                 className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
               >
                 <span
-                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-500"
+                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
                   style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
                   aria-hidden="true"
                 >
@@ -568,7 +569,7 @@ export default function AppHeader({
                   className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
                 >
                   <span
-                    className="material-symbols-outlined shrink-0 text-[22px]"
+                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
                     style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
                     aria-hidden="true"
                   >
