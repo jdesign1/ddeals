@@ -194,7 +194,7 @@ export default function AppHeader({
 }) {
   const pathname = usePathname();
   const { user, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
-  const { override } = useHeaderOverride();
+  const { override, action: headerAction } = useHeaderOverride();
   const { products, loadingProducts } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
@@ -379,6 +379,16 @@ export default function AppHeader({
 
         {pathname !== "/settings" && (
           <div className="relative flex flex-shrink-0 items-center gap-3">
+          {pathname === "/lists" && headerAction && (
+            <button
+              type="button"
+              onClick={headerAction.onClick}
+              aria-label={headerAction.label}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+            >
+              {headerAction.icon}
+            </button>
+          )}
           {loading ? null : user ? (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}

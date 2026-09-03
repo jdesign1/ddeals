@@ -3,8 +3,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 /**
- * Lets a page override the global `AppHeader`'s title and add a back
- * button, without going back on the "one globally-mounted header" decision
+ * Lets a page override the global `AppHeader`'s title, add a back button, or
+ * publish a route-local action without going back on the "one globally-
+ * mounted header" decision
  * `AppHeader.tsx` documents (2026-08-04 restyle session) -- that comment
  * explicitly flagged this as "can be added back if/when a screen needs it".
  * The deal-assessment page (2026-08-09) is the first screen that needs a
@@ -12,8 +13,9 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
  * Prototype/index.html's DealModal, which renders its own `<AppHeader
  * title={product.name} onBack={...} />` per screen -- this app's AppHeader
  * can't take props the same way (it's mounted once in layout.tsx, above
- * the router outlet), so pages instead call `usePageHeader()` to publish an
- * override the single mounted AppHeader reads back out.
+ * the router outlet), so pages instead call `usePageHeader()` or
+ * `useHeaderAction()` to publish state the single mounted AppHeader reads
+ * back out.
  *
  * Per Prototype/index.html's own comment (line ~1569, "on the Check Deal
  * page ... opens the same account menu everywhere, instead of DealModal
@@ -25,16 +27,23 @@ export interface HeaderOverride {
   onBack: () => void;
 }
 
+export interface HeaderAction {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+}
+
 const HeaderOverrideContext = createContext<{
   override: HeaderOverride | null;
   setOverride: (o: HeaderOverride | null) => void;
+  action: HeaderAction | null;
+  setAction: (action: HeaderAction | null) => void;
 } | null>(null);
 
 export function HeaderOverrideProvider({ children }: { children: ReactNode }) {
   const [override, setOverride] = useState<HeaderOverride | null>(null);
-  return (
-    <HeaderOverrideContext.Provider value={{ override, setOverride }}>{children}</HeaderOverrideContext.Provider>
-  );
+  const [action, setAction] = useState<HeaderAction | null>(null);
+  return <HeaderOverrideContext.Provider value={{ override, setOverride, action, setAction }}>{children}</HeaderOverrideContext.Provider>;
 }
 
 export function useHeaderOverride() {
@@ -57,4 +66,17 @@ export function usePageHeader(title: string | null, onBack: () => void) {
     return () => setOverride(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title]);
+}
+
+/**
+ * Publishes one route-local action for the global header. The action is
+ * cleared when the page that owns it unmounts, so a button cannot outlive its
+ * page's state or callback during navigation.
+ */
+export function useHeaderAction(action: HeaderAction | null) {
+  const { setAction } = useHeaderOverride();
+  useEffect(() => {
+    setAction(action);
+    return () => setAction(null);
+  }, [action, setAction]);
 }

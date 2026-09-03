@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
-import { Pencil, Store, Plus, Check, X, ChevronDown } from "lucide-react";
+import { Pencil, Store, Plus, Check, X, ChevronDown, Share } from "lucide-react";
 import {
   createList,
   deleteList,
@@ -22,11 +22,13 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { supabaseConfig } from "@/lib/config";
+import { useHeaderAction } from "@/lib/header-context";
 import ErrorState from "@/components/ErrorState";
 import SearchBar from "@/components/SearchBar";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import ShareListsSheet from "@/components/ShareListsSheet";
 
 /**
  * S1 — My Lists, per project.md's Stitch screen inventory. First real
@@ -43,7 +45,8 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
  *    yet (a goal needs a user-set target that doesn't exist; Retailer
  *    Synergy needs a 2-store-split optimizer that doesn't exist). Omitted
  *    rather than shown with fabricated numbers.
- *  - share/more-vert menu (S7) isn't built -- only a direct delete action.
+ *  - the per-list more-vert menu (S7) isn't built -- list sharing is now
+ *    available from the global Lists header action.
  *
  * Restyled 2026-08-09 (Jay: "improve designs") -- the create-list
  * form/button and `ListCard`'s badges were still on the older plain/Stitch
@@ -240,6 +243,21 @@ export default function ListsPage() {
   const [expandAll, setExpandAll] = useState(true);
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+
+  const openShareSheet = useCallback(() => setIsShareSheetOpen(true), []);
+  const shareHeaderAction = useMemo(
+    () =>
+      user
+        ? {
+            label: "Share lists",
+            icon: <Share className="h-6 w-6" aria-hidden="true" />,
+            onClick: openShareSheet,
+          }
+        : null,
+    [openShareSheet, user],
+  );
+  useHeaderAction(shareHeaderAction);
 
   // The actual composite fetch (fetch this user's lists, their items, price
   // lookups, product meta, and build item cards) moved out of this page
@@ -397,6 +415,7 @@ export default function ListsPage() {
       <main className="flex flex-col gap-3 pb-8">
         <SearchBar
           variant="shadow"
+          compact
           placeholder="Search items to add to your lists"
           sticky={false}
           backgroundClassName="page-paper-surface"
@@ -448,6 +467,7 @@ export default function ListsPage() {
     <main className="flex min-h-full flex-col gap-4 pb-20">
       <SearchBar
         variant="shadow"
+        compact
         placeholder="Search items to add to your lists"
         sticky={false}
         backgroundClassName="page-paper-surface"
@@ -727,6 +747,14 @@ export default function ListsPage() {
           )}
         </AnimatePresence>
       </BottomSheetPortal>
+
+      <ShareListsSheet
+        open={isShareSheetOpen && !!user}
+        lists={sortedLists}
+        itemsByList={itemsByList}
+        productMeta={productMeta}
+        onClose={() => setIsShareSheetOpen(false)}
+      />
     </main>
   );
 }

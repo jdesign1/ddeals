@@ -179,7 +179,7 @@ export default function SearchBar({
   placeholder?: string;
   sticky?: boolean;
   topSpacing?: boolean;
-  /** Compact Check Deals treatment: shorter control and no bottom shell padding. */
+  /** Compact top-search treatment: shorter control and no bottom shell padding. */
   compact?: boolean;
 }) {
   const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
