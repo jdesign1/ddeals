@@ -708,7 +708,7 @@ export default function DealAssessmentPage() {
           <h4 className="dd-type-section mb-1 text-stone-900">
             <AssessmentText text={assessmentSummary.heading} />
           </h4>
-          <p className="text-sm leading-relaxed text-stone-600">
+          <p className="whitespace-pre-line text-sm leading-relaxed text-stone-600">
             <AssessmentText text={assessmentSummary.body} />
           </p>
           {crossStoreSpecialSummary && (

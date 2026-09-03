@@ -62,9 +62,12 @@ test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supe
     })
   );
 
-  assert.equal(copy.heading, "Why this special is misleading");
-  assert.match(copy.body, /At Woolworths NZ/);
-  assert.match(copy.body, /normal price/);
+  assert.equal(copy.heading, "5% above the recent normal price");
+  assert.match(copy.body, /Current price: \$4\.39/);
+  assert.match(copy.body, /Recent normal price: \$4\.19/);
+  assert.match(copy.body, /That's not a genuine saving/);
+  assert.doesNotMatch(copy.body, /Sale price/);
+  assert.doesNotMatch(copy.body, /\(\$4\.39\)/);
   assert.doesNotMatch(copy.body, /recent special price/);
 });
 
@@ -77,7 +80,7 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
       dealType: "Fair Price",
     })
   );
-  assert.match(fairCopy.body, /At New World/);
+  assert.match(fairCopy.body, /Current price: \$3\.99/);
   assert.match(fairCopy.body, /\$4\.19/);
 
   const realCopy = buildAssessmentSummaryCopy(
@@ -88,7 +91,7 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
       dealType: "Real Deal",
     })
   );
-  assert.match(realCopy.body, /At Woolworths NZ/);
+  assert.match(realCopy.body, /Current price: \$3\.50/);
   assert.match(realCopy.body, /\$5\.00/);
 });
 

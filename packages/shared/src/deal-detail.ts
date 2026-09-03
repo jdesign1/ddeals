@@ -91,9 +91,15 @@ function formatAssessmentPrice(value: number | null): string | null {
   return value != null && Number.isFinite(value) && value > 0 ? `$${value.toFixed(2)}` : null;
 }
 
-function sentenceWithPeriod(value: string): string {
-  const trimmed = value.trim();
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+function buildAssessmentPriceBody(currentPrice: string, normalPrice: string | null, conclusion: string): string {
+  return [
+    `Current price: ${currentPrice}`,
+    normalPrice ? `Recent normal price: ${normalPrice}` : null,
+    "",
+    conclusion,
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
 }
 
 /**
@@ -105,17 +111,14 @@ function sentenceWithPeriod(value: string): string {
  */
 export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummaryCopy {
   const verdict = getAssessmentVerdict(deal);
-  const store = deal.store;
   const currentPrice = formatAssessmentPrice(deal.price) ?? "the current price";
   const normalPrice = formatAssessmentPrice(deal.originalPrice);
   const savingsPct = signedSavingsPercentage(deal);
 
   if (verdict === "Dodgy Deal") {
     return {
-      heading: "Why this special is misleading",
-      body: deal.explanation
-        ? `At ${store}, ${sentenceWithPeriod(deal.explanation)}`
-        : `At ${store}, this special does not represent a reliable saving against the store's recent normal price.`,
+      heading: savingsPct != null && savingsPct < 0 && normalPrice ? `${Math.abs(savingsPct)}% above the recent normal price` : "Dodgy discount",
+      body: buildAssessmentPriceBody(currentPrice, normalPrice, "That's not a genuine saving."),
     };
   }
 
@@ -123,14 +126,14 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
       return {
         heading: `${savingsPct}% off the recent normal price`,
-        body: `At ${store}, the current price of ${currentPrice} is ${savingsPct}% below its recent normal price of ${normalPrice}. That's a modest saving.`,
+        body: buildAssessmentPriceBody(currentPrice, normalPrice, "That's a modest saving."),
       };
     }
     return {
       heading: "No meaningful saving",
       body: normalPrice
-        ? `At ${store}, the current price of ${currentPrice} is about the same as or higher than its recent normal price of ${normalPrice}. There is no meaningful saving.`
-        : `At ${store}, there is no reliable price baseline to show a meaningful saving.`,
+        ? buildAssessmentPriceBody(currentPrice, normalPrice, "There is no meaningful saving.")
+        : buildAssessmentPriceBody(currentPrice, null, "There is no reliable price baseline to show a meaningful saving."),
     };
   }
 
@@ -138,25 +141,33 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
       return {
         heading: `${savingsPct}% off the recent normal price`,
-        body: `At ${store}, the current price of ${currentPrice} is ${savingsPct}% below its recent normal price of ${normalPrice}. That is a genuine saving.`,
+        body: buildAssessmentPriceBody(currentPrice, normalPrice, "That's a genuine saving."),
       };
     }
     return {
       heading: "Genuine saving",
-      body: `At ${store}, this is marked as a genuine saving based on the available price history.`,
+      body: buildAssessmentPriceBody(currentPrice, normalPrice, "That's a genuine saving based on the available price history."),
     };
   }
 
   if (verdict === "Early read") {
     return {
       heading: "Why this isn't confirmed yet",
-      body: `At ${store}, this looks cheaper than an older regular price, but we need more recent checks before we can confirm it.`,
+      body: buildAssessmentPriceBody(
+        currentPrice,
+        normalPrice,
+        "This looks cheaper than an older regular price, but we need more recent checks before we can confirm it."
+      ),
     };
   }
 
   return {
     heading: "Why this isn't confirmed yet",
-    body: `We don't yet have enough regular-price history at ${store} to tell whether this special is a genuine saving.`,
+    body: buildAssessmentPriceBody(
+      currentPrice,
+      normalPrice,
+      "We don't yet have enough regular-price history to tell whether this special is a genuine saving."
+    ),
   };
 }
 
