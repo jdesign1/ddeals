@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Pencil, Store, Plus, Check, X, ChevronDown, Share } from "lucide-react";
@@ -22,7 +22,6 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { supabaseConfig } from "@/lib/config";
-import { useHeaderAction } from "@/lib/header-context";
 import ErrorState from "@/components/ErrorState";
 import SearchBar from "@/components/SearchBar";
 import ListItemProductCard from "@/components/ListItemProductCard";
@@ -46,7 +45,7 @@ import ShareListsSheet from "@/components/ShareListsSheet";
  *    Synergy needs a 2-store-split optimizer that doesn't exist). Omitted
  *    rather than shown with fabricated numbers.
  *  - the per-list more-vert menu (S7) isn't built -- list sharing is now
- *    available from the global Lists header action.
+ *    available from the Lists toolbar action.
  *
  * Restyled 2026-08-09 (Jay: "improve designs") -- the create-list
  * form/button and `ListCard`'s badges were still on the older plain/Stitch
@@ -244,20 +243,6 @@ export default function ListsPage() {
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-
-  const openShareSheet = useCallback(() => setIsShareSheetOpen(true), []);
-  const shareHeaderAction = useMemo(
-    () =>
-      user
-        ? {
-            label: "Share lists",
-            icon: <Share className="h-6 w-6" aria-hidden="true" />,
-            onClick: openShareSheet,
-          }
-        : null,
-    [openShareSheet, user],
-  );
-  useHeaderAction(shareHeaderAction);
 
   // The actual composite fetch (fetch this user's lists, their items, price
   // lookups, product meta, and build item cards) moved out of this page
@@ -484,15 +469,26 @@ export default function ListsPage() {
         >
           {expandAll ? "Collapse all" : "Expand all"}
         </button>
-        <button
-          type="button"
-          onClick={() => setIsSortSheetOpen(true)}
-          disabled={loadingLists || lists.length === 0}
-          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <span>Sort by</span>
-          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsShareSheetOpen(true)}
+            disabled={loadingLists || lists.length === 0}
+            aria-label="Share lists"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Share className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSortSheetOpen(true)}
+            disabled={loadingLists || lists.length === 0}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>Sort by</span>
+            <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {isAnonymousSession && (
