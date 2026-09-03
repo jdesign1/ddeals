@@ -1141,7 +1141,9 @@ export default function DealAssessmentPage() {
                   for a product where only the chart half of it applies
                   today. */}
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
-                How this price compares to each store&apos;s recent average, and to its own last 90 days.
+                {priceHistoryTab === "90-days"
+                  ? "Shows price changes over the last 90 days, including special prices."
+                  : "This graph compares the current price at each supermarket with its recent average."}
               </p>
             </div>
             <div
