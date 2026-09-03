@@ -858,7 +858,7 @@ export default function AuthPanel({
             `globals.css`: `.dd-btn:disabled { opacity: 0.5; }`) already
             dims the button to 50% opacity, so this reuses that existing
             look for invalid fields. */}
-        <div className="sticky bottom-0 z-10 mt-auto bg-white pt-3">
+        <div className="auth-submit-bar sticky bottom-0 z-10 mt-auto pt-3">
           <button
             type="submit"
             disabled={submitting || hasBlockingFieldErrors}
