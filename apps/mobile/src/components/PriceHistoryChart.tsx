@@ -30,6 +30,11 @@ function formatDate(value: string, isCurrent = false): string {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(value));
 }
 
+function formatListDate(value: string, isCurrent = false): string {
+  if (isCurrent) return "Today";
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
 function buildChartPoints(
   points: PriceHistoryPoint[],
   currentPrice: number,
@@ -71,6 +76,7 @@ export default function PriceHistoryChart({
   error = null,
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
+  const [showHistoryList, setShowHistoryList] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   if (loading) {
@@ -114,6 +120,9 @@ export default function PriceHistoryChart({
   };
   const yFor = (price: number) => PLOT_BOTTOM - ((price - yMin) / yRange) * (PLOT_BOTTOM - PLOT_TOP);
   const coordinates = chartPoints.map((point) => ({ point, x: xFor(point), y: yFor(point.price) }));
+  const listPoints = chartPoints
+    .filter((point) => new Date(point.scrapedAt).getTime() >= start)
+    .sort((a, b) => new Date(b.scrapedAt).getTime() - new Date(a.scrapedAt).getTime());
   const gridValues = [yMax, yMin + yRange / 2, yMin];
   const hasComparisonPrice = typeof comparisonPrice === "number" && Number.isFinite(comparisonPrice) && comparisonPrice > 0;
   const comparisonPct = hasComparisonPrice ? Math.round(((currentPrice - comparisonPrice) / comparisonPrice) * 100) : 0;
@@ -121,7 +130,22 @@ export default function PriceHistoryChart({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-stone-100 bg-stone-50 p-2">
+      <div className="relative h-[21rem] [perspective:1000px]">
+        <motion.div
+          className="relative h-full w-full"
+          animate={{ rotateY: showHistoryList ? 180 : 0 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowHistoryList(true)}
+            aria-label="Show price history as a list"
+            aria-hidden={showHistoryList}
+            tabIndex={showHistoryList ? -1 : 0}
+            className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 text-left"
+            style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "none" : "auto" }}
+          >
         <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
           <span className="dd-type-control text-stone-700">
             {currentStore} current price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
@@ -222,9 +246,52 @@ export default function PriceHistoryChart({
             <span>Regular price</span>
           </div>
         </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowHistoryList(false)}
+            aria-label="Show price history graph"
+            aria-hidden={!showHistoryList}
+            tabIndex={showHistoryList ? 0 : -1}
+            className="absolute inset-0 h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-4 text-left"
+            style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "auto" : "none", transform: "rotateY(180deg)" }}
+          >
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-2">
+                <span className="dd-type-control text-stone-700">Price history</span>
+                <span className="dd-type-meta text-stone-500">Tap to view graph</span>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                {listPoints.length > 0 ? (
+                  listPoints.map((point) => (
+                    <div
+                      key={`${point.scrapedAt}-${point.price}`}
+                      className="flex items-center justify-between gap-3 border-b border-stone-100 py-2 last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-stone-700">
+                          {formatListDate(point.scrapedAt, point.isCurrent)}
+                        </p>
+                        <p className={`text-xs font-semibold ${point.isSpecial ? "text-fair-700" : "text-stone-500"}`}>
+                          {point.isSpecial ? "On special" : "Regular price"}
+                          {point.isCurrent ? " · Current" : ""}
+                        </p>
+                      </div>
+                      <span className="flex-shrink-0 font-display text-base font-extrabold text-stone-900">
+                        ${point.price.toFixed(2)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-4 text-sm font-semibold text-stone-500">No price changes recorded in the last 90 days.</p>
+                )}
+              </div>
+            </div>
+          </button>
+        </motion.div>
       </div>
       <p className="text-center text-sm leading-5 text-stone-600">
-        The line connects recorded price changes; green sections show when the item was on special.
+        {showHistoryList ? "Tap to return to the graph." : "The line connects recorded price changes; tap to see dates and prices."}
       </p>
     </div>
   );
