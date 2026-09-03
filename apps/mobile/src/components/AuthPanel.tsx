@@ -441,7 +441,7 @@ export default function AuthPanel({
   // `shadow-sm`, `focus:border-stone-900` (solid border color change, no
   // ring) instead of the old `focus:ring-2 focus:ring-ink-200` glow.
   const inputClass =
-    "rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 shadow-sm transition-colors placeholder:text-stone-500 focus:border-stone-900 focus:outline-none";
+    "dd-auth-field rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 shadow-sm transition-colors placeholder:text-stone-500 focus:border-stone-900 focus:outline-none";
   // Red-state variants of the two classes above, swapped in per-field once
   // that field's error is actually visible (see `visibleErrors` below) --
   // matches the docx's own error mock: red border on the input, the label

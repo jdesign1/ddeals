@@ -283,12 +283,10 @@ export default function AuthSheet({
                 applied to the identical pattern in `FullScreenSearch.tsx`
                 (x2), `BottomNav.tsx`, `app/page.tsx` -- see their own doc
                 comments. */}
-            <div className="flex flex-shrink-0 items-stretch gap-1 bg-stone-50 p-3">
-              {/* Track border -> shadow-sm, 2026-08-21, per Jay's
-                  pills/tabs/sort/category no-border ask -- see
-                  `app/page.tsx`'s Home tab track for the full
-                  cross-reference. */}
-              <div className="flex flex-1 items-stretch gap-1 rounded-xl bg-white p-1 shadow-sm">
+            <div className="dd-auth-tabs-shell flex flex-shrink-0 items-stretch gap-1 bg-stone-50 p-3">
+              {/* The track keeps a quiet border in dark mode so the two auth
+                  tabs have the same contained definition as Check Deals. */}
+              <div className="flex flex-1 items-stretch gap-1 rounded-xl border border-stone-200 bg-white p-1 shadow-sm">
                 {TABS.map((tab) => {
                   const isActive = mode === tab.id;
                   return (

@@ -746,7 +746,7 @@ export default function FullScreenSearch() {
                 fix) is to apply the same visual fix to every component that
                 shares the pattern, not just the one currently being looked
                 at. */}
-            <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 items-center rounded-full border border-stone-300 bg-white py-1.5 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
+            <form onSubmit={(e) => e.preventDefault()} className="dd-search-control flex flex-1 items-center rounded-full border border-stone-300 bg-white py-1.5 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
               {/* Mascot mark replaces lucide's `Search` icon here (2026-08-20,
                   per Jay: "In the active search bar state, replace the search
                   icon with the dodgy man icon") -- same `/logo.svg` mark
@@ -1440,7 +1440,7 @@ export default function FullScreenSearch() {
                     <button
                       type="button"
                       onClick={() => setCategorySheetTarget(null)}
-                      className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
+                      className="dd-sheet-cta w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
                     >
                       Done
                     </button>

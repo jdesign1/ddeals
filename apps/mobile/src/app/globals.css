@@ -899,6 +899,7 @@ select {
   --dd-chart-special: #15803d;
   --dd-chart-regular: #a8a29e;
   --dd-chart-point-stroke: #fafaf9;
+  --dd-chart-average: #171710;
 }
 
 /* "TAGS & BADGES": pill, Inter bold 14px, 8px/16px padding, 6px icon gap.
@@ -1083,6 +1084,13 @@ select {
 .product-image-content {
   display: block;
 }
+
+/* Shared dark-mode controls. Keep resting controls visible without making
+   their outlines glow, then make the focused state clearly selected. */
+.dd-search-control,
+.dd-auth-field {
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
 /* WKWebView can still paint the fixed bottom navigation above a portalized
    sheet despite the sheet's stacking layer. Hide the global nav while a
    sheet is open so it cannot cover the sheet or receive its touches.
@@ -1168,8 +1176,8 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   --dd-badge-alert-bg: #512830;
   --dd-badge-alert-text: #f7c8cc;
 
-  --dd-btn-primary-bg: #0c0b09;
-  --dd-btn-primary-text: #f8f3e9;
+  --dd-btn-primary-bg: #f5f1e8;
+  --dd-btn-primary-text: #171513;
   --dd-btn-success-bg: #2e7d46;
   --dd-btn-success-text: #e1f8e4;
   --dd-btn-outline-border: #f0e9dd;
@@ -1181,6 +1189,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   --dd-chart-special: #77c98a;
   --dd-chart-regular: #a59b8d;
   --dd-chart-point-stroke: #24211d;
+  --dd-chart-average: #777067;
 }
 
 /* Tailwind's default stone/white utilities are literal colours. These small
@@ -1256,6 +1265,9 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   background-color: #3b3935;
   box-shadow: inset 0 0 0 1px #514d47;
 }
+[data-theme="dark"] .deal-assessment-image {
+  box-shadow: none;
+}
 [data-theme="dark"] .product-image-content {
   filter: brightness(0.82) saturate(1.06);
 }
@@ -1279,7 +1291,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 /* Keep the floating navigation as an elevated dark surface and make its
    selected cell follow the same light-fill/dark-ink convention as segments. */
 [data-theme="dark"] .app-bottom-nav {
-  background-color: rgb(36 33 29 / 0.94);
+  background-color: rgb(12 11 9 / 0.96);
   border: 1px solid #4a433b;
   box-shadow: 0 10px 24px rgb(0 0 0 / 0.28);
 }
@@ -1385,4 +1397,65 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 
 [data-theme="dark"] .deal-filter-dodgy-surface {
   background-color: #352126;
+}
+
+/* The Check Deals segmented-control ring is intentionally softer than the
+   near-white default ring in dark mode. */
+[data-theme="dark"] .ring-stone-200 {
+  --tw-ring-color: #4a433b;
+}
+
+/* Search fields need a readable resting outline and a brighter selected
+   outline. The same treatment is shared by the docked and full-screen bars. */
+[data-theme="dark"] .dd-search-control,
+[data-theme="dark"] .dd-auth-field {
+  border-color: #8f8373;
+}
+[data-theme="dark"] .dd-search-control-borderless {
+  border-color: transparent;
+  box-shadow: none;
+}
+[data-theme="dark"] .dd-search-control:focus-within,
+[data-theme="dark"] .dd-auth-field:focus {
+  border-color: #f0e9dd;
+  box-shadow: 0 0 0 1px rgb(240 233 221 / 0.22);
+}
+[data-theme="dark"] .dd-search-control input::placeholder {
+  color: #d1c7b9;
+  opacity: 1;
+}
+
+/* Primary actions remain high-contrast in dark mode: light surface, dark
+   ink. This covers auth, list, share, scanner, and support CTAs. */
+[data-theme="dark"] .dd-btn-primary {
+  background-color: var(--dd-btn-primary-bg);
+  color: var(--dd-btn-primary-text);
+}
+
+/* A few older sheets still use their compact, pre-primitive CTA markup. Bring
+   those buttons into the same light-fill/dark-ink treatment. */
+[data-theme="dark"] .dd-sheet-cta {
+  background-color: #f5f1e8;
+  color: #171513;
+}
+[data-theme="dark"] .dd-sheet-cta:hover {
+  background-color: #eee8de;
+}
+
+/* Auth and logout sheets used to show a lighter title strip/handle than the
+   sheet body. In dark mode the chrome should read as one continuous surface. */
+[data-theme="dark"] .dd-bottom-sheet-titlebar {
+  background-color: var(--color-paper);
+}
+[data-theme="dark"] .dd-bottom-sheet-titlebar .bg-stone-200 {
+  background-color: var(--color-paper);
+}
+[data-theme="dark"] .dd-auth-tabs-shell {
+  background-color: var(--color-paper);
+}
+
+/* The average-price body in the Insights chart must remain visible against
+   the dark card, without reverting to a near-black bar. */
+.dd-chart-average-bar {
+  background-color: var(--dd-chart-average, #171710);
 }

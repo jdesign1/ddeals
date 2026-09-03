@@ -772,7 +772,7 @@ function TrendingSection({
                 <button
                   type="button"
                   onClick={() => setIsCategorySheetOpen(false)}
-                  className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
+                  className="dd-sheet-cta w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
                 >
                   Done
                 </button>

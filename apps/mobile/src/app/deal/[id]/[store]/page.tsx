@@ -683,7 +683,7 @@ export default function DealAssessmentPage() {
             type="button"
             onClick={() => setShowProductImage(true)}
             aria-label={`View larger image of ${product.name}`}
-            className="product-image-frame h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
+            className="product-image-frame deal-assessment-image h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
           >
             <Image src={product.image} alt={product.name} width={112} height={112} unoptimized className="product-image-content h-full w-full object-contain" />
           </button>
@@ -1011,7 +1011,7 @@ export default function DealAssessmentPage() {
                             <div className="relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
                               <AddToListButton productId={altProd.id} />
                               <div className="flex items-start gap-4">
-                                <div className="product-image-frame flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
+                                <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
                                   <Image
                                     src={altProd.image}
                                     alt={altProd.name}
@@ -1220,7 +1220,7 @@ export default function DealAssessmentPage() {
             <StoreCompareChart rows={barChartData} />
               <div className="flex flex-wrap items-center justify-center gap-3">
               <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
-                <span className="h-2 w-2 rounded-full bg-ink-600" />
+                <span className="dd-chart-average-bar h-2 w-2 rounded-full" />
                 <span>Recent average</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-fair-700">

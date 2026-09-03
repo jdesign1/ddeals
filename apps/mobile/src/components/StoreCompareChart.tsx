@@ -189,7 +189,7 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
                 viewport={{ once: true, amount: 0.35 }}
                 transition={{ duration: shouldReduceMotion ? 0 : 0.55, delay: shouldReduceMotion ? 0 : idx * 0.08, ease: "easeOut" }}
               >
-                <div className="w-full bg-ink-600" style={{ height: bodyPx }} />
+                <div className="dd-chart-average-bar w-full" style={{ height: bodyPx }} />
                 {under > 0 && <div className={`w-full ${deltaClass}`} style={{ height: underPx }} />}
                 {over > 0 && <div className={`w-full ${deltaClass}`} style={{ height: overPx }} />}
               </motion.div>
