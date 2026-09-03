@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Equal, Tag } from "lucide-react";
 
 import { isUncertainAssessment, type AssessmentVerdict, type PriceHistoryInsight } from "@dodgey-deals/shared";
+import AssessmentText from "@/components/AssessmentText";
 
 /**
  * Price History Insights block on the deal-assessment page -- ALL FOUR
@@ -137,7 +138,7 @@ const TILE_STYLE: Record<
 function getPriceTipsStatement(verdict: AssessmentVerdict, frequency: string): string {
   if (isUncertainAssessment(verdict)) {
     return verdict === "Early read"
-      ? "This is an early read based on older prices. More recent checks will help confirm it."
+      ? "This is an early flag based on older prices. More recent checks will help confirm it."
       : "We don’t have enough regular prices yet to make a reliable comparison.";
   }
 
@@ -153,9 +154,9 @@ function getPriceTipsStatement(verdict: AssessmentVerdict, frequency: string): s
   }
 
   if (verdict === "Dodgy Deal") {
-    if (isFrequent) return "Not a good deal, it's inflated. Wait until it goes on special again.";
-    if (isNever) return "Not a good deal, it's inflated. Wait until the price drops.";
-    return "Not a good deal, it's inflated. Wait for a better special.";
+    if (isFrequent) return "Not a good deal, it's dodgy. Wait until it goes on special again.";
+    if (isNever) return "Not a good deal, it's dodgy. Wait until the price drops.";
+    return "Not a good deal, it's dodgy. Wait for a better special.";
   }
 
   if (isFrequent) return "Maybe hold off, this deal is ok but could be cheaper in the future, as it's frequently on special.";
@@ -187,7 +188,9 @@ export default function PriceHistoryInsightCard({
           "titles"), not this card-level heading, which matches "Price
           History Insights" above it stylistically either way. */}
       <h4 className="dd-type-section text-stone-900">90-Day Price Tips</h4>
-      <p className="dd-type-secondary text-stone-600">{getPriceTipsStatement(verdict, frequency)}</p>
+      <p className="dd-type-secondary text-stone-600">
+        <AssessmentText text={getPriceTipsStatement(verdict, frequency)} />
+      </p>
       <div className="grid h-56 w-full grid-cols-2 grid-rows-2 divide-x divide-y divide-stone-100 rounded-xl border border-stone-100">
         {insights.map((insight) => {
           const tile = TILE_STYLE[insight.key];

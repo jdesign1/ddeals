@@ -40,6 +40,7 @@ import { usePageHeader } from "@/lib/header-context";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
+import AssessmentText from "@/components/AssessmentText";
 import InsightCarousel from "@/components/InsightCarousel";
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
@@ -151,16 +152,16 @@ function joinStoreNames(stores: string[]): string {
  * reading "Dodgy Deal" directly under an "Dodgy Deal" `<h2>` would be pure
  * noise) -- each names the specific claim instead: "Verified special" (this
  * price was checked against a real recent price and is genuinely lower),
- * "Inflated discount" (the opposite -- the "special" price is at or above a
+ * "Dodgy discount" (the opposite -- the "special" price is at or above a
  * recent real price), "Fair price" (no unusual pricing either way, whether
- * or not it happens to be on special right now), plus "Early read" and
+ * or not it happens to be on special right now), plus "Early flag" and
  * "Limited history" for incomplete evidence.
  */
 const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
   "Real Saver": { label: "Verified special", className: "dd-badge-fair", icon: ShieldCheck },
-  "Dodgy Deal": { label: "Inflated discount", className: "dd-badge-alert", icon: AlertTriangle },
+  "Dodgy Deal": { label: "Dodgy discount", className: "dd-badge-alert", icon: AlertTriangle },
   "Fair Deal": { label: "Fair price", className: "dd-badge-dodgy", icon: Info },
-  "Early read": { label: "Early read", className: "dd-badge-neutral", icon: Clock3 },
+  "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
 
@@ -704,9 +705,17 @@ export default function DealAssessmentPage() {
         </div>
 
         <div>
-          <h4 className="dd-type-section mb-1 text-stone-900">{assessmentSummary.heading}</h4>
-          <p className="text-sm leading-relaxed text-stone-600">{assessmentSummary.body}</p>
-          {crossStoreSpecialSummary && <p className="mt-2 text-sm leading-relaxed text-stone-600">{crossStoreSpecialSummary}</p>}
+          <h4 className="dd-type-section mb-1 text-stone-900">
+            <AssessmentText text={assessmentSummary.heading} />
+          </h4>
+          <p className="text-sm leading-relaxed text-stone-600">
+            <AssessmentText text={assessmentSummary.body} />
+          </p>
+          {crossStoreSpecialSummary && (
+            <p className="mt-2 text-sm leading-relaxed text-stone-600">
+              <AssessmentText text={crossStoreSpecialSummary} />
+            </p>
+          )}
         </div>
 
         {/* `bg-white` added to both action buttons below (2026-08-17,
