@@ -78,7 +78,7 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
   const barWidth = 28;
 
   return (
-    <div className="relative flex h-56 w-full flex-col rounded-xl border border-stone-100 bg-stone-50 p-2">
+    <div className="relative flex h-60 w-full flex-col rounded-xl border border-stone-100 bg-stone-50 p-2">
       <div className="flex min-h-0 flex-1 items-end justify-around">
         {rows.map((row, idx) => {
           const isCheaper = row.currentPrice < row.averagePrice;
@@ -165,7 +165,7 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
 
               {/* Always-visible price + delta — not gated behind hover, so
                   this reads on a phone with no mouse (see file header). */}
-              <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">
                 <span className="dd-type-control text-stone-900">${row.currentPrice.toFixed(2)}</span>
                 {pct !== 0 && (
                   <span

@@ -1107,9 +1107,33 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    their flex-column parent. Keep the Create account date field inside the
    sheet while retaining the native picker behavior. */
 .auth-date-input {
+  display: block;
   box-sizing: border-box;
+  width: 100%;
+  inline-size: 100%;
   min-width: 0;
+  min-inline-size: 0;
   max-width: 100%;
+  max-inline-size: 100%;
+}
+/* Keep one consistent calendar icon across Safari, WKWebView, and desktop
+   browsers. The transparent native indicator remains clickable, so the
+   platform date picker still opens when its area is tapped. */
+.auth-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+}
+/* Safari/iOS does not reliably show a placeholder for `type="date"`, while
+   some desktop browsers show their own locale-specific placeholder. Hide
+   the native empty-state text so the single app-controlled `dd/mm/yy`
+   label in AuthPanel is the only placeholder users see. */
+.auth-date-input.auth-date-empty,
+.auth-date-input.auth-date-empty::-webkit-datetime-edit,
+.auth-date-input.auth-date-empty::-webkit-datetime-edit-text,
+.auth-date-input.auth-date-empty::-webkit-datetime-edit-month-field,
+.auth-date-input.auth-date-empty::-webkit-datetime-edit-day-field,
+.auth-date-input.auth-date-empty::-webkit-datetime-edit-year-field {
+  color: transparent;
 }
 /* Keep the longest tab label inside its equal-width cell on compact iPhones. */
 @media (max-width: 360px) {
