@@ -1191,6 +1191,7 @@ export default function DealAssessmentPage() {
               <PriceHistoryChart
                 points={priceHistoryPoints}
                 currentPrice={deal.price}
+                currentStore={deal.store}
                 currentIsSpecial={deal.isOnSpecial}
                 comparisonPrice={deal.originalPrice}
                 loading={priceHistoryLoading}

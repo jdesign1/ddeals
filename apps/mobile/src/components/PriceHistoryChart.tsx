@@ -6,6 +6,7 @@ import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 interface PriceHistoryChartProps {
   points: PriceHistoryPoint[];
   currentPrice: number;
+  currentStore: string;
   currentIsSpecial: boolean;
   comparisonPrice?: number | null;
   loading?: boolean;
@@ -63,6 +64,7 @@ function buildChartPoints(
 export default function PriceHistoryChart({
   points,
   currentPrice,
+  currentStore,
   currentIsSpecial,
   comparisonPrice = null,
   loading = false,
@@ -122,7 +124,7 @@ export default function PriceHistoryChart({
       <div className="rounded-xl border border-stone-100 bg-stone-50 p-2">
         <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
           <span className="dd-type-control text-stone-700">
-            Current price: <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
+            {currentStore} current price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
           </span>
           {hasComparisonPrice && comparisonPct !== 0 && (
             <span
