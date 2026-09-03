@@ -900,6 +900,8 @@ select {
   --dd-chart-regular: #a8a29e;
   --dd-chart-point-stroke: #fafaf9;
   --dd-chart-average: #171710;
+  --dd-insight-avg-bg: #eff6ff;
+  --dd-insight-frequency-bg: #ecfdf5;
 }
 
 /* "TAGS & BADGES": pill, Inter bold 14px, 8px/16px padding, 6px icon gap.
@@ -1190,6 +1192,8 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   --dd-chart-regular: #a59b8d;
   --dd-chart-point-stroke: #24211d;
   --dd-chart-average: #777067;
+  --dd-insight-avg-bg: #20314a;
+  --dd-insight-frequency-bg: #1d4329;
 }
 
 /* Tailwind's default stone/white utilities are literal colours. These small
@@ -1458,4 +1462,14 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    the dark card, without reverting to a near-black bar. */
 .dd-chart-average-bar {
   background-color: var(--dd-chart-average, #171710);
+}
+
+/* The average and frequency tiles use Tailwind's blue/emerald palette in
+   light mode, which has no automatic dark mapping. Give them the same deep
+   surface/light-copy contrast as the theme-aware top-row tiles. */
+.dd-insight-avg-tint {
+  background-color: var(--dd-insight-avg-bg);
+}
+.dd-insight-frequency-tint {
+  background-color: var(--dd-insight-frequency-bg);
 }

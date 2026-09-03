@@ -1157,13 +1157,13 @@ export default function DealAssessmentPage() {
                 aria-selected={priceHistoryTab === "90-days"}
                 onClick={() => setPriceHistoryTab("90-days")}
                 className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryTab === "90-days" ? "text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
+                  priceHistoryTab === "90-days" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
                 <AnimatePresence initial={false}>
                   {priceHistoryTab === "90-days" && (
                     <motion.span
-                      className="pointer-events-none absolute inset-0 rounded-md bg-white"
+                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
                       style={{ zIndex: -1 }}
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -1180,13 +1180,13 @@ export default function DealAssessmentPage() {
                 aria-selected={priceHistoryTab === "insights"}
                 onClick={() => setPriceHistoryTab("insights")}
                 className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryTab === "insights" ? "text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
+                  priceHistoryTab === "insights" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
                 <AnimatePresence initial={false}>
                   {priceHistoryTab === "insights" && (
                     <motion.span
-                      className="pointer-events-none absolute inset-0 rounded-md bg-white"
+                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
                       style={{ zIndex: -1 }}
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}

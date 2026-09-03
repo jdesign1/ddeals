@@ -131,8 +131,8 @@ const TILE_STYLE: Record<
 > = {
   low: { icon: ArrowDown, tint: "bg-fair-50", iconColor: "text-fair-600" },
   high: { icon: ArrowUp, tint: "bg-alert-50", iconColor: "text-alert-600" },
-  avg: { icon: Equal, tint: "bg-blue-50", iconColor: "text-blue-600" },
-  frequency: { icon: Tag, tint: "bg-emerald-50", iconColor: "text-emerald-600" },
+  avg: { icon: Equal, tint: "dd-insight-avg-tint", iconColor: "text-blue-600" },
+  frequency: { icon: Tag, tint: "dd-insight-frequency-tint", iconColor: "text-emerald-600" },
 };
 
 function getPriceTipsStatement(verdict: AssessmentVerdict, frequency: string): string {
