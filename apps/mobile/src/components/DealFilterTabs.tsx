@@ -20,6 +20,8 @@ export default function DealFilterTabs({
   buttonIdPrefix?: string;
   backgroundClassName?: string;
 }) {
+  const activeFillId = `${buttonIdPrefix ?? "deal-filter"}-active-fill`;
+
   return (
     <div
       role="radiogroup"
@@ -43,12 +45,11 @@ export default function DealFilterTabs({
             <AnimatePresence initial={false}>
               {isActive && (
                 <motion.span
+                  layoutId={activeFillId}
                   className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-ink-900 shadow-sm"
                   style={{ zIndex: -1 }}
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
                 />
               )}
             </AnimatePresence>

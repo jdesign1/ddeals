@@ -607,7 +607,7 @@ export default function AuthPanel({
             inputs render their own locale placeholder, e.g. "dd/mm/yyyy",
             not a custom one) -- tapping it opens the phone's native date
             picker. */}
-        <div className="relative min-w-0 w-full">
+        <div className="relative min-w-0 w-full max-w-full overflow-hidden">
           <input
             id="authpanel-dob"
             type="date"
@@ -618,7 +618,7 @@ export default function AuthPanel({
             onChange={(e) => setDateOfBirth(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, dob: true }))}
             aria-invalid={!!visibleErrors.dob}
-            className={`${visibleErrors.dob ? errorInputClass : inputClass} auth-date-input min-w-0 w-full max-w-full pr-11 ${dateOfBirth ? "" : "auth-date-empty"}`}
+            className={`${visibleErrors.dob ? errorInputClass : inputClass} auth-date-input min-w-0 w-full max-w-full appearance-none pr-11 ${dateOfBirth ? "" : "auth-date-empty"}`}
           />
           {!dateOfBirth && <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base text-stone-500">dd/mm/yy</span>}
           <CalendarDays

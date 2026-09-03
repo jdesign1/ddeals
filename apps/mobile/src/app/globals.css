@@ -1111,13 +1111,17 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    sheet while retaining the native picker behavior. */
 .auth-date-input {
   display: block;
+  -webkit-appearance: none;
+  appearance: none;
   box-sizing: border-box;
+  flex: 1 1 0%;
   width: 100%;
   inline-size: 100%;
   min-width: 0;
   min-inline-size: 0;
   max-width: 100%;
   max-inline-size: 100%;
+  overflow: hidden;
 }
 /* Keep one consistent calendar icon across Safari, WKWebView, and desktop
    browsers. The transparent native indicator remains clickable, so the

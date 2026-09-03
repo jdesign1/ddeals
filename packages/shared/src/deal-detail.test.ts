@@ -64,7 +64,7 @@ test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supe
 
   assert.equal(copy.heading, "5% above the recent normal price");
   assert.match(copy.body, /Current price: \$4\.39/);
-  assert.match(copy.body, /Recent normal price: \$4\.19/);
+  assert.match(copy.body, /recent normal price: \$4\.19/);
   assert.match(copy.body, /That's not a genuine saving/);
   assert.doesNotMatch(copy.body, /Sale price/);
   assert.doesNotMatch(copy.body, /\(\$4\.39\)/);

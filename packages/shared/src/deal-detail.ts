@@ -92,14 +92,10 @@ function formatAssessmentPrice(value: number | null): string | null {
 }
 
 function buildAssessmentPriceBody(currentPrice: string, normalPrice: string | null, conclusion: string): string {
-  return [
-    `Current price: ${currentPrice}`,
-    normalPrice ? `Recent normal price: ${normalPrice}` : null,
-    "",
-    conclusion,
-  ]
-    .filter((line): line is string => line !== null)
-    .join("\n");
+  const priceLine = normalPrice
+    ? `Current price: ${currentPrice}, recent normal price: ${normalPrice}`
+    : `Current price: ${currentPrice}`;
+  return `${priceLine}\n\n${conclusion}`;
 }
 
 /**
