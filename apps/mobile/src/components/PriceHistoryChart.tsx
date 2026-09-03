@@ -259,29 +259,46 @@ export default function PriceHistoryChart({
             <div className="flex h-full min-h-0 flex-col">
               <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-2">
                 <span className="dd-type-control text-stone-700">Price history</span>
-                <span className="dd-type-meta text-stone-500">Tap to view graph</span>
+                <span className="dd-type-meta text-stone-500">Swipe down for more history</span>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                 {listPoints.length > 0 ? (
-                  listPoints.map((point) => (
-                    <div
-                      key={`${point.scrapedAt}-${point.price}`}
-                      className="flex items-center justify-between gap-3 border-b border-stone-100 py-2 last:border-b-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-stone-700">
-                          {formatListDate(point.scrapedAt, point.isCurrent)}
-                        </p>
-                        <p className={`text-xs font-semibold ${point.isSpecial ? "text-fair-700" : "text-stone-500"}`}>
-                          {point.isSpecial ? "On special" : "Regular price"}
-                          {point.isCurrent ? " · Current" : ""}
-                        </p>
+                  listPoints.map((point) => {
+                    const pointIndex = chartPoints.findIndex(
+                      (candidate) => candidate.scrapedAt === point.scrapedAt && candidate.price === point.price
+                    );
+                    const previousPoint = pointIndex > 0 ? chartPoints[pointIndex - 1] : undefined;
+                    const priceChange = previousPoint ? point.price - previousPoint.price : 0;
+                    const PriceChangeIcon = priceChange > 0 ? ArrowUp : priceChange < 0 ? ArrowDown : null;
+
+                    return (
+                      <div
+                        key={`${point.scrapedAt}-${point.price}`}
+                        className="flex items-center justify-between gap-3 border-b border-stone-100 py-2 last:border-b-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-stone-700">
+                            {formatListDate(point.scrapedAt, point.isCurrent)}
+                          </p>
+                          <p className={`text-xs font-semibold ${point.isSpecial ? "text-fair-700" : "text-stone-500"}`}>
+                            {point.isSpecial ? "On special" : "Regular price"}
+                            {point.isCurrent ? " · Current" : ""}
+                          </p>
+                        </div>
+                        <span className="flex flex-shrink-0 items-center gap-1 font-display text-base font-extrabold text-stone-900">
+                          <span className="flex h-4 w-4 items-center justify-center" aria-hidden="true">
+                            {PriceChangeIcon && (
+                              <PriceChangeIcon
+                                className={`h-4 w-4 ${priceChange > 0 ? "text-alert-600" : "text-fair-600"}`}
+                                strokeWidth={3}
+                              />
+                            )}
+                          </span>
+                          ${point.price.toFixed(2)}
+                        </span>
                       </div>
-                      <span className="flex-shrink-0 font-display text-base font-extrabold text-stone-900">
-                        ${point.price.toFixed(2)}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="py-4 text-sm font-semibold text-stone-500">No price changes recorded in the last 90 days.</p>
                 )}
