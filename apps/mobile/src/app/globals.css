@@ -303,7 +303,7 @@
   --color-verdict-fair: #d0c8bd;
   --color-verdict-unknown: #bcb2a4;
 
-  --dd-nav-inactive: #c8beb1;
+  --dd-nav-inactive: #d6cabe;
   --dd-chart-grid: #514a42;
   --dd-chart-axis: #b5a99a;
   --dd-chart-special: #77c98a;
@@ -1185,7 +1185,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   --dd-btn-outline-border: #f0e9dd;
   --dd-btn-ghost-text: #d9d0c3;
 
-  --dd-nav-inactive: #c8beb1;
+  --dd-nav-inactive: #d6cabe;
   --dd-chart-grid: #514a42;
   --dd-chart-axis: #b5a99a;
   --dd-chart-special: #77c98a;
@@ -1267,7 +1267,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    images (including opaque white-backed assets) to keep the result cohesive. */
 [data-theme="dark"] .product-image-frame {
   background-color: #3b3935;
-  box-shadow: inset 0 0 0 1px #514d47;
+  box-shadow: none;
 }
 [data-theme="dark"] .deal-assessment-image {
   box-shadow: none;
@@ -1425,8 +1425,21 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   box-shadow: 0 0 0 1px rgb(240 233 221 / 0.22);
 }
 [data-theme="dark"] .dd-search-control input::placeholder {
-  color: #d1c7b9;
+  color: #ddd4c8;
   opacity: 1;
+}
+
+/* Brighten muted control labels without changing the rest of the app's body
+   copy hierarchy. This covers inactive tabs, pills, category chips, and sort
+   options; selected controls keep their explicit dark ink treatment. */
+[data-theme="dark"] .dd-type-control.text-stone-600 {
+  color: #d0c5b7;
+}
+[data-theme="dark"] .dd-type-control.text-stone-700 {
+  color: #ded5c9;
+}
+[data-theme="dark"] .dd-search-control input {
+  color: #ffffff;
 }
 
 /* Primary actions remain high-contrast in dark mode: light surface, dark
