@@ -521,8 +521,8 @@ body {
   top: 0;
   left: 0;
   z-index: 20;
-  width: 64px;
-  height: 64px;
+  width: 54px;
+  height: 54px;
   background: #171710;
   clip-path: polygon(0 0, 100% 0, 0 100%);
   pointer-events: none;
@@ -531,14 +531,14 @@ body {
 
 .new-special-ribbon > span {
   position: absolute;
-  top: 19px;
-  left: 2px;
-  width: 48px;
+  top: 13px;
+  left: -1px;
+  width: 40px;
   transform: rotate(-45deg);
   color: white;
   text-align: center;
-  font-size: 0.5rem;
-  line-height: 0.75rem;
+  font-size: 0.45rem;
+  line-height: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
