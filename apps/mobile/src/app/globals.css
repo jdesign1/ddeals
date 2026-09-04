@@ -559,6 +559,10 @@ select {
 .mobile-scroll-surface {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+  /* Prevent iOS bottom rubber-band motion from changing the visual position
+     of sticky descendants. The outer surface still supports the app's
+     custom pull-to-refresh gesture at the top. */
+  overscroll-behavior-y: none;
 }
 
 /* Extend the compact Check Deals search bar's background through its 8px

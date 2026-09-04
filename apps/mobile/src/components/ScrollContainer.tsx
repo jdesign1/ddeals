@@ -7,7 +7,11 @@ import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import SearchBar from "@/components/SearchBar";
 import { useSearch } from "@/lib/search-context";
-import { publishCheckDealsHeaderVisibility, publishCheckDealsScrollPosition } from "@/lib/scroll-events";
+import {
+  isNearScrollBottom,
+  publishCheckDealsHeaderVisibility,
+  publishCheckDealsScrollPosition,
+} from "@/lib/scroll-events";
 
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
@@ -163,6 +167,15 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     publishCheckDealsScrollPosition(currentScrollTop);
 
     if (pathname !== "/") return;
+
+    // Do not interpret iOS's bottom rubber-band events as a new scroll
+    // direction. Without this, the alternating scrollTop values emitted at
+    // the bottom can repeatedly hide/show the sticky header while the list
+    // is stationary from the user's point of view.
+    if (scrollRef.current && isNearScrollBottom(scrollRef.current, currentScrollTop)) {
+      headerScrollAnchorRef.current = currentScrollTop;
+      return;
+    }
 
     if (headerAnimationGuardRef.current) {
       headerScrollAnchorRef.current = currentScrollTop;

@@ -184,8 +184,8 @@ export default function ProductListCard({
       <div
         className={`flex min-w-0 flex-1 flex-col justify-center bg-white ${
           isGridLayout
-            ? "px-3 pb-8 pt-3"
-            : "pb-8 pl-4 pr-9 pt-4"
+            ? "px-3 pb-9 pt-3"
+            : "pb-9 pl-4 pr-9 pt-4"
         }`}
       >
         <div className="flex flex-col justify-center gap-0.5">
@@ -194,7 +194,7 @@ export default function ProductListCard({
             retailer is followed inline by any other supermarkets carrying
             the same product on special. */}
         <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className={`shrink-0 select-none rounded-md px-2 py-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
+          <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
           {alsoSpecialStores.map((store) => {
@@ -203,7 +203,7 @@ export default function ProductListCard({
               <span
                 key={store}
                 title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                className={`shrink-0 select-none rounded-md px-2 py-1 dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
+                className={`shrink-0 select-none rounded-md p-1 dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
               >
                 {meta.short}
               </span>
@@ -243,17 +243,17 @@ export default function ProductListCard({
 
       <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
         {isDodgy && (
-          <span className="shrink-0 select-none rounded-md bg-alert-600 px-2 py-1 dd-type-badge text-white shadow-xs">
+          <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
             Dodgy
           </span>
         )}
         {isRealSaver && (
-          <span className="shrink-0 select-none rounded-md bg-fair-600 px-2 py-1 dd-type-badge text-white shadow-xs">
+          <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">
             Real
           </span>
         )}
         {isFairDeal && (
-          <span className="shrink-0 select-none rounded-md bg-dodgy-600 px-2 py-1 dd-type-badge text-white shadow-xs">
+          <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">
             Fair
           </span>
         )}

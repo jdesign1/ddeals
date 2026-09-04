@@ -27,6 +27,7 @@ import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sort
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import { isNearScrollBottom } from "@/lib/scroll-events";
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -790,6 +791,15 @@ export default function FullScreenSearch() {
             ref={scrollContainerRef}
             onScroll={(e) => {
               const scrollTop = e.currentTarget.scrollTop;
+              // iOS reports alternating scroll positions while the results
+              // scroller rubber-bands at its bottom edge. Anchor there and
+              // leave the toolbar state alone so those compositor events do
+              // not make the sticky tabs/pills flicker or vibrate.
+              if (isNearScrollBottom(e.currentTarget, scrollTop)) {
+                toolbarScrollAnchorRef.current = scrollTop;
+                lastScrollTopRef.current = scrollTop;
+                return;
+              }
               // Muted while our own collapse/expand transition is still
               // settling -- see `toolbarAnimationGuardRef`'s own comment
               // for why (scroll-anchoring feedback loop). Anchor/last-
