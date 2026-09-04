@@ -8,6 +8,7 @@ import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared"
 import AddToListButton from "@/components/AddToListButton";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { useCardLayout } from "@/lib/card-layout-context";
+import { isNewSpecial } from "@/lib/special-freshness";
 
 /**
  * Product card — ported from Prototype/index.html's shared
@@ -166,7 +167,7 @@ export default function ProductListCard({
           image-first card: the grey image panel fills the card width and all
           text sits underneath it. */}
       <div
-        className={`product-image-frame flex flex-shrink-0 select-none items-center justify-center bg-stone-50 ${
+        className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden bg-stone-50 ${
           isGridLayout ? "aspect-[5/2.75] w-full p-3" : "h-[96px] w-36 p-2.5"
         }`}
       >
@@ -180,6 +181,11 @@ export default function ProductListCard({
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
           />
         </div>
+        {isNewSpecial(deal) && (
+          <span className="new-special-ribbon" aria-label="New special">
+            New
+          </span>
+        )}
       </div>
       <div
         className={`flex min-w-0 flex-1 flex-col justify-center bg-white ${

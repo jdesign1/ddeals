@@ -19,6 +19,7 @@ import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import { subscribeToCatalogueUpdates } from "@/lib/catalogue-refresh";
+import { compareLatestSpecials } from "@/lib/special-freshness";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -117,7 +118,12 @@ export default function SpecialsPage() {
         all.push({ product, deal });
       }
     }
-    return all.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
+    // The dedicated Specials page has no explicit sort control, so default
+    // to the same latest/new-first order used by Check Deals and search.
+    return all.sort((a, b) => {
+      const latest = compareLatestSpecials(a.deal, b.deal);
+      return latest !== 0 ? latest : b.deal.discountPercentage - a.deal.discountPercentage;
+    });
   }, [products]);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) — was a local

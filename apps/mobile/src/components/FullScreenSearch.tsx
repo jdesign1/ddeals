@@ -28,6 +28,7 @@ import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
+import { compareLatestSpecials, isNewSpecial } from "@/lib/special-freshness";
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -481,7 +482,7 @@ export default function FullScreenSearch() {
     });
     const sorted = [...filtered];
     if (popularSortBy === "latest") {
-      sorted.sort((a, b) => new Date(b.bestDeal.saleStartedAt || 0).getTime() - new Date(a.bestDeal.saleStartedAt || 0).getTime());
+      sorted.sort((a, b) => compareLatestSpecials(a.bestDeal, b.bestDeal));
     } else if (popularSortBy === "price-asc") {
       sorted.sort((a, b) => a.bestDeal.price - b.bestDeal.price);
     }
@@ -523,6 +524,7 @@ export default function FullScreenSearch() {
       const deals = applicableDealsFor(p, selectedStores, dealFilter);
       return Math.max(...deals.map((d) => new Date(d.saleStartedAt || 0).getTime()));
     };
+    const hasNewSpecial = (p: ProductCardData) => applicableDealsFor(p, selectedStores, dealFilter).some((deal) => isNewSpecial(deal));
 
     return matched
       .map((product) => ({
@@ -532,6 +534,8 @@ export default function FullScreenSearch() {
       .sort((a, b) => {
         if (b.relevance !== a.relevance) return b.relevance - a.relevance;
         if (resultsSortBy === "price-asc") return getBestPrice(a.product) - getBestPrice(b.product);
+        const newFirst = Number(hasNewSpecial(b.product)) - Number(hasNewSpecial(a.product));
+        if (newFirst !== 0) return newFirst;
         return getLatestStart(b.product) - getLatestStart(a.product);
       })
       .map((x) => x.product);

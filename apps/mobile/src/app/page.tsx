@@ -31,6 +31,7 @@ import {
 import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import { compareLatestSpecials } from "@/lib/special-freshness";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -139,13 +140,8 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
       sorted.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
     }
   } else {
-    // "latest" -- most recently started special first. Deals with no
-    // saleStartedAt sort last rather than first.
-    sorted.sort((a, b) => {
-      const aTime = a.deal.saleStartedAt ? new Date(a.deal.saleStartedAt).getTime() : -Infinity;
-      const bTime = b.deal.saleStartedAt ? new Date(b.deal.saleStartedAt).getTime() : -Infinity;
-      return bTime - aTime;
-    });
+    // "latest" -- currently-new specials first, then most recently started.
+    sorted.sort((a, b) => compareLatestSpecials(a.deal, b.deal));
   }
   return sorted;
 }

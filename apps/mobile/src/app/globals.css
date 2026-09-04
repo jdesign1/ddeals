@@ -513,6 +513,29 @@ body {
   letter-spacing: normal;
 }
 
+/* Diagonal top-left marker for specials that recently entered the current
+   price-history run. Keep this shared so every product-card surface uses the
+   same compact black/white cue. */
+.new-special-ribbon {
+  position: absolute;
+  top: 14px;
+  left: -34px;
+  z-index: 20;
+  width: 112px;
+  transform: rotate(-45deg);
+  background: var(--color-ink-700);
+  padding: 3px 0;
+  color: white;
+  text-align: center;
+  font-size: 0.65rem;
+  line-height: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  pointer-events: none;
+}
+
 /* Ported from Prototype/index.html verbatim (search bar + top nav port,
    2026-08-08). Mobile WebKit (iOS Safari/Chrome) auto-zooms the whole page
    on focus of any input whose computed font-size is under 16px — the

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, ShieldAlert } from "lucide-react";
 import type { ProductCard, CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
+import { isNewSpecial } from "@/lib/special-freshness";
 
 /**
  * One (product, store) deal card. Extracted from specials/page.tsx
@@ -48,7 +49,7 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
       // by dropping it).
       className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
-      <div className="product-image-frame relative aspect-square w-full bg-stone-100">
+      <div className="product-image-frame relative aspect-square w-full overflow-hidden bg-stone-100">
         <Image
           src={product.image}
           alt={product.name}
@@ -56,9 +57,14 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
           sizes="(max-width: 480px) 50vw, 256px"
           className="product-image-content object-contain p-3"
         />
+        {isNewSpecial(deal) && (
+          <span className="new-special-ribbon" aria-label="New special">
+            New
+          </span>
+        )}
         {(isTrueSpecial || isDodgy) && (
           <span
-            className="absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 dd-type-badge text-white"
+            className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-full px-2 py-1 dd-type-badge text-white"
             style={{
               backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
             }}
