@@ -59,7 +59,7 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
         />
         {isNewSpecial(deal) && (
           <span className="new-special-ribbon" aria-label="New special">
-            New
+            <span aria-hidden="true">NEW</span>
           </span>
         )}
         {(isTrueSpecial || isDodgy) && (

@@ -183,7 +183,7 @@ export default function ProductListCard({
         </div>
         {isNewSpecial(deal) && (
           <span className="new-special-ribbon" aria-label="New special">
-            New
+            <span aria-hidden="true">NEW</span>
           </span>
         )}
       </div>

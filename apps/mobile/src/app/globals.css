@@ -513,27 +513,34 @@ body {
   letter-spacing: normal;
 }
 
-/* Diagonal top-left marker for specials that recently entered the current
+/* Simple top-left triangle for specials that recently entered the current
    price-history run. Keep this shared so every product-card surface uses the
    same compact black/white cue. */
 .new-special-ribbon {
   position: absolute;
-  top: 14px;
-  left: -34px;
+  top: 0;
+  left: 0;
   z-index: 20;
-  width: 112px;
-  transform: rotate(-45deg);
+  width: 86px;
+  height: 86px;
   background: #171710;
-  padding: 3px 0;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  pointer-events: none;
+  font-size: 0;
+}
+
+.new-special-ribbon > span {
+  position: absolute;
+  top: 26px;
+  left: 6px;
+  width: 60px;
+  transform: rotate(-45deg);
   color: white;
   text-align: center;
   font-size: 0.65rem;
   line-height: 1rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
-  pointer-events: none;
 }
 
 /* Ported from Prototype/index.html verbatim (search bar + top nav port,
