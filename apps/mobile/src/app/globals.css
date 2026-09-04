@@ -523,7 +523,7 @@ body {
   z-index: 20;
   width: 54px;
   height: 54px;
-  background: #171710;
+  background: rgb(23 23 16 / 88%);
   clip-path: polygon(0 0, 100% 0, 0 100%);
   pointer-events: none;
   font-size: 0;
