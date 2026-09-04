@@ -228,65 +228,71 @@ export default function BottomNav() {
   if (pathname.startsWith("/deal/") || pathname === "/settings") return null;
 
   return (
-    <nav
-      className={`app-bottom-nav fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${
-        isSearchActive ? "z-[55]" : "z-40"
-      }`}
-    >
-      {TABS.map(({ href, label, icon }) => {
-        const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={isActive ? "page" : undefined}
-            onClick={() => {
-              if (isSearchActive) closeSearch();
-            }}
-            className="flex min-w-0 flex-1 items-center justify-center py-1.5"
-          >
-            <span
-              className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
-                isActive ? "dd-bottom-nav-active w-max min-w-full px-2" : "w-full min-w-0 px-0"
-              }`}
-              style={{ color: isActive ? "#ffffff" : "var(--dd-nav-inactive)" }}
+    <>
+      {/* Extend the frosted layer behind the floating pill so catalogue
+          content scrolling underneath the bottom edge is blurred on both
+          mobile browsers and iOS WKWebView. */}
+      <div className="app-bottom-nav-backdrop" aria-hidden="true" />
+      <nav
+        className={`app-bottom-nav fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${
+          isSearchActive ? "z-[55]" : "z-40"
+        }`}
+      >
+        {TABS.map(({ href, label, icon }) => {
+          const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={isActive ? "page" : undefined}
+              onClick={() => {
+                if (isSearchActive) closeSearch();
+              }}
+              className="flex min-w-0 flex-1 items-center justify-center py-1.5"
             >
-              {/* initial={false} (2026-08-20, per Jay: "don't animate the
-                  tabs into view [on load] ... animation only occurs when
-                  users select the tab") -- see home-page.tsx's own version
-                  of this comment for the full reasoning. Matters here even
-                  more than most: this is a route-driven active state (which
-                  pill is "active" depends on the current URL), so on a cold
-                  page load/refresh the pill for whatever route you landed
-                  on would otherwise pop in every single time, not just on a
-                  real tap. */}
-              <AnimatePresence initial={false}>
-                {isActive && (
-                  <motion.span
-                    className="dd-bottom-nav-active-fill absolute inset-0 rounded-full bg-ink-900"
-                    style={{ zIndex: -1 }}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.5, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </AnimatePresence>
               <span
-                className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
-                style={{
-                  color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
-                  fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
-                }}
-                aria-hidden="true"
+                className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
+                  isActive ? "dd-bottom-nav-active w-max min-w-full px-2" : "w-full min-w-0 px-0"
+                }`}
+                style={{ color: isActive ? "#ffffff" : "var(--dd-nav-inactive)" }}
               >
-                {icon}
+                {/* initial={false} (2026-08-20, per Jay: "don't animate the
+                    tabs into view [on load] ... animation only occurs when
+                    users select the tab") -- see home-page.tsx's own version
+                    of this comment for the full reasoning. Matters here even
+                    more than most: this is a route-driven active state (which
+                    pill is "active" depends on the current URL), so on a cold
+                    page load/refresh the pill for whatever route you landed
+                    on would otherwise pop in every single time, not just on a
+                    real tap. */}
+                <AnimatePresence initial={false}>
+                  {isActive && (
+                    <motion.span
+                      className="dd-bottom-nav-active-fill absolute inset-0 rounded-full bg-ink-900"
+                      style={{ zIndex: -1 }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </AnimatePresence>
+                <span
+                  className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
+                  style={{
+                    color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
+                    fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                  }}
+                  aria-hidden="true"
+                >
+                  {icon}
+                </span>
+                {label}
               </span>
-              {label}
-            </span>
-          </Link>
-        );
-      })}
-    </nav>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

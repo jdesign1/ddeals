@@ -1049,6 +1049,26 @@ select {
      home-indicator inset remains below it without an extra floating gap. */
   bottom: env(safe-area-inset-bottom);
 }
+.app-bottom-nav-backdrop {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  width: min(100%, 480px);
+  height: calc(5.5rem + env(safe-area-inset-bottom));
+  margin-inline: auto;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgb(250 248 244 / 0),
+    rgb(250 248 244 / 0.08) 46%,
+    rgb(250 248 244 / 0.9)
+  );
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 34%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 34%, black 100%);
+}
 
 /* Bottom sheets must cover the fixed navigation pill, including when they
    are opened from a nested card or route. The portal layer establishes a
@@ -1076,7 +1096,6 @@ select {
 }
 .auth-submit-bar {
   background-color: var(--color-paper);
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 .dd-bottom-sheet-titlebar {
   background-color: #fff;
@@ -1106,7 +1125,9 @@ select {
    the panel. The second selector preserves the same behavior for legacy
    non-portal sheets. */
 body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav,
-body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav {
+body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav,
+body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav-backdrop,
+body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav-backdrop {
   display: none !important;
 }
 /* Remove Safari's default tap highlight from custom segmented controls so
@@ -1302,6 +1323,14 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   background-color: rgb(12 11 9 / 0.96);
   border: none;
   box-shadow: 0 10px 24px rgb(0 0 0 / 0.28);
+}
+[data-theme="dark"] .app-bottom-nav-backdrop {
+  background: linear-gradient(
+    to bottom,
+    rgb(12 11 9 / 0),
+    rgb(12 11 9 / 0.16) 46%,
+    rgb(12 11 9 / 0.94)
+  );
 }
 [data-theme="dark"] .dd-bottom-nav-active {
   color: #171513 !important;
