@@ -31,7 +31,7 @@ import {
 import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import { compareLatestSpecials } from "@/lib/special-freshness";
+import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -607,6 +607,10 @@ function TrendingSection({
     persistenceKey: revealPersistenceKey,
   });
   const visible = sorted.slice(0, visibleCount);
+  const newBadgeKeys = useMemo(
+    () => getNewSpecialKeys(sorted, ({ deal }) => deal, ({ product, deal }) => `${product.id}-${deal.store}`),
+    [sorted]
+  );
 
   // Categories filter sheet, added 2026-08-21 per Jay: "Add the categories
   // sort button (existing from the full search screen) to the trending
@@ -657,6 +661,7 @@ function TrendingSection({
                     key={`${product.id}-${deal.store}`}
                     product={product}
                     deal={deal}
+                    showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
                     alsoSpecialStores={alsoSpecialStores(product, deal.store)}
                   />
                 ))}
@@ -805,6 +810,10 @@ function MyListSection({
 }) {
   const { isGridLayout } = useCardLayout();
   const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
+  const newBadgeKeys = useMemo(
+    () => getNewSpecialKeys(sorted, ({ deal }) => deal, ({ product, deal }) => `${product.id}-${deal.store}`),
+    [sorted]
+  );
   const { openAuthSheet } = useAuth();
 
   if (authLoading) return <LoadingMascot loading />;
@@ -900,6 +909,7 @@ function MyListSection({
                 key={`${product.id}-${deal.store}`}
                 product={product}
                 deal={deal}
+                showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
                 storeLinePrefix="Special at" // 2026-08-17, Jay: "change wording to just 'special at supermarket', remove the word 'on'"
                 alsoSpecialStores={alsoSpecialStores(product, deal.store)}
               />

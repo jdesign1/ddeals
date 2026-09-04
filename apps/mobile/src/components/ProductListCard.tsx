@@ -64,6 +64,8 @@ export interface ProductListCardProps {
    * nothing. Optional and a no-op for callers with nothing covering the
    * page (Home's own Trending/My List sections, /specials). */
   onNavigate?: () => void;
+  /** Parent controls the small per-view cap so a scrape wave does not mark every card. */
+  showNewBadge?: boolean;
 }
 
 export default function ProductListCard({
@@ -72,6 +74,7 @@ export default function ProductListCard({
   storeLinePrefix = "Lowest at",
   alsoSpecialStores = [],
   onNavigate,
+  showNewBadge = false,
 }: ProductListCardProps) {
   const router = useRouter();
   const isDodgy = deal.dealType === "Dodgy Deal";
@@ -181,7 +184,7 @@ export default function ProductListCard({
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
           />
         </div>
-        {isNewSpecial(deal) && (
+        {showNewBadge && isNewSpecial(deal) && (
           <span className="new-special-ribbon" aria-label="New special">
             <span aria-hidden="true">NEW</span>
           </span>

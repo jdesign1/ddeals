@@ -19,7 +19,7 @@ import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import { subscribeToCatalogueUpdates } from "@/lib/catalogue-refresh";
-import { compareLatestSpecials } from "@/lib/special-freshness";
+import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -139,6 +139,10 @@ export default function SpecialsPage() {
     () => flatDeals.filter(({ deal }) => storeMatchesFilter(deal.store, storeFilter)),
     [flatDeals, storeFilter]
   );
+  const newBadgeKeys = useMemo(
+    () => getNewSpecialKeys(filteredDeals, ({ deal }) => deal, ({ product, deal }) => `${product.id}-${deal.store}`),
+    [filteredDeals]
+  );
 
   // Infinite-scroll reveal, added 2026-08-21 -- this page previously had NO
   // cap at all (`filteredDeals.map(...)` rendered straight into the grid),
@@ -187,7 +191,12 @@ export default function SpecialsPage() {
 
       <div className="grid grid-cols-2 gap-3 px-5">
         {visibleDeals.map(({ product, deal }) => (
-          <DealCard key={`${product.id}-${deal.store}`} product={product} deal={deal} />
+          <DealCard
+            key={`${product.id}-${deal.store}`}
+            product={product}
+            deal={deal}
+            showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
+          />
         ))}
         {/* col-span-2 -- this is a 2-column grid, a bare `w-full` sentinel
             would only span one cell. Same pattern as TrendingSection's own

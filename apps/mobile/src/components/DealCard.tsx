@@ -17,7 +17,15 @@ import { isNewSpecial } from "@/lib/special-freshness";
  * Tappable as a whole (2026-08-09) -- navigates to `/deal/[id]/[store]`,
  * same as ProductListCard.tsx; see that component's doc comment.
  */
-export default function DealCard({ product, deal }: { product: ProductCard; deal: CurrentDeal }) {
+export default function DealCard({
+  product,
+  deal,
+  showNewBadge = false,
+}: {
+  product: ProductCard;
+  deal: CurrentDeal;
+  showNewBadge?: boolean;
+}) {
   const router = useRouter();
   const isTrueSpecial = deal.dealType === "Real Deal";
   const isDodgy = deal.dealType === "Dodgy Deal";
@@ -57,7 +65,7 @@ export default function DealCard({ product, deal }: { product: ProductCard; deal
           sizes="(max-width: 480px) 50vw, 256px"
           className="product-image-content object-contain p-3"
         />
-        {isNewSpecial(deal) && (
+        {showNewBadge && isNewSpecial(deal) && (
           <span className="new-special-ribbon" aria-label="New special">
             <span aria-hidden="true">NEW</span>
           </span>
