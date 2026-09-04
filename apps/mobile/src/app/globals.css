@@ -1041,6 +1041,9 @@ select {
 .pb-safe-sm {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
 }
+.dd-sheet-cta-footer {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
 .bottom-safe-nav {
   /* Align with the bottom edge of the usable iOS content area. The
      home-indicator inset remains below it without an extra floating gap. */
@@ -1073,6 +1076,7 @@ select {
 }
 .auth-submit-bar {
   background-color: var(--color-paper);
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 .dd-bottom-sheet-titlebar {
   background-color: #fff;
@@ -1296,7 +1300,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
    selected cell follow the same light-fill/dark-ink convention as segments. */
 [data-theme="dark"] .app-bottom-nav {
   background-color: rgb(12 11 9 / 0.96);
-  border: 1px solid #4a433b;
+  border: none;
   box-shadow: 0 10px 24px rgb(0 0 0 / 0.28);
 }
 [data-theme="dark"] .dd-bottom-nav-active {
@@ -1440,6 +1444,33 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 }
 [data-theme="dark"] .dd-search-control input {
   color: #ffffff;
+}
+
+/* Auth-sheet supporting copy is intentionally softer than headings, but
+   should still remain easy to read against the dark paper surface. */
+[data-theme="dark"] .dd-auth-sheet .text-stone-600 {
+  color: #c9bfb2 !important;
+}
+[data-theme="dark"] .dd-auth-sheet .text-stone-500 {
+  color: #b8aea0 !important;
+}
+[data-theme="dark"] .dd-auth-sheet .text-stone-400 {
+  color: #a89d8f !important;
+}
+[data-theme="dark"] .dd-auth-sheet .placeholder\:text-stone-500::placeholder {
+  color: #b8aea0 !important;
+}
+
+/* Category-sheet chips use the same selected-state language as tabs: a light
+   fill with dark ink, while unselected available categories get a slightly
+   brighter muted label for readability on the dark sheet. Disabled chips keep
+   their intentionally subdued treatment. */
+[data-theme="dark"] .dd-category-sheet-pill-selected {
+  background-color: #f5f1e8 !important;
+  color: #171513 !important;
+}
+[data-theme="dark"] .dd-category-sheet-pill:not(.dd-category-sheet-pill-selected):not(.dd-category-sheet-pill-disabled) {
+  color: #d9d0c3 !important;
 }
 
 /* Primary actions remain high-contrast in dark mode: light surface, dark

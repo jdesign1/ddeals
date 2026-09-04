@@ -165,7 +165,7 @@ export default function ShareListsSheet({
                 )}
               </div>
 
-              <div className="border-t border-stone-100 px-5 pt-3 pb-safe-sm">
+              <div className="dd-sheet-cta-footer border-t border-stone-100 px-5 pt-3">
                 {error && <p className="mb-3 dd-type-meta dd-type-meta-strong text-alert-700">{error}</p>}
                 <button
                   type="button"

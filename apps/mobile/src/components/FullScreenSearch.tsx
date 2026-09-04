@@ -1395,8 +1395,10 @@ export default function FullScreenSearch() {
                     <button
                       type="button"
                       onClick={() => setActiveCategoryFilter([])}
-                      className={`cursor-pointer rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
-                        activeCategoryFilter.length === 0 ? "bg-ink-600 text-white" : "bg-white text-stone-600 hover:bg-stone-50"
+                      className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
+                        activeCategoryFilter.length === 0
+                          ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
+                          : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                       }`}
                     >
                       All categories
@@ -1419,11 +1421,11 @@ export default function FullScreenSearch() {
                                   aria-disabled={!hasMatchingResults}
                                   title={hasMatchingResults ? undefined : "No matching deals in this category right now"}
                                   onClick={() => toggleActiveCategory(cat)}
-                                  className={`rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
+                                  className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
                                     !hasMatchingResults
-                                      ? "cursor-not-allowed bg-stone-50 text-stone-300"
+                                      ? "dd-category-sheet-pill-disabled cursor-not-allowed bg-stone-50 text-stone-300"
                                       : isSelected
-                                        ? "cursor-pointer bg-ink-600 text-white"
+                                        ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
                                         : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                                   }`}
                                 >
@@ -1436,7 +1438,7 @@ export default function FullScreenSearch() {
                       );
                     })}
                   </div>
-                  <div className="flex-shrink-0 border-t border-stone-100 px-5 py-3">
+                  <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 px-5 pt-3">
                     <button
                       type="button"
                       onClick={() => setCategorySheetTarget(null)}

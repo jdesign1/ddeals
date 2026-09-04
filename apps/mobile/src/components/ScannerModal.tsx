@@ -176,7 +176,7 @@ export default function ScannerModal({
               )}
             </div>
 
-            <div className="flex gap-3 border-t border-stone-200 bg-stone-50 p-4">
+            <div className="dd-sheet-cta-footer flex gap-3 border-t border-stone-200 bg-stone-50 px-4 pt-4">
               {/* Brand Guide v1.0 "06 — UI KIT / BUTTONS" pill styling
                   (2026-08-13 UI tidy-up): outline for the secondary action,
                   primary ink fill for the confirming one. */}
