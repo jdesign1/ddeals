@@ -191,7 +191,7 @@ export default function ProductListCard({
         )}
       </div>
       <div
-        className={`flex min-w-0 flex-1 flex-col justify-center bg-white ${
+        className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
           isGridLayout
             ? "px-3 pb-9 pt-3"
             : "pb-9 pl-4 pr-9 pt-4"
