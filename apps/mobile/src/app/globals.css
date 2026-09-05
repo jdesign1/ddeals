@@ -1519,6 +1519,15 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   color: #ffffff;
 }
 
+/* Deal-assessment supporting copy sits on elevated cards and can be a little
+   brighter than the app-wide muted body scale without changing other pages. */
+[data-theme="dark"] .deal-assessment-page .text-stone-600 {
+  color: #c9bfb2;
+}
+[data-theme="dark"] .deal-assessment-page .text-stone-500 {
+  color: #b7ac9d;
+}
+
 /* Auth-sheet supporting copy is intentionally softer than headings, but
    should still remain easy to read against the dark paper surface. */
 [data-theme="dark"] .dd-auth-sheet .text-stone-600 {

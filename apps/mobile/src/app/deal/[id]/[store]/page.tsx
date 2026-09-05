@@ -548,7 +548,7 @@ export default function DealAssessmentPage() {
         initial={{ x: "100%" }}
         animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className={`min-h-full w-full ${verdictBgClass}`}
+        className={`deal-assessment-page min-h-full w-full ${verdictBgClass}`}
       >
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
           as the change above that had briefly added the real `SearchBar`
