@@ -858,7 +858,7 @@ export default function DealAssessmentPage() {
               className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
             >
               <span>See cheaper options</span>
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
                 {cheaperAlternatives.length}
               </span>
               <ChevronDown
