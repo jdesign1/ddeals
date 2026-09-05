@@ -520,7 +520,9 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 20;
+  /* Keep product content below sticky tabs/search/store controls while they
+     move over the list during iOS scrolling. */
+  z-index: 0;
   width: 54px;
   height: 54px;
   background: rgb(23 23 16 / 88%);
