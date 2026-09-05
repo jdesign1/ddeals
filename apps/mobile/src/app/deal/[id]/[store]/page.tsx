@@ -1043,7 +1043,7 @@ export default function DealAssessmentPage() {
                                   </div>
                                 </div>
                               </div>
-                              <span className="block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
+                              <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
                                 Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
                               </span>
                               <a

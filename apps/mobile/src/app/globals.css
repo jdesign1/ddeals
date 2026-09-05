@@ -1312,6 +1312,14 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   background-color: #2e7d46;
 }
 
+/* The cheaper-options savings banner uses fair-800 in light mode for a
+   readable white label. The semantic fair-800 token becomes intentionally
+   pale in dark mode, so give this solid-fill badge its darker green role. */
+[data-theme="dark"] .dd-cheaper-saving-badge {
+  background-color: #2e7d46;
+  border-color: #2e7d46;
+}
+
 [data-theme="dark"] .bg-alert-600 {
   background-color: #a33f4b;
 }
