@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, type PointerEvent } from "react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
-import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared";
+import { STORE_DISPLAY_FALLBACK, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import { getStoreLogoMeta } from "@/lib/store-meta";
@@ -81,6 +81,7 @@ export default function ProductListCard({
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
+  const specialPriceRange = getSpecialPriceRange(product);
   const storeMeta = getStoreLogoMeta(deal.store);
   const { isGridLayout } = useCardLayout();
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -239,6 +240,11 @@ export default function ProductListCard({
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
         <span className="mt-1 font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+        {specialPriceRange && (
+          <span className="dd-type-meta text-stone-500">
+            Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)}
+          </span>
+        )}
         <div className="flex items-center gap-1.5">
             <span className="dd-type-meta dd-type-meta-strong text-stone-600">
             {storeLinePrefix == null

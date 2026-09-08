@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ShieldCheck, ShieldAlert } from "lucide-react";
-import type { ProductCard, CurrentDeal } from "@dodgey-deals/shared";
+import { getSpecialPriceRange, type ProductCard, type CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import { isNewSpecial } from "@/lib/special-freshness";
@@ -30,6 +30,7 @@ export default function DealCard({
   const isTrueSpecial = deal.dealType === "Real Deal";
   const isDodgy = deal.dealType === "Dodgy Deal";
   const showWasPrice = deal.originalPrice > deal.price;
+  const specialPriceRange = getSpecialPriceRange(product);
 
   const goToDeal = () => router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
 
@@ -97,6 +98,11 @@ export default function DealCard({
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>
           )}
         </div>
+        {specialPriceRange && (
+          <span className="dd-type-meta text-stone-500">
+            Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)}
+          </span>
+        )}
       </div>
     </article>
   );

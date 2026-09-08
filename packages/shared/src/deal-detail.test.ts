@@ -5,10 +5,11 @@ import {
   buildAssessmentSummaryCopy,
   findBestDodgyDeal,
   getAssessmentVerdict,
+  getSpecialPriceRange,
   getStoreProductUrl,
   MIN_90D_SAMPLES_FOR_INSIGHTS,
 } from "./deal-detail.ts";
-import type { CurrentDeal } from "./data.ts";
+import type { CurrentDeal, ProductCard } from "./data.ts";
 
 // Minimal real-shaped CurrentDeal fixture -- only the ninetyDay* fields
 // matter for buildPriceHistoryInsights, everything else just needs to
@@ -37,10 +38,49 @@ function fakeDeal(overrides: Partial<CurrentDeal> = {}): CurrentDeal {
   };
 }
 
+function fakeProduct(deals: CurrentDeal[]): ProductCard {
+  return {
+    id: "product-1",
+    brand: "Test brand",
+    name: "Test product",
+    category: "Grocery",
+    image: "",
+    standardPrice: 5,
+    unit: "1 each",
+    currentDeals: deals,
+    priceHistory: [],
+    description: "",
+  };
+}
+
 test("getStoreProductUrl: uses Woolworths NZ's live product search route", () => {
   assert.equal(
     getStoreProductUrl("Woolworths NZ", "Macro Organic Soy Milk Light 1l"),
     "https://www.woolworths.co.nz/shop/searchproducts?search=Macro%20Organic%20Soy%20Milk%20Light%201l"
+  );
+});
+
+test("getSpecialPriceRange: compares distinct special supermarkets and ignores regular listings", () => {
+  const range = getSpecialPriceRange(
+    fakeProduct([
+      fakeDeal({ store: "Woolworths NZ", price: 3.39 }),
+      fakeDeal({ store: "New World", price: 3 }),
+      fakeDeal({ store: "PAK'nSAVE", price: 5, isOnSpecial: false }),
+    ])
+  );
+
+  assert.deepEqual(range, { lowestPrice: 3, highestPrice: 3.39, storeCount: 2 });
+});
+
+test("getSpecialPriceRange: does not add a redundant range when special prices tie", () => {
+  assert.equal(
+    getSpecialPriceRange(
+      fakeProduct([
+        fakeDeal({ store: "Woolworths NZ", price: 3 }),
+        fakeDeal({ store: "Woolworths", price: 3 }),
+      ])
+    ),
+    null
   );
 });
 

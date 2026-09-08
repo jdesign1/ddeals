@@ -208,6 +208,40 @@ export function getRealAveragePrice(product: ProductCard, store: string): number
   return activeDeal ? activeDeal.originalPrice : null;
 }
 
+export interface SpecialPriceRange {
+  lowestPrice: number;
+  highestPrice: number;
+  storeCount: number;
+}
+
+/**
+ * Returns the current special-price spread for a matched product across
+ * supermarkets. Regular-price listings are intentionally excluded so the
+ * range answers the shopper's immediate question: "what could I pay for this
+ * special elsewhere?" Duplicate store rows are collapsed defensively because
+ * live retailer names can include branch suffixes.
+ */
+export function getSpecialPriceRange(product: ProductCard): SpecialPriceRange | null {
+  const pricesByStore = new Map<string, number>();
+  for (const deal of product.currentDeals) {
+    if (deal.isOnSpecial === false || !Number.isFinite(deal.price) || deal.price <= 0) continue;
+    const normalizedStore = normalizeStoreKey(deal.store);
+    const storeKey = Object.keys(STORE_DISPLAY_FALLBACK).find((knownStore) => normalizedStore.includes(knownStore)) ?? normalizedStore;
+    const existing = pricesByStore.get(storeKey);
+    if (existing == null || deal.price < existing) pricesByStore.set(storeKey, deal.price);
+  }
+
+  const prices = [...pricesByStore.values()];
+  const lowestPrice = Math.min(...prices);
+  const highestPrice = Math.max(...prices);
+  if (prices.length < 2 || Math.round(lowestPrice * 100) === Math.round(highestPrice * 100)) return null;
+  return {
+    lowestPrice,
+    highestPrice,
+    storeCount: prices.length,
+  };
+}
+
 export interface RankingItem {
   store: string;
   price: number;

@@ -11,6 +11,9 @@ interface PriceHistoryChartProps {
   comparisonPrice?: number | null;
   loading?: boolean;
   error?: string | null;
+  storeOptions?: { value: string; label: string }[];
+  selectedStore?: string;
+  onStoreChange?: (store: string) => void;
 }
 
 interface ChartPoint extends PriceHistoryPoint {
@@ -74,23 +77,52 @@ export default function PriceHistoryChart({
   comparisonPrice = null,
   loading = false,
   error = null,
+  storeOptions = [],
+  selectedStore = "",
+  onStoreChange,
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
+  const storeSelector = showStoreSelector ? (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2">
+      <label htmlFor="price-history-store" className="dd-type-control text-stone-700">
+        History for
+      </label>
+      <select
+        id="price-history-store"
+        value={selectedStore}
+        onChange={(event) => onStoreChange?.(event.target.value)}
+        className="min-h-9 max-w-[62%] rounded-lg border border-stone-200 bg-white px-2.5 text-right text-sm font-bold text-stone-800 shadow-sm outline-none focus:border-stone-500"
+      >
+        {storeOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  ) : null;
 
   if (loading) {
     return (
-      <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4">
-        <p className="text-sm font-semibold text-stone-500">Loading 90-day price history…</p>
+      <div className="space-y-3">
+        {storeSelector}
+        <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4">
+          <p className="text-sm font-semibold text-stone-500">Loading 90-day price history…</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
-        <p className="text-sm leading-5 font-semibold text-stone-500">90-day price history isn’t available right now.</p>
+      <div className="space-y-3">
+        {storeSelector}
+        <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
+          <p className="text-sm leading-5 font-semibold text-stone-500">90-day price history isn’t available right now.</p>
+        </div>
       </div>
     );
   }
@@ -98,8 +130,11 @@ export default function PriceHistoryChart({
   const chartPoints = buildChartPoints(points, currentPrice, currentIsSpecial, chartNow);
   if (chartPoints.length < 2) {
     return (
-      <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
-        <p className="text-sm leading-5 font-semibold text-stone-500">Not enough recorded price history to draw this chart yet.</p>
+      <div className="space-y-3">
+        {storeSelector}
+        <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
+          <p className="text-sm leading-5 font-semibold text-stone-500">Not enough recorded price history to draw this chart yet.</p>
+        </div>
       </div>
     );
   }
@@ -130,6 +165,7 @@ export default function PriceHistoryChart({
 
   return (
     <div className="space-y-3">
+      {storeSelector}
       <div className="relative h-[21rem] [perspective:1000px]">
         <motion.div
           className="relative h-full w-full"

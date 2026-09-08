@@ -16,10 +16,12 @@ import {
   type PriceHistoryPoint,
   type AssessmentVerdict,
   isUncertainAssessment,
+  STORE_DISPLAY_FALLBACK,
   getAssessmentVerdict,
   buildAssessmentSummaryCopy,
   getStoreProductUrl,
   getRealAveragePrice,
+  getSpecialPriceRange,
   buildRankingList,
   buildVisibleRanking,
   buildBarChartData,
@@ -232,34 +234,76 @@ export default function DealAssessmentPage() {
   );
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
 
+  // The history selector belongs to the chart, not the whole assessment: the
+  // verdict and hero price remain tied to the store in the URL. Keep the
+  // selection scoped to this route so a user can compare supermarkets without
+  // losing the assessment they opened.
+  const historyRouteKey = `${productId}::${dealStore}`;
+  const [historySelection, setHistorySelection] = useState<{ routeKey: string; store: string | null }>({
+    routeKey: "",
+    store: null,
+  });
+  const selectedHistoryStore = historySelection.routeKey === historyRouteKey ? historySelection.store : null;
+  const historyStoreDeals = useMemo(() => {
+    if (!product) return [];
+    const seen = new Set<string>();
+    return product.currentDeals.filter((candidate) => {
+      if (!candidate.sourceProductId || !candidate.sourceStoreId) return false;
+      const normalizedStore = normalizeStoreKey(candidate.store);
+      const key = Object.keys(STORE_DISPLAY_FALLBACK).find((knownStore) => normalizedStore.includes(knownStore)) ?? normalizedStore;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [product]);
+  const historyDeal = useMemo(
+    () => (product ? findDealForStore(product.currentDeals, selectedHistoryStore ?? dealStore) ?? deal : deal),
+    [deal, dealStore, product, selectedHistoryStore]
+  );
+  const historyStoreOptions = useMemo(
+    () => historyStoreDeals.map((candidate) => ({ value: candidate.store, label: candidate.store })),
+    [historyStoreDeals]
+  );
+  const effectiveHistoryStore = historyDeal?.store ?? dealStore;
   const priceHistoryKey =
-    deal?.sourceProductId && deal.sourceStoreId ? `${deal.sourceProductId}::${deal.sourceStoreId}` : null;
-  const [priceHistoryResult, setPriceHistoryResult] = useState<{
-    key: string;
-    points: PriceHistoryPoint[];
-    error: string | null;
-  } | null>(null);
-  const priceHistoryLoading = priceHistoryKey != null && priceHistoryResult?.key !== priceHistoryKey;
-  const priceHistoryPoints = priceHistoryResult?.key === priceHistoryKey ? priceHistoryResult.points : [];
+    historyDeal?.sourceProductId && historyDeal.sourceStoreId
+      ? `${historyDeal.sourceProductId}::${historyDeal.sourceStoreId}`
+      : null;
+  const [priceHistoryResults, setPriceHistoryResults] = useState<
+    Record<string, { points: PriceHistoryPoint[]; error: string | null }>
+  >({});
+  const priceHistoryResult = priceHistoryKey ? priceHistoryResults[priceHistoryKey] : undefined;
+  const priceHistoryLoading = priceHistoryKey != null && priceHistoryResult == null;
+  const priceHistoryPoints = priceHistoryResult?.points ?? [];
 
   // The catalogue carries summary history statistics only. The detail page
   // fetches this one product/store's sparse transition series on demand,
   // keeping the 90-day chart useful without adding thousands of rows to the
   // full catalogue payload.
   useEffect(() => {
-    if (!priceHistoryKey || !deal?.sourceProductId || !deal.sourceStoreId) return;
+    if (!priceHistoryKey || !historyDeal?.sourceProductId || !historyDeal.sourceStoreId || priceHistoryResult) return;
     let cancelled = false;
-    fetchPriceHistory90d(supabaseConfig, deal.sourceProductId, deal.sourceStoreId)
+    fetchPriceHistory90d(supabaseConfig, historyDeal.sourceProductId, historyDeal.sourceStoreId)
       .then((points) => {
-        if (!cancelled) setPriceHistoryResult({ key: priceHistoryKey, points, error: null });
+        if (!cancelled) {
+          setPriceHistoryResults((previous) => ({
+            ...previous,
+            [priceHistoryKey]: { points, error: null },
+          }));
+        }
       })
       .catch(() => {
-        if (!cancelled) setPriceHistoryResult({ key: priceHistoryKey, points: [], error: "history-unavailable" });
+        if (!cancelled) {
+          setPriceHistoryResults((previous) => ({
+            ...previous,
+            [priceHistoryKey]: { points: [], error: "history-unavailable" },
+          }));
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [priceHistoryKey, deal?.sourceProductId, deal?.sourceStoreId]);
+  }, [historyDeal?.sourceProductId, historyDeal?.sourceStoreId, priceHistoryKey, priceHistoryResult]);
 
   // The catalogue is intentionally allowed to render from IndexedDB first,
   // but a deal assessment should validate the exact retailer row in the
@@ -437,6 +481,7 @@ export default function DealAssessmentPage() {
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);
   const visibleRanking = useMemo(() => (product ? buildVisibleRanking(product, rankingList) : []), [product, rankingList]);
   const barChartData = useMemo(() => (product ? buildBarChartData(product) : []), [product]);
+  const specialPriceRange = useMemo(() => (product ? getSpecialPriceRange(product) : null), [product]);
   // Always "all" stores now (2026-08-12) -- the supermarket filter pills
   // that used to let Jay narrow this down (`selectedStores` state +
   // `handleStoreToggle`) were removed per his ask ("don't display
@@ -694,6 +739,11 @@ export default function DealAssessmentPage() {
               <span className={`font-display text-2xl font-extrabold ${dealPriceColorClass}`}>${deal.price.toFixed(2)}</span>
               <span className="text-sm font-bold text-stone-500">ea</span>
             </div>
+            {specialPriceRange && (
+              <p className="mt-1 text-sm font-semibold text-stone-600">
+                Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)} across {specialPriceRange.storeCount} supermarkets
+              </p>
+            )}
             <p
               className={`mt-0.5 text-sm font-bold ${
                 STORE_TEXT_COLOR[getStoreLogoMeta(deal.store).bg] || "text-stone-600"
@@ -1200,12 +1250,15 @@ export default function DealAssessmentPage() {
             {priceHistoryTab === "90-days" ? (
               <PriceHistoryChart
                 points={priceHistoryPoints}
-                currentPrice={deal.price}
-                currentStore={deal.store}
-                currentIsSpecial={deal.isOnSpecial}
-                comparisonPrice={deal.originalPrice}
+                currentPrice={historyDeal?.price ?? deal.price}
+                currentStore={effectiveHistoryStore}
+                currentIsSpecial={historyDeal?.isOnSpecial ?? deal.isOnSpecial}
+                comparisonPrice={historyDeal?.originalPrice ?? deal.originalPrice}
                 loading={priceHistoryLoading}
-                error={priceHistoryResult?.key === priceHistoryKey ? priceHistoryResult.error : null}
+                error={priceHistoryResult?.error ?? null}
+                storeOptions={historyStoreOptions}
+                selectedStore={effectiveHistoryStore}
+                onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
               />
             ) : (
               <>
