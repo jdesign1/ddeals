@@ -17,7 +17,7 @@ import {
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
 
@@ -83,7 +83,7 @@ export default function HistoryPage() {
     if (!user) return;
     let cancelled = false;
     const range = selectedMonth ? monthRange(selectedMonth) : null;
-    fetchDealCheckHistory(getSupabaseClient(), range ? { ...range, limit: 500 } : 500)
+    fetchDealCheckHistory(requireAccountsSupabaseClient(), range ? { ...range, limit: 500 } : 500)
       .then((rows) => {
         if (!cancelled) {
           // A month change can leave fallback product metadata from the

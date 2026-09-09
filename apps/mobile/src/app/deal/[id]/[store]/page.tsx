@@ -35,7 +35,7 @@ import {
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { usePageHeader } from "@/lib/header-context";
 import StoreCompareChart from "@/components/StoreCompareChart";
@@ -402,7 +402,7 @@ export default function DealAssessmentPage() {
   useEffect(() => {
     if (loggedCheckRef.current || !user || !product || !deal) return;
     loggedCheckRef.current = true;
-    logDealCheck(getSupabaseClient(), user.id, product.id, deal.store, deal.price, deal.originalPrice, deal.dealType).catch(
+    logDealCheck(requireAccountsSupabaseClient(), user.id, product.id, deal.store, deal.price, deal.originalPrice, deal.dealType).catch(
       (err: unknown) => {
         console.warn("logDealCheck failed:", err instanceof Error ? err.message : err);
       }

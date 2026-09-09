@@ -20,7 +20,7 @@ import {
   type ProductCard as ProductCardData,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import ErrorState from "@/components/ErrorState";
 import SearchBar from "@/components/SearchBar";
@@ -265,7 +265,7 @@ export default function ListsPage() {
     let cancelled = false;
     // Availability is external data and can change after the short list-page
     // cache is populated, so every page load gets a fresh price/special check.
-    loadListsPageData(getSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
+    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
       .then(({ rows, grouped, summaries, productMeta, itemCards }) => {
         if (cancelled) return;
         setLists(rows);
@@ -303,7 +303,7 @@ export default function ListsPage() {
     invalidateListsPageCache(user.id);
     try {
       const { rows, grouped, summaries, productMeta, itemCards } = await loadListsPageData(
-        getSupabaseClient(),
+        requireAccountsSupabaseClient(),
         supabaseConfig,
         user.id
       );
@@ -349,7 +349,7 @@ export default function ListsPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const createdList = await createList(getSupabaseClient(), user.id, newListName);
+      const createdList = await createList(requireAccountsSupabaseClient(), user.id, newListName);
       setNewListName("");
       setIsCreateSheetOpen(false);
       setNewlyCreatedListId(createdList.id);
@@ -364,7 +364,7 @@ export default function ListsPage() {
   async function handleDelete(listId: string) {
     setDeletingListId(listId);
     try {
-      await deleteList(getSupabaseClient(), listId);
+      await deleteList(requireAccountsSupabaseClient(), listId);
       window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "lists-page" } }));
       await reload({ showLoading: false });
     } catch (err) {
@@ -381,13 +381,13 @@ export default function ListsPage() {
   // wouldn't be visible while a card's edit row is open, not because the
   // failure is any less real.
   async function handleRename(listId: string, name: string) {
-    await updateListName(getSupabaseClient(), listId, name);
+    await updateListName(requireAccountsSupabaseClient(), listId, name);
     await reload();
   }
 
   async function handleRemoveItem(listId: string, productId: string) {
     try {
-      await removeItemFromList(getSupabaseClient(), listId, productId);
+      await removeItemFromList(requireAccountsSupabaseClient(), listId, productId);
       window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "lists-page" } }));
       await reload();
     } catch (err) {

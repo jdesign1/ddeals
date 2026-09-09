@@ -16,7 +16,7 @@ import {
   type ListRow,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import LoadingMascot from "@/components/LoadingMascot";
 
 /**
@@ -173,7 +173,7 @@ export default function AddToListButton({
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    fetchListIdsContainingProduct(getSupabaseClient(), productId)
+    fetchListIdsContainingProduct(requireAccountsSupabaseClient(), productId)
       .then((listIds) => {
         if (!cancelled) setAddedTo(new Set(listIds));
       })
@@ -189,7 +189,7 @@ export default function AddToListButton({
     setOpen(true);
     if (user && lists === null) {
       try {
-        const rows = await fetchUserLists(getSupabaseClient());
+        const rows = await fetchUserLists(requireAccountsSupabaseClient());
         setLists(rows);
       } catch (err) {
         setError(describeFetchError(err, "Failed to load lists"));
@@ -204,14 +204,14 @@ export default function AddToListButton({
     const alreadyOnList = addedTo.has(listId);
     try {
       if (alreadyOnList) {
-        await removeItemFromList(getSupabaseClient(), listId, productId);
+        await removeItemFromList(requireAccountsSupabaseClient(), listId, productId);
         setAddedTo((prev) => {
           const next = new Set(prev);
           next.delete(listId);
           return next;
         });
       } else {
-        await addItemToList(getSupabaseClient(), listId, productId);
+        await addItemToList(requireAccountsSupabaseClient(), listId, productId);
         setAddedTo((prev) => new Set(prev).add(listId));
       }
       // Busts the Lists page's own cached data (2026-08-20, added alongside

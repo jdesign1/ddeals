@@ -6,7 +6,7 @@ import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { fetchDealCheckHistory, computeDealStats, describeFetchError, type DealStats } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 
@@ -64,8 +64,7 @@ export default function MePage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    setLoading(true);
-    fetchDealCheckHistory(getSupabaseClient())
+    fetchDealCheckHistory(requireAccountsSupabaseClient())
       .then((history) => {
         if (!cancelled) {
           setStats(computeDealStats(history));

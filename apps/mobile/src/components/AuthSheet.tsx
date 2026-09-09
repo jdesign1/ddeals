@@ -339,7 +339,6 @@ export default function AuthSheet({
                 onSuccess={onClose}
                 onOpenLegal={openLegal}
                 mode={mode}
-                onModeChange={setMode}
               />
             </div>
           </motion.div>
