@@ -20,7 +20,6 @@ import {
   getAssessmentVerdict,
   buildAssessmentSummaryCopy,
   getStoreProductUrl,
-  getRealAveragePrice,
   getCurrentPriceRange,
   buildRankingList,
   buildVisibleRanking,
@@ -40,7 +39,7 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
 import { usePageHeader } from "@/lib/header-context";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
-import PriceHistoryChart from "@/components/PriceHistoryChart";
+import PriceHistoryChart, { ALL_STORES_VALUE } from "@/components/PriceHistoryChart";
 import AssessmentText from "@/components/AssessmentText";
 import InsightCarousel from "@/components/InsightCarousel";
 import ErrorState from "@/components/ErrorState";
@@ -161,14 +160,14 @@ function DealActions({ productId, productName }: { productId: string; productNam
  * Labels name the specific claim instead of repeating the full verdict --
  * "Verified special" (this
  * price was checked against a real recent price and is genuinely lower),
- * "Dodgy discount" (the opposite -- the "special" price is at or above a
+ * "Dodgy" (the opposite -- the "special" price is at or above a
  * recent real price), "Fair price" (no unusual pricing either way, whether
  * or not it happens to be on special right now), plus "Early flag" and
  * "Limited history" for incomplete evidence.
  */
 const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
   "Real Saver": { label: "Verified special", className: "dd-badge-fair", icon: ShieldCheck },
-  "Dodgy Deal": { label: "Dodgy discount", className: "dd-badge-alert", icon: AlertTriangle },
+  "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert", icon: AlertTriangle },
   "Fair Deal": { label: "Fair price", className: "dd-badge-dodgy", icon: Info },
   "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
@@ -276,11 +275,19 @@ export default function DealAssessmentPage() {
     });
   }, [product]);
   const historyDeal = useMemo(
-    () => (product ? findDealForStore(product.currentDeals, selectedHistoryStore ?? selectedAssessmentStore ?? dealStore) ?? activeDeal : activeDeal),
+    () =>
+      selectedHistoryStore === ALL_STORES_VALUE
+        ? activeDeal
+        : product
+          ? findDealForStore(product.currentDeals, selectedHistoryStore ?? selectedAssessmentStore ?? dealStore) ?? activeDeal
+          : activeDeal,
     [activeDeal, dealStore, product, selectedAssessmentStore, selectedHistoryStore]
   );
   const historyStoreOptions = useMemo(
-    () => historyStoreDeals.map((candidate) => ({ value: candidate.store, label: candidate.store })),
+    () => [
+      ...(historyStoreDeals.length > 1 ? [{ value: ALL_STORES_VALUE, label: "All" }] : []),
+      ...historyStoreDeals.map((candidate) => ({ value: candidate.store, label: candidate.store })),
+    ],
     [historyStoreDeals]
   );
   const effectiveHistoryStore = historyDeal?.store ?? dealStore;
@@ -295,34 +302,71 @@ export default function DealAssessmentPage() {
   const priceHistoryLoading = priceHistoryKey != null && priceHistoryResult == null;
   const priceHistoryPoints = priceHistoryResult?.points ?? [];
 
+  const historyDealsToLoad = useMemo(
+    () => (selectedHistoryStore === ALL_STORES_VALUE ? historyStoreDeals : historyDeal ? [historyDeal] : []),
+    [historyDeal, historyStoreDeals, selectedHistoryStore]
+  );
+
   // The catalogue carries summary history statistics only. The detail page
-  // fetches this one product/store's sparse transition series on demand,
+  // fetches the small, exact product/store transition series on demand,
   // keeping the 90-day chart useful without adding thousands of rows to the
-  // full catalogue payload.
+  // full catalogue payload. The "All" view loads one series per retailer.
   useEffect(() => {
-    if (!priceHistoryKey || !historyDeal?.sourceProductId || !historyDeal.sourceStoreId || priceHistoryResult) return;
+    const pendingDeals = historyDealsToLoad.filter((candidate) => {
+      if (!candidate.sourceProductId || !candidate.sourceStoreId) return false;
+      const key = `${candidate.sourceProductId}::${candidate.sourceStoreId}`;
+      return !priceHistoryResults[key];
+    });
+    if (pendingDeals.length === 0) return;
     let cancelled = false;
-    fetchPriceHistory90d(supabaseConfig, historyDeal.sourceProductId, historyDeal.sourceStoreId)
-      .then((points) => {
-        if (!cancelled) {
-          setPriceHistoryResults((previous) => ({
-            ...previous,
-            [priceHistoryKey]: { points, error: null },
-          }));
+    Promise.all(
+      pendingDeals.map(async (candidate) => {
+        const key = `${candidate.sourceProductId}::${candidate.sourceStoreId}`;
+        try {
+          const points = await fetchPriceHistory90d(supabaseConfig, candidate.sourceProductId!, candidate.sourceStoreId!);
+          return [key, { points, error: null }] as const;
+        } catch {
+          return [key, { points: [], error: "history-unavailable" }] as const;
         }
       })
-      .catch(() => {
-        if (!cancelled) {
-          setPriceHistoryResults((previous) => ({
-            ...previous,
-            [priceHistoryKey]: { points: [], error: "history-unavailable" },
-          }));
-        }
-      });
+    ).then((results) => {
+      if (!cancelled) {
+        setPriceHistoryResults((previous) => ({ ...previous, ...Object.fromEntries(results) }));
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [historyDeal?.sourceProductId, historyDeal?.sourceStoreId, priceHistoryKey, priceHistoryResult]);
+  }, [historyDealsToLoad, priceHistoryResults]);
+
+  const priceHistorySeries = useMemo(
+    () =>
+      historyStoreDeals.map((candidate) => {
+        const key = `${candidate.sourceProductId}::${candidate.sourceStoreId}`;
+        return {
+          store: candidate.store,
+          points: priceHistoryResults[key]?.points ?? [],
+          currentPrice: candidate.price,
+          currentIsSpecial: candidate.isOnSpecial !== false,
+        };
+      }),
+    [historyStoreDeals, priceHistoryResults]
+  );
+  const isAllHistorySelected = selectedHistoryStore === ALL_STORES_VALUE;
+  const priceHistoryLoadingForSelection = isAllHistorySelected
+    ? historyDealsToLoad.some((candidate) => {
+        if (!candidate.sourceProductId || !candidate.sourceStoreId) return false;
+        return !priceHistoryResults[`${candidate.sourceProductId}::${candidate.sourceStoreId}`];
+      })
+    : priceHistoryLoading;
+  const allHistoryResults = historyStoreDeals.map((candidate) =>
+    priceHistoryResults[`${candidate.sourceProductId}::${candidate.sourceStoreId}`]
+  );
+  const priceHistoryErrorForSelection = isAllHistorySelected
+    ? allHistoryResults.length > 0 && allHistoryResults.every((result) => result?.error)
+      ? "history-unavailable"
+      : null
+    : priceHistoryResult?.error ?? null;
 
   // The catalogue is intentionally allowed to render from IndexedDB first,
   // but a deal assessment should validate the exact retailer row in the
@@ -570,22 +614,9 @@ export default function DealAssessmentPage() {
   const lowestCurrentPriceItem = rankingList[0];
   const lowestSpecialStoreItem = visibleRanking[0];
 
-  // Recent average for THIS deal's own store specifically -- deliberately
-  // Backs the hero price color below (2026-08-21, per Jay: "The item
-  // price text at top should also be Green if cheaper, Red if pricier, or
-  // Black if no change") -- same `text-fair-700`/`text-alert-700` tokens
-  // this page's own chart legend already uses for "Cheaper"/"Pricier"
-  // (just below), not new colors invented for this one span. No claim of
-  // "cheaper"/"pricier" when there's no real average to compare against
-  // (`dealAveragePrice` null or `<= 0`) -- same guard `StoreCompareChart`'s
-  // own `ariaLabel` logic already uses for the identical edge case.
-  const dealAveragePrice = getRealAveragePrice(product, selectedDeal.store);
-  const dealPriceColorClass =
-    dealAveragePrice == null || dealAveragePrice <= 0 || selectedDeal.price === dealAveragePrice
-      ? "text-stone-900"
-      : selectedDeal.price < dealAveragePrice
-        ? "text-fair-700"
-        : "text-alert-700";
+  // Reserve the green price treatment for a confirmed genuine saving. Dodgy,
+  // fair, and uncertain assessments stay in the neutral text colour.
+  const dealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
   const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
@@ -669,6 +700,7 @@ export default function DealAssessmentPage() {
                 if (!storeDeal) return null;
                 const storeVerdict = getAssessmentVerdict(storeDeal);
                 const storeBadge = VERDICT_BADGE[storeVerdict];
+                const showStoreBadge = storeVerdict !== "Limited history";
                 const storeMeta = getStoreLogoMeta(item.store);
                 const isCurrentStore = storesMatch(item.store, selectedDeal.store);
                 const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
@@ -684,12 +716,18 @@ export default function DealAssessmentPage() {
                       <span className="flex flex-wrap items-center gap-1.5">
                         <span className="truncate text-sm font-extrabold text-stone-800">{item.store}</span>
                       </span>
-                      <span className={`dd-badge dd-badge-compact mt-1 w-fit ${storeBadge.className}`}>{storeBadge.label}</span>
+                      {showStoreBadge && (
+                        <span className={`dd-badge dd-badge-compact mt-1 w-fit ${storeBadge.className}`}>{storeBadge.label}</span>
+                      )}
                     </span>
                     <span className="flex-shrink-0 text-right">
                       <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
-                      <span className={`block text-xs font-extrabold ${storeDeal.isOnSpecial === false ? "text-stone-500" : "text-fair-700"}`}>
-                        {storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best" : "Special"}
+                      <span
+                        className={`block text-xs font-extrabold ${
+                          storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"
+                        }`}
+                      >
+                        {storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best price" : "Special"}
                       </span>
                     </span>
                   </>
@@ -814,7 +852,7 @@ export default function DealAssessmentPage() {
 
       {cheaperAlternatives.length > 0 && (
           <div className="space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs">
-            <h4 className="dd-type-section text-stone-900">Cheaper products available</h4>
+            <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
             <p className="mb-3 text-sm text-stone-600">See cheaper products on special</p>
             <button
               onClick={() => setShowCheaperCarousel((open) => !open)}
@@ -1049,7 +1087,7 @@ export default function DealAssessmentPage() {
                   IN HERE (2026-08-20, per Jay's ask) from a standalone
                   heading above both cards -- now sits inside this first
                   card specifically, not floating above the whole section. */}
-              <h4 className="dd-type-section text-stone-900">Price History Insights</h4>
+              <h4 className="dd-type-section text-stone-900">Price History</h4>
               {/* text-[13px] -> text-sm (14px) below, 2026-08-20, per Jay:
                   "Increase all body texts on the deal assessment page to be
                   14px for readability" -- scoped to actual sentence-level
@@ -1104,7 +1142,7 @@ export default function DealAssessmentPage() {
                   today. */}
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
                 {priceHistoryTab === "90-days"
-                  ? "Shows price changes over the last 90 days, including special prices."
+                  ? "Shows price changes over the last 90 days."
                   : "This graph compares the current price at each supermarket with its recent average."}
               </p>
             </div>
@@ -1164,13 +1202,14 @@ export default function DealAssessmentPage() {
               <PriceHistoryChart
                 points={priceHistoryPoints}
                 currentPrice={historyDeal?.price ?? selectedDeal.price}
-                currentStore={effectiveHistoryStore}
+                currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
                 currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
                 comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
-                loading={priceHistoryLoading}
-                error={priceHistoryResult?.error ?? null}
+                loading={priceHistoryLoadingForSelection}
+                error={priceHistoryErrorForSelection}
+                historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
                 storeOptions={historyStoreOptions}
-                selectedStore={effectiveHistoryStore}
+                selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
                 onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
               />
             ) : (

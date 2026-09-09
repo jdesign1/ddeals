@@ -14,10 +14,20 @@ interface PriceHistoryChartProps {
   storeOptions?: { value: string; label: string }[];
   selectedStore?: string;
   onStoreChange?: (store: string) => void;
+  historySeries?: PriceHistorySeries[];
 }
 
 interface ChartPoint extends PriceHistoryPoint {
   isCurrent?: boolean;
+}
+
+export const ALL_STORES_VALUE = "__all__";
+
+export interface PriceHistorySeries {
+  store: string;
+  points: PriceHistoryPoint[];
+  currentPrice: number;
+  currentIsSpecial: boolean;
 }
 
 const WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
@@ -69,6 +79,15 @@ function buildChartPoints(
   return observed.filter((point) => new Date(point.scrapedAt).getTime() <= now && new Date(point.scrapedAt).getTime() >= start - WINDOW_MS);
 }
 
+function chartColorForStore(store: string): string {
+  const normalized = store.toLowerCase().replace(/[^a-z]/g, "");
+  if (normalized.includes("woolworth")) return "#059669";
+  if (normalized.includes("paknsave")) return "#d97706";
+  if (normalized.includes("newworld")) return "#e11d48";
+  if (normalized.includes("foursquare")) return "#16a34a";
+  return "#78716c";
+}
+
 export default function PriceHistoryChart({
   points,
   currentPrice,
@@ -80,19 +99,20 @@ export default function PriceHistoryChart({
   storeOptions = [],
   selectedStore = "",
   onStoreChange,
+  historySeries = [],
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
-    <div className="flex items-center justify-end gap-3 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2">
+    <div className="flex justify-end">
       <select
         id="price-history-store"
         value={selectedStore}
         onChange={(event) => onStoreChange?.(event.target.value)}
         aria-label="Select supermarket for price history"
-        className="min-h-9 max-w-[62%] rounded-lg border border-stone-200 bg-white px-2.5 pr-8 text-right text-xs font-normal text-stone-800 shadow-sm outline-none focus:border-stone-500"
+        className="min-h-8 w-fit max-w-full border-0 bg-transparent px-2.5 text-right text-[10px] leading-4 font-normal text-stone-800 shadow-none outline-none focus:border-0"
       >
         {storeOptions.map((option) => (
           <option key={option.value} value={option.value}>
@@ -125,8 +145,18 @@ export default function PriceHistoryChart({
     );
   }
 
-  const chartPoints = buildChartPoints(points, currentPrice, currentIsSpecial, chartNow);
-  if (chartPoints.length < 2) {
+  const showingAllStores = selectedStore === ALL_STORES_VALUE;
+  const sourceSeries: PriceHistorySeries[] = showingAllStores
+    ? historySeries
+    : [{ store: currentStore, points, currentPrice, currentIsSpecial }];
+  const renderedSeries = sourceSeries
+    .map((series) => ({
+      ...series,
+      color: chartColorForStore(series.store),
+      points: buildChartPoints(series.points, series.currentPrice, series.currentIsSpecial, chartNow),
+    }))
+    .filter((series) => series.points.length > 0);
+  if (renderedSeries.length === 0 || renderedSeries.every((series) => series.points.length < 2)) {
     return (
       <div className="space-y-3">
         {storeSelector}
@@ -139,7 +169,7 @@ export default function PriceHistoryChart({
 
   const now = chartNow;
   const start = now - WINDOW_MS;
-  const prices = chartPoints.map((point) => point.price);
+  const prices = renderedSeries.flatMap((series) => series.points.map((point) => point.price));
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const spread = maxPrice - minPrice;
@@ -152,10 +182,17 @@ export default function PriceHistoryChart({
     return PLOT_LEFT + ((time - start) / WINDOW_MS) * (PLOT_RIGHT - PLOT_LEFT);
   };
   const yFor = (price: number) => PLOT_BOTTOM - ((price - yMin) / yRange) * (PLOT_BOTTOM - PLOT_TOP);
-  const coordinates = chartPoints.map((point) => ({ point, x: xFor(point), y: yFor(point.price) }));
-  const listPoints = chartPoints
-    .filter((point) => new Date(point.scrapedAt).getTime() >= start)
-    .sort((a, b) => new Date(b.scrapedAt).getTime() - new Date(a.scrapedAt).getTime());
+  const coordinatesBySeries = renderedSeries.map((series) => ({
+    ...series,
+    coordinates: series.points.map((point) => ({ point, x: xFor(point), y: yFor(point.price) })),
+  }));
+  const listPoints = coordinatesBySeries
+    .flatMap((series) =>
+      series.points
+        .filter((point) => new Date(point.scrapedAt).getTime() >= start)
+        .map((point) => ({ point, store: series.store, seriesPoints: series.points }))
+    )
+    .sort((a, b) => new Date(b.point.scrapedAt).getTime() - new Date(a.point.scrapedAt).getTime());
   const gridValues = [yMax, yMin + yRange / 2, yMin];
   const hasComparisonPrice = typeof comparisonPrice === "number" && Number.isFinite(comparisonPrice) && comparisonPrice > 0;
   const comparisonPct = hasComparisonPrice ? Math.round(((currentPrice - comparisonPrice) / comparisonPrice) * 100) : 0;
@@ -182,9 +219,9 @@ export default function PriceHistoryChart({
           >
         <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
           <span className="dd-type-control text-stone-700">
-            {currentStore} current price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
+            {showingAllStores ? "All supermarkets" : <>{currentStore} price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
           </span>
-          {hasComparisonPrice && comparisonPct !== 0 && (
+          {!showingAllStores && hasComparisonPrice && comparisonPct !== 0 && (
             <span
               className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 dd-type-badge text-white ${
                 isCheaperThanComparison ? "bg-fair-600" : "bg-alert-600"
@@ -218,50 +255,54 @@ export default function PriceHistoryChart({
             );
           })}
 
-          {coordinates.slice(0, -1).map((coordinate, index) => {
-            const next = coordinates[index + 1];
-            return (
-              <motion.line
-                key={`${coordinate.point.scrapedAt}-${next.point.scrapedAt}`}
-                x1={coordinate.x}
-                x2={next.x}
-                y1={coordinate.y}
-                y2={next.y}
-                stroke={coordinate.point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
-                strokeWidth="3"
-                strokeLinecap="round"
-                initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{
-                  duration: shouldReduceMotion ? 0 : 0.42,
-                  delay: shouldReduceMotion ? 0 : index * 0.1,
-                  ease: "easeOut",
-                }}
-              />
-            );
-          })}
+          {coordinatesBySeries.map((series) =>
+            series.coordinates.slice(0, -1).map((coordinate, index) => {
+              const next = series.coordinates[index + 1];
+              return (
+                <motion.line
+                  key={`${series.store}-${coordinate.point.scrapedAt}-${next.point.scrapedAt}`}
+                  x1={coordinate.x}
+                  x2={next.x}
+                  y1={coordinate.y}
+                  y2={next.y}
+                  stroke={showingAllStores ? series.color : coordinate.point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{
+                    duration: shouldReduceMotion ? 0 : 0.42,
+                    delay: shouldReduceMotion ? 0 : index * 0.1,
+                    ease: "easeOut",
+                  }}
+                />
+              );
+            })
+          )}
 
-          {coordinates.map(({ point, x, y }, index) => (
-            <g key={`${point.scrapedAt}-${point.price}`}>
-              <motion.circle
-                cx={x}
-                cy={y}
-                fill={point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
-                stroke="var(--dd-chart-point-stroke)"
-                strokeWidth="2"
-                initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
-                animate={{ r: 5, opacity: 1 }}
-                transition={{
-                  duration: shouldReduceMotion ? 0 : 0.24,
-                  delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
-                  ease: "easeOut",
-                }}
-              />
-              <title>
-                {`${formatDate(point.scrapedAt, point.isCurrent)}: $${point.price.toFixed(2)} · ${point.isSpecial ? "On special" : "Regular price"}`}
-              </title>
-            </g>
-          ))}
+          {coordinatesBySeries.map((series) =>
+            series.coordinates.map(({ point, x, y }, index) => (
+              <g key={`${series.store}-${point.scrapedAt}-${point.price}`}>
+                <motion.circle
+                  cx={x}
+                  cy={y}
+                  fill={showingAllStores ? series.color : point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
+                  stroke="var(--dd-chart-point-stroke)"
+                  strokeWidth="2"
+                  initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
+                  animate={{ r: 5, opacity: 1 }}
+                  transition={{
+                    duration: shouldReduceMotion ? 0 : 0.24,
+                    delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
+                    ease: "easeOut",
+                  }}
+                />
+                <title>
+                  {`${series.store} · ${formatDate(point.scrapedAt, point.isCurrent)}: $${point.price.toFixed(2)} · ${point.isSpecial ? "On special" : "Regular price"}`}
+                </title>
+              </g>
+            ))
+          )}
 
           <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="12" fontWeight="700" fill="var(--dd-chart-axis)">
             90 days ago
@@ -271,14 +312,23 @@ export default function PriceHistoryChart({
           </text>
         </svg>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-sm leading-4 font-bold text-stone-700">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-fair-600" />
-            <span>On special</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-stone-400" />
-            <span>Regular price</span>
-          </div>
+          {showingAllStores
+            ? renderedSeries.map((series) => (
+                <div key={series.store} className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: series.color }} />
+                  <span>{series.store}</span>
+                </div>
+              ))
+            : <>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-fair-600" />
+                  <span>On special</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-stone-400" />
+                  <span>Regular price</span>
+                </div>
+              </>}
         </div>
           </button>
           <button
@@ -297,11 +347,11 @@ export default function PriceHistoryChart({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                 {listPoints.length > 0 ? (
-                  listPoints.map((point) => {
-                    const pointIndex = chartPoints.findIndex(
+                  listPoints.map(({ point, store, seriesPoints }) => {
+                    const pointIndex = seriesPoints.findIndex(
                       (candidate) => candidate.scrapedAt === point.scrapedAt && candidate.price === point.price
                     );
-                    const previousPoint = pointIndex > 0 ? chartPoints[pointIndex - 1] : undefined;
+                    const previousPoint = pointIndex > 0 ? seriesPoints[pointIndex - 1] : undefined;
                     const priceChange = previousPoint ? point.price - previousPoint.price : 0;
                     const PriceChangeIcon = priceChange > 0 ? ArrowUp : priceChange < 0 ? ArrowDown : null;
 
@@ -312,7 +362,7 @@ export default function PriceHistoryChart({
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-stone-700">
-                            {formatListDate(point.scrapedAt, point.isCurrent)}
+                            {showingAllStores ? `${store} · ` : ""}{formatListDate(point.scrapedAt, point.isCurrent)}
                           </p>
                           <p className={`text-xs font-semibold ${point.isSpecial ? "text-fair-700" : "text-stone-500"}`}>
                             {point.isSpecial ? "On special" : "Regular price"}

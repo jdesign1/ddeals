@@ -161,6 +161,17 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
   assert.match(realCopy.body, /\$5\.00/);
 });
 
+test("buildAssessmentSummaryCopy: explains incomplete history plainly", () => {
+  const copy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      evidenceStatus: "LIMITED",
+      dealType: "Unverified Deal",
+    })
+  );
+
+  assert.equal(copy.heading, "We aren't sure yet, needs more history");
+});
+
 test("findBestDodgyDeal: finds a Dodgy retailer deal even when another store has a better discount", () => {
   const deals = [
     fakeDeal({

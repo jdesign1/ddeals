@@ -148,7 +148,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 
   if (verdict === "Early read") {
     return {
-      heading: "Why this isn't confirmed yet",
+      heading: "We aren't sure yet, needs more history",
       body: buildAssessmentPriceBody(
         currentPrice,
         normalPrice,
@@ -158,7 +158,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
   }
 
   return {
-    heading: "Why this isn't confirmed yet",
+    heading: "We aren't sure yet, needs more history",
     body: buildAssessmentPriceBody(
       currentPrice,
       normalPrice,
