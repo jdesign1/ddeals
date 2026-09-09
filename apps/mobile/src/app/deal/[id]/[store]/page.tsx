@@ -21,6 +21,8 @@ import {
   buildAssessmentSummaryCopy,
   getStoreProductUrl,
   getCurrentPriceRange,
+  getSpecialPriceRange,
+  getRealAveragePrice,
   buildRankingList,
   buildVisibleRanking,
   buildBarChartData,
@@ -171,6 +173,14 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
   "Fair Deal": { label: "Fair price", className: "dd-badge-dodgy", icon: Info },
   "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
+};
+
+const STORE_TEXT_COLOR: Record<string, string> = {
+  "bg-emerald-600": "text-emerald-600",
+  "bg-amber-600": "text-amber-600",
+  "bg-rose-600": "text-rose-600",
+  "bg-green-600": "text-green-600",
+  "bg-stone-600": "text-stone-600",
 };
 
 export default function DealAssessmentPage() {
@@ -542,9 +552,11 @@ export default function DealAssessmentPage() {
   usePageHeader(headerTitle, onBack);
 
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);
+  const isMultiStoreDeal = rankingList.length > 1;
   const visibleRanking = useMemo(() => (product ? buildVisibleRanking(product, rankingList) : []), [product, rankingList]);
   const barChartData = useMemo(() => (product ? buildBarChartData(product) : []), [product]);
   const currentPriceRange = useMemo(() => (product ? getCurrentPriceRange(product) : null), [product]);
+  const specialPriceRange = useMemo(() => (product ? getSpecialPriceRange(product) : null), [product]);
   // Always "all" stores now (2026-08-12) -- the supermarket filter pills
   // that used to let Jay narrow this down (`selectedStores` state +
   // `handleStoreToggle`) were removed per his ask ("don't display
@@ -601,6 +613,10 @@ export default function DealAssessmentPage() {
   const selectedDeal = activeDeal;
   const verdict = getAssessmentVerdict(selectedDeal);
   const uncertain = isUncertainAssessment(verdict);
+  const verdictColorClass =
+    verdict === "Real Saver" ? "text-fair-800" : verdict === "Dodgy Deal" ? "text-alert-800" : uncertain ? "text-stone-700" : "text-dodgy-900";
+  const verdictBgClass =
+    verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : uncertain ? "page-paper-surface" : "bg-dodgy-50";
   const verdictBorderClass =
     verdict === "Real Saver" ? "border-fair-200" : verdict === "Dodgy Deal" ? "border-alert-200" : uncertain ? "border-stone-200" : "border-dodgy-200";
   const verdictButtonBorderClass =
@@ -614,11 +630,18 @@ export default function DealAssessmentPage() {
   const lowestCurrentPriceItem = rankingList[0];
   const lowestSpecialStoreItem = visibleRanking[0];
 
-  // Reserve the green price treatment for a confirmed genuine saving. Dodgy,
-  // fair, and uncertain assessments stay in the neutral text colour.
-  const dealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
+  // Multi-store pages use the newer verdict-based treatment. Single-store
+  // pages retain the original price-vs-average treatment.
+  const dealAveragePrice = getRealAveragePrice(product, selectedDeal.store);
+  const dealPriceColorClass =
+    dealAveragePrice == null || dealAveragePrice <= 0 || selectedDeal.price === dealAveragePrice
+      ? "text-stone-900"
+      : selectedDeal.price < dealAveragePrice
+        ? "text-fair-700"
+        : "text-alert-700";
+  const multiStoreDealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
-  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
+  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal, isMultiStoreDeal ? "multi-store" : "single-store");
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
   const lowestSpecialStoreNames =
     lowestSpecialPriceCents == null
@@ -640,7 +663,7 @@ export default function DealAssessmentPage() {
         initial={{ x: "100%" }}
         animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="deal-assessment-page page-paper-surface min-h-full w-full"
+        className={`deal-assessment-page min-h-full w-full ${isMultiStoreDeal ? "page-paper-surface" : verdictBgClass}`}
       >
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
           as the change above that had briefly added the real `SearchBar`
@@ -654,6 +677,8 @@ export default function DealAssessmentPage() {
           is a separate, smaller (20px) value this ask didn't mention. */}
     <div className="flex-1 space-y-6 px-6 pb-6 pt-3">
 
+      {isMultiStoreDeal ? (
+        <>
       <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs" aria-labelledby="deal-assessment-heading">
         <div className="flex items-center justify-between gap-3">
           <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
@@ -803,7 +828,7 @@ export default function DealAssessmentPage() {
               </span>
             )}
           </div>
-          <p className={`font-display text-xl font-extrabold ${dealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
+          <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
         </div>
 
         <div>
@@ -849,15 +874,84 @@ export default function DealAssessmentPage() {
 
       </div>
       </motion.div>
+        </>
+      ) : (
+        <div className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
+          <div className="flex items-center justify-between">
+            <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
+              {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Needs more evidence" : verdict}
+            </h2>
+            <DealActions productId={product.id} productName={product.name} />
+          </div>
+
+          {!uncertain && (
+            <span className={`dd-badge ${verdictBadge.className} w-fit`}>
+              <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
+            </span>
+          )}
+
+          <div className="flex items-start gap-4">
+            <button
+              type="button"
+              onClick={() => setShowProductImage(true)}
+              aria-label={`View larger image of ${product.name}`}
+              className="product-image-frame deal-assessment-image h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
+            >
+              <ProductImage src={product.image} alt={product.name} width={112} height={112} className="product-image-content h-full w-full object-contain" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <h3 className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h3>
+              <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className={`font-display text-2xl font-extrabold ${dealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</span>
+                <span className="text-sm font-bold text-stone-500">ea</span>
+              </div>
+              {specialPriceRange && (
+                <p className="mt-1 text-sm font-semibold text-stone-600">
+                  Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)} across {specialPriceRange.storeCount} supermarkets
+                </p>
+              )}
+              <p className={`mt-0.5 text-sm font-bold ${STORE_TEXT_COLOR[getStoreLogoMeta(selectedDeal.store).bg] || "text-stone-600"}`}>
+                at {selectedDeal.store}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="dd-type-section mb-1 text-stone-900">
+              <AssessmentText text={assessmentSummary.heading} />
+            </h4>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-stone-600">
+              <AssessmentText text={assessmentSummary.body} />
+            </p>
+          </div>
+
+          {lowestCurrentPriceItem && (
+            <a
+              href={findDealForStore(product.currentDeals, lowestCurrentPriceItem.store)?.productUrl || getStoreProductUrl(lowestCurrentPriceItem.store, product.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`block w-full rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
+            >
+              Lowest price at {lowestCurrentPriceItem.store}
+            </a>
+          )}
+        </div>
+      )}
 
       {cheaperAlternatives.length > 0 && (
-          <div className="space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs">
+          <div className={isMultiStoreDeal ? "space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
             <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
-            <p className="mb-3 text-sm text-stone-600">See cheaper products on special</p>
+            <p className="mb-3 text-sm text-stone-600">
+              {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
+            </p>
             <button
               onClick={() => setShowCheaperCarousel((open) => !open)}
               aria-expanded={showCheaperCarousel}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 bg-white py-3 px-4 text-center dd-type-control text-stone-700 transition-all hover:bg-stone-50"
+              className={`flex w-full items-center justify-center gap-2 rounded-full border py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${
+                isMultiStoreDeal ? "border-stone-300 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
+              }`}
             >
               <span>See cheaper options</span>
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
@@ -1087,7 +1181,7 @@ export default function DealAssessmentPage() {
                   IN HERE (2026-08-20, per Jay's ask) from a standalone
                   heading above both cards -- now sits inside this first
                   card specifically, not floating above the whole section. */}
-              <h4 className="dd-type-section text-stone-900">Price History</h4>
+              <h4 className="dd-type-section text-stone-900">{isMultiStoreDeal ? "Price History" : "Price History Insights"}</h4>
               {/* text-[13px] -> text-sm (14px) below, 2026-08-20, per Jay:
                   "Increase all body texts on the deal assessment page to be
                   14px for readability" -- scoped to actual sentence-level
@@ -1142,7 +1236,9 @@ export default function DealAssessmentPage() {
                   today. */}
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
                 {priceHistoryTab === "90-days"
-                  ? "Shows price changes over the last 90 days."
+                  ? isMultiStoreDeal
+                    ? "Shows price changes over the last 90 days."
+                    : "Shows price changes over the last 90 days, including special prices."
                   : "This graph compares the current price at each supermarket with its recent average."}
               </p>
             </div>
@@ -1208,6 +1304,7 @@ export default function DealAssessmentPage() {
                 loading={priceHistoryLoadingForSelection}
                 error={priceHistoryErrorForSelection}
                 historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
+                legacySingleStorePresentation={!isMultiStoreDeal}
                 storeOptions={historyStoreOptions}
                 selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
                 onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}

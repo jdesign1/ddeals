@@ -105,7 +105,7 @@ function buildAssessmentPriceBody(currentPrice: string, normalPrice: string | nu
  * New World's price and baseline instead. `originalPrice` is the store's
  * recent normal/reference price, never a previous special price.
  */
-export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummaryCopy {
+export function buildAssessmentSummaryCopy(deal: CurrentDeal, presentation: "single-store" | "multi-store" = "single-store"): AssessmentSummaryCopy {
   const verdict = getAssessmentVerdict(deal);
   const currentPrice = formatAssessmentPrice(deal.price) ?? "the current price";
   const normalPrice = formatAssessmentPrice(deal.originalPrice);
@@ -148,7 +148,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 
   if (verdict === "Early read") {
     return {
-      heading: "We aren't sure yet, needs more history",
+      heading: presentation === "multi-store" ? "We aren't sure yet, needs more history" : "More checks needed",
       body: buildAssessmentPriceBody(
         currentPrice,
         normalPrice,
@@ -158,7 +158,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
   }
 
   return {
-    heading: "We aren't sure yet, needs more history",
+    heading: presentation === "multi-store" ? "We aren't sure yet, needs more history" : "Why this isn't confirmed yet",
     body: buildAssessmentPriceBody(
       currentPrice,
       normalPrice,

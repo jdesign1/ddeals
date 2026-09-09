@@ -15,6 +15,7 @@ interface PriceHistoryChartProps {
   selectedStore?: string;
   onStoreChange?: (store: string) => void;
   historySeries?: PriceHistorySeries[];
+  legacySingleStorePresentation?: boolean;
 }
 
 interface ChartPoint extends PriceHistoryPoint {
@@ -100,6 +101,7 @@ export default function PriceHistoryChart({
   selectedStore = "",
   onStoreChange,
   historySeries = [],
+  legacySingleStorePresentation = false,
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
@@ -219,7 +221,7 @@ export default function PriceHistoryChart({
           >
         <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
           <span className="dd-type-control text-stone-700">
-            {showingAllStores ? "All supermarkets" : <>{currentStore} price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
+            {showingAllStores ? "All supermarkets" : <>{currentStore} {legacySingleStorePresentation ? "current price" : "price"} <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
           </span>
           {!showingAllStores && hasComparisonPrice && comparisonPct !== 0 && (
             <span

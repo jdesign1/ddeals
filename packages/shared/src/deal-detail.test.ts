@@ -161,12 +161,24 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
   assert.match(realCopy.body, /\$5\.00/);
 });
 
-test("buildAssessmentSummaryCopy: explains incomplete history plainly", () => {
+test("buildAssessmentSummaryCopy: keeps the original single-store incomplete-history heading", () => {
   const copy = buildAssessmentSummaryCopy(
     fakeDeal({
       evidenceStatus: "LIMITED",
       dealType: "Unverified Deal",
     })
+  );
+
+  assert.equal(copy.heading, "Why this isn't confirmed yet");
+});
+
+test("buildAssessmentSummaryCopy: uses the multi-store incomplete-history heading when requested", () => {
+  const copy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      evidenceStatus: "LIMITED",
+      dealType: "Unverified Deal",
+    }),
+    "multi-store"
   );
 
   assert.equal(copy.heading, "We aren't sure yet, needs more history");
