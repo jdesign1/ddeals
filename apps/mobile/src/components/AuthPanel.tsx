@@ -105,7 +105,7 @@ export default function AuthPanel({
       }
       setView("otp");
       setOtp("");
-      setResendCooldown(30);
+      setResendCooldown(80);
       window.setTimeout(() => otpRef.current?.focus(), 0);
     } finally {
       setSubmitting(false);
@@ -145,7 +145,7 @@ export default function AuthPanel({
     try {
       const result = await requestOtp(email, mode === "signup");
       if (result.error) setError("We couldn't resend the code. Please try again.");
-      else setResendCooldown(30);
+      else setResendCooldown(80);
     } finally {
       setSubmitting(false);
     }
