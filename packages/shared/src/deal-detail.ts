@@ -95,7 +95,7 @@ function buildAssessmentPriceBody(currentPrice: string, normalPrice: string | nu
   const priceLine = normalPrice
     ? `Current price: ${currentPrice}, recent normal price: ${normalPrice}`
     : `Current price: ${currentPrice}`;
-  return `${priceLine}\n\n${conclusion}`;
+  return `${priceLine}. ${conclusion}`;
 }
 
 /**
@@ -212,6 +212,37 @@ export interface SpecialPriceRange {
   lowestPrice: number;
   highestPrice: number;
   storeCount: number;
+}
+
+export interface CurrentPriceRange {
+  lowestPrice: number;
+  highestPrice: number;
+  storeCount: number;
+}
+
+/**
+ * Returns the current comparable price spread across supermarkets. Unlike
+ * getSpecialPriceRange(), this intentionally includes regular listings too:
+ * the product header should answer "what would I pay at each supermarket?"
+ * while the per-store assessment explains whether that price is a special.
+ */
+export function getCurrentPriceRange(product: ProductCard): CurrentPriceRange | null {
+  const pricesByStore = new Map<string, number>();
+  for (const deal of product.currentDeals) {
+    if (!Number.isFinite(deal.price) || deal.price <= 0) continue;
+    const normalizedStore = normalizeStoreKey(deal.store);
+    const storeKey = Object.keys(STORE_DISPLAY_FALLBACK).find((knownStore) => normalizedStore.includes(knownStore)) ?? normalizedStore;
+    const existing = pricesByStore.get(storeKey);
+    if (existing == null || deal.price < existing) pricesByStore.set(storeKey, deal.price);
+  }
+
+  const prices = [...pricesByStore.values()];
+  if (prices.length === 0) return null;
+  return {
+    lowestPrice: Math.min(...prices),
+    highestPrice: Math.max(...prices),
+    storeCount: prices.length,
+  };
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   buildAssessmentSummaryCopy,
   findBestDodgyDeal,
   getAssessmentVerdict,
+  getCurrentPriceRange,
   getSpecialPriceRange,
   getStoreProductUrl,
   MIN_90D_SAMPLES_FOR_INSIGHTS,
@@ -81,6 +82,31 @@ test("getSpecialPriceRange: does not add a redundant range when special prices t
       ])
     ),
     null
+  );
+});
+
+test("getCurrentPriceRange: includes both special and regular supermarket prices", () => {
+  assert.deepEqual(
+    getCurrentPriceRange(
+      fakeProduct([
+        fakeDeal({ store: "Woolworths NZ", price: 14.99 }),
+        fakeDeal({ store: "New World", price: 12.99 }),
+        fakeDeal({ store: "PAK'nSAVE", price: 13.49, isOnSpecial: false }),
+      ])
+    ),
+    { lowestPrice: 12.99, highestPrice: 14.99, storeCount: 3 }
+  );
+});
+
+test("getCurrentPriceRange: returns a single price when all supermarkets tie", () => {
+  assert.deepEqual(
+    getCurrentPriceRange(
+      fakeProduct([
+        fakeDeal({ store: "Woolworths NZ", price: 12.99 }),
+        fakeDeal({ store: "Woolworths", price: 12.99 }),
+      ])
+    ),
+    { lowestPrice: 12.99, highestPrice: 12.99, storeCount: 1 }
   );
 });
 

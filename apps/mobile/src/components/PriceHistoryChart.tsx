@@ -86,15 +86,13 @@ export default function PriceHistoryChart({
   const shouldReduceMotion = useReducedMotion() ?? false;
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2">
-      <label htmlFor="price-history-store" className="dd-type-control text-stone-700">
-        History for
-      </label>
+    <div className="flex items-center justify-end gap-3 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2">
       <select
         id="price-history-store"
         value={selectedStore}
         onChange={(event) => onStoreChange?.(event.target.value)}
-        className="min-h-9 max-w-[62%] rounded-lg border border-stone-200 bg-white px-2.5 text-right text-sm font-bold text-stone-800 shadow-sm outline-none focus:border-stone-500"
+        aria-label="Select supermarket for price history"
+        className="min-h-9 max-w-[62%] rounded-lg border border-stone-200 bg-white px-2.5 pr-8 text-right text-xs font-normal text-stone-800 shadow-sm outline-none focus:border-stone-500"
       >
         {storeOptions.map((option) => (
           <option key={option.value} value={option.value}>

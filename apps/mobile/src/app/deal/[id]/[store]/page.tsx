@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowUp, Check, ChevronDown, Clock3, Info, Share, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, Clock3, Info, Share, ShieldCheck, X } from "lucide-react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -21,7 +21,7 @@ import {
   buildAssessmentSummaryCopy,
   getStoreProductUrl,
   getRealAveragePrice,
-  getSpecialPriceRange,
+  getCurrentPriceRange,
   buildRankingList,
   buildVisibleRanking,
   buildBarChartData,
@@ -99,25 +99,6 @@ import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catal
  *    "Check Deals" tap instead (no backend at all there).
  */
 
-/**
- * `getStoreLogoMeta(store).bg` gives a *background* class ("bg-emerald-600")
- * for the store badge. The prototype's DealModal also derives a *text*
- * color from it via `.bg.replace('bg-', 'text-')` for the "Lowest at X"
- * line -- safe there because it runs against Tailwind's browser CDN build
- * (compiles every possible utility on demand), but this app's real Tailwind
- * v4 build only generates classes that appear as literal strings somewhere
- * in source; a runtime string-replace produces a class name Tailwind never
- * saw and never generates CSS for. This literal map sidesteps that instead
- * of porting the bug.
- */
-const STORE_TEXT_COLOR: Record<string, string> = {
-  "bg-emerald-600": "text-emerald-600",
-  "bg-amber-600": "text-amber-600",
-  "bg-rose-600": "text-rose-600",
-  "bg-green-600": "text-green-600",
-  "bg-stone-600": "text-stone-600",
-};
-
 function storesMatch(left: string, right: string): boolean {
   const normalizedLeft = normalizeStoreKey(left);
   const normalizedRight = normalizeStoreKey(right);
@@ -128,6 +109,33 @@ function joinStoreNames(stores: string[]): string {
   if (stores.length <= 1) return stores[0] ?? "the listed supermarket";
   if (stores.length === 2) return `${stores[0]} and ${stores[1]}`;
   return `${stores.slice(0, -1).join(", ")}, and ${stores[stores.length - 1]}`;
+}
+
+function DealActions({ productId, productName }: { productId: string; productName: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => {
+          if (navigator.share) {
+            navigator.share({ title: productName, url: window.location.href }).catch(() => {});
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(window.location.href).catch(() => {});
+          }
+        }}
+        aria-label="Share"
+        className="flex h-8 w-8 items-center justify-center text-stone-900 transition-opacity hover:opacity-70"
+      >
+        <Share className="block h-6 w-6" aria-hidden="true" />
+      </button>
+      <AddToListButton
+        productId={productId}
+        containerClassName="relative"
+        buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
+        iconClassName="h-5 w-5"
+      />
+    </div>
+  );
 }
 
 /**
@@ -141,7 +149,7 @@ function joinStoreNames(stores: string[]): string {
  * nothing to say," just an asymmetry. All 5 `AssessmentVerdict` values now
  * get one, same `.dd-badge` primitive, same size/icon convention.
  *
- * Colors reuse this file's own existing `verdictBgClass`/`verdictBorderClass`
+ * Colors reuse this file's own existing `verdictBorderClass`
  * semantics (`fair`/`alert`/`dodgy` per verdict) rather than inventing a new
  * palette -- `dd-badge-dodgy` for Fair Deal isn't a typo: the `.dd-badge-*`
  * class *names* are color-token names, not verdict names, and the
@@ -150,9 +158,8 @@ function joinStoreNames(stores: string[]): string {
  * those files' own `DEAL_TYPE_BADGE` maps) -- matched here, not reinvented,
  * for the "consistent" part of Jay's ask.
  *
- * Labels avoid repeating the big `{verdict}` heading word-for-word (a badge
- * reading "Dodgy Deal" directly under an "Dodgy Deal" `<h2>` would be pure
- * noise) -- each names the specific claim instead: "Verified special" (this
+ * Labels name the specific claim instead of repeating the full verdict --
+ * "Verified special" (this
  * price was checked against a real recent price and is genuinely lower),
  * "Dodgy discount" (the opposite -- the "special" price is at or above a
  * recent real price), "Fair price" (no unusual pricing either way, whether
@@ -234,15 +241,27 @@ export default function DealAssessmentPage() {
   );
   const deal = useMemo(() => (product ? findDealForStore(product.currentDeals, dealStore) : undefined), [product, dealStore]);
 
-  // The history selector belongs to the chart, not the whole assessment: the
-  // verdict and hero price remain tied to the store in the URL. Keep the
-  // selection scoped to this route so a user can compare supermarkets without
-  // losing the assessment they opened.
   const historyRouteKey = `${productId}::${dealStore}`;
+  const [assessmentSelection, setAssessmentSelection] = useState<{ routeKey: string; store: string | null }>({
+    routeKey: "",
+    store: null,
+  });
   const [historySelection, setHistorySelection] = useState<{ routeKey: string; store: string | null }>({
     routeKey: "",
     store: null,
   });
+  const selectedAssessmentStore = assessmentSelection.routeKey === historyRouteKey ? assessmentSelection.store : null;
+  const activeDeal = useMemo(
+    () => (product ? findDealForStore(product.currentDeals, selectedAssessmentStore ?? dealStore) ?? deal : deal),
+    [deal, dealStore, product, selectedAssessmentStore]
+  );
+  const selectAssessmentStore = useCallback(
+    (store: string) => {
+      setAssessmentSelection({ routeKey: historyRouteKey, store });
+      setHistorySelection({ routeKey: historyRouteKey, store });
+    },
+    [historyRouteKey]
+  );
   const selectedHistoryStore = historySelection.routeKey === historyRouteKey ? historySelection.store : null;
   const historyStoreDeals = useMemo(() => {
     if (!product) return [];
@@ -257,8 +276,8 @@ export default function DealAssessmentPage() {
     });
   }, [product]);
   const historyDeal = useMemo(
-    () => (product ? findDealForStore(product.currentDeals, selectedHistoryStore ?? dealStore) ?? deal : deal),
-    [deal, dealStore, product, selectedHistoryStore]
+    () => (product ? findDealForStore(product.currentDeals, selectedHistoryStore ?? selectedAssessmentStore ?? dealStore) ?? activeDeal : activeDeal),
+    [activeDeal, dealStore, product, selectedAssessmentStore, selectedHistoryStore]
   );
   const historyStoreOptions = useMemo(
     () => historyStoreDeals.map((candidate) => ({ value: candidate.store, label: candidate.store })),
@@ -481,7 +500,7 @@ export default function DealAssessmentPage() {
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);
   const visibleRanking = useMemo(() => (product ? buildVisibleRanking(product, rankingList) : []), [product, rankingList]);
   const barChartData = useMemo(() => (product ? buildBarChartData(product) : []), [product]);
-  const specialPriceRange = useMemo(() => (product ? getSpecialPriceRange(product) : null), [product]);
+  const currentPriceRange = useMemo(() => (product ? getCurrentPriceRange(product) : null), [product]);
   // Always "all" stores now (2026-08-12) -- the supermarket filter pills
   // that used to let Jay narrow this down (`selectedStores` state +
   // `handleStoreToggle`) were removed per his ask ("don't display
@@ -489,15 +508,15 @@ export default function DealAssessmentPage() {
   // left that ever changes this; passing the literal array inline instead
   // of keeping a never-updated state variable around.
   const cheaperAlternatives = useMemo(
-    () => (product && deal && products ? findCheaperAlternatives(product, products, deal.price, ["all"]) : []),
-    [product, deal, products]
+    () => (product && activeDeal && products ? findCheaperAlternatives(product, products, activeDeal.price, ["all"]) : []),
+    [activeDeal, product, products]
   );
   // Summary insight tiles for the tabbed Price History Insights panel. Built
   // from the `dodgy_deals` view's price_history_90d_* columns (see data.ts) --
   // returns [] below MIN_90D_SAMPLES_FOR_INSIGHTS, while the separate 90-day
   // tab can still show its raw transition chart when that summary gate is not
   // met.
-  const insights = useMemo(() => (deal ? buildPriceHistoryInsights(deal) : []), [deal]);
+  const insights = useMemo(() => (activeDeal ? buildPriceHistoryInsights(activeDeal) : []), [activeDeal]);
 
   if (loadError) {
     return (
@@ -521,7 +540,7 @@ export default function DealAssessmentPage() {
     return <div className="min-h-full page-paper-surface" aria-busy="true" />;
   }
 
-  if (!product || !deal) {
+  if (!product || !deal || !activeDeal) {
     return (
       <>
         <div className="flex flex-col items-center gap-3 p-10 text-center">
@@ -535,12 +554,9 @@ export default function DealAssessmentPage() {
     );
   }
 
-  const verdict = getAssessmentVerdict(deal);
+  const selectedDeal = activeDeal;
+  const verdict = getAssessmentVerdict(selectedDeal);
   const uncertain = isUncertainAssessment(verdict);
-  const verdictColorClass =
-    verdict === "Real Saver" ? "text-fair-800" : verdict === "Dodgy Deal" ? "text-alert-800" : uncertain ? "text-stone-700" : "text-dodgy-900";
-  const verdictBgClass =
-    verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : uncertain ? "page-paper-surface" : "bg-dodgy-50";
   const verdictBorderClass =
     verdict === "Real Saver" ? "border-fair-200" : verdict === "Dodgy Deal" ? "border-alert-200" : uncertain ? "border-stone-200" : "border-dodgy-200";
   const verdictButtonBorderClass =
@@ -553,7 +569,6 @@ export default function DealAssessmentPage() {
   // this page, while the ranking/alternative note is explicitly cross-store.
   const lowestCurrentPriceItem = rankingList[0];
   const lowestSpecialStoreItem = visibleRanking[0];
-  const multipleSpecialSupermarkets = visibleRanking.length > 1;
 
   // Recent average for THIS deal's own store specifically -- deliberately
   // Backs the hero price color below (2026-08-21, per Jay: "The item
@@ -564,15 +579,15 @@ export default function DealAssessmentPage() {
   // "cheaper"/"pricier" when there's no real average to compare against
   // (`dealAveragePrice` null or `<= 0`) -- same guard `StoreCompareChart`'s
   // own `ariaLabel` logic already uses for the identical edge case.
-  const dealAveragePrice = getRealAveragePrice(product, deal.store);
+  const dealAveragePrice = getRealAveragePrice(product, selectedDeal.store);
   const dealPriceColorClass =
-    dealAveragePrice == null || dealAveragePrice <= 0 || deal.price === dealAveragePrice
+    dealAveragePrice == null || dealAveragePrice <= 0 || selectedDeal.price === dealAveragePrice
       ? "text-stone-900"
-      : deal.price < dealAveragePrice
+      : selectedDeal.price < dealAveragePrice
         ? "text-fair-700"
         : "text-alert-700";
 
-  const assessmentSummary = buildAssessmentSummaryCopy(deal);
+  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
   const lowestSpecialStoreNames =
     lowestSpecialPriceCents == null
@@ -581,11 +596,12 @@ export default function DealAssessmentPage() {
           .filter((item) => Math.round(item.price * 100) === lowestSpecialPriceCents)
           .map((item) => item.store)
           .filter((store, index, stores) => stores.indexOf(store) === index);
-  const selectedStoreHasLowestSpecial = lowestSpecialStoreNames.some((store) => storesMatch(store, deal.store));
+  const selectedStoreHasLowestSpecial = lowestSpecialStoreNames.some((store) => storesMatch(store, selectedDeal.store));
   const crossStoreSpecialSummary =
     lowestSpecialStoreItem && lowestSpecialStoreNames.length > 0 && !selectedStoreHasLowestSpecial
       ? `The lowest special price across supermarkets is $${lowestSpecialStoreItem.price.toFixed(2)} at ${joinStoreNames(lowestSpecialStoreNames)}.`
       : null;
+  const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
 
   return (
     <>
@@ -593,7 +609,7 @@ export default function DealAssessmentPage() {
         initial={{ x: "100%" }}
         animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className={`deal-assessment-page min-h-full w-full ${verdictBgClass}`}
+        className="deal-assessment-page page-paper-surface min-h-full w-full"
       >
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
           as the change above that had briefly added the real `SearchBar`
@@ -607,83 +623,107 @@ export default function DealAssessmentPage() {
           is a separate, smaller (20px) value this ask didn't mention. */}
     <div className="flex-1 space-y-6 px-6 pb-6 pt-3">
 
-      <div className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-        <div className="flex items-center justify-between">
-          <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
-            {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Needs more evidence" : verdict}
+      <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs" aria-labelledby="deal-assessment-heading">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
+            Deal assessment
           </h2>
-          {/* Add-to-list + Share, side by side (2026-08-12, per Jay's ask
-              to replace the old full-width sticky "Add to List" bar at the
-              bottom of this page with a small circle button next to
-              Share). Reuses the real `AddToListButton` component
-              (`ProductListCard`/`DealCard`'s own "+" button, just with
-              `containerClassName="relative"` instead of its card default
-              of `absolute right-2 top-2` -- see that component's own doc
-              comment) rather than this page's old bespoke `AddToListBar`
-              function, which duplicated the same fetchUserLists/
-              addItemToList logic for no real reason once this button
-              needed the exact same look anyway. */}
-          <div className="flex items-center gap-3">
-            {/* Swapped Share2 (the 3-node network-share glyph) for
-                `Share` (lucide's iOS-style "square and arrow up" share-tray
-                glyph) and dropped the circle entirely, 2026-08-21, per Jay
-                pasting a reference icon + "don't use the circle outline
-                around it" -- reverses the very change logged just above in
-                this same file's history (2026-08-17/21: bare icon ->
-                bordered white-fill circle matching `AddToListButton`).
-                That "matched pair" symmetry with `AddToListButton` below is
-                now broken on purpose -- Share is a plain icon again, Add
-                to List still has its circle -- flagged in case Jay wants
-                the circle dropped there too as a follow-up, not silently
-                assumed. Kept `h-8 w-8 flex items-center justify-center`
-                for the same tap-target size and icon-centering this button
-                already had (unrelated to the circle, no reason to shrink
-                the hit area); `block` kept on the icon itself for the same
-                inline-baseline-centering reason documented in this file's
-                own history. `hover:bg-stone-50` (a fill-color hover, only
-                meaningful against a solid button) replaced with
-                `hover:opacity-70` -- appropriate for a bare icon with
-                nothing behind it to recolor. */}
-            <button
-              type="button"
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: product.name, url: window.location.href }).catch(() => {});
-                } else if (navigator.clipboard) {
-                  navigator.clipboard.writeText(window.location.href).catch(() => {});
-                }
-              }}
-              aria-label="Share"
-              className="flex h-8 w-8 items-center justify-center text-stone-900 transition-opacity hover:opacity-70"
-            >
-              <Share className="block h-6 w-6" aria-hidden="true" />
-            </button>
-            {/* `bg-white` added (2026-08-17, Jay: "Add to list button
-                should have a white fill on the deal assessment page") --
-                this override previously dropped both the `bg-white` and
-                the `shadow` that `AddToListButton.tsx`'s own default
-                `buttonClassName` carries (its doc comment: "Defaults to
-                the original solid `bg-white` circle every card usage
-                still gets"), leaving just the border + icon on a
-                transparent fill, so the verdict card's own tinted
-                background (`bg-fair-50`/`bg-alert-50`/`bg-dodgy-50`)
-                showed straight through the circle instead of a solid
-                white button. Only `bg-white` added, not the default's
-                `shadow` too -- Jay's ask was specifically "white fill",
-                and the border-only look (no shadow) was presumably
-                intentional here to sit flush next to the `Share` button
-                beside it (now matching, 2026-08-21) rather than
-                card-style elevated; flagged in case the shadow was
-                wanted too as a follow-up. */}
-            <AddToListButton
-              productId={product.id}
-              containerClassName="relative"
-              buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
-              iconClassName="h-5 w-5"
-            />
+          <DealActions productId={product.id} productName={product.name} />
+        </div>
+        <div className="flex items-start gap-4">
+          <button
+            type="button"
+            onClick={() => setShowProductImage(true)}
+            aria-label={`View larger image of ${product.name}`}
+            className="product-image-frame deal-assessment-image h-24 w-24 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
+          >
+            <ProductImage src={product.image} alt={product.name} width={96} height={96} className="product-image-content h-full w-full object-contain" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h2 id="product-summary-heading" className="mt-0.5 break-words text-lg font-extrabold leading-snug text-stone-900">
+              {product.name}
+            </h2>
+            <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
+            <p className="mt-2 font-display text-2xl font-extrabold tracking-tight text-stone-900">
+              {currentPriceRange
+                ? Math.round(currentPriceRange.lowestPrice * 100) === Math.round(currentPriceRange.highestPrice * 100)
+                  ? `$${currentPriceRange.lowestPrice.toFixed(2)}`
+                  : `$${currentPriceRange.lowestPrice.toFixed(2)}–$${currentPriceRange.highestPrice.toFixed(2)}`
+                : "Price unavailable"}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-stone-500">
+              {currentPriceRange ? `Across ${currentPriceRange.storeCount} supermarket${currentPriceRange.storeCount === 1 ? "" : "s"}` : "No supermarket prices available"}
+            </p>
           </div>
         </div>
 
+        {rankingList.length > 0 && (
+          <div className="border-t border-stone-100 pt-4">
+            <div className="mb-4">
+              <h3 className="dd-type-section text-stone-900">Price ranking</h3>
+              <p className="mt-0.5 text-sm leading-relaxed text-stone-500">Select a supermarket to see assessment details</p>
+            </div>
+            <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
+              {rankingList.map((item) => {
+                const storeDeal = findDealForStore(product.currentDeals, item.store);
+                if (!storeDeal) return null;
+                const storeVerdict = getAssessmentVerdict(storeDeal);
+                const storeBadge = VERDICT_BADGE[storeVerdict];
+                const storeMeta = getStoreLogoMeta(item.store);
+                const isCurrentStore = storesMatch(item.store, selectedDeal.store);
+                const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
+                const bestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
+                const isBestSpecialPrice =
+                  storeDeal.isOnSpecial !== false && bestSpecialPriceCents != null && Math.round(item.price * 100) === bestSpecialPriceCents;
+                const rowContent = (
+                  <>
+                    <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
+                      {storeMeta.short}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-sm font-extrabold text-stone-800">{item.store}</span>
+                      </span>
+                      <span className={`dd-badge dd-badge-compact mt-1 w-fit ${storeBadge.className}`}>{storeBadge.label}</span>
+                    </span>
+                    <span className="flex-shrink-0 text-right">
+                      <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
+                      <span className={`block text-xs font-extrabold ${storeDeal.isOnSpecial === false ? "text-stone-500" : "text-fair-700"}`}>
+                        {storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best" : "Special"}
+                      </span>
+                    </span>
+                  </>
+                );
+                const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
+                  isCurrentStore ? "rounded-none outline-2 outline outline-offset-0 outline-stone-400" : ""
+                }`;
+                return (
+                  <button
+                    key={item.store}
+                    type="button"
+                    role="tab"
+                    aria-selected={isCurrentStore}
+                    aria-controls="selected-assessment"
+                    onClick={() => selectAssessmentStore(item.store)}
+                    className={`${rowClassName} transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
+                    aria-label={`View ${item.store} assessment`}
+                  >
+                    {rowContent}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <motion.div
+        key={`${historyRouteKey}-${selectedDeal.store}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
+      <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         {/* Verdict badge -- "Verified special" (Real Saver) ADDED
             2026-08-20, per Jay: "remove verified specials badge from the
             lists. Add it to deal assessment pages for real savers" -- moved
@@ -706,56 +746,30 @@ export default function DealAssessmentPage() {
             `VERDICT_BADGE` map above this component for the full color/
             label reasoning. Same `.dd-badge` primitive for all 3, visual
             continuity with the original single-verdict badge (a bigger
-            redesign wasn't asked for). Placed as its own row below the
-            share/add-to-list header rather than crowded onto the
-            `{verdict}` heading itself, so it reads as a distinct claim next
-            to, not fused with, the verdict title. NOT duplicated into the
+            redesign wasn't asked for). Placed below the selected supermarket
+            name so the verdict reads as a compact store-level status without
+            repeating the page title. NOT duplicated into the
             "Cheaper options on special" sheet's own compact current-item
             summary card further down this file (same `verdict`/`product`
             in scope there) -- that card is a tightly-packed `p-4` row built
             to fit inside a bottom sheet, no spare room for a second badge
             line without its own layout pass; flagged here as a possible
             follow-up rather than assumed in scope for either ask. */}
-        {!uncertain && (
-          <span className={`dd-badge ${verdictBadge.className} w-fit`}>
-            <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {verdictBadge.label}
-          </span>
-        )}
-
-        <div className="flex items-start gap-4">
-          <button
-            type="button"
-            onClick={() => setShowProductImage(true)}
-            aria-label={`View larger image of ${product.name}`}
-            className="product-image-frame deal-assessment-image h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
-          >
-            <ProductImage src={product.image} alt={product.name} width={112} height={112} className="product-image-content h-full w-full object-contain" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <h3 className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h3>
-            <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className={`font-display text-2xl font-extrabold ${dealPriceColorClass}`}>${deal.price.toFixed(2)}</span>
-              <span className="text-sm font-bold text-stone-500">ea</span>
-            </div>
-            {specialPriceRange && (
-              <p className="mt-1 text-sm font-semibold text-stone-600">
-                Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)} across {specialPriceRange.storeCount} supermarkets
-              </p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
+            {!uncertain && (
+              <span className={`dd-badge ${verdictBadge.className} w-fit`}>
+                <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {verdict === "Dodgy Deal" ? "Dodgy" : verdictBadge.label}
+              </span>
             )}
-            <p
-              className={`mt-0.5 text-sm font-bold ${
-                STORE_TEXT_COLOR[getStoreLogoMeta(deal.store).bg] || "text-stone-600"
-              }`}
-            >
-              at {deal.store}
-            </p>
           </div>
+          <p className={`font-display text-xl font-extrabold ${dealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
         </div>
 
         <div>
-          <h4 className="dd-type-section mb-1 text-stone-900">
+          <h4 className="dd-type-control mb-1 font-display font-extrabold text-stone-900">
             <AssessmentText text={assessmentSummary.heading} />
           </h4>
           <p className="whitespace-pre-line text-sm leading-relaxed text-stone-600">
@@ -772,8 +786,7 @@ export default function DealAssessmentPage() {
             Jay: "buttons on the deal assessment page should have a white
             fill") -- previously transparent at rest (just a
             `verdictButtonBorderClass`-coloured border sitting directly on
-            the verdict card's own tinted `${verdictBgClass}` background,
-            e.g. `bg-fair-50`), only turning `hover:bg-white/50` on
+            the verdict card's white background, only turning `hover:bg-white/50` on
             hover/tap. `hover:bg-white/50` swapped for `hover:bg-stone-50`
             on both -- with a solid white base already, the old hover
             class would have made hovering read as LESS white (50%
@@ -782,130 +795,31 @@ export default function DealAssessmentPage() {
             `hover:bg-stone-50` is the same subtle-grey hover already used
             elsewhere in this app (e.g. the list-picker rows in
             `AddToListButton.tsx`) for a filled element. */}
-        {lowestCurrentPriceItem && (
+        {selectedDeal && (
           <a
             href={
-              findDealForStore(product.currentDeals, lowestCurrentPriceItem.store)?.productUrl ||
-              getStoreProductUrl(lowestCurrentPriceItem.store, product.name)
+              selectedDeal.productUrl ||
+              getStoreProductUrl(selectedDeal.store, product.name)
             }
             target="_blank"
             rel="noopener noreferrer"
             className={`block w-full rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
           >
-            Lowest price at {lowestCurrentPriceItem.store}
+            View at {selectedDeal.store}
           </a>
         )}
 
-        {visibleRanking.length >= 2 && (
-          <div>
-            <h4 className={`mb-1 border-b pb-2 dd-type-control text-stone-900 ${verdictBorderClass}`}>Special price ranking</h4>
-            <div>
-              {/* Cheapest-price tie handling added 2026-08-21, per Jay:
-                  "If best price is the same across two supermarkets, there
-                  should be no best badge, and both prices should be green
-                  with a tick." `visibleRanking` is price-ascending (that's
-                  what made `idx === 0` a correct "is this the cheapest row"
-                  check before), so `arr[0].price` is still the lowest price
-                  in the list either way -- what changed is that "cheapest"
-                  now means "matches that lowest price," not "is
-                  positionally first." Compared in integer cents
-                  (`Math.round(price * 100)`) rather than the raw floats
-                  directly, since these are independently-computed per-store
-                  $ amounts and a same-cents tie ($3.50 vs $3.50) isn't
-                  guaranteed to survive an exact floating-point `===`.
-                  `tiedForBest` (how many rows share that lowest price) is
-                  what actually decides the badge -- still shown, singular,
-                  when exactly one store has it; hidden for every row once
-                  2+ stores tie, per Jay's ask, rather than showing it on
-                  all of them. */}
-              {(() => {
-                const bestPriceCents = visibleRanking.length > 0 ? Math.round(visibleRanking[0].price * 100) : null;
-                const tiedForBest =
-                  bestPriceCents == null
-                    ? 0
-                    : visibleRanking.filter((r) => Math.round(r.price * 100) === bestPriceCents).length;
-                return visibleRanking.map((item, idx, arr) => {
-                  const dealForStore = findDealForStore(product.currentDeals, item.store);
-                  const isOnSale = dealForStore ? dealForStore.isOnSpecial !== false : false;
-                  const isCheapest = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
-                  const showBestBadge = isCheapest && tiedForBest === 1;
-                  // Row content extracted so it can be wrapped in either a
-                  // plain `<div>` (this row's own store -- see `isCurrentStore`
-                  // below) or a `<Link>` (every other store), without
-                  // duplicating the whole row's markup for each case.
-                  const rowContent = (
-                    <>
-                      {isCheapest ? (
-                        <Check className="h-4 w-4 flex-shrink-0 text-fair-600" strokeWidth={3} aria-hidden="true" />
-                      ) : (
-                        <ArrowUp className="h-4 w-4 flex-shrink-0 text-stone-400" strokeWidth={2.5} aria-hidden="true" />
-                      )}
-                      <span className={`flex flex-1 items-center gap-1.5 text-sm ${isCheapest ? "font-extrabold text-fair-700" : "font-semibold text-stone-600"}`}>
-                        {item.store}
-                        {showBestBadge && (
-                          <span className="rounded-[4px] bg-fair-600 px-1.5 py-0.5 dd-type-badge text-white">Best</span>
-                        )}
-                      </span>
-                      {/* text-[13px] -> text-sm (14px), 2026-08-20 body-text
-                          pass (see note near the first bumped paragraph
-                          above) -- matches the store name/price columns
-                          either side of it in this same row, which were
-                          already text-sm; this was the one column reading
-                          smaller than its own row. */}
-                      <span className={`w-24 text-center text-sm leading-4 ${isOnSale ? "italic font-bold" : "font-semibold"} ${isCheapest ? "text-fair-700" : "text-stone-500"}`}>
-                        {isOnSale ? "Special" : "Regular price"}
-                      </span>
-                      <span className={`text-right text-sm ${isCheapest ? "font-bold text-fair-700" : "font-semibold text-stone-600"}`}>
-                        ${item.price.toFixed(2)}{multipleSpecialSupermarkets ? "" : " ea"}
-                      </span>
-                    </>
-                  );
-                  const rowClassName = `flex items-center gap-2 py-2.5 ${idx < arr.length - 1 ? `border-b ${verdictBorderClass}` : ""}`;
-                  // Row-level link added 2026-08-21, per Jay: "The price
-                  // ranking texts should also link the item's deal
-                  // assessment page at other supermarkets" -- read as "other"
-                  // meaning every row except the one for the store this page
-                  // is already showing (`dealStore`), since a link to the
-                  // page already on screen has nothing to navigate to. Whole
-                  // row is the tap target (not just the store name text) to
-                  // match this app's own established "tappable card"
-                  // convention (see `DealCard.tsx`'s own doc comment on why
-                  // its whole card, not just a button inside it, is the tap
-                  // target), and the same
-                  // `/deal/${encodeURIComponent(id)}/${encodeURIComponent(store)}`
-                  // shape every other in-app deal link already uses
-                  // (`DealCard.tsx`'s own `goToDeal`), not a new pattern.
-                  const isCurrentStore = item.store === dealStore;
-                  if (isCurrentStore) {
-                    return (
-                      <div key={item.store} className={rowClassName}>
-                        {rowContent}
-                      </div>
-                    );
-                  }
-                  return (
-                    <Link
-                      key={item.store}
-                      href={`/deal/${encodeURIComponent(productId)}/${encodeURIComponent(item.store)}`}
-                      className={`${rowClassName} transition-colors hover:bg-stone-50`}
-                    >
-                      {rowContent}
-                    </Link>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-        )}
+      </div>
+      </motion.div>
 
-        {cheaperAlternatives.length > 0 && (
-          <div>
-            <h4 className="mb-1 dd-type-control text-stone-900">Cheaper alternatives available</h4>
-            <p className="mb-3 text-sm text-stone-600">See other cheaper alternatives on special</p>
+      {cheaperAlternatives.length > 0 && (
+          <div className="space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs">
+            <h4 className="dd-type-section text-stone-900">Cheaper products available</h4>
+            <p className="mb-3 text-sm text-stone-600">See cheaper products on special</p>
             <button
               onClick={() => setShowCheaperCarousel((open) => !open)}
               aria-expanded={showCheaperCarousel}
-              className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 bg-white py-3 px-4 text-center dd-type-control text-stone-700 transition-all hover:bg-stone-50"
             >
               <span>See cheaper options</span>
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
@@ -1117,7 +1031,6 @@ export default function DealAssessmentPage() {
             </AnimatePresence>
           </div>
         )}
-      </div>
 
       <div className="space-y-3">
         {/* Changed 2026-08-20 (per Jay's ask) from a swipeable InsightCarousel
@@ -1250,10 +1163,10 @@ export default function DealAssessmentPage() {
             {priceHistoryTab === "90-days" ? (
               <PriceHistoryChart
                 points={priceHistoryPoints}
-                currentPrice={historyDeal?.price ?? deal.price}
+                currentPrice={historyDeal?.price ?? selectedDeal.price}
                 currentStore={effectiveHistoryStore}
-                currentIsSpecial={historyDeal?.isOnSpecial ?? deal.isOnSpecial}
-                comparisonPrice={historyDeal?.originalPrice ?? deal.originalPrice}
+                currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
+                comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
                 loading={priceHistoryLoading}
                 error={priceHistoryResult?.error ?? null}
                 storeOptions={historyStoreOptions}
