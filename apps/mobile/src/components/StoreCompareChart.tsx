@@ -63,6 +63,7 @@ import type { BarChartRow } from "@dodgey-deals/shared";
  */
 export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   if (rows.length === 0) {
@@ -129,14 +130,26 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
           return (
             <div
               key={row.storeName}
-              className="relative flex flex-col items-center gap-1.5"
+              className="relative flex cursor-pointer flex-col items-center gap-1.5"
               onMouseEnter={() => setHovered(idx)}
               onMouseLeave={() => setHovered((h) => (h === idx ? null : h))}
-              role="group"
+              onClick={() => {
+                setSelected((s) => (s === idx ? null : idx));
+                setHovered(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelected((s) => (s === idx ? null : idx));
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-expanded={hovered === idx || selected === idx}
               aria-label={ariaLabel}
             >
-              {hovered === idx && (
-                <div className="absolute bottom-full left-1/2 z-10 mb-2 w-40 -translate-x-1/2 space-y-1 rounded-xl border border-stone-800 bg-stone-900 p-3 dd-type-meta text-white shadow-lg">
+              {(hovered === idx || selected === idx) && (
+                <div className="pointer-events-none absolute bottom-12 left-1/2 z-10 w-40 -translate-x-1/2 space-y-1 rounded-xl border border-stone-800 bg-stone-900 p-3 dd-type-meta text-white shadow-lg">
                   <p className="dd-type-meta dd-type-meta-strong text-stone-400">{row.storeName}</p>
                   <div className="flex justify-between gap-4">
                     <span className="text-stone-300">Current Price:</span>
