@@ -44,6 +44,7 @@ import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import PriceHistoryChart, { ALL_STORES_VALUE } from "@/components/PriceHistoryChart";
 import AssessmentText from "@/components/AssessmentText";
 import InsightCarousel from "@/components/InsightCarousel";
+import CheaperAlternativesSection from "@/components/CheaperAlternativesSection";
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
@@ -937,10 +938,17 @@ export default function DealAssessmentPage() {
               Lowest price at {lowestCurrentPriceItem.store}
             </a>
           )}
+          <CheaperAlternativesSection
+            alternatives={cheaperAlternatives}
+            isMultiStoreDeal={false}
+            showCarousel={showCheaperCarousel}
+            verdictButtonBorderClass={verdictButtonBorderClass}
+            onToggle={() => setShowCheaperCarousel((open) => !open)}
+          />
         </div>
       )}
 
-      {cheaperAlternatives.length > 0 && (
+      {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
           <div className={isMultiStoreDeal ? "space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
             <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
             <p className="mb-3 text-sm text-stone-600">
