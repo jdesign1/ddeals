@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { Session, User } from "@dodgey-deals/shared";
 import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
+import { isNativeAppleSignInAvailable, signInWithNativeApple } from "./native-apple-auth";
 
 export interface AccountProfile {
   id: string;
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
   const pendingLoginRef = useRef(false);
   const pendingLoginSinceRef = useRef<number | null>(null);
+  const pendingProviderProfileRef = useRef(false);
 
   useEffect(() => {
     if (!client) {
@@ -136,13 +138,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
+      const resumeProviderFlow = pendingProviderProfileRef.current;
+      pendingProviderProfileRef.current = false;
       if (_event === "SIGNED_IN" && pendingLoginRef.current) {
         setLoginNotice({ id: Date.now(), since: pendingLoginSinceRef.current });
         pendingLoginRef.current = false;
         pendingLoginSinceRef.current = null;
         writeLastLoginAt();
       }
-      void syncProfile(nextSession?.user ?? null);
+      void syncProfile(nextSession?.user ?? null, resumeProviderFlow);
     });
 
     return () => {
@@ -202,6 +206,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       signInWithProvider: async (provider) => {
         if (!client) return { error: configurationError() };
+
+        if (provider === "apple" && isNativeAppleSignInAvailable()) {
+          pendingProviderProfileRef.current = true;
+          try {
+            const { error } = await signInWithNativeApple(client);
+            if (error) pendingProviderProfileRef.current = false;
+            return { error: error?.message ?? null };
+          } catch (error) {
+            pendingProviderProfileRef.current = false;
+            return { error: error instanceof Error ? error.message : "Apple sign-in failed." };
+          }
+        }
+
         if (typeof window !== "undefined") window.sessionStorage.setItem(PROVIDER_RETURN_STORAGE_KEY, "1");
         const { error } = await client.auth.signInWithOAuth({
           provider,

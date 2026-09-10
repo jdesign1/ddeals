@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/preferences": "^7.0.4",
     "@dodgey-deals/shared": "*",

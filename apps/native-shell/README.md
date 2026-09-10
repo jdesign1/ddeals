@@ -25,6 +25,25 @@ is not the identifier registered in your Apple Developer account. Then choose
 `Product > Archive`, validate the archive, and upload it to App Store Connect
 for TestFlight.
 
+Native Apple sign-in is handled by the iOS AuthenticationServices bridge. The
+Apple provider in the Accounts Supabase project must list the web Services ID
+first (`nz.dodgydeals.web`) and the iOS Bundle ID second (`nz.dodgydeals.app`).
+The OAuth secret remains in Supabase for the hosted web flow and is not shipped
+in this app. The native flow exchanges Apple's identity token with Supabase
+using a one-time nonce, then resumes the web app's existing demographic
+onboarding screen.
+
+After changing native dependencies or the iOS capability, run:
+
+```bash
+npm run sync:ios
+npm run open:ios
+```
+
+Do not set the production `NEXT_PUBLIC_AUTH_REDIRECT_URL` to `localhost`.
+Native Apple sign-in does not use a browser redirect; browser OAuth continues
+to use the Supabase callback and the hosted app's allow-listed URL.
+
 The iOS deployment target is iOS 15.0 or later to meet App Store Connect's
 current upload requirements.
 
