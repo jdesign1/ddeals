@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, X } from "lucide-react";
 import type { ProductCard } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
+import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
@@ -166,9 +167,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/report-deal": "Report an incorrect deal",
 };
 
-function greetingName(user: { email?: string | null; user_metadata?: Record<string, unknown> }): string {
-  const metaName = user.user_metadata?.full_name;
-  const source = (typeof metaName === "string" && metaName) || user.email || "";
+function greetingName(user: Parameters<typeof getAccountDisplayName>[0], profileName?: string | null): string {
+  const source = getAccountDisplayName(user, { full_name: profileName });
   const first = source.split(/[\s@]/)[0];
   return first || "there";
 }
@@ -193,7 +193,7 @@ export default function AppHeader({
   collapseOnCheckDeals?: boolean;
 }) {
   const pathname = usePathname();
-  const { user, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
+  const { user, profile, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
   const { override } = useHeaderOverride();
   const { products, loadingProducts } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -249,7 +249,7 @@ export default function AppHeader({
       ? "Dodgy Deal"
       : ROUTE_TITLES[pathname] || "Dodgy Deal";
 
-  const avatarInitial = user ? greetingName(user).charAt(0).toUpperCase() : null;
+  const avatarInitial = user ? greetingName(user, profile?.full_name).charAt(0).toUpperCase() : null;
 
   // Mascot mark hidden on the three routes that set a header override --
   // all asked for individually, same day (2026-08-14): the deal-assessment
@@ -453,7 +453,7 @@ export default function AppHeader({
           <div className="pointer-events-auto relative rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 backdrop-blur-md">
             <div className="pr-8">
               <p className="dd-type-control text-stone-900">
-                Kia ora, {greetingName(user)}, {newDealsCount} new deals to check!
+                Kia ora, {greetingName(user, profile?.full_name)}, {newDealsCount} new deals to check!
               </p>
               <p className="mt-0.5 dd-type-secondary text-stone-600">
                 Let&rsquo;s see what&rsquo;s dodgy and what&rsquo;s real

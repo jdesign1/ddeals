@@ -10,22 +10,21 @@ import { useCardLayout } from "@/lib/card-layout-context";
 import { useTheme } from "@/lib/theme-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useAuth } from "@/lib/auth-context";
+import { getAccountDisplayName, getAccountEmailDisplay } from "@/lib/account-display";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const backNavigationStartedRef = useRef(false);
 
-  const profileName =
-    user && typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
-      ? user.user_metadata.full_name.trim()
-      : user?.email?.split("@")[0] || "Dodgy Deal shopper";
+  const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
+  const accountEmail = getAccountEmailDisplay(user?.email);
   const profileAvatarUrl =
     user && typeof user.user_metadata?.avatar_url === "string" && /^https?:\/\//.test(user.user_metadata.avatar_url)
       ? user.user_metadata.avatar_url
@@ -81,7 +80,7 @@ export default function SettingsPage() {
               <h2 id="settings-profile-title" className="font-display text-[19px] font-extrabold leading-6 text-stone-900">
                 {profileName}
               </h2>
-              <p className="mt-1 truncate dd-type-secondary text-stone-500">{user.email || "Anonymous account"}</p>
+              <p className="mt-1 truncate dd-type-secondary text-stone-500">{accountEmail}</p>
             </div>
           </div>
           <div className="mt-5 border-t border-stone-100 pt-4">
@@ -232,7 +231,7 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
             <div>
               <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
-              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{user.email}</p>
+              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{accountEmail}</p>
             </div>
             {user.created_at && (
               <div>

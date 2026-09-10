@@ -6,6 +6,7 @@ import { useState } from "react";
 import LoadingMascot from "@/components/LoadingMascot";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { useAuth } from "@/lib/auth-context";
+import { getAccountEmailDisplay } from "@/lib/account-display";
 import { usePageHeader } from "@/lib/header-context";
 
 /**
@@ -89,7 +90,7 @@ export default function AccountPage() {
       <div className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-xs">
         <div>
           <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
-          <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{user.email}</p>
+          <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{getAccountEmailDisplay(user.email)}</p>
         </div>
         {joined && (
           <div>
