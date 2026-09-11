@@ -873,6 +873,25 @@ select {
   transform-origin: center;
 }
 
+/* The Deal Stats mascot is a larger illustration than the regular logo mark.
+   Keep its motion to a barely-there float so the calculating pose stays the
+   visual focus without looking like a loading state. */
+@keyframes dealStatsMascot {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-0.8deg);
+  }
+}
+
+.animate-deal-stats-mascot {
+  animation: dealStatsMascot 5s ease-in-out infinite;
+  transform-origin: 50% 94%;
+  will-change: transform;
+}
+
 /* The full-size mascot illustrations are already drawn in expressive poses.
    A tiny, slow sway makes them feel alive without distracting from the page. */
 @keyframes mascotWave {
@@ -896,6 +915,13 @@ select {
   transform-origin: 50% 92%;
   will-change: transform;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-deal-stats-mascot {
+    animation: none;
+  }
+}
+
 .animate-mascot-header-blink {
   animation: mascotBlink 10s ease-in-out infinite;
   transform-origin: center;

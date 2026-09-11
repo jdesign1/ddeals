@@ -144,9 +144,17 @@ export default function MePage() {
           sites for the full "why" (same change, same reasoning, all 3
           branches of this page). */}
       <header className="px-5 pt-6 text-center">
-        {/* An infrequent blink keeps the mascot lively without making the
-            static Deal Stats header feel like a loading indicator. */}
-        <Image src="/logo.svg" alt="" width={48} height={48} className="theme-logo animate-mascot-blink mx-auto mb-2 h-12 w-12" />
+        {/* The stats mascot gently floats so the detailed calculating pose
+            feels alive without reading as a loading indicator. */}
+        <Image
+          src="/deal-stats-calculating.png"
+          alt="Dodgy Deal mascot calculating deal statistics"
+          width={1312}
+          height={1199}
+          sizes="160px"
+          priority
+          className="animate-deal-stats-mascot mx-auto mb-2 h-auto w-36 sm:w-40"
+        />
         <h1 className="dd-type-section text-stone-900">
           This is how Dodgy Deal works for you
         </h1>
