@@ -71,6 +71,10 @@ interface SearchContextValue {
   /** Opens the full-screen overlay without touching the query -- ported
    * from Prototype/index.html's `onFocus={() => setIsSearchActive(true)}`. */
   openSearch: () => void;
+  /** Opens search with a specific deal tab selected, resetting any stale
+   * query so a post-login new-specials CTA always lands on the latest browse
+   * view. */
+  openSearchForFilter: (filter: DealFilter) => void;
   /** Back arrow / dedicated close button -- clears the query AND exits,
    * same as the prototype's `handleClearSearch`. */
   closeSearch: () => void;
@@ -258,6 +262,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       refreshCatalogue,
       openSearch: () => {
+        setPreserveSearchStateOnOpen(false);
+        setIsActive(true);
+      },
+      openSearchForFilter: (filter) => {
+        setQuery("");
+        setDealFilter(filter);
         setPreserveSearchStateOnOpen(false);
         setIsActive(true);
       },

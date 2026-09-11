@@ -133,6 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
+      if (providerReturn && data.session?.user) {
+        setLoginNotice({ id: Date.now(), since: readLastLoginAt() });
+        writeLastLoginAt();
+      }
       void syncProfile(data.session?.user ?? null, providerReturn);
     });
 
@@ -142,8 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       const resumeProviderFlow = pendingProviderProfileRef.current;
       pendingProviderProfileRef.current = false;
-      if (_event === "SIGNED_IN" && pendingLoginRef.current) {
-        setLoginNotice({ id: Date.now(), since: pendingLoginSinceRef.current });
+      if (_event === "SIGNED_IN" && (pendingLoginRef.current || resumeProviderFlow)) {
+        setLoginNotice({ id: Date.now(), since: pendingLoginSinceRef.current ?? readLastLoginAt() });
         pendingLoginRef.current = false;
         pendingLoginSinceRef.current = null;
         writeLastLoginAt();

@@ -6,6 +6,7 @@ import WinkMascot from "@/components/WinkMascot";
 const SPLASH_DURATION_MS = 4_800;
 const SPLASH_EXIT_MS = 260;
 const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
+export const LAUNCH_SPLASH_COMPLETE_EVENT = "dd-launch-splash-complete";
 
 /** One-time branded startup layer shown after the native launch storyboard.
  *
@@ -49,7 +50,10 @@ export default function LaunchSplash() {
     if (!minimumElapsed) return;
 
     const exitTimer = window.setTimeout(() => setExiting(true), 0);
-    const removeTimer = window.setTimeout(() => setVisible(false), SPLASH_EXIT_MS);
+    const removeTimer = window.setTimeout(() => {
+      window.dispatchEvent(new Event(LAUNCH_SPLASH_COMPLETE_EVENT));
+      setVisible(false);
+    }, SPLASH_EXIT_MS);
 
     return () => {
       window.clearTimeout(exitTimer);

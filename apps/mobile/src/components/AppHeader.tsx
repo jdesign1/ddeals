@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
-import type { ProductCard } from "@dodgey-deals/shared";
+import { normalizeStoreKey, type ProductCard } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import NewSpecialsModal, { type NewSpecialsSummary } from "@/components/NewSpecialsModal";
+import { matchesDealFilter } from "@/lib/deal-filters";
+import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -173,16 +176,35 @@ function greetingName(user: Parameters<typeof getAccountDisplayName>[0], profile
   return first || "there";
 }
 
-function countNewDeals(products: ProductCard[], since: number | null): number {
-  return products.filter((product) =>
-    product.currentDeals.some((deal) => {
-      if (since === null) return true;
+function summarizeNewSpecials(products: ProductCard[], since: number | null): NewSpecialsSummary {
+  const summary: NewSpecialsSummary = {
+    byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 },
+    realDeals: 0,
+    dodgyDeals: 0,
+    total: 0,
+  };
+
+  for (const product of products) {
+    for (const deal of product.currentDeals) {
       const scrapedAt = Date.parse(deal.scrapedAt ?? "");
-      if (Number.isFinite(scrapedAt)) return scrapedAt > since;
       const saleStartedAt = Date.parse(deal.saleStartedAt ?? "");
-      return Number.isFinite(saleStartedAt) && saleStartedAt > since;
-    })
-  ).length;
+      const isNew = since === null ||
+        (Number.isFinite(scrapedAt) ? scrapedAt > since : Number.isFinite(saleStartedAt) && saleStartedAt > since);
+      if (!isNew) continue;
+
+      summary.total += 1;
+      const storeKey = normalizeStoreKey(deal.store);
+      if (storeKey.includes("woolworths")) summary.byStore.woolworths += 1;
+      else if (storeKey.includes("newworld")) summary.byStore.newworld += 1;
+      else if (storeKey.includes("paknsave")) summary.byStore.paknsave += 1;
+      else if (storeKey.includes("foursquare")) summary.byStore.foursquare += 1;
+
+      if (matchesDealFilter(deal, "real")) summary.realDeals += 1;
+      if (matchesDealFilter(deal, "dodgy")) summary.dodgyDeals += 1;
+    }
+  }
+
+  return summary;
 }
 
 export default function AppHeader({
@@ -197,37 +219,35 @@ export default function AppHeader({
   const pathname = usePathname();
   const { user, profile, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
   const { override } = useHeaderOverride();
-  const { products, loadingProducts } = useSearch();
+  const { products, loadingProducts, openSearchForFilter } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [dismissedLoginNoticeId, setDismissedLoginNoticeId] = useState<number | null>(null);
-  const loginNoticeRef = useRef(loginNotice);
+  const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
 
   useEffect(() => {
-    loginNoticeRef.current = loginNotice;
-  }, [loginNotice]);
+    const syncSplashState = () => setIsLaunchSplashFinished(!document.querySelector(".launch-splash"));
+    syncSplashState();
+    window.addEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, syncSplashState);
+    return () => window.removeEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, syncSplashState);
+  }, []);
 
-  const newDealsCount = loginNotice ? countNewDeals(products, loginNotice.since) : 0;
-  const showLoginToast =
+  const newSpecials = useMemo(
+    () => (loginNotice ? summarizeNewSpecials(products, loginNotice.since) : null),
+    [products, loginNotice]
+  );
+  const showNewSpecialsModal =
     !!user &&
     !loadingProducts &&
+    isLaunchSplashFinished &&
     !!loginNotice &&
-    newDealsCount > 0 &&
-    pathname === "/" &&
+    !!newSpecials &&
+    newSpecials.total > 0 &&
     loginNotice.id !== dismissedLoginNoticeId;
-
-  useEffect(() => {
-    if (!showLoginToast || !loginNotice) return;
-    const timer = window.setTimeout(() => setDismissedLoginNoticeId(loginNotice.id), 10_000);
-    return () => window.clearTimeout(timer);
-  }, [loginNotice, showLoginToast]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
       setIsHiddenOnCheckDeals(hidden);
-      if (hidden && loginNoticeRef.current) {
-        setDismissedLoginNoticeId(loginNoticeRef.current.id);
-      }
     });
   }, []);
 
@@ -464,38 +484,16 @@ export default function AppHeader({
       </div>
     </div>
 
-    <AnimatePresence>
-      {showLoginToast && loginNotice && user && (
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -16 }}
-          transition={{ type: "spring", damping: 26, stiffness: 260 }}
-          className="pointer-events-none fixed inset-x-0 z-[44] mx-auto w-full max-w-[480px] px-4"
-          style={{ top: isAnonymousSession ? "6.25rem" : "4.5rem" }}
-          aria-live="polite"
-        >
-          <div className="pointer-events-auto relative rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 backdrop-blur-md">
-            <div className="pr-8">
-              <p className="dd-type-control text-stone-900">
-                Kia ora, {greetingName(user, profile?.full_name)}, {newDealsCount} new deals to check!
-              </p>
-              <p className="mt-0.5 dd-type-secondary text-stone-600">
-                Let&rsquo;s see what&rsquo;s dodgy and what&rsquo;s real
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setDismissedLoginNoticeId(loginNotice.id)}
-              aria-label="Dismiss new deals message"
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <NewSpecialsModal
+      open={showNewSpecialsModal}
+      summary={newSpecials ?? { byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 }, realDeals: 0, dodgyDeals: 0, total: 0 }}
+      onClose={() => loginNotice && setDismissedLoginNoticeId(loginNotice.id)}
+      onSelectFilter={(filter) => {
+        if (!loginNotice) return;
+        setDismissedLoginNoticeId(loginNotice.id);
+        openSearchForFilter(filter);
+      }}
+    />
 
     {/* Keep the profile overlay outside `.app-header-shell` so the sheet is
         independent from the sticky header's hide/show transform and can
