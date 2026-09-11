@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
-import { Pencil, Store, Plus, Check, X, ChevronDown, Share } from "lucide-react";
+import { Pencil, Plus, Check, X, ChevronDown, Share } from "lucide-react";
 import {
   createList,
   deleteList,
@@ -382,7 +382,11 @@ export default function ListsPage() {
   // failure is any less real.
   async function handleRename(listId: string, name: string) {
     await updateListName(requireAccountsSupabaseClient(), listId, name);
-    await reload();
+    // Renaming only changes the list row. Update it in place so saving does
+    // not show the page loading mascot or re-run the price checks just to
+    // refresh an unchanged list's totals.
+    setLists((current) => current.map((item) => (item.id === listId ? { ...item, name } : item)));
+    if (user) invalidateListsPageCache(user.id);
   }
 
   async function handleRemoveItem(listId: string, productId: string) {
@@ -928,12 +932,17 @@ function ListCard({
         <>
           <div className="flex items-start justify-between gap-2">
             {isEditing ? (
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void saveName();
+                }}
+                className="flex min-w-0 flex-1 items-center justify-between gap-2"
+              >
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") saveName();
                     if (e.key === "Escape") {
                       setIsEditing(false);
                       setEditName(list.name);
@@ -941,44 +950,41 @@ function ListCard({
                     }
                   }}
                   autoFocus
+                  enterKeyHint="done"
                   disabled={savingName}
                   aria-label="List name"
                   className="w-full max-w-[210px] flex-none rounded-lg border border-stone-300 px-2.5 py-1 text-base font-bold text-stone-900 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
                 <div className="flex shrink-0 items-center gap-2">
                   <button
-                  onClick={saveName}
-                  disabled={savingName || !editName.trim()}
-                  aria-label="Save list name"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-fair-700 transition-colors hover:bg-fair-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Check className="h-4 w-4" aria-hidden="true" />
+                    type="submit"
+                    disabled={savingName || !editName.trim()}
+                    aria-label="Save list name"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fair-700 transition-colors hover:bg-fair-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Check className="h-5 w-5" strokeWidth={3} aria-hidden="true" />
                   </button>
                   <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditName(list.name);
-                    setRenameError(null);
-                  }}
-                  // Disabled while `savingName` (peer review catch,
-                  // 2026-08-15) -- `saveName()`'s `await onRename(...)` isn't
-                  // abortable, so clicking Cancel while a save is still in
-                  // flight used to leave edit mode immediately while that
-                  // save kept running underneath; if it later succeeded the
-                  // rename landed anyway despite the "cancel," and if it
-                  // failed `renameError` had nowhere sensible left to render.
-                  // Disabling Cancel here matches Save's own
-                  // `disabled={savingName || ...}` just above -- once a save
-                  // is in flight, the only way out of this row is waiting
-                  // for it to resolve, not backing out from under it.
-                  disabled={savingName}
-                  aria-label="Cancel rename"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditName(list.name);
+                      setRenameError(null);
+                    }}
+                    // Disabled while `savingName` (peer review catch,
+                    // 2026-08-15) -- `saveName()`'s `await onRename(...)` isn't
+                    // abortable, so clicking Cancel while a save is still in
+                    // flight used to leave edit mode immediately while that
+                    // save kept running underneath; if it later succeeded the
+                    // rename landed anyway despite the "cancel."
+                    disabled={savingName}
+                    aria-label="Cancel rename"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <X className="h-4 w-4" aria-hidden="true" />
+                    <X className="h-5 w-5" strokeWidth={3} aria-hidden="true" />
                   </button>
                 </div>
-              </div>
+              </form>
             ) : (
               <h2 className="text-base font-bold text-stone-900">{list.name}</h2>
             )}
@@ -1054,13 +1060,6 @@ function ListCard({
                   aria-hidden="true"
                 />
               </button>
-
-              {summary?.bestPriceStore && (
-                <span className="dd-badge dd-badge-neutral w-fit">
-                  <Store className="h-3.5 w-3.5" aria-hidden="true" />
-                  Best at {summary.bestPriceStore.store} — ${summary.bestPriceStore.total.toFixed(2)}
-                </span>
-              )}
 
             </>
           )}
