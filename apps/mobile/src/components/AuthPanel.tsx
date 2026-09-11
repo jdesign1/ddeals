@@ -64,6 +64,7 @@ export default function AuthPanel({
   const [otp, setOtp] = useState("");
   const [details, setDetails] = useState<AccountDetails>({ full_name: "", date_of_birth: "", zip_code: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [requestingOtp, setRequestingOtp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [lastMode, setLastMode] = useState(mode);
@@ -97,6 +98,7 @@ export default function AuthPanel({
       return;
     }
     setSubmitting(true);
+    setRequestingOtp(true);
     try {
       const result = await requestOtp(email, mode === "signup");
       if (result.error) {
@@ -109,6 +111,7 @@ export default function AuthPanel({
       window.setTimeout(() => otpRef.current?.focus(), 0);
     } finally {
       setSubmitting(false);
+      setRequestingOtp(false);
     }
   }
 
@@ -337,7 +340,7 @@ export default function AuthPanel({
         )}
         {error && <p className="dd-type-secondary text-alert-600">{error}</p>}
         <button type="submit" disabled={submitting || !canRequestOtp} className="dd-btn dd-btn-primary mt-2 w-full cursor-pointer">
-          {submitting ? "Please wait…" : "Send log in code"}
+          {requestingOtp ? "Please wait…" : "Send log in code"}
         </button>
       </form>
 

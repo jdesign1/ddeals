@@ -291,6 +291,16 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                  <div className="flex justify-center">
+                    <Image
+                      src="/auth-wave.png"
+                      alt="Dodgy Deal mascot waving"
+                      width={1165}
+                      height={1350}
+                      sizes="112px"
+                      className="mascot-wave h-auto w-24"
+                    />
+                  </div>
                   <p className="dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
                   <div className="mt-auto grid grid-cols-2 gap-3 pt-4">
                     <button
