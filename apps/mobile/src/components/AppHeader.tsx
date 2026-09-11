@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -225,6 +225,10 @@ export default function AppHeader({
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [presentedNewSpecialsNoticeId, setPresentedNewSpecialsNoticeId] = useState<number | null>(null);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
+  // The notice is a launch-home message, not a general "whenever the router
+  // returns to /" message. Once the user leaves Home, do not let the deal
+  // page's back arrow reopen a notice that was still waiting to present.
+  const canPresentNewSpecialsOnLaunchHomeRef = useRef(pathname === "/");
 
   useEffect(() => {
     const syncSplashState = () => setIsLaunchSplashFinished(!document.querySelector(".launch-splash"));
@@ -245,6 +249,7 @@ export default function AppHeader({
     !!newSpecials &&
     newSpecials.total > 0 &&
     pathname === "/" &&
+    canPresentNewSpecialsOnLaunchHomeRef.current &&
     loginNotice.id !== presentedNewSpecialsNoticeId;
 
   useEffect(() => {
@@ -272,6 +277,7 @@ export default function AppHeader({
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
+    if (pathname !== "/") canPresentNewSpecialsOnLaunchHomeRef.current = false;
     setIsMenuOpen(false);
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);
