@@ -30,10 +30,6 @@ export default function SettingsPage() {
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
   const profileInitial = profileName.trim().charAt(0).toUpperCase() || "D";
   const accountEmail = getAccountEmailDisplay(user?.email);
-  const profileAvatarUrl =
-    user && typeof user.user_metadata?.avatar_url === "string" && /^https?:\/\//.test(user.user_metadata.avatar_url)
-      ? user.user_metadata.avatar_url
-      : null;
 
   const onBack = () => {
     if (backNavigationStartedRef.current) return;
@@ -92,22 +88,9 @@ export default function SettingsPage() {
         <section className="rounded-2xl bg-white p-5 shadow-sm" aria-labelledby="settings-profile-title">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-fair-50 ring-1 ring-fair-200">
-              {profileAvatarUrl ? (
-                // User-provided avatar URLs are not limited to the app's
-                // configured Next image hosts, so this intentionally uses a
-                // native image element for metadata-backed profile photos.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profileAvatarUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <span className="font-display text-2xl font-extrabold text-fair-700" aria-hidden="true">
-                  {profileInitial}
-                </span>
-              )}
+              <span className="font-display text-2xl font-extrabold text-fair-700" aria-hidden="true">
+                {profileInitial}
+              </span>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
