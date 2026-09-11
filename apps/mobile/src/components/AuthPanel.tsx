@@ -336,13 +336,13 @@ export default function AuthPanel({
           </p>
         )}
         {error && <p className="dd-type-secondary text-alert-600">{error}</p>}
-        <button type="submit" disabled={submitting || !canRequestOtp} className="dd-btn dd-btn-primary w-full cursor-pointer">
+        <button type="submit" disabled={submitting || !canRequestOtp} className="dd-btn dd-btn-primary mt-2 w-full cursor-pointer">
           {submitting ? "Please wait…" : "Send log in code"}
         </button>
       </form>
 
       <div className="flex items-center gap-3 text-stone-400" aria-hidden="true"><span className="h-px flex-1 bg-stone-200" /><span className="dd-type-meta">or</span><span className="h-px flex-1 bg-stone-200" /></div>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         <button type="button" disabled={submitting} onClick={() => void handleProvider("google")} className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-stone-400 bg-white px-5 py-3 text-base font-semibold text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">
           <GoogleMark />
           Sign in with Google
@@ -358,7 +358,7 @@ export default function AuthPanel({
 
 function GoogleMark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="24" height="24" className="h-6 w-6 flex-none" aria-hidden="true">
       <path fill="#4285F4" d="M21.35 12.27c0-.78-.07-1.54-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.15c1.84-1.69 2.9-4.18 2.9-7.42Z" />
       <path fill="#34A853" d="M12 21.72c2.63 0 4.84-.87 6.45-2.35l-3.15-2.45c-.87.58-1.98.92-3.3.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.52A9.74 9.74 0 0 0 12 21.72Z" />
       <path fill="#FBBC05" d="M6.54 13.81A5.85 5.85 0 0 1 6.23 12c0-.63.11-1.24.31-1.81V7.67H3.29A9.74 9.74 0 0 0 2.26 12c0 1.57.38 3.06 1.03 4.33l3.25-2.52Z" />
@@ -369,7 +369,7 @@ function GoogleMark() {
 
 function AppleMark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 fill-current" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="24" height="24" className="h-6 w-6 flex-none fill-current" aria-hidden="true">
       <path d="M17.05 12.54c-.02-2.06 1.68-3.05 1.76-3.1a3.77 3.77 0 0 0-2.97-1.61c-1.25-.13-2.46.74-3.1.74-.65 0-1.64-.72-2.7-.7a3.98 3.98 0 0 0-3.34 2.04c-1.44 2.5-.37 6.2 1.01 8.23.68.99 1.48 2.09 2.54 2.05 1.02-.04 1.4-.66 2.64-.66 1.23 0 1.58.66 2.65.64 1.1-.02 1.8-1 2.46-2 .77-1.12 1.09-2.21 1.11-2.26a3.5 3.5 0 0 1-2.06-3.37ZM15 6.52a3.53 3.53 0 0 0 .81-2.54 3.6 3.6 0 0 0-2.33 1.2 3.37 3.37 0 0 0-.83 2.45A2.98 2.98 0 0 0 15 6.52Z" />
     </svg>
   );

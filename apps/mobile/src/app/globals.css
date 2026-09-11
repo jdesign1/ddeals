@@ -1177,6 +1177,9 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 .dd-auth-sheet {
   height: 92dvh;
 }
+.dd-auth-tabs-shell {
+  background-color: var(--color-paper);
+}
 /* iOS date inputs can retain a native intrinsic width that is wider than
    their flex-column parent. Keep the Create account date field inside the
    sheet while retaining the native picker behavior. */
@@ -1355,10 +1358,13 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 [data-theme="dark"] .dd-auth-tab-active {
   color: #171513 !important;
 }
-[data-theme="dark"] .dd-segmented-control-active-fill,
-[data-theme="dark"] .dd-auth-tab-active-fill {
+[data-theme="dark"] .dd-segmented-control-active-fill {
   background-color: #f5f1e8;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+}
+[data-theme="dark"] .dd-auth-tab-active-fill {
+  background-color: #f5f1e8;
+  box-shadow: none;
 }
 
 /* Keep the floating navigation as an elevated dark surface and make its

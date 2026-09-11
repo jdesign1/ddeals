@@ -283,10 +283,10 @@ export default function AuthSheet({
                 applied to the identical pattern in `FullScreenSearch.tsx`
                 (x2), `BottomNav.tsx`, `app/page.tsx` -- see their own doc
                 comments. */}
-            <div className="dd-auth-tabs-shell flex flex-shrink-0 items-stretch gap-1 bg-stone-50 p-3">
+            <div className="dd-auth-tabs-shell flex flex-shrink-0 items-stretch gap-1 p-3">
               {/* The track keeps a quiet border in dark mode so the two auth
                   tabs have the same contained definition as Check Deals. */}
-              <div className="flex flex-1 items-stretch gap-1 rounded-xl border border-stone-200 bg-white p-1 shadow-sm">
+              <div className="flex flex-1 items-stretch gap-1 rounded-xl border border-stone-200 bg-white p-1 shadow-none">
                 {TABS.map((tab) => {
                   const isActive = mode === tab.id;
                   return (
@@ -314,7 +314,7 @@ export default function AuthSheet({
                       <AnimatePresence initial={false}>
                         {isActive && (
                           <motion.span
-                            className="dd-auth-tab-active-fill absolute inset-0 rounded-lg bg-stone-900 shadow-xs"
+                            className="dd-auth-tab-active-fill absolute inset-0 rounded-lg bg-stone-900 shadow-none"
                             style={{ zIndex: -1 }}
                             initial={{ scale: 0.5, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
