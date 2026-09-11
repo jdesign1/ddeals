@@ -18,6 +18,7 @@ import { matchesDealFilter } from "@/lib/deal-filters";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
 const NEW_SPECIALS_PRESENTED_SESSION_KEY = "dd-new-specials-presented";
+const NEW_SPECIALS_LEFT_HOME_SESSION_KEY = "dd-new-specials-left-home";
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -238,7 +239,16 @@ export default function AppHeader({
   // The notice is a launch-home message, not a general "whenever the router
   // returns to /" message. Once the user leaves Home, do not let the deal
   // page's back arrow reopen a notice that was still waiting to present.
-  const canPresentNewSpecialsOnLaunchHomeRef = useRef(pathname === "/");
+  const canPresentNewSpecialsOnLaunchHomeRef = useRef(
+    (() => {
+      if (typeof window === "undefined" || pathname !== "/") return false;
+      try {
+        return window.sessionStorage.getItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY) !== "1";
+      } catch {
+        return true;
+      }
+    })()
+  );
 
   useEffect(() => {
     const syncSplashState = () => setIsLaunchSplashFinished(!document.querySelector(".launch-splash"));
@@ -278,6 +288,17 @@ export default function AppHeader({
     }, 0);
     return () => window.clearTimeout(presentationTimer);
   }, [loginNotice, shouldPresentNewSpecialsModal]);
+
+  useEffect(() => {
+    if (pathname === "/") return;
+    canPresentNewSpecialsOnLaunchHomeRef.current = false;
+    try {
+      window.sessionStorage.setItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY, "1");
+    } catch {
+      // Session storage can be unavailable in restricted WebViews; the
+      // in-memory guard still prevents this mounted header from reopening it.
+    }
+  }, [pathname]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
