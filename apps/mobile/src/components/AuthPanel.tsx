@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { useAuth, type AccountDetails } from "@/lib/auth-context";
+import { getAccountMetadataName } from "@/lib/account-display";
 
 type AuthMode = "signin" | "signup";
 type AuthView = "details" | "otp" | "profile";
@@ -80,14 +81,21 @@ export default function AuthPanel({
     if (mode === "signin") setDetails({ full_name: "", date_of_birth: "", zip_code: "" });
   }
 
+  const profileIncomplete = !!user && !profileLoading && !profile?.onboarding_complete;
+  const showProfile = view === "profile" || profileIncomplete;
+
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = window.setInterval(() => setResendCooldown((current) => Math.max(0, current - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [resendCooldown]);
 
-  const profileIncomplete = !!user && !profileLoading && !profile?.onboarding_complete;
-  const showProfile = view === "profile" || profileIncomplete;
+  useEffect(() => {
+    if (!profileIncomplete || !user) return;
+    const suggestedName = getAccountMetadataName(user);
+    if (!suggestedName) return;
+    setDetails((current) => current.full_name ? current : { ...current, full_name: suggestedName });
+  }, [profileIncomplete, user]);
 
   async function handleRequestOtp(event: React.FormEvent) {
     event.preventDefault();
