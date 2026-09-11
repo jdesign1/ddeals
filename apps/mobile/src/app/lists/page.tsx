@@ -524,7 +524,7 @@ export default function ListsPage() {
         </div>
 
         {!loadingLists && lists.length === 0 && (
-          <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-dashed border-stone-200 bg-white py-10 text-center">
+          <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-stone-200/80 bg-white py-10 text-center">
             <Image
               src="/lists-login.webp"
               alt="Dodgey mascot with an empty shopping list"
@@ -666,7 +666,7 @@ export default function ListsPage() {
                   <input
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
-                    placeholder="List name"
+                    placeholder="Give your list a name"
                     autoFocus
                     disabled={creating}
                     className="rounded-xl border border-stone-300 px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"

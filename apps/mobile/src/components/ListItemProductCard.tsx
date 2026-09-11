@@ -253,7 +253,7 @@ export default function ListItemProductCard({
       // doc comment) -- excluded during `confirmingRemove` on purpose, that
       // state already has its own distinct alert-colored look and dimming
       // it on top would make the confirm text harder to read, not clearer.
-      className={`group flex items-stretch gap-3 overflow-hidden rounded-xl bg-white p-2 shadow-sm transition-colors hover:bg-stone-50 ${
+      className={`group flex items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-colors hover:bg-stone-50 ${
         isNotOnSpecial && !confirmingRemove ? "grayscale opacity-60" : ""
       }`}
       style={{ cursor: confirmingRemove ? "default" : "pointer", touchAction: "pan-y" }}

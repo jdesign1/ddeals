@@ -224,7 +224,7 @@ export default function SearchBar({
               bordered
                 ? "border-stone-300 shadow-none"
                 : variant === "shadow"
-                  ? "border-transparent shadow-sm"
+                  ? "border-stone-300 shadow-none"
                   : "border-stone-300 shadow-sm"
             }`}
           >

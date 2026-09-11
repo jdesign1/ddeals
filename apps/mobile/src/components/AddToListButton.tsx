@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Plus, Check, X } from "lucide-react";
 import {
   fetchUserLists,
   fetchListIdsContainingProduct,
+  createList,
   addItemToList,
   removeItemFromList,
   invalidateListsPageCache,
@@ -162,6 +162,17 @@ export default function AddToListButton({
   const [lists, setLists] = useState<ListRow[] | null>(null);
   const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingList, setIsCreatingList] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [creatingList, setCreatingList] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [showCreatedToast, setShowCreatedToast] = useState(false);
+
+  useEffect(() => {
+    if (!showCreatedToast) return;
+    const timeoutId = window.setTimeout(() => setShowCreatedToast(false), 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [showCreatedToast]);
 
   // Seeds `addedTo` from real list membership as soon as `user` is known --
   // see this file's own top-of-file doc comment ("Trigger icon now
@@ -187,6 +198,9 @@ export default function AddToListButton({
 
   async function handleOpen() {
     setOpen(true);
+    setIsCreatingList(false);
+    setNewListName("");
+    setCreateError(null);
     if (user && lists === null) {
       try {
         const rows = await fetchUserLists(requireAccountsSupabaseClient());
@@ -194,6 +208,29 @@ export default function AddToListButton({
       } catch (err) {
         setError(describeFetchError(err, "Failed to load lists"));
       }
+    }
+  }
+
+  async function handleCreateList(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !newListName.trim()) return;
+    setCreatingList(true);
+    setCreateError(null);
+    try {
+      const createdList = await createList(requireAccountsSupabaseClient(), user.id, newListName);
+      await addItemToList(requireAccountsSupabaseClient(), createdList.id, productId);
+      setLists([createdList]);
+      setAddedTo((prev) => new Set(prev).add(createdList.id));
+      invalidateListsPageCache(user.id);
+      window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
+      setNewListName("");
+      setIsCreatingList(false);
+      setOpen(false);
+      setShowCreatedToast(true);
+    } catch (err) {
+      setCreateError(describeFetchError(err, "Failed to create list"));
+    } finally {
+      setCreatingList(false);
     }
   }
 
@@ -338,7 +375,7 @@ export default function AddToListButton({
                         sheet's top title uses (see app/page.tsx's Sort sheet
                         for the full cross-reference). `<h3>`, not `<span>`,
                         to match. */}
-                    <h3 className="dd-type-sheet-title text-stone-900">Add to list</h3>
+                    <h3 className="dd-type-sheet-title text-stone-900">{isCreatingList ? "New list" : "Add to list"}</h3>
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -380,16 +417,38 @@ export default function AddToListButton({
                     </div>
                   ) : lists === null ? (
                     <LoadingMascot loading />
-                  ) : lists.length === 0 ? (
+                  ) : lists.length === 0 && !isCreatingList ? (
                     <div className="px-5 py-6">
-                      <Link
-                        href="/lists"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-sm font-bold text-stone-700"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCreatingList(true);
+                          setCreateError(null);
+                        }}
+                        className="cursor-pointer text-sm font-bold text-stone-700"
                       >
                         Create a list first
-                      </Link>
+                      </button>
                     </div>
+                  ) : lists.length === 0 ? (
+                    <form onSubmit={handleCreateList} className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                      <input
+                        value={newListName}
+                        onChange={(event) => setNewListName(event.target.value)}
+                        placeholder="Give your list a name"
+                        autoFocus
+                        disabled={creatingList}
+                        className="rounded-xl border border-stone-300 px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                      />
+                      {createError && <p className="dd-type-meta dd-type-meta-strong text-alert-700">{createError}</p>}
+                      <button
+                        type="submit"
+                        disabled={creatingList || !newListName.trim()}
+                        className="dd-btn dd-btn-primary mt-auto mb-2 w-full cursor-pointer font-display"
+                      >
+                        {creatingList ? "Creating…" : "Create list"}
+                      </button>
+                    </form>
                   ) : (
                     <ul className="flex flex-col divide-y divide-stone-100 pb-safe-sm">
                       {/* Row tap now toggles add/remove instead of only
@@ -430,6 +489,21 @@ export default function AddToListButton({
                   )}
                 </motion.div>
               </>
+            )}
+            {showCreatedToast && (
+              <motion.div
+                key="list-created-toast"
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="pointer-events-none fixed inset-x-0 top-4 z-[60] mx-auto w-full max-w-[480px] px-4"
+                aria-live="polite"
+              >
+                <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center dd-type-control text-stone-900">
+                  List created
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>,
           document.body

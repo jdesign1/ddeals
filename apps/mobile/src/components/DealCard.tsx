@@ -48,15 +48,8 @@ export default function DealCard({
       // Keep vertical swipes scrolling the page when they start on a card;
       // tapping the card still navigates normally.
       style={{ touchAction: "pan-y" }}
-      // No border, `shadow-sm` instead (2026-08-15, Jay: "Make all product
-      // item cards have no border, and the same tight drop shadow used on
-      // the Lists page saved lists cards" -- same treatment as
-      // ProductListCard.tsx's own card, see that file's doc comment for
-      // the full "why", including the one flagged tradeoff -- doesn't
-      // apply here, this card's border was already plain `border-stone-200`
-      // regardless of verdict, not color-coded, so there's no signal lost
-      // by dropping it).
-      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
+      // Product item cards use a subtle outline rather than elevation.
+      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
       <div className="product-image-frame relative aspect-square w-full overflow-hidden bg-stone-100">
         <ProductImage

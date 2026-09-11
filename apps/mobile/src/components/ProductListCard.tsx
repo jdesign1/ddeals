@@ -146,21 +146,12 @@ export default function ProductListCard({
       }}
       role="button"
       tabIndex={0}
-      // No border, `shadow-sm` instead (2026-08-15, Jay: "Make all product
-      // item cards have no border, and the same tight drop shadow used on
-      // the Lists page saved lists cards" -- same `shadow-sm` `ListCard`
-      // itself switched to the same day, see lists/page.tsx's own doc
-      // comment). This drops the per-verdict border color
-      // (alert/fair/dodgy-300 depending on `isDodgy`/`isRealSaver`/
-      // `isFairDeal`) that used to ring the whole card -- flagged as an
-      // intentional loss, not an oversight: the bottom-right verdict badge
-      // (Dodgy/Real/Fair, below) already carries the same information
-      // explicitly in text, so the border was a redundant, secondary cue
-      // rather than the only place a user could read the verdict from.
+      // Product item cards use a subtle outline rather than elevation. The
+      // verdict badge below still carries the deal status explicitly.
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
       style={{ touchAction: "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
-      className={`group relative cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95 ${
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95 ${
         isGridLayout ? "flex flex-col" : "flex"
       }`}
     >

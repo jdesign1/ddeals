@@ -1082,7 +1082,7 @@ export default function FullScreenSearch() {
                           smaller positive tracking value, since Jay asked
                           for "normal" specifically, not just "less wide." */}
                       <h3 className="dd-type-control text-stone-600">
-                        {sortedPopularSpecials.length} {dealFilter === "dodgy" ? "dodgy signals" : dealFilter === "real" ? "real deals" : "deals"} found
+                        {sortedPopularSpecials.length} deals
                       </h3>
                       {renderCategoriesAndSort(
                         popularCategoryFilter,

@@ -63,7 +63,7 @@ export default function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white px-4 py-10 text-center ${className}`}
+      className={`flex flex-col items-center rounded-3xl border border-stone-200/80 bg-white px-4 py-10 text-center ${className}`}
     >
       {illustration && <div className="mb-2">{illustration}</div>}
       <p className="max-w-xs dd-type-secondary text-stone-500">{children}</p>

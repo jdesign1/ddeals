@@ -524,6 +524,24 @@ export default function AppHeader({
                 its text) rather than a single neutral icon color for all
                 four. */}
             <div className="py-2 pb-safe-sm">
+              {!user && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    openAuthSheet();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left dd-type-control text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
+                >
+                  <span
+                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
+                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                    aria-hidden="true"
+                  >
+                    app_registration
+                  </span>
+                  Create account / log in
+                </button>
+              )}
               <Link
                 href="/how-it-works"
                 onClick={() => setIsMenuOpen(false)}
@@ -552,40 +570,6 @@ export default function AppHeader({
                 </span>
                 Settings
               </Link>
-              {!user && (
-                // Was `<Link href="/lists">` -- opened the Lists tab
-                // instead of the actual sign-in/create-account sheet, so
-                // tapping this from the profile menu never actually let a
-                // signed-out visitor log in or create an account, it just
-                // dropped them on Lists' own signed-out empty state (which
-                // then required a SECOND tap on its own "Log in or create
-                // an account" button to get anywhere). Fixed 2026-08-19,
-                // per Jay: "this should link to the actual create account
-                // sign in bottom sheet" -- now a real button that closes
-                // this menu and calls `openAuthSheet()` directly, same as
-                // every other "Log in or create an account" entry point in
-                // the app (Lists/History/Deal stats/Account's own empty
-                // states, all `openAuthSheet(prompt)` -- see those pages'
-                // own doc comments). No page-specific prompt copy here
-                // (unlike those four), since this entry point isn't gated
-                // behind any one page's content.
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    openAuthSheet();
-                  }}
-                  className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
-                >
-                  <span
-                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
-                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                    aria-hidden="true"
-                  >
-                    app_registration
-                  </span>
-                  Create account / log in
-                </button>
-              )}
             </div>
           </motion.div>
           </>

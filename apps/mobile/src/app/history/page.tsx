@@ -200,7 +200,7 @@ export default function HistoryPage() {
           sites for the full "why" (same change, same reasoning, all 3
           branches of this page). */}
       <header className="flex flex-col gap-4 px-5 pt-6">
-        <div className="dd-search-control flex items-center rounded-full border border-transparent bg-white py-2 pl-5 pr-3 shadow-sm transition-colors focus-within:border-stone-900">
+        <div className="dd-search-control flex items-center rounded-full border border-stone-300 bg-white py-2 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
           <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
           <input
             type="text"
@@ -236,7 +236,7 @@ export default function HistoryPage() {
 
       {history !== null && !error && (
         history.length === 0 ? (
-          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-200 bg-white py-12 text-center">
+          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white py-12 text-center">
             <p className="max-w-xs px-4 dd-type-control text-stone-500">
               Your checking history is empty
             </p>
@@ -245,7 +245,7 @@ export default function HistoryPage() {
             </p>
           </div>
         ) : filteredHistory.length === 0 ? (
-          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-200 bg-white py-12 text-center">
+          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white py-12 text-center">
             <p className="max-w-xs px-4 dd-type-control text-stone-500">
               No matching checks found
             </p>

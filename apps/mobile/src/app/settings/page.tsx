@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
@@ -263,7 +263,7 @@ export default function SettingsPage() {
               <motion.button
                 type="button"
                 aria-label="Close log out confirmation"
-                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 bg-black/40"
+                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
                 onClick={() => setIsLogoutSheetOpen(false)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -273,34 +273,43 @@ export default function SettingsPage() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="settings-logout-sheet-title"
-                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl px-5 pb-8 pt-6 shadow-2xl"
+                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
               >
-                <div className="dd-bottom-sheet-titlebar -mx-5 -mt-6 mb-5 px-5 pt-6">
-                  <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-stone-200" />
+                <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
                   <h2 id="settings-logout-sheet-title" className="dd-type-sheet-title text-stone-900">Log out?</h2>
-                </div>
-                <p className="mt-2 dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
-                <div className="mt-6 grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setIsLogoutSheetOpen(false)}
-                    disabled={isLoggingOut}
-                    className="dd-btn dd-btn-outline w-full cursor-pointer"
+                    aria-label="Close"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                   >
-                    Cancel
+                    <X className="h-5 w-5" aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="dd-btn dd-btn-outline-alert w-full cursor-pointer"
-                  >
-                    {isLoggingOut ? "Logging out…" : "Log out"}
-                  </button>
+                </div>
+                <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                  <p className="dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
+                  <div className="mt-auto grid grid-cols-2 gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsLogoutSheetOpen(false)}
+                      disabled={isLoggingOut}
+                      className="dd-btn dd-btn-outline w-full cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                      className="dd-btn dd-btn-outline-alert w-full cursor-pointer"
+                    >
+                      {isLoggingOut ? "Logging out…" : "Log out"}
+                    </button>
+                  </div>
                 </div>
               </motion.section>
             </>
