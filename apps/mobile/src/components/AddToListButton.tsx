@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Plus, Check, X } from "lucide-react";
 import {
@@ -18,6 +17,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import LoadingMascot from "@/components/LoadingMascot";
+import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 /**
  * "+" add-to-list action on Specials (S8) cards. Specials/page.tsx
@@ -339,9 +339,8 @@ export default function AddToListButton({
         )}
       </button>
 
-      {typeof document !== "undefined" &&
-        createPortal(
-          <AnimatePresence>
+      <BottomSheetPortal open={open}>
+        <AnimatePresence>
             {open && (
               <>
                 <motion.div
@@ -514,9 +513,8 @@ export default function AddToListButton({
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>,
-          document.body
-        )}
+        </AnimatePresence>
+      </BottomSheetPortal>
     </div>
   );
 }

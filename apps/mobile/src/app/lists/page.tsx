@@ -875,7 +875,7 @@ function ListCard({
     <motion.article
       ref={cardRef}
       style={{
-        ...(confirmingDelete && deleteCardHeight ? { height: deleteCardHeight } : {}),
+        ...(confirmingDelete && deleteCardHeight ? { minHeight: Math.max(deleteCardHeight, 136) } : {}),
         touchAction: "pan-y",
       }}
       initial={isNew ? { opacity: 0 } : false}
@@ -899,8 +899,8 @@ function ListCard({
         // the old top-right tick/cross pair in place, and the two controls
         // are now `h-12 w-12` circles with `h-6 w-6` icons (was `h-6 w-6`/
         // `h-3.5 w-3.5`).
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-3 text-center">
-          <span className="dd-type-control text-alert-700">Delete “{list.name}”?</span>
+        <div className="flex w-full flex-1 flex-col items-center justify-center gap-3 py-3 text-center">
+          <span className="max-w-full break-words px-2 dd-type-control text-alert-700">Delete “{list.name}”?</span>
           <div className="flex items-center gap-5">
             <button
               onClick={onDelete}
