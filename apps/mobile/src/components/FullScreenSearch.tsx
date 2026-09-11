@@ -212,6 +212,7 @@ export default function FullScreenSearch() {
     query,
     setQuery,
     isActive: isOpen,
+    focusSearchOnOpen,
     closeSearch,
     pauseForDealNavigation,
     preserveSearchStateOnOpen,
@@ -776,7 +777,7 @@ export default function FullScreenSearch() {
               <Image src="/logo.svg" alt="" width={24} height={24} className="theme-logo mr-3 h-6 w-6 flex-shrink-0" />
               <input
                 id="full-search-input"
-                autoFocus
+                autoFocus={focusSearchOnOpen}
                 className="mobile-zoom-safe-input h-9 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
                 placeholder="Search for a product or brand"
                 type="text"

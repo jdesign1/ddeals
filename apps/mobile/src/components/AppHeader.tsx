@@ -17,6 +17,8 @@ import NewSpecialsModal, { type NewSpecialsSummary } from "@/components/NewSpeci
 import { matchesDealFilter } from "@/lib/deal-filters";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
+const NEW_SPECIALS_PRESENTED_SESSION_KEY = "dd-new-specials-presented";
+
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
  * `AppHeader` (see project.md, "Restyled the prototype to the new 'Dodgy
@@ -225,6 +227,14 @@ export default function AppHeader({
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [presentedNewSpecialsNoticeId, setPresentedNewSpecialsNoticeId] = useState<number | null>(null);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
+  const [hasPresentedNewSpecialsThisSession, setHasPresentedNewSpecialsThisSession] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.sessionStorage.getItem(NEW_SPECIALS_PRESENTED_SESSION_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   // The notice is a launch-home message, not a general "whenever the router
   // returns to /" message. Once the user leaves Home, do not let the deal
   // page's back arrow reopen a notice that was still waiting to present.
@@ -250,12 +260,20 @@ export default function AppHeader({
     newSpecials.total > 0 &&
     pathname === "/" &&
     canPresentNewSpecialsOnLaunchHomeRef.current &&
+    !hasPresentedNewSpecialsThisSession &&
     loginNotice.id !== presentedNewSpecialsNoticeId;
 
   useEffect(() => {
     if (!shouldPresentNewSpecialsModal || !loginNotice) return;
     const presentationTimer = window.setTimeout(() => {
       setPresentedNewSpecialsNoticeId(loginNotice.id);
+      setHasPresentedNewSpecialsThisSession(true);
+      try {
+        window.sessionStorage.setItem(NEW_SPECIALS_PRESENTED_SESSION_KEY, "1");
+      } catch {
+        // Session storage can be unavailable in restricted WebViews; the
+        // in-memory state still prevents duplicate presentations this mount.
+      }
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
@@ -509,7 +527,7 @@ export default function AppHeader({
       onSelectFilter={(filter) => {
         if (!loginNotice) return;
         setIsNewSpecialsModalOpen(false);
-        openSearchForFilter(filter);
+        openSearchForFilter(filter, { focus: false });
       }}
     />
 

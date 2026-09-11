@@ -60,6 +60,8 @@ interface SearchContextValue {
   query: string;
   setQuery: (value: string) => void;
   isActive: boolean;
+  /** Whether the next fresh search opening should focus the input. */
+  focusSearchOnOpen: boolean;
   /** Re-runs the initial specials fetch after a failed load (2026-08-11,
    * `ErrorState`'s Try Again button) -- see the effect below for why this is
    * a plain retry counter rather than calling `loadLiveProducts` directly
@@ -73,8 +75,9 @@ interface SearchContextValue {
   openSearch: () => void;
   /** Opens search with a specific deal tab selected, resetting any stale
    * query so a post-login new-specials CTA always lands on the latest browse
-   * view. */
-  openSearchForFilter: (filter: DealFilter) => void;
+   * view. `focus: false` is used by the New Specials launch notice so its
+   * destination opens ready to browse without summoning the keyboard. */
+  openSearchForFilter: (filter: DealFilter, options?: { focus?: boolean }) => void;
   /** Back arrow / dedicated close button -- clears the query AND exits,
    * same as the prototype's `handleClearSearch`. */
   closeSearch: () => void;
@@ -121,6 +124,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [dealFilter, setDealFilter] = useState<DealFilter>("all");
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
+  const [focusSearchOnOpen, setFocusSearchOnOpen] = useState(true);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -248,6 +252,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       query,
       setQuery,
       isActive,
+      focusSearchOnOpen,
       // Resets `loadingProducts`/`error` here (an event handler, not the
       // effect body -- setting state synchronously inside the effect itself
       // trips this project's react-hooks/set-state-in-effect rule, see
@@ -263,16 +268,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       refreshCatalogue,
       openSearch: () => {
         setPreserveSearchStateOnOpen(false);
+        setFocusSearchOnOpen(true);
         setIsActive(true);
       },
-      openSearchForFilter: (filter) => {
+      openSearchForFilter: (filter, options) => {
         setQuery("");
         setDealFilter(filter);
         setPreserveSearchStateOnOpen(false);
+        setFocusSearchOnOpen(options?.focus !== false);
         setIsActive(true);
       },
       closeSearch: () => {
         setQuery("");
+        setFocusSearchOnOpen(true);
         setIsActive(false);
         setReturnToSearch(null);
         setPreserveSearchStateOnOpen(false);
@@ -293,7 +301,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openScanner: () => setIsScannerOpen(true),
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, focusSearchOnOpen, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
