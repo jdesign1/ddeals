@@ -222,8 +222,9 @@ export default function AppHeader({
   const { products, loadingProducts, openSearchForFilter } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
-  const [dismissedLoginNoticeId, setDismissedLoginNoticeId] = useState<number | null>(null);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
+  const [presentedNewSpecialsNoticeId, setPresentedNewSpecialsNoticeId] = useState<number | null>(null);
+  const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
 
   useEffect(() => {
     const syncSplashState = () => setIsLaunchSplashFinished(!document.querySelector(".launch-splash"));
@@ -236,14 +237,24 @@ export default function AppHeader({
     () => (loginNotice ? summarizeNewSpecials(products, loginNotice.since) : null),
     [products, loginNotice]
   );
-  const showNewSpecialsModal =
+  const shouldPresentNewSpecialsModal =
     !!user &&
     !loadingProducts &&
     isLaunchSplashFinished &&
     !!loginNotice &&
     !!newSpecials &&
     newSpecials.total > 0 &&
-    loginNotice.id !== dismissedLoginNoticeId;
+    pathname === "/" &&
+    loginNotice.id !== presentedNewSpecialsNoticeId;
+
+  useEffect(() => {
+    if (!shouldPresentNewSpecialsModal || !loginNotice) return;
+    const presentationTimer = window.setTimeout(() => {
+      setPresentedNewSpecialsNoticeId(loginNotice.id);
+      setIsNewSpecialsModalOpen(true);
+    }, 0);
+    return () => window.clearTimeout(presentationTimer);
+  }, [loginNotice, shouldPresentNewSpecialsModal]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
@@ -263,6 +274,7 @@ export default function AppHeader({
     setLastPathname(pathname);
     setIsMenuOpen(false);
     setIsHiddenOnCheckDeals(false);
+    setIsNewSpecialsModalOpen(false);
   }
 
   const title = override
@@ -485,12 +497,12 @@ export default function AppHeader({
     </div>
 
     <NewSpecialsModal
-      open={showNewSpecialsModal}
+      open={isNewSpecialsModalOpen && pathname === "/" && !!user}
       summary={newSpecials ?? { byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 }, realDeals: 0, dodgyDeals: 0, total: 0 }}
-      onClose={() => loginNotice && setDismissedLoginNoticeId(loginNotice.id)}
+      onClose={() => setIsNewSpecialsModalOpen(false)}
       onSelectFilter={(filter) => {
         if (!loginNotice) return;
-        setDismissedLoginNoticeId(loginNotice.id);
+        setIsNewSpecialsModalOpen(false);
         openSearchForFilter(filter);
       }}
     />

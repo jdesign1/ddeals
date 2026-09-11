@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
-      if (providerReturn && data.session?.user) {
+      if (data.session?.user && !data.session.user.is_anonymous) {
         setLoginNotice({ id: Date.now(), since: readLastLoginAt() });
         writeLastLoginAt();
       }
