@@ -43,6 +43,7 @@ interface AuthContextValue {
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   signInWithProvider: (provider: AuthProviderName) => Promise<{ error: string | null }>;
   completeProfile: (details: AccountDetails) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  updateProfileName: (name: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   refreshProfile: () => Promise<AccountProfile | null>;
   signOut: () => Promise<void>;
   isAnonymousSession: boolean;
@@ -248,6 +249,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           p_date_of_birth: details.date_of_birth,
           p_zip_code: details.zip_code.trim(),
         });
+        if (error) return { error: error.message, profile: null };
+        const nextProfile = data as AccountProfile;
+        setProfile(nextProfile);
+        return { error: null, profile: nextProfile };
+      },
+      updateProfileName: async (name) => {
+        if (!client) return { error: configurationError(), profile: null };
+        if (!user) return { error: "Please sign in before updating your name.", profile: null };
+        const trimmedName = name.trim();
+        if (!trimmedName) return { error: "Enter your name.", profile: null };
+        const { data, error } = await client
+          .from("profiles")
+          .update({ full_name: trimmedName })
+          .eq("id", user.id)
+          .select("*")
+          .single();
         if (error) return { error: error.message, profile: null };
         const nextProfile = data as AccountProfile;
         setProfile(nextProfile);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
@@ -17,10 +17,14 @@ export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
-  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut, updateProfileName } = useAuth();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isNameSheetOpen, setIsNameSheetOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const backNavigationStartedRef = useRef(false);
 
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
@@ -47,6 +51,32 @@ export default function SettingsPage() {
       router.replace("/");
     } finally {
       setIsLoggingOut(false);
+    }
+  }
+
+  function openNameSheet() {
+    setNameDraft(profile?.full_name?.trim() || "");
+    setNameError(null);
+    setIsNameSheetOpen(true);
+  }
+
+  async function handleSaveName() {
+    const trimmedName = nameDraft.trim();
+    if (!trimmedName) {
+      setNameError("Enter your name.");
+      return;
+    }
+    setNameError(null);
+    setIsSavingName(true);
+    try {
+      const result = await updateProfileName(trimmedName);
+      if (result.error) {
+        setNameError("We couldn't update your name. Please try again.");
+        return;
+      }
+      setIsNameSheetOpen(false);
+    } finally {
+      setIsSavingName(false);
     }
   }
 
@@ -77,9 +107,19 @@ export default function SettingsPage() {
               )}
             </div>
             <div className="min-w-0">
-              <h2 id="settings-profile-title" className="font-display text-[19px] font-extrabold leading-6 text-stone-900">
-                {profileName}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 id="settings-profile-title" className="min-w-0 truncate font-display text-[19px] font-extrabold leading-6 text-stone-900">
+                  {profileName}
+                </h2>
+                <button
+                  type="button"
+                  onClick={openNameSheet}
+                  aria-label="Edit your name"
+                  className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
               <p className="mt-1 truncate dd-type-secondary text-stone-500">{accountEmail}</p>
             </div>
           </div>
@@ -321,6 +361,75 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
+              </motion.section>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
+
+      <BottomSheetPortal open={isNameSheetOpen}>
+        <AnimatePresence>
+          {isNameSheetOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close edit name sheet"
+                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+                onClick={() => setIsNameSheetOpen(false)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+              <motion.section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settings-edit-name-sheet-title"
+                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              >
+                <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
+                  <h2 id="settings-edit-name-sheet-title" className="dd-type-sheet-title text-stone-900">Edit your name</h2>
+                  <button
+                    type="button"
+                    onClick={() => setIsNameSheetOpen(false)}
+                    aria-label="Close"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                  >
+                    <X className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSaveName();
+                  }}
+                  className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm"
+                >
+                  <label className="flex flex-col gap-1.5">
+                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">Name</span>
+                    <input
+                      type="text"
+                      value={nameDraft}
+                      onChange={(event) => setNameDraft(event.target.value)}
+                      placeholder="Enter your name"
+                      autoComplete="name"
+                      autoFocus
+                      disabled={isSavingName}
+                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                    />
+                  </label>
+                  {nameError && <p className="dd-type-secondary text-alert-600">{nameError}</p>}
+                  <button
+                    type="submit"
+                    disabled={isSavingName || !nameDraft.trim()}
+                    className="dd-btn dd-btn-primary mt-auto w-full cursor-pointer"
+                  >
+                    {isSavingName ? "Saving…" : "Save"}
+                  </button>
+                </form>
               </motion.section>
             </>
           )}
