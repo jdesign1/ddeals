@@ -537,6 +537,13 @@ export default function ListsPage() {
             <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
               Tap the + button below, or tap the + on a Specials card to start one.
             </p>
+            <button
+              type="button"
+              onClick={() => setIsCreateSheetOpen(true)}
+              className="dd-btn dd-btn-primary mt-3 px-6 cursor-pointer font-display"
+            >
+              Create a list
+            </button>
           </div>
         )}
 
