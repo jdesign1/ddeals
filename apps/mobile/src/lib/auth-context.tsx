@@ -5,6 +5,7 @@ import type { Session, User } from "@dodgey-deals/shared";
 import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
 import { isNativeAppleSignInAvailable, signInWithNativeApple } from "./native-apple-auth";
+import { isNativeGoogleSignInAvailable, signInWithNativeGoogle } from "./native-google-auth";
 
 export interface AccountProfile {
   id: string;
@@ -216,6 +217,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (error) {
             pendingProviderProfileRef.current = false;
             return { error: error instanceof Error ? error.message : "Apple sign-in failed." };
+          }
+        }
+
+        if (provider === "google" && isNativeGoogleSignInAvailable()) {
+          pendingProviderProfileRef.current = true;
+          try {
+            const { error } = await signInWithNativeGoogle(client);
+            if (error) pendingProviderProfileRef.current = false;
+            return { error: error?.message ?? null };
+          } catch (error) {
+            pendingProviderProfileRef.current = false;
+            return { error: error instanceof Error ? error.message : "Google sign-in failed." };
           }
         }
 

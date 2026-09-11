@@ -60,6 +60,15 @@ const config: CapacitorConfig = {
       backgroundColor: "#17170f",
       overlaysWebView: false,
     },
+    SocialLogin: {
+      providers: {
+        google: true,
+        apple: false,
+        facebook: false,
+        twitter: false,
+      },
+      logLevel: 1,
+    },
   },
 };
 
