@@ -236,8 +236,10 @@ export default function ProductListCard({
             : `$${deal.price.toFixed(2)}`}
         </span>
         <div className="flex items-center gap-1.5">
-            <span className="dd-type-meta dd-type-meta-strong text-stone-600">
-            {storeLinePrefix == null
+          <span className="dd-type-meta dd-type-meta-strong text-stone-600">
+            {specialPriceRange
+              ? "Multiple supermarkets"
+              : storeLinePrefix == null
               ? storeLabel
               : storeLinePrefix === "Lowest at"
                 ? storeLabel
