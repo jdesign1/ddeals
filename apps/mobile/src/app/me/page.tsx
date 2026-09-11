@@ -145,7 +145,9 @@ export default function MePage() {
           branches of this page). */}
       <header className="px-5 pt-6 text-center">
         {/* The stats mascot gently floats so the detailed calculating pose
-            feels alive without reading as a loading indicator. */}
+            feels alive without reading as a loading indicator. This local
+            image is served directly because the deployed image optimizer can
+            reject it with a 402, leaving the hero blank in the iOS WebView. */}
         <Image
           src="/deal-stats-calculating.png"
           alt="Dodgy Deal mascot calculating deal statistics"
@@ -153,6 +155,7 @@ export default function MePage() {
           height={1199}
           sizes="160px"
           priority
+          unoptimized
           className="animate-deal-stats-mascot mx-auto mb-2 h-auto w-36 sm:w-40"
         />
         <h1 className="dd-type-section text-stone-900">

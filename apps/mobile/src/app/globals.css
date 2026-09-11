@@ -1179,6 +1179,14 @@ select {
 .dd-bottom-sheet-surface {
   background-color: var(--color-paper);
 }
+/* Keep a portalized bottom sheet from causing the route beneath it to move
+   when iOS focuses a field or receives a touch on the sheet backdrop. The
+   sheet remains independently fixed above this scroll surface; only the
+   underlying page is locked while the overlay is open. */
+body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .mobile-scroll-surface {
+  overflow-y: hidden !important;
+  overscroll-behavior: none;
+}
 .auth-submit-bar {
   background-color: var(--color-paper);
 }

@@ -674,7 +674,6 @@ export default function ListsPage() {
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
                     placeholder="Give your list a name"
-                    autoFocus
                     disabled={creating}
                     className="rounded-xl border border-stone-300 px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                   />

@@ -475,10 +475,9 @@ export default function AddToListButton({
                     <ul className="flex flex-col divide-y divide-stone-100 pb-safe-sm">
                       {/* Row tap now toggles add/remove instead of only
                           adding (2026-08-20, see this file's own
-                          top-of-file doc comment / `handleToggle`) -- a
-                          row already showing the checkmark below removes
-                          `productId` from that list on tap, same as
-                          `list.id`'s own `aria-pressed` reflects. */}
+                          top-of-file doc comment / `handleToggle`). The
+                          explicit checkbox makes the selected state much
+                          easier to scan than the old trailing tick. */}
                       {lists.map((list) => (
                         <li key={list.id}>
                           <button
@@ -488,16 +487,25 @@ export default function AddToListButton({
                               handleToggle(list.id);
                             }}
                             aria-pressed={addedTo.has(list.id)}
-                            className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
+                            className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
                           >
-                            <span className="truncate">{list.name}</span>
-                            {addedTo.has(list.id) && (
-                              <Check
-                                className="h-4 w-4 shrink-0"
-                                style={{ color: "var(--color-brand-primary)" }}
-                                aria-hidden="true"
-                              />
-                            )}
+                            <span
+                              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+                                addedTo.has(list.id)
+                                  ? "border-fair-600 bg-fair-600 text-white"
+                                  : "border-stone-400 bg-transparent text-transparent"
+                              }`}
+                              aria-hidden="true"
+                            >
+                              {addedTo.has(list.id) && (
+                                <Check
+                                  className="h-4 w-4"
+                                  strokeWidth={3}
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </span>
+                            <span className="min-w-0 truncate">{list.name}</span>
                           </button>
                         </li>
                       ))}
