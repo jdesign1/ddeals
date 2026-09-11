@@ -46,11 +46,25 @@ export async function signInWithNativeGoogle(
     options: { scopes: ["email", "profile"] },
   });
 
-  const identityToken = result.result.responseType === "online" ? result.result.idToken?.trim() : null;
+  if (result.result.responseType !== "online") {
+    throw new Error("Google did not return an online sign-in result.");
+  }
+
+  const identityToken = result.result.idToken?.trim();
   if (!identityToken) throw new Error("Google did not return an identity token.");
 
-  return client.auth.signInWithIdToken({
+  const accessToken = result.result.accessToken?.token?.trim();
+  if (!accessToken) throw new Error("Google did not return an access token.");
+
+  const authResult = await client.auth.signInWithIdToken({
     provider: "google",
     token: identityToken,
+    access_token: accessToken,
   });
+
+  if (authResult.error) {
+    console.error("[native-google-auth] Supabase token exchange failed:", authResult.error.message);
+  }
+
+  return authResult;
 }

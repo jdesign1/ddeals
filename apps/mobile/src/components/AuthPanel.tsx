@@ -159,7 +159,7 @@ export default function AuthPanel({
     setSubmitting(true);
     try {
       const result = await signInWithProvider(provider);
-      if (result.error) setError("We couldn't start that sign-in. Please try again.");
+      if (result.error) setError("Something went wrong with your sign-in, try again later");
     } finally {
       setSubmitting(false);
     }
