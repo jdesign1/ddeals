@@ -230,12 +230,11 @@ export default function ProductListCard({
           {product.name}
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
-        <span className="mt-1 font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-        {specialPriceRange && (
-          <span className="dd-type-meta text-stone-500">
-            Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)}
-          </span>
-        )}
+        <span className="mt-1 font-display text-2xl font-extrabold text-stone-900">
+          {specialPriceRange
+            ? `$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`
+            : `$${deal.price.toFixed(2)}`}
+        </span>
         <div className="flex items-center gap-1.5">
             <span className="dd-type-meta dd-type-meta-strong text-stone-600">
             {storeLinePrefix == null

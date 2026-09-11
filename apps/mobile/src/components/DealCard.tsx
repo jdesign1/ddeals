@@ -86,16 +86,15 @@ export default function DealCard({
         <span className="dd-type-meta text-stone-500">{deal.store}</span>
         <span className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</span>
         <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-lg leading-6 font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+            <span className="text-lg leading-6 font-extrabold text-stone-900">
+              {specialPriceRange
+                ? `$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`
+                : `$${deal.price.toFixed(2)}`}
+            </span>
           {showWasPrice && (
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>
           )}
         </div>
-        {specialPriceRange && (
-          <span className="dd-type-meta text-stone-500">
-            Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)}
-          </span>
-        )}
       </div>
     </article>
   );
