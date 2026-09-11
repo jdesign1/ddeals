@@ -79,7 +79,11 @@ export async function signInWithNativeGoogle(
   try {
     result = await SocialLogin.login({
       provider: "google",
-      options: { scopes: ["email", "profile"], nonce: hashedNonce },
+      options: {
+        scopes: ["email", "profile"],
+        nonce: hashedNonce,
+        forcePrompt: true,
+      },
     });
   } catch (error) {
     console.error(
