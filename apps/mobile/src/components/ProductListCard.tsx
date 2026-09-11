@@ -155,7 +155,7 @@ export default function ProductListCard({
         isGridLayout ? "flex flex-col" : "flex"
       }`}
     >
-      <AddToListButton productId={product.id} />
+      <AddToListButton productId={product.id} productName={product.name} />
 
       {/* Single layout keeps the horizontal image-and-text card currently
           used by the app. Grid layout switches this same card to a stacked,

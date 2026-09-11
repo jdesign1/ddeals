@@ -80,7 +80,7 @@ export default function DealCard({
             {isTrueSpecial ? "True special" : "Dodgy Deal"}
           </span>
         )}
-        <AddToListButton productId={product.id} />
+        <AddToListButton productId={product.id} productName={product.name} />
       </div>
       <div className="flex flex-col gap-0.5 p-3">
         <span className="dd-type-meta text-stone-500">{deal.store}</span>

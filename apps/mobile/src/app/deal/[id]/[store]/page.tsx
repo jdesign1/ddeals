@@ -132,6 +132,7 @@ function DealActions({ productId, productName }: { productId: string; productNam
       </button>
       <AddToListButton
         productId={productId}
+        productName={productName}
         containerClassName="relative"
         buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
         iconClassName="h-5 w-5"
@@ -1113,7 +1114,7 @@ export default function DealAssessmentPage() {
                                 worst case, not a guess against unbounded
                                 content. */}
                             <div className="relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
-                              <AddToListButton productId={altProd.id} />
+                              <AddToListButton productId={altProd.id} productName={altProd.name} />
                               <div className="flex items-start gap-4">
                                 <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
                                   <ProductImage

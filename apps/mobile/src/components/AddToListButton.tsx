@@ -139,11 +139,13 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
  */
 export default function AddToListButton({
   productId,
+  productName,
   containerClassName = "absolute right-2 top-2 z-10",
   buttonClassName = "flex h-7 w-7 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900 shadow",
   iconClassName = "h-4 w-4",
 }: {
   productId: string;
+  productName?: string;
   containerClassName?: string;
   buttonClassName?: string;
   // Added 2026-08-21, per Jay: "make share and add to list [icons]
@@ -166,13 +168,13 @@ export default function AddToListButton({
   const [newListName, setNewListName] = useState("");
   const [creatingList, setCreatingList] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [showCreatedToast, setShowCreatedToast] = useState(false);
+  const [createdToastText, setCreatedToastText] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!showCreatedToast) return;
-    const timeoutId = window.setTimeout(() => setShowCreatedToast(false), 1800);
+    if (!createdToastText) return;
+    const timeoutId = window.setTimeout(() => setCreatedToastText(null), 1800);
     return () => window.clearTimeout(timeoutId);
-  }, [showCreatedToast]);
+  }, [createdToastText]);
 
   // Seeds `addedTo` from real list membership as soon as `user` is known --
   // see this file's own top-of-file doc comment ("Trigger icon now
@@ -211,13 +213,13 @@ export default function AddToListButton({
     }
   }
 
-  async function handleCreateList(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!user || !newListName.trim()) return;
+  async function handleCreateList() {
+    const trimmedName = newListName.trim();
+    if (!user || creatingList || !trimmedName) return;
     setCreatingList(true);
     setCreateError(null);
     try {
-      const createdList = await createList(requireAccountsSupabaseClient(), user.id, newListName);
+      const createdList = await createList(requireAccountsSupabaseClient(), user.id, trimmedName);
       await addItemToList(requireAccountsSupabaseClient(), createdList.id, productId);
       setLists([createdList]);
       setAddedTo((prev) => new Set(prev).add(createdList.id));
@@ -226,7 +228,7 @@ export default function AddToListButton({
       setNewListName("");
       setIsCreatingList(false);
       setOpen(false);
-      setShowCreatedToast(true);
+      setCreatedToastText(`${productName?.trim() || "Item"} added to list`);
     } catch (err) {
       setCreateError(describeFetchError(err, "Failed to create list"));
     } finally {
@@ -439,7 +441,14 @@ export default function AddToListButton({
                       </button>
                     </div>
                   ) : lists.length === 0 ? (
-                    <form onSubmit={handleCreateList} className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void handleCreateList();
+                      }}
+                      className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm"
+                    >
                       <input
                         value={newListName}
                         onChange={(event) => setNewListName(event.target.value)}
@@ -450,9 +459,14 @@ export default function AddToListButton({
                       />
                       {createError && <p className="dd-type-meta dd-type-meta-strong text-alert-700">{createError}</p>}
                       <button
-                        type="submit"
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleCreateList();
+                        }}
                         disabled={creatingList || !newListName.trim()}
-                        className="dd-btn dd-btn-primary mt-auto mb-2 w-full cursor-pointer font-display"
+                        className="dd-btn dd-btn-primary mt-auto mb-2 min-h-13 w-full cursor-pointer touch-manipulation font-display"
                       >
                         {creatingList ? "Creating…" : "Create list"}
                       </button>
@@ -498,7 +512,7 @@ export default function AddToListButton({
                 </motion.div>
               </>
             )}
-            {showCreatedToast && (
+            {createdToastText && (
               <motion.div
                 key="list-created-toast"
                 initial={{ opacity: 0, y: -12 }}
@@ -509,7 +523,7 @@ export default function AddToListButton({
                 aria-live="polite"
               >
                 <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center dd-type-control text-stone-900">
-                  List created
+                  {createdToastText}
                 </div>
               </motion.div>
             )}

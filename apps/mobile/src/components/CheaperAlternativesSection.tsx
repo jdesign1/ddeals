@@ -66,7 +66,7 @@ export default function CheaperAlternativesSection({
                   return (
                     <div key={`${alternativeProduct.id}-${store}`}>
                       <div className="relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
-                        <AddToListButton productId={alternativeProduct.id} />
+                        <AddToListButton productId={alternativeProduct.id} productName={alternativeProduct.name} />
                         <div className="flex items-start gap-4">
                           <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
                             <ProductImage
