@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
+import { ArrowRight } from "lucide-react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
@@ -76,10 +77,10 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   We&rsquo;ve spotted some new specials
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-stone-600">
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.woolworths}</strong> at Woolworths, {" "}
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.newworld}</strong> at New World. {" "}
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.paknsave}</strong> at Pak n Save. {" "}
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.foursquare}</strong> at Foursquare.
+                  <strong className="font-extrabold text-stone-900">{summary.byStore.woolworths}</strong>{" "}at Woolworths,{" "}
+                  <strong className="font-extrabold text-stone-900">{summary.byStore.newworld}</strong>{" "}at New World,{" "}
+                  <strong className="font-extrabold text-stone-900">{summary.byStore.paknsave}</strong>{" "}at PAK&apos;nSAVE, and{" "}
+                  <strong className="font-extrabold text-stone-900">{summary.byStore.foursquare}</strong>{" "}at Four Square.
                 </p>
                 <p className="mt-3 text-sm font-semibold text-stone-700">Start checking the deals below.</p>
               </div>
@@ -88,16 +89,18 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <button
                   type="button"
                   onClick={() => onSelectFilter("real")}
-                  className="dd-btn dd-btn-success min-h-14 w-full cursor-pointer"
+                  className="dd-btn dd-btn-outline new-specials-real-button min-h-14 w-full cursor-pointer"
                 >
-                  {summary.realDeals} Real deals
+                  <span>{summary.realDeals} Real deals</span>
+                  <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => onSelectFilter("dodgy")}
-                  className="dd-btn dd-btn-outline min-h-14 w-full cursor-pointer"
+                  className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-14 w-full cursor-pointer"
                 >
-                  {summary.dodgyDeals} Dodgy deals
+                  <span>{summary.dodgyDeals} Dodgy deals</span>
+                  <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                 </button>
               </div>
             </motion.div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
@@ -182,6 +182,8 @@ export default function ListItemProductCard({
   // `ListCard`'s own `confirmingDelete` (only one row at a time needs it,
   // nothing outside this card cares whether it's showing).
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [removeCardHeight, setRemoveCardHeight] = useState<number | null>(null);
 
   // 2026-08-21, see this file's own top-of-file doc comment for the full
   // "why" -- local to this one card, same reasoning as `confirmingRemove`
@@ -226,7 +228,10 @@ export default function ListItemProductCard({
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.5}
       onDragEnd={(_event, info) => {
-        if (info.offset.x < -SWIPE_THRESHOLD) setConfirmingRemove(true);
+        if (info.offset.x < -SWIPE_THRESHOLD) {
+          setRemoveCardHeight(cardRef.current?.getBoundingClientRect().height ?? null);
+          setConfirmingRemove(true);
+        }
       }}
       onClick={confirmingRemove ? undefined : handleActivate}
       onKeyDown={
@@ -256,7 +261,12 @@ export default function ListItemProductCard({
       className={`group flex items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-colors hover:bg-stone-50 ${
         isNotOnSpecial && !confirmingRemove ? "grayscale opacity-60" : ""
       }`}
-      style={{ cursor: confirmingRemove ? "default" : "pointer", touchAction: "pan-y" }}
+      ref={cardRef}
+      style={{
+        cursor: confirmingRemove ? "default" : "pointer",
+        touchAction: "pan-y",
+        ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
+      }}
     >
       <div className="product-image-frame flex h-14 w-14 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
         <ProductImage
@@ -272,7 +282,7 @@ export default function ListItemProductCard({
 
       {confirmingRemove ? (
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2 py-0.5">
-          <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-alert-700">
+          <span className="min-w-0 flex-1 break-words text-left text-[13px] leading-4 font-bold text-alert-700">
             Remove {product.name}?
           </span>
           <div className="flex flex-shrink-0 items-center gap-2">

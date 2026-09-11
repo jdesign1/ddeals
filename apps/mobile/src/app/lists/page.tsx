@@ -1209,6 +1209,8 @@ function FallbackItemRow({
   onRemove: () => void;
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [removeRowHeight, setRemoveRowHeight] = useState<number | null>(null);
 
   return (
     <motion.div
@@ -1216,14 +1218,21 @@ function FallbackItemRow({
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.5}
       onDragEnd={(_event, info) => {
-        if (info.offset.x < -SWIPE_THRESHOLD) setConfirmingRemove(true);
+        if (info.offset.x < -SWIPE_THRESHOLD) {
+          setRemoveRowHeight(rowRef.current?.getBoundingClientRect().height ?? null);
+          setConfirmingRemove(true);
+        }
       }}
       className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1 ${confirmingRemove ? "bg-alert-50" : "grayscale opacity-60"}`}
-      style={{ touchAction: "pan-y" }}
+      ref={rowRef}
+      style={{
+        touchAction: "pan-y",
+        ...(confirmingRemove && removeRowHeight ? { minHeight: removeRowHeight } : {}),
+      }}
     >
       {confirmingRemove ? (
         <>
-          <span className="min-w-0 flex-1 truncate text-[13px] leading-4 font-bold text-alert-700">
+          <span className="min-w-0 flex-1 break-words text-left text-[13px] leading-4 font-bold text-alert-700">
             Remove {label}?
           </span>
           <div className="flex flex-shrink-0 items-center gap-1.5">

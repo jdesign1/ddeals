@@ -1060,6 +1060,20 @@ select {
 .dd-btn-outline:hover:not(:disabled) {
   background: oklch(16% 0.01 90 / 0.06);
 }
+.new-specials-real-button {
+  color: var(--color-verdict-real-saver);
+  border-color: var(--color-verdict-real-saver);
+}
+.new-specials-real-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-verdict-real-saver) 10%, transparent);
+}
+.new-specials-dodgy-button {
+  color: var(--color-verdict-dodgy);
+  border-color: var(--color-verdict-dodgy);
+}
+.new-specials-dodgy-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-verdict-dodgy) 10%, transparent);
+}
 .dd-btn-outline-muted {
   padding: 14px 26px;
   background: transparent;
