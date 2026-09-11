@@ -5,6 +5,7 @@ import WinkMascot from "@/components/WinkMascot";
 
 const SPLASH_DURATION_MS = 4_800;
 const SPLASH_EXIT_MS = 260;
+const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
 
 /** One-time branded startup layer shown after the native launch storyboard.
  *
@@ -16,16 +17,33 @@ const SPLASH_EXIT_MS = 260;
  * launches.
  */
 export default function LaunchSplash() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return window.sessionStorage.getItem(SPLASH_CLAIM_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  });
   const [exiting, setExiting] = useState(false);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
 
   useEffect(() => {
+    if (!visible) return;
+    // Claim the startup animation immediately. If a native/WebView route
+    // transition remounts the root layout before the animation finishes, the
+    // new route must not replay the long wink over the product-loading state.
+    try {
+      window.sessionStorage.setItem(SPLASH_CLAIM_KEY, "1");
+    } catch {
+      // Session storage can be unavailable in restricted WebViews; the
+      // in-memory state still keeps the normal launch path working.
+    }
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => setMinimumElapsed(true), reducedMotion ? 300 : SPLASH_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [visible]);
 
   useEffect(() => {
     if (!minimumElapsed) return;

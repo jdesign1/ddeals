@@ -48,6 +48,7 @@ import CheaperAlternativesSection from "@/components/CheaperAlternativesSection"
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
+import PageLoader from "@/components/PageLoader";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
 
 /**
@@ -595,7 +596,7 @@ export default function DealAssessmentPage() {
   }
 
   if (products === null) {
-    return <div className="min-h-full page-paper-surface" aria-busy="true" />;
+    return <PageLoader loading />;
   }
 
   if (!product || !deal || !activeDeal) {
