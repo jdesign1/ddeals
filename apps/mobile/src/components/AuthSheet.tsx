@@ -334,16 +334,18 @@ export default function AuthSheet({
               ref={formScrollRef}
               className="min-h-0 flex-1 overflow-y-auto p-6"
             >
-              <div className="flex justify-center pb-2">
-                <Image
-                  src="/auth-wave.png"
-                  alt="Dodgy Deal mascot waving"
-                  width={1165}
-                  height={1350}
-                  sizes="112px"
-                  className="mascot-wave h-auto w-24"
-                />
-              </div>
+              {mode === "signin" && (
+                <div className="flex justify-center pb-2">
+                  <Image
+                    src="/auth-wave.png"
+                    alt="Dodgy Deal mascot waving"
+                    width={1165}
+                    height={1350}
+                    sizes="112px"
+                    className="mascot-wave h-auto w-24"
+                  />
+                </div>
+              )}
               <AuthPanel
                 prompt={prompt}
                 onSuccess={onClose}

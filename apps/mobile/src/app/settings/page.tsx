@@ -302,7 +302,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <p className="dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
-                  <div className="mt-auto grid grid-cols-2 gap-3 pt-4">
+                  <div className="mt-auto flex flex-col gap-3 pt-4">
                     <button
                       type="button"
                       onClick={() => setIsLogoutSheetOpen(false)}
