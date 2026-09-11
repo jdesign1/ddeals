@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const backNavigationStartedRef = useRef(false);
 
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
+  const profileInitial = profileName.trim().charAt(0).toUpperCase() || "D";
   const accountEmail = getAccountEmailDisplay(user?.email);
   const profileAvatarUrl =
     user && typeof user.user_metadata?.avatar_url === "string" && /^https?:\/\//.test(user.user_metadata.avatar_url)
@@ -103,7 +104,9 @@ export default function SettingsPage() {
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <Image src="/logo.svg" alt="" width={40} height={40} className="theme-logo h-10 w-10" />
+                <span className="font-display text-2xl font-extrabold text-fair-700" aria-hidden="true">
+                  {profileInitial}
+                </span>
               )}
             </div>
             <div className="min-w-0">

@@ -277,6 +277,7 @@ export default function AddToListButton({
   return (
     <div className={containerClassName}>
       <button
+        type="button"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -366,6 +367,12 @@ export default function AddToListButton({
                     e.preventDefault();
                     e.stopPropagation();
                   }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onKeyUp={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerMove={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  onPointerCancel={(e) => e.stopPropagation()}
                   className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
                 >
                   <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4">
@@ -421,11 +428,13 @@ export default function AddToListButton({
                     <div className="px-5 py-6">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setIsCreatingList(true);
                           setCreateError(null);
                         }}
-                        className="cursor-pointer text-sm font-bold text-stone-700"
+                        className="dd-btn dd-btn-outline w-full cursor-pointer"
                       >
                         Create a list first
                       </button>
