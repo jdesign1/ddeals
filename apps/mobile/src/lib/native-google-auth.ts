@@ -7,6 +7,18 @@ const IOS_GOOGLE_CLIENT_ID =
 
 let initializationPromise: Promise<void> | null = null;
 
+function createRawNonce(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashNonce(rawNonce: string): Promise<string> {
+  const input = new TextEncoder().encode(rawNonce);
+  const digest = await crypto.subtle.digest("SHA-256", input);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 /** Native Google sign-in is used only by the iOS Capacitor shell. */
 export function isNativeGoogleSignInAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
@@ -48,6 +60,8 @@ export async function signInWithNativeGoogle(
   client: SupabaseClient
 ): Promise<Awaited<ReturnType<SupabaseClient["auth"]["signInWithIdToken"]>>> {
   await initializeNativeGoogleSignIn();
+  const rawNonce = createRawNonce();
+  const hashedNonce = await hashNonce(rawNonce);
 
   // The native plugin can restore a previously authorised Google user. Refresh
   // that native token first so a repeat login cannot submit an expired token.
@@ -65,7 +79,7 @@ export async function signInWithNativeGoogle(
   try {
     result = await SocialLogin.login({
       provider: "google",
-      options: { scopes: ["email", "profile"] },
+      options: { scopes: ["email", "profile"], nonce: hashedNonce },
     });
   } catch (error) {
     console.error(
@@ -92,6 +106,7 @@ export async function signInWithNativeGoogle(
     provider: "google",
     token: identityToken,
     ...(accessToken ? { access_token: accessToken } : {}),
+    nonce: rawNonce,
   });
 
   if (authResult.error) {
