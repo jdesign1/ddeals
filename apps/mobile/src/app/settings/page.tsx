@@ -333,7 +333,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => setIsLogoutSheetOpen(false)}
                       disabled={isLoggingOut}
-                      className="dd-btn dd-btn-outline w-full cursor-pointer"
+                      className="dd-btn dd-btn-outline-muted w-full cursor-pointer"
                     >
                       Cancel
                     </button>

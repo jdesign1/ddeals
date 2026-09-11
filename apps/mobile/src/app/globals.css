@@ -1060,6 +1060,15 @@ select {
 .dd-btn-outline:hover:not(:disabled) {
   background: oklch(16% 0.01 90 / 0.06);
 }
+.dd-btn-outline-muted {
+  padding: 14px 26px;
+  background: transparent;
+  color: #57534e;
+  border: 2px solid #a8a29e;
+}
+.dd-btn-outline-muted:hover:not(:disabled) {
+  background: rgb(120 113 108 / 0.06);
+}
 .dd-btn-ghost {
   padding: 14px 6px;
   background: transparent;
@@ -1592,6 +1601,15 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 [data-theme="dark"] .dd-btn-primary {
   background-color: var(--dd-btn-primary-bg);
   color: var(--dd-btn-primary-text);
+}
+
+[data-theme="dark"] .dd-btn-outline-muted {
+  background: transparent;
+  color: #d9d0c3;
+  border-color: #8f8375;
+}
+[data-theme="dark"] .dd-btn-outline-muted:hover:not(:disabled) {
+  background: rgb(217 208 195 / 0.08);
 }
 
 /* A few older sheets still use their compact, pre-primitive CTA markup. Bring

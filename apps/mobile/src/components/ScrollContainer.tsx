@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
-import { Check, RefreshCw } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import SearchBar from "@/components/SearchBar";
@@ -71,6 +70,13 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [chromeHeight, setChromeHeight] = useState(128);
   const checkDealsSearchBackground =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "bg-stone-100";
+  const refreshStatus: "refreshing" | "updated" | "up-to-date" | null = refreshing
+    ? "refreshing"
+    : feedback === "updated"
+      ? "updated"
+      : feedback === "throttled"
+        ? "up-to-date"
+        : null;
 
   // The outer scroll surface stays mounted while App Router swaps the Home
   // page for a deal page. Save Check Deals' last position independently of
@@ -242,6 +248,10 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
 
     setRefreshing(true);
     setFeedback(null);
+    // Pull-to-refresh can begin after the Check Deals header has been hidden
+    // by scrolling. Bring it back before the refresh status takes over the
+    // nav so the full-width status surface is always visible.
+    if (pathname === "/") publishCheckDealsHeaderVisibility(false);
     try {
       const result = await refreshCatalogue();
       setFeedback(result.throttled ? "throttled" : "updated");
@@ -288,7 +298,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
           ref={checkDealsChromeRef}
           className={`sticky top-0 z-[45] ${isHeaderHidden ? "check-deals-chrome-header-hidden" : ""}`}
         >
-          <AppHeader sticky={false} collapseOnCheckDeals />
+          <AppHeader sticky={false} collapseOnCheckDeals refreshStatus={refreshStatus} />
           <div className="check-deals-search-slot">
             <SearchBar
               variant="shadow"
@@ -300,19 +310,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
           </div>
         </div>
       ) : (
-        <AppHeader />
-      )}
-      {(pullDistance > 0 || refreshing || feedback) && (
-        <div
-          className="pointer-events-none fixed inset-x-0 top-8 z-[9999] flex -translate-y-1/2 justify-center"
-          aria-live="polite"
-          aria-label={refreshing ? "Refreshing specials" : feedback === "updated" ? "Specials updated" : "Already up to date"}
-        >
-          <div className="flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-bold text-stone-700 shadow-md ring-1 ring-stone-200">
-            {refreshing ? <RefreshCw size={15} className="animate-spin" /> : feedback === "updated" ? <Check size={15} /> : <RefreshCw size={15} />}
-            <span>{refreshing ? "Refreshing" : feedback === "updated" ? "Updated" : feedback === "throttled" ? "Already up to date" : "Pull to refresh"}</span>
-          </div>
-        </div>
+        <AppHeader refreshStatus={refreshStatus} />
       )}
       <div
         className={hasBottomNav ? "pb-safe-nav" : "pb-safe-sm"}

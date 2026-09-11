@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
 import type { ProductCard } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountDisplayName } from "@/lib/account-display";
@@ -188,9 +188,11 @@ function countNewDeals(products: ProductCard[], since: number | null): number {
 export default function AppHeader({
   sticky = true,
   collapseOnCheckDeals = false,
+  refreshStatus = null,
 }: {
   sticky?: boolean;
   collapseOnCheckDeals?: boolean;
+  refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
   const { user, profile, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
@@ -304,7 +306,30 @@ export default function AppHeader({
           shadow belongs to the white bar's own bottom edge specifically,
           same edge that just picked up separation from the page via this
           same session's earlier `bg-stone-50` -> `bg-white` change. */}
-      <header className="flex h-16 w-full items-center justify-between bg-white px-6">
+      <header className="relative flex h-16 w-full items-center justify-between bg-white px-6">
+        <AnimatePresence initial={false}>
+          {refreshStatus && (
+            <motion.div
+              key="refresh-status"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              role="status"
+              aria-live="polite"
+              className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-white text-stone-900"
+            >
+              {refreshStatus === "refreshing" ? (
+                <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Check className="h-5 w-5" aria-hidden="true" />
+              )}
+              <span className="dd-type-control">
+                {refreshStatus === "refreshing" ? "Refreshing" : refreshStatus === "updated" ? "Updated" : "Already up to date"}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* min-w-0 + flex-1 here (not the old `max-w-[70%]` on the title span)
             -- a percentage max-width only resolves against a *definite*
             containing-block width, and this wrapper's width was otherwise
@@ -334,7 +359,7 @@ export default function AppHeader({
             "How Dodgy Deal Works") that don't reach the truncation
             boundary either way, so only the deal page's long, dynamic
             product-name titles are actually affected. */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+        <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2 pr-2">
           {/* Mascot mark, top-left of the global nav bar -- added 2026-08-12
               on every screen, narrowed the same day (still per Jay's ask)
               to Home only, so it wouldn't compete with the back
@@ -378,7 +403,7 @@ export default function AppHeader({
         </div>
 
         {pathname !== "/settings" && (
-          <div className="relative flex flex-shrink-0 items-center gap-3">
+          <div aria-hidden={refreshStatus !== null} className="relative flex flex-shrink-0 items-center gap-3">
           {loading ? null : user ? (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}
