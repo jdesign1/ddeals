@@ -764,7 +764,7 @@ export default function FullScreenSearch() {
                   per Jay: "In the active search bar state, replace the search
                   icon with the dodgy man icon") -- same `/logo.svg` mark
                   `AppHeader.tsx`/`AuthSheet.tsx` already use for their own
-                  top-left brand mark. Enlarged slightly to 22px while keeping
+                  top-left brand mark. Enlarged slightly to 24px while keeping
                   the existing `mr-3` spacing, so the input row's layout stays
                   stable. Scoped to just this bar --
                   this is the one search input that's actually on-screen
@@ -773,7 +773,7 @@ export default function FullScreenSearch() {
                   is); this was `Search`'s only usage in this file, so it's
                   dropped from the `lucide-react` import above rather than
                   left there unused. */}
-              <Image src="/logo.svg" alt="" width={22} height={22} className="theme-logo mr-3 h-[22px] w-[22px] flex-shrink-0" />
+              <Image src="/logo.svg" alt="" width={24} height={24} className="theme-logo mr-3 h-6 w-6 flex-shrink-0" />
               <input
                 id="full-search-input"
                 autoFocus

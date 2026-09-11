@@ -357,9 +357,9 @@ export default function AppHeader({
               <Image
                 src="/logo.svg"
                 alt=""
-                width={28}
-                height={28}
-                className={`theme-logo h-7 w-7 ${pathname === "/me" ? "" : "animate-mascot-header-blink"}`}
+                width={32}
+                height={32}
+                className={`theme-logo h-8 w-8 ${pathname === "/me" ? "" : "animate-mascot-header-blink"}`}
               />
             </Link>
           )}

@@ -759,7 +759,7 @@ export default function DealAssessmentPage() {
                   </>
                 );
                 const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
-                  isCurrentStore ? "rounded-none outline-2 outline outline-offset-0 outline-stone-400" : ""
+                  isCurrentStore ? "rounded-md outline-2 outline outline-offset-0 outline-stone-400" : ""
                 }`;
                 return (
                   <button
