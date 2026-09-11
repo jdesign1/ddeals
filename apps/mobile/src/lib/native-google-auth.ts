@@ -29,7 +29,15 @@ async function initializeNativeGoogleSignIn(): Promise<void> {
     });
   }
 
-  await initializationPromise;
+  try {
+    await initializationPromise;
+  } catch (error) {
+    console.error(
+      "[native-google-auth] Google native initialisation failed:",
+      error instanceof Error ? error.message : error,
+    );
+    throw error;
+  }
 }
 
 /**
@@ -41,25 +49,49 @@ export async function signInWithNativeGoogle(
 ): Promise<Awaited<ReturnType<SupabaseClient["auth"]["signInWithIdToken"]>>> {
   await initializeNativeGoogleSignIn();
 
-  const result = await SocialLogin.login({
-    provider: "google",
-    options: { scopes: ["email", "profile"] },
-  });
+  // The native plugin can restore a previously authorised Google user. Refresh
+  // that native token first so a repeat login cannot submit an expired token.
+  try {
+    await SocialLogin.refresh({
+      provider: "google",
+      options: { scopes: ["email", "profile"] },
+    });
+  } catch {
+    // There may not be a cached native user on the first login. The login call
+    // below will perform the interactive flow in that case.
+  }
+
+  let result;
+  try {
+    result = await SocialLogin.login({
+      provider: "google",
+      options: { scopes: ["email", "profile"] },
+    });
+  } catch (error) {
+    console.error(
+      "[native-google-auth] Native Google login failed:",
+      error instanceof Error ? error.message : error,
+    );
+    throw error;
+  }
 
   if (result.result.responseType !== "online") {
+    console.error("[native-google-auth] Google returned an offline result.");
     throw new Error("Google did not return an online sign-in result.");
   }
 
   const identityToken = result.result.idToken?.trim();
-  if (!identityToken) throw new Error("Google did not return an identity token.");
-
   const accessToken = result.result.accessToken?.token?.trim();
-  if (!accessToken) throw new Error("Google did not return an access token.");
+  console.info("[native-google-auth] Google tokens received", {
+    hasIdentityToken: Boolean(identityToken),
+    hasAccessToken: Boolean(accessToken),
+  });
+  if (!identityToken) throw new Error("Google did not return an identity token.");
 
   const authResult = await client.auth.signInWithIdToken({
     provider: "google",
     token: identityToken,
-    access_token: accessToken,
+    ...(accessToken ? { access_token: accessToken } : {}),
   });
 
   if (authResult.error) {
