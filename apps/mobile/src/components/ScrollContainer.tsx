@@ -15,6 +15,7 @@ import {
 
 const PULL_TRIGGER_PX = 72;
 const PULL_MAX_PX = 112;
+const PULL_DIRECTION_LOCK_PX = 8;
 const HEADER_SHOW_AT_TOP = 8;
 const HEADER_SCROLL_DELTA = 4;
 const HEADER_TRANSITION_MS = 480;
@@ -50,6 +51,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings";
   const { refreshCatalogue, dealFilter } = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,6 +200,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   };
 
   const resetPull = () => {
+    touchStartXRef.current = null;
     touchStartYRef.current = null;
     pullDistanceRef.current = 0;
     setPullDistance(0);
@@ -205,15 +208,25 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (refreshing || feedback || (scrollRef.current?.scrollTop ?? 0) > 0) return;
-    touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    const touch = event.touches[0];
+    touchStartXRef.current = touch?.clientX ?? null;
+    touchStartYRef.current = touch?.clientY ?? null;
   };
 
   const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
-    if (touchStartYRef.current === null || refreshing) return;
-    const currentY = event.touches[0]?.clientY;
-    if (currentY === undefined) return;
+    if (touchStartXRef.current === null || touchStartYRef.current === null || refreshing) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - touchStartXRef.current;
+    const currentY = touch.clientY;
     const distance = currentY - touchStartYRef.current;
-    if (distance <= 0 || (scrollRef.current?.scrollTop ?? 0) > 0) {
+    // A pull-to-refresh gesture must be vertically dominant. iOS adds small
+    // cross-axis movement to every finger gesture, so checking only `deltaY`
+    // lets a left/right swipe with enough downward drift refresh the catalogue.
+    // Once horizontal movement wins, cancel this pull for the rest of the
+    // gesture instead of letting a later diagonal wobble re-arm it.
+    const hasDirectionLock = Math.max(Math.abs(deltaX), Math.abs(distance)) >= PULL_DIRECTION_LOCK_PX;
+    if ((hasDirectionLock && Math.abs(deltaX) >= Math.abs(distance)) || distance <= 0 || (scrollRef.current?.scrollTop ?? 0) > 0) {
       resetPull();
       return;
     }
