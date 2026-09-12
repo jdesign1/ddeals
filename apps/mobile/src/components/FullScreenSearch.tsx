@@ -657,6 +657,11 @@ export default function FullScreenSearch() {
             categorySheetTarget !== null || sortSheetTarget !== null ? "z-[70]" : "z-50"
           }`}
         >
+          {/* Keep the same frosted fade behind the global floating nav while
+              full-screen search is open. The overlay sits above the global
+              backdrop, so it needs its own copy for search results to blur
+              beneath the nav as they do on Check Deals. */}
+          <div className="app-bottom-nav-backdrop" aria-hidden="true" />
           {/* `border-b` dropped (2026-08-12, per Jay's ask) -- was
               `border-b border-stone-200`, gave this bar a hard bottom edge
               against the results below it; `shadow-xs` alone still reads as
