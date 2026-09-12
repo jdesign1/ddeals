@@ -397,6 +397,7 @@ function NotOnSpecialSheet({
                 width={288}
                 height={306}
                 sizes="112px"
+                unoptimized
                 className="mascot-wave h-auto w-28"
               />
               <p className="max-w-sm text-sm leading-relaxed text-stone-600">

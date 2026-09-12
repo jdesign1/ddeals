@@ -162,6 +162,7 @@ export default function AccountPage() {
                     width={192}
                     height={222}
                     sizes="112px"
+                    unoptimized
                     className="mascot-wave h-auto w-24"
                   />
                 </div>

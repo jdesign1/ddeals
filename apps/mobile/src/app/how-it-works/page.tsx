@@ -88,6 +88,7 @@ export default function HowItWorksPage() {
             width={288}
             height={310}
             preload
+            unoptimized
             className="mascot-wave h-auto w-full max-w-[9rem]"
           />
         </div>

@@ -430,6 +430,7 @@ export default function ListsPage() {
             height={306}
             sizes="144px"
             preload
+            unoptimized
             className="mascot-wave h-auto w-full max-w-[8.5rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">Log in to create and save shopping lists.</p>
@@ -535,6 +536,7 @@ export default function ListsPage() {
               width={288}
               height={306}
               sizes="128px"
+              unoptimized
               className="mascot-wave mb-2 h-auto w-full max-w-[8rem]"
             />
             <p className="max-w-xs px-4 text-sm font-bold text-stone-700">No lists yet</p>

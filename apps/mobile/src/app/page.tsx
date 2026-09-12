@@ -569,6 +569,7 @@ function TrendingSection({
       width={256}
       height={202}
       sizes="128px"
+      unoptimized
       className="mascot-wave h-auto w-full max-w-[8rem]"
     />
   );
@@ -828,6 +829,7 @@ function MyListSection({
           height={306}
           sizes="144px"
           preload
+          unoptimized
           className="mascot-wave h-auto w-full max-w-[9rem]"
         />
         {/* `max-w-xs` (320px) dropped and `px-4` (16px) -> `px-5` (20px),

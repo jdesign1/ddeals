@@ -179,6 +179,7 @@ export default function HistoryPage() {
             height={305}
             sizes="144px"
             preload
+            unoptimized
             className="mascot-wave h-auto w-full max-w-[9rem]"
           />
           <p className="max-w-xs px-4 text-sm font-bold text-stone-700">{prompt}</p>

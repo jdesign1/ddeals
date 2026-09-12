@@ -68,6 +68,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   width={288}
                   height={305}
                   sizes="160px"
+                  unoptimized
                   className="mascot-wave h-auto w-36"
                 />
               </div>
