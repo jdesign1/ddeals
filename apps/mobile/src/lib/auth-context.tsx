@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@dodgey-deals/shared";
 import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
@@ -118,6 +118,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pendingLoginRef = useRef(false);
   const pendingLoginSinceRef = useRef<number | null>(null);
   const pendingProviderProfileRef = useRef(false);
+  const loginNoticeUserIdRef = useRef<string | null>(null);
+
+  const recordLoginNotice = useCallback((userId: string, sinceOverride?: number | null) => {
+    if (loginNoticeUserIdRef.current === userId) return;
+    loginNoticeUserIdRef.current = userId;
+    const since = sinceOverride !== undefined ? sinceOverride : readLastLoginAt();
+    if (since === null) clearNewSpecialsSessionMarkers();
+    const notice = { id: Date.now(), since };
+    setLoginNotice(notice);
+    writePendingHomeLoginNotice(notice.id);
+    writeLastLoginAt();
+  }, []);
 
   useEffect(() => {
     if (!client) {
@@ -160,14 +172,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
-      if (!data.session?.user) clearNewSpecialsSessionMarkers();
+      if (!data.session?.user) {
+        loginNoticeUserIdRef.current = null;
+        setLoginNotice(null);
+        clearNewSpecialsSessionMarkers();
+      }
       if (data.session?.user && !data.session.user.is_anonymous) {
-        const since = readLastLoginAt();
-        if (since === null) clearNewSpecialsSessionMarkers();
-        const notice = { id: Date.now(), since };
-        setLoginNotice(notice);
-        writePendingHomeLoginNotice(notice.id);
-        writeLastLoginAt();
+        recordLoginNotice(data.session.user.id);
       }
       void syncProfile(data.session?.user ?? null, providerReturn);
     });
@@ -176,18 +187,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
-      if (!nextSession?.user) clearNewSpecialsSessionMarkers();
+      if (!nextSession?.user) {
+        loginNoticeUserIdRef.current = null;
+        setLoginNotice(null);
+        clearNewSpecialsSessionMarkers();
+      }
       const resumeProviderFlow = pendingProviderProfileRef.current;
       pendingProviderProfileRef.current = false;
       if (_event === "SIGNED_IN" && (pendingLoginRef.current || resumeProviderFlow)) {
-        const since = pendingLoginSinceRef.current ?? readLastLoginAt();
-        if (since === null) clearNewSpecialsSessionMarkers();
-        const notice = { id: Date.now(), since };
-        setLoginNotice(notice);
-        writePendingHomeLoginNotice(notice.id);
+        if (nextSession?.user) recordLoginNotice(nextSession.user.id, pendingLoginSinceRef.current);
         pendingLoginRef.current = false;
         pendingLoginSinceRef.current = null;
-        writeLastLoginAt();
       }
       void syncProfile(nextSession?.user ?? null, resumeProviderFlow);
     });
@@ -196,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       subscription.subscription.unsubscribe();
     };
-  }, [client]);
+  }, [client, recordLoginNotice]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -253,9 +263,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (provider === "apple" && isNativeAppleSignInAvailable()) {
           pendingProviderProfileRef.current = true;
           try {
-            const { error } = await signInWithNativeApple(client);
-            if (error) pendingProviderProfileRef.current = false;
-            return { error: error?.message ?? null };
+            const authResult = await signInWithNativeApple(client);
+            if (authResult.error) pendingProviderProfileRef.current = false;
+            else if (authResult.data.user) recordLoginNotice(authResult.data.user.id);
+            return { error: authResult.error?.message ?? null };
           } catch (error) {
             pendingProviderProfileRef.current = false;
             return { error: error instanceof Error ? error.message : "Apple sign-in failed." };
@@ -265,9 +276,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (provider === "google" && isNativeGoogleSignInAvailable()) {
           pendingProviderProfileRef.current = true;
           try {
-            const { error } = await signInWithNativeGoogle(client);
-            if (error) pendingProviderProfileRef.current = false;
-            return { error: error?.message ?? null };
+            const authResult = await signInWithNativeGoogle(client);
+            if (authResult.error) pendingProviderProfileRef.current = false;
+            else if (authResult.data.user) recordLoginNotice(authResult.data.user.id);
+            return { error: authResult.error?.message ?? null };
           } catch (error) {
             pendingProviderProfileRef.current = false;
             return { error: error instanceof Error ? error.message : "Google sign-in failed." };
@@ -338,7 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error?.message ?? null };
       },
     }),
-    [client, user, session, profile, loading, profileLoading, profileError, loginNotice, isAuthSheetOpen, authSheetPrompt]
+    [client, user, session, profile, loading, profileLoading, profileError, loginNotice, isAuthSheetOpen, authSheetPrompt, recordLoginNotice]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
