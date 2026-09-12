@@ -8,6 +8,7 @@ import SearchBar from "@/components/SearchBar";
 import { useSearch } from "@/lib/search-context";
 import {
   isNearScrollBottom,
+  getCapturedSettingsScrollPosition,
   publishCheckDealsHeaderVisibility,
   publishCheckDealsScrollPosition,
 } from "@/lib/scroll-events";
@@ -18,6 +19,7 @@ const PULL_DIRECTION_LOCK_PX = 8;
 const HEADER_SHOW_AT_TOP = 8;
 const HEADER_SCROLL_DELTA = 4;
 const HEADER_TRANSITION_MS = 480;
+const CONTACT_ROUTES = ["/support", "/report-deal"];
 
 /**
  * Extracted 2026-08-17 from `layout.tsx`'s own inline
@@ -56,6 +58,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollTopRef = useRef(0);
   const checkDealsScrollTopRef = useRef(0);
+  const settingsScrollTopRef = useRef(0);
   const previousPathnameRef = useRef(pathname);
   const headerHiddenRef = useRef(false);
   const headerScrollAnchorRef = useRef(0);
@@ -78,14 +81,58 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
         ? "up-to-date"
         : null;
 
-  // The outer scroll surface stays mounted while App Router swaps the Home
-  // page for a deal page. Save Check Deals' last position independently of
-  // the live element because iOS clamps that element when the deal content
-  // replaces the longer list. Restore after the route returns, with one
-  // extra frame for the list's preserved reveal count to be in the DOM.
+  // The outer scroll surface stays mounted while App Router swaps page
+  // content. Keep the page-specific positions that should survive that swap
+  // separate: Check Deals restores its list position, while Settings restores
+  // its position after returning from a contact page. Contact pages always
+  // start at the top so their form cannot inherit the previous page's offset.
   useLayoutEffect(() => {
     const previousPathname = previousPathnameRef.current;
     previousPathnameRef.current = pathname;
+
+    const isContactRoute = CONTACT_ROUTES.includes(pathname);
+    const wasContactRoute = CONTACT_ROUTES.includes(previousPathname);
+
+    if (isContactRoute) {
+      if (previousPathname === "/settings") {
+        settingsScrollTopRef.current = getCapturedSettingsScrollPosition();
+      }
+
+      const resetToTop = () => {
+        const element = scrollRef.current;
+        if (!element) return;
+        element.scrollTop = 0;
+        lastScrollTopRef.current = 0;
+      };
+
+      resetToTop();
+      const firstFrame = window.requestAnimationFrame(() => {
+        resetToTop();
+      });
+      return () => window.cancelAnimationFrame(firstFrame);
+    }
+
+    if (pathname === "/settings" && wasContactRoute) {
+      const restoreSettingsPosition = () => {
+        const element = scrollRef.current;
+        if (!element) return;
+        const top = Math.min(settingsScrollTopRef.current, Math.max(0, element.scrollHeight - element.clientHeight));
+        element.scrollTop = top;
+        lastScrollTopRef.current = top;
+      };
+
+      restoreSettingsPosition();
+      let secondFrame: number | null = null;
+      const firstFrame = window.requestAnimationFrame(() => {
+        restoreSettingsPosition();
+        secondFrame = window.requestAnimationFrame(restoreSettingsPosition);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(firstFrame);
+        if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+      };
+    }
 
     if (previousPathname === "/" && pathname !== "/") {
       checkDealsScrollTopRef.current = lastScrollTopRef.current;

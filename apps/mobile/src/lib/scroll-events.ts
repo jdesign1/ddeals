@@ -2,6 +2,19 @@ export const CHECK_DEALS_HEADER_SCROLL_EVENT = "dodgey-deals:check-deals-header-
 export const CHECK_DEALS_SCROLL_POSITION_EVENT = "dodgey-deals:check-deals-scroll-position";
 export const STICKY_BOTTOM_BOUNCE_GUARD_PX = 24;
 
+let settingsScrollTop = 0;
+
+/** Capture Settings' custom scroll surface before App Router can reset it. */
+export function captureSettingsScrollPosition(): void {
+  if (typeof document === "undefined") return;
+  const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
+  settingsScrollTop = scrollSurface?.scrollTop ?? 0;
+}
+
+export function getCapturedSettingsScrollPosition(): number {
+  return settingsScrollTop;
+}
+
 /**
  * iOS can emit a short run of scroll events while rubber-banding at the
  * bottom of an overflow scroller. Those events can look like alternating

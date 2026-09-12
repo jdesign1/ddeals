@@ -44,7 +44,7 @@ export default function TermsPage() {
         <dl className="mt-3 space-y-3 rounded-xl bg-stone-50 p-4 text-[15px] leading-6 text-stone-600">
           <ContactRow label="Operator" value="[insert legal entity or individual name]" />
           <ContactRow label="Address" value="[insert physical or postal address]" />
-          <ContactRow label="Support contact" value="dodgydealnz@gmail.com" />
+          <ContactRow label="Support contact" value="hello@dodgydeal.co.nz" />
         </dl>
       </TermsSection>
 
@@ -229,8 +229,8 @@ export default function TermsPage() {
       <TermsSection title="15. Complaints and contact">
         <p>
           If you have a question, complaint, or report about the app, a deal, or these terms, contact us at{" "}
-          <a href="mailto:dodgydealnz@gmail.com" className="font-bold text-ink-600 underline underline-offset-2">
-            dodgydealnz@gmail.com
+          <a href="mailto:hello@dodgydeal.co.nz" className="font-bold text-ink-600 underline underline-offset-2">
+            hello@dodgydeal.co.nz
           </a>
           . We will review the issue and try to resolve it fairly.
         </p>

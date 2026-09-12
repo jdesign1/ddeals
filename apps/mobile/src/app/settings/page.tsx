@@ -11,6 +11,7 @@ import { useTheme } from "@/lib/theme-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountDisplayName, getAccountEmailDisplay } from "@/lib/account-display";
+import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 export default function SettingsPage() {
@@ -215,6 +216,7 @@ export default function SettingsPage() {
         </div>
         <Link
           href="/support"
+          onClick={captureSettingsScrollPosition}
           className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800"
         >
           <span>
@@ -227,6 +229,7 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/report-deal"
+          onClick={captureSettingsScrollPosition}
           className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800"
         >
           <span>

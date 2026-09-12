@@ -2,58 +2,54 @@
 
 import { useState } from "react";
 
-const SUPPORT_EMAIL = "dodgydealnz@gmail.com";
+const INITIAL_FORM = {
+  name: "",
+  email: "",
+  product: "",
+  retailer: "",
+  store: "",
+  displayedPrice: "",
+  message: "",
+  website: "",
+};
 
 export default function SupportForm({ mode }: { mode: "support" | "report" }) {
   const isReport = mode === "report";
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    product: "",
-    retailer: "",
-    store: "",
-    displayedPrice: "",
-    message: "",
-  });
-  const [emailOpened, setEmailOpened] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [submitState, setSubmitState] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+    if (submitState !== "idle") setSubmitState("idle");
+    setSubmitError(null);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const subject = isReport
-      ? "Incorrect deal report: " + (form.product || "Product")
-      : "Dodgy Deal support request";
-    const body = isReport
-      ? [
-          "Name: " + (form.name || "Not provided"),
-          "Reply email: " + form.email,
-          "Product: " + form.product,
-          "Retailer: " + (form.retailer || "Not provided"),
-          "Store or location: " + (form.store || "Not provided"),
-          "Displayed price: " + (form.displayedPrice || "Not provided"),
-          "",
-          "What needs correcting:",
-          form.message,
-        ].join("\n")
-      : [
-          "Name: " + (form.name || "Not provided"),
-          "Reply email: " + form.email,
-          "",
-          "How can we help?",
-          form.message,
-        ].join("\n");
+    if (submitState === "sending") return;
 
-    window.location.href =
-      "mailto:" +
-      SUPPORT_EMAIL +
-      "?subject=" +
-      encodeURIComponent(subject) +
-      "&body=" +
-      encodeURIComponent(body);
-    setEmailOpened(true);
+    setSubmitState("sending");
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ ...form, mode }),
+      });
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(result?.error || "We couldn't send that right now. Please try again.");
+      }
+
+      setForm({ ...INITIAL_FORM });
+      setSubmitState("success");
+    } catch (error) {
+      setSubmitState("error");
+      setSubmitError(error instanceof Error ? error.message : "We couldn't send that right now. Please try again.");
+    }
   }
 
   return (
@@ -170,18 +166,35 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
         />
       </div>
 
+      <div aria-hidden="true" className="absolute left-[-9999px] h-px w-px overflow-hidden">
+        <label htmlFor={mode + "-website"}>Website</label>
+        <input
+          id={mode + "-website"}
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={form.website}
+          onChange={(event) => updateField("website", event.target.value)}
+        />
+      </div>
+
       <p className="text-[13px] leading-5 text-stone-500">
-        Tapping the button opens your email app with the details filled in. You can review the message before sending
-        it to {SUPPORT_EMAIL}.
+        We&rsquo;ll send this securely to our support team and reply to the email address you provide.
       </p>
 
-      <button type="submit" className="dd-btn dd-btn-primary w-full cursor-pointer">
-        Open email
+      <button type="submit" disabled={submitState === "sending"} className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+        {submitState === "sending" ? "Sending…" : isReport ? "Send report" : "Send message"}
       </button>
 
-      {emailOpened && (
-        <p className="rounded-xl border border-fair-100 bg-fair-50 p-3 text-[13px] font-semibold leading-relaxed text-fair-950">
-          If your email app did not open, email {SUPPORT_EMAIL} directly.
+      {submitState === "success" && (
+        <p role="status" className="rounded-xl border border-fair-100 bg-fair-50 p-3 text-[13px] font-semibold leading-relaxed text-fair-950">
+          Thanks — your {isReport ? "report" : "message"} has been sent. We&rsquo;ll get back to you by email.
+        </p>
+      )}
+
+      {submitState === "error" && (
+        <p role="alert" className="rounded-xl border border-alert-100 bg-alert-50 p-3 text-[13px] font-semibold leading-relaxed text-alert-950">
+          {submitError}
         </p>
       )}
     </form>

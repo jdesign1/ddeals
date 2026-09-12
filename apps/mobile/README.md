@@ -16,6 +16,16 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Contact forms
+
+The support and incorrect-deal forms send through `POST /api/contact`; they do
+not open the user&rsquo;s email app. Add `RESEND_API_KEY` and a verified
+`CONTACT_FORM_FROM_EMAIL` to `.env.local` and to the production deployment
+environment before using the forms in production. They currently deliver to
+the existing Gmail inbox `dodgydealnz@gmail.com`; set the optional
+`CONTACT_FORM_TO_EMAIL` variable to `hello@dodgydeal.co.nz` once that inbox or
+forwarder exists.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
