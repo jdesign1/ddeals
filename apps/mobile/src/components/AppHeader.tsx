@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,6 +19,17 @@ import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
 const NEW_SPECIALS_PRESENTED_SESSION_KEY = "dd-new-specials-presented";
 const NEW_SPECIALS_LEFT_HOME_SESSION_KEY = "dd-new-specials-left-home";
+const NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY = "dd-new-specials-pending-home-login";
+
+function readSessionNumber(key: string): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = Number(window.sessionStorage.getItem(key));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -236,10 +247,14 @@ export default function AppHeader({
       return false;
     }
   });
-  // The notice is a launch-home message, not a general "whenever the router
-  // returns to /" message. Once the user leaves Home, do not let the deal
-  // page's back arrow reopen a notice that was still waiting to present.
-  const canPresentNewSpecialsOnLaunchHomeRef = useRef(
+  const [pendingHomeLoginNoticeId, setPendingHomeLoginNoticeId] = useState<number | null>(() => {
+    return readSessionNumber(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
+  });
+  const [lastTrackedLoginNoticeId, setLastTrackedLoginNoticeId] = useState<number | null>(null);
+  // The notice is shown on Home only. A successful login from another route
+  // carries an explicit pending-home marker; ordinary navigation back from a
+  // deal page must not reopen a notice that was already waiting or presented.
+  const [canPresentNewSpecialsOnLaunchHome, setCanPresentNewSpecialsOnLaunchHome] = useState(
     (() => {
       if (typeof window === "undefined" || pathname !== "/") return false;
       try {
@@ -261,6 +276,7 @@ export default function AppHeader({
     () => (loginNotice ? summarizeNewSpecials(products, loginNotice.since) : null),
     [products, loginNotice]
   );
+  const hasPendingHomeLogin = pendingHomeLoginNoticeId === loginNotice?.id;
   const shouldPresentNewSpecialsModal =
     !!user &&
     !loadingProducts &&
@@ -269,17 +285,28 @@ export default function AppHeader({
     !!newSpecials &&
     newSpecials.total > 0 &&
     pathname === "/" &&
-    canPresentNewSpecialsOnLaunchHomeRef.current &&
+    (canPresentNewSpecialsOnLaunchHome || hasPendingHomeLogin) &&
     !hasPresentedNewSpecialsThisSession &&
     loginNotice.id !== presentedNewSpecialsNoticeId;
+
+  // A login notice is recorded by AuthProvider before it reaches this
+  // component. Sync the matching pending id during the render that receives
+  // the new notice so a login from Settings can survive this header's route
+  // remount when Home is opened.
+  if (loginNotice && loginNotice.id !== lastTrackedLoginNoticeId) {
+    setLastTrackedLoginNoticeId(loginNotice.id);
+    setPendingHomeLoginNoticeId(readSessionNumber(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY) === loginNotice.id ? loginNotice.id : null);
+  }
 
   useEffect(() => {
     if (!shouldPresentNewSpecialsModal || !loginNotice) return;
     const presentationTimer = window.setTimeout(() => {
       setPresentedNewSpecialsNoticeId(loginNotice.id);
       setHasPresentedNewSpecialsThisSession(true);
+      setPendingHomeLoginNoticeId(null);
       try {
         window.sessionStorage.setItem(NEW_SPECIALS_PRESENTED_SESSION_KEY, "1");
+        window.sessionStorage.removeItem(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
       } catch {
         // Session storage can be unavailable in restricted WebViews; the
         // in-memory state still prevents duplicate presentations this mount.
@@ -291,7 +318,6 @@ export default function AppHeader({
 
   useEffect(() => {
     if (pathname === "/") return;
-    canPresentNewSpecialsOnLaunchHomeRef.current = false;
     try {
       window.sessionStorage.setItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY, "1");
     } catch {
@@ -316,7 +342,7 @@ export default function AppHeader({
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
-    if (pathname !== "/") canPresentNewSpecialsOnLaunchHomeRef.current = false;
+    if (pathname !== "/") setCanPresentNewSpecialsOnLaunchHome(false);
     setIsMenuOpen(false);
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);

@@ -53,6 +53,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const LAST_LOGIN_STORAGE_KEY = "dd-last-login-at";
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
+const NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY = "dd-new-specials-pending-home-login";
 
 function readLastLoginAt(): number | null {
   if (typeof window === "undefined") return null;
@@ -62,6 +63,18 @@ function readLastLoginAt(): number | null {
 
 function writeLastLoginAt(): void {
   if (typeof window !== "undefined") window.localStorage.setItem(LAST_LOGIN_STORAGE_KEY, String(Date.now()));
+}
+
+function writePendingHomeLoginNotice(id: number): void {
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage.setItem(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY, String(id));
+    } catch {
+      // Session storage can be unavailable in restricted WebViews; the
+      // in-memory login notice still drives the Home presentation when the
+      // header remains mounted.
+    }
+  }
 }
 
 async function readProfile(
@@ -134,7 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.session?.user ?? null);
       setLoading(false);
       if (data.session?.user && !data.session.user.is_anonymous) {
-        setLoginNotice({ id: Date.now(), since: readLastLoginAt() });
+        const notice = { id: Date.now(), since: readLastLoginAt() };
+        setLoginNotice(notice);
+        writePendingHomeLoginNotice(notice.id);
         writeLastLoginAt();
       }
       void syncProfile(data.session?.user ?? null, providerReturn);
@@ -147,7 +162,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const resumeProviderFlow = pendingProviderProfileRef.current;
       pendingProviderProfileRef.current = false;
       if (_event === "SIGNED_IN" && (pendingLoginRef.current || resumeProviderFlow)) {
-        setLoginNotice({ id: Date.now(), since: pendingLoginSinceRef.current ?? readLastLoginAt() });
+        const notice = { id: Date.now(), since: pendingLoginSinceRef.current ?? readLastLoginAt() };
+        setLoginNotice(notice);
+        writePendingHomeLoginNotice(notice.id);
         pendingLoginRef.current = false;
         pendingLoginSinceRef.current = null;
         writeLastLoginAt();

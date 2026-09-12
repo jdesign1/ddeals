@@ -1,11 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import AuthPanel from "@/components/AuthPanel";
+import { useAuth } from "@/lib/auth-context";
 
 /**
  * Global log-in/sign-up bottom sheet (2026-08-19, per Jay: "The login/sign
@@ -27,17 +28,10 @@ import AuthPanel from "@/components/AuthPanel";
  * same "kind" of sheet as the scanner and the deal page's own cheaper-
  * alternatives sheet, not a fourth slightly-different pattern.
  *
- * `AuthPanel`'s `onSuccess` now closes this sheet instead of navigating to
- * Home (`router.push("/")`, which `AuthPanel` used to do on every
- * successful sign-in/sign-up) -- that redirect only ever made sense when
- * `AuthPanel` WAS the whole page (there was nothing else to show once
- * signed in, so jumping to Home was the only way to land somewhere real).
- * As a sheet, closing it is enough: the page underneath re-renders on its
- * own the instant `user` becomes non-null (same `useAuth()` value every
- * gated page already reads), showing its own real content in place --
- * tapping "Log in" from /history and landing back on /history with your
- * actual check history, not getting yanked to Home, is the whole point of
- * making this a sheet instead of a page swap.
+ * Successful sign-in/sign-up returns the user to Home (`router.push("/")`),
+ * where the post-login new-specials notice can appear after the launch
+ * animation and catalogue have settled. Provider flows that close this sheet
+ * from `AuthProvider` directly are covered by the completion effect below.
  *
  * Header `border-b` and tab-track `border-b` both removed 2026-08-20 (per
  * Jay: "login create account bottom sheet - remove the border lines above
@@ -124,6 +118,31 @@ export default function AuthSheet({
   const formScrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const { user, profile, profileLoading } = useAuth();
+  const wasOpenRef = useRef(isOpen);
+  const hasRedirectedAfterAuthRef = useRef(false);
+
+  const handleAuthSuccess = useCallback(() => {
+    if (hasRedirectedAfterAuthRef.current) return;
+    hasRedirectedAfterAuthRef.current = true;
+    onClose();
+    if (pathname !== "/") router.push("/");
+  }, [onClose, pathname, router]);
+
+  // Native/provider flows can complete in AuthProvider and close the sheet
+  // without going through AuthPanel's explicit onSuccess callback. Preserve
+  // the same Home destination for those flows as for email OTP sign-in.
+  useEffect(() => {
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = isOpen;
+    if (isOpen) return;
+
+    if (wasOpen && user && !profileLoading && profile?.onboarding_complete) {
+      handleAuthSuccess();
+      return;
+    }
+    hasRedirectedAfterAuthRef.current = false;
+  }, [handleAuthSuccess, isOpen, profile, profileLoading, user]);
 
   // Each Login/Create account tab starts at the top of its form. The sheet
   // keeps one scroll container mounted while the controlled form content
@@ -348,7 +367,7 @@ export default function AuthSheet({
               )}
               <AuthPanel
                 prompt={prompt}
-                onSuccess={onClose}
+                onSuccess={handleAuthSuccess}
                 onOpenLegal={openLegal}
                 mode={mode}
               />
