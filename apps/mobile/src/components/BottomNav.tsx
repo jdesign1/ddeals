@@ -221,11 +221,13 @@ const TABS: {
   { href: "/me", label: "Deal stats", icon: "leaderboard" },
 ];
 
+const CONTACT_ROUTES = ["/support", "/report-deal"];
+
 export default function BottomNav() {
   const pathname = usePathname();
   const { isActive: isSearchActive, closeSearch } = useSearch();
 
-  if (pathname.startsWith("/deal/") || pathname === "/settings") return null;
+  if (pathname.startsWith("/deal/") || pathname === "/settings" || CONTACT_ROUTES.includes(pathname)) return null;
 
   return (
     <>

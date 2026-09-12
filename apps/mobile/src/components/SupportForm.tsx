@@ -12,12 +12,17 @@ const INITIAL_FORM = {
   message: "",
   website: "",
 };
+const EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SupportForm({ mode }: { mode: "support" | "report" }) {
   const isReport = mode === "report";
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitState, setSubmitState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const canSubmit =
+    EMAIL_FORMAT_RE.test(form.email.trim()) &&
+    Boolean(form.message.trim()) &&
+    (!isReport || Boolean(form.product.trim()));
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -53,7 +58,10 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4 rounded-2xl bg-white p-5 pb-28 shadow-sm"
+    >
       <div className="flex flex-col gap-1.5">
         <label htmlFor={mode + "-name"} className="text-[13px] font-semibold leading-5 text-stone-700">
           Your name <span className="font-semibold tracking-normal text-stone-400">(optional)</span>
@@ -182,9 +190,15 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
         We&rsquo;ll send this securely to our support team and reply to the email address you provide.
       </p>
 
-      <button type="submit" disabled={submitState === "sending"} className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-        {submitState === "sending" ? "Sending…" : isReport ? "Send report" : "Send message"}
-      </button>
+      <div className="contact-submit-bar dd-sheet-cta-footer fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[480px] border-t border-stone-200 px-5 pt-3">
+        <button
+          type="submit"
+          disabled={!canSubmit || submitState === "sending"}
+          className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitState === "sending" ? "Sending…" : isReport ? "Send report" : "Send message"}
+        </button>
+      </div>
 
       {submitState === "success" && (
         <p role="status" className="rounded-xl border border-fair-100 bg-fair-50 p-3 text-[13px] font-semibold leading-relaxed text-fair-950">

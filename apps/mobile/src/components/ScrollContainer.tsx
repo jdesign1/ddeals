@@ -49,7 +49,7 @@ const CONTACT_ROUTES = ["/support", "/report-deal"];
  */
 export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings";
+  const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings" && !CONTACT_ROUTES.includes(pathname);
   const { refreshCatalogue, dealFilter } = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);

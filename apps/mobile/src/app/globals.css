@@ -1190,6 +1190,9 @@ body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .mobile-scroll-surface 
 .auth-submit-bar {
   background-color: var(--color-paper);
 }
+.contact-submit-bar {
+  background-color: var(--color-paper);
+}
 .dd-bottom-sheet-titlebar {
   background-color: #fff;
 }
