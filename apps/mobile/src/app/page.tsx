@@ -237,6 +237,7 @@ export default function HomePage() {
 
   return (
     <>
+      {!isSearchActive && <LoadingMascot loading={loadingProducts} />}
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: loadingProducts ? 0 : 1 }}
@@ -324,7 +325,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {!isSearchActive && <LoadingMascot loading={loadingProducts} />}
       {!isSearchActive && error && (
         <ErrorState message="Couldn't load today's specials." detail={error} onRetry={retryProducts} />
       )}

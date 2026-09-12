@@ -50,14 +50,21 @@ export default function LaunchSplash() {
     if (!minimumElapsed) return;
 
     const exitTimer = window.setTimeout(() => setExiting(true), 0);
+    let completionFrame: number | null = null;
     const removeTimer = window.setTimeout(() => {
-      window.dispatchEvent(new Event(LAUNCH_SPLASH_COMPLETE_EVENT));
       setVisible(false);
+      // Notify consumers after React has had a frame to remove the splash;
+      // otherwise a listener that checks the DOM can still see the exiting
+      // element and incorrectly remain in its launch-blocked state.
+      completionFrame = window.requestAnimationFrame(() => {
+        window.dispatchEvent(new Event(LAUNCH_SPLASH_COMPLETE_EVENT));
+      });
     }, SPLASH_EXIT_MS);
 
     return () => {
       window.clearTimeout(exitTimer);
       window.clearTimeout(removeTimer);
+      if (completionFrame !== null) window.cancelAnimationFrame(completionFrame);
     };
   }, [minimumElapsed]);
 

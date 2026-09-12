@@ -113,6 +113,33 @@ interface SearchContextValue {
 
 const SearchContext = createContext<SearchContextValue | null>(null);
 
+const INITIAL_CATALOGUE_RETRY_DELAYS_MS = [500, 1500];
+
+function shouldRetryCatalogueLoad(error: unknown): boolean {
+  if (!(error instanceof Error)) return true;
+  const statusMatch = error.message.match(/HTTP (\d+)/);
+  if (!statusMatch) return true;
+  const status = Number(statusMatch[1]);
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+async function loadLiveProductsWithRetry(): Promise<ProductCard[]> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= INITIAL_CATALOGUE_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await loadLiveProducts(supabaseConfig);
+    } catch (error) {
+      lastError = error;
+      const retryDelay = INITIAL_CATALOGUE_RETRY_DELAYS_MS[attempt];
+      if (retryDelay === undefined || !shouldRetryCatalogueLoad(error)) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, retryDelay));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Failed to load specials");
+}
+
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -160,7 +187,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadLiveProducts(supabaseConfig)
+    loadLiveProductsWithRetry()
       .then((result) => {
         if (!cancelled) setProducts(result);
       })

@@ -17,17 +17,26 @@ import NewSpecialsModal, { type NewSpecialsSummary } from "@/components/NewSpeci
 import { matchesDealFilter } from "@/lib/deal-filters";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
-const NEW_SPECIALS_PRESENTED_SESSION_KEY = "dd-new-specials-presented";
-const NEW_SPECIALS_LEFT_HOME_SESSION_KEY = "dd-new-specials-left-home";
-const NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY = "dd-new-specials-pending-home-login";
+const NEW_SPECIALS_LAST_SHOWN_DATE_KEY = "dd-new-specials-last-shown-date";
+const NEW_SPECIALS_LAST_SHOWN_PUBLICATION_KEY = "dd-new-specials-last-shown-publication";
 
-function readSessionNumber(key: string): number | null {
-  if (typeof window === "undefined") return null;
+function getLocalDateKey(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function readNewSpecialsPresentation(): { date: string | null; publication: number | null } {
+  if (typeof window === "undefined") return { date: null, publication: null };
   try {
-    const value = Number(window.sessionStorage.getItem(key));
-    return Number.isFinite(value) && value > 0 ? value : null;
+    const publication = Number(window.localStorage.getItem(NEW_SPECIALS_LAST_SHOWN_PUBLICATION_KEY));
+    return {
+      date: window.localStorage.getItem(NEW_SPECIALS_LAST_SHOWN_DATE_KEY),
+      publication: Number.isFinite(publication) && publication > 0 ? publication : null,
+    };
   } catch {
-    return null;
+    return { date: null, publication: null };
   }
 }
 
@@ -221,6 +230,17 @@ function summarizeNewSpecials(products: ProductCard[], since: number | null): Ne
   return summary;
 }
 
+function latestCataloguePublication(products: ProductCard[]): number | null {
+  return products.reduce<number | null>((latest, product) => {
+    for (const deal of product.currentDeals) {
+      const timestamp = Date.parse(deal.scrapedAt ?? "");
+      if (!Number.isFinite(timestamp)) continue;
+      if (latest === null || timestamp > latest) latest = timestamp;
+    }
+    return latest;
+  }, null);
+}
+
 export default function AppHeader({
   sticky = true,
   collapseOnCheckDeals = false,
@@ -231,112 +251,62 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { user, profile, loading, isAnonymousSession, openAuthSheet, loginNotice } = useAuth();
+  const { user, profile, loading, isAnonymousSession, openAuthSheet } = useAuth();
   const { override } = useHeaderOverride();
   const { products, loadingProducts, openSearchForFilter } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
-  const [presentedNewSpecialsNoticeId, setPresentedNewSpecialsNoticeId] = useState<number | null>(null);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
-  const [hasPresentedNewSpecialsThisSession, setHasPresentedNewSpecialsThisSession] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return window.sessionStorage.getItem(NEW_SPECIALS_PRESENTED_SESSION_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const [pendingHomeLoginNoticeId, setPendingHomeLoginNoticeId] = useState<number | null>(() => {
-    return readSessionNumber(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
-  });
-  const [lastTrackedLoginNoticeId, setLastTrackedLoginNoticeId] = useState<number | null>(null);
-  const [lastAuthenticatedUserId, setLastAuthenticatedUserId] = useState<string | null>(user?.id ?? null);
-  // The notice is shown on Home only. A successful login from another route
-  // carries an explicit pending-home marker; ordinary navigation back from a
-  // deal page must not reopen a notice that was already waiting or presented.
-  const [canPresentNewSpecialsOnLaunchHome, setCanPresentNewSpecialsOnLaunchHome] = useState(
-    (() => {
-      if (typeof window === "undefined" || pathname !== "/") return false;
-      try {
-        return window.sessionStorage.getItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY) !== "1";
-      } catch {
-        return true;
-      }
-    })()
+  const [lastShownNewSpecialsDate, setLastShownNewSpecialsDate] = useState(
+    () => readNewSpecialsPresentation().date
+  );
+  const [lastShownNewSpecialsPublication, setLastShownNewSpecialsPublication] = useState(
+    () => readNewSpecialsPresentation().publication
   );
 
   useEffect(() => {
-    const syncSplashState = () => setIsLaunchSplashFinished(!document.querySelector(".launch-splash"));
+    const syncSplashState = (isComplete = false) =>
+      setIsLaunchSplashFinished(isComplete || !document.querySelector(".launch-splash"));
+    const handleSplashComplete = () => syncSplashState(true);
     syncSplashState();
-    window.addEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, syncSplashState);
-    return () => window.removeEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, syncSplashState);
+    window.addEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, handleSplashComplete);
+    return () => window.removeEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, handleSplashComplete);
   }, []);
 
   const newSpecials = useMemo(
-    () => (loginNotice ? summarizeNewSpecials(products, loginNotice.since) : null),
-    [products, loginNotice]
+    () => summarizeNewSpecials(products, lastShownNewSpecialsPublication),
+    [products, lastShownNewSpecialsPublication]
   );
-  const hasPendingHomeLogin = pendingHomeLoginNoticeId === loginNotice?.id;
-
-  if ((user?.id ?? null) !== lastAuthenticatedUserId) {
-    setLastAuthenticatedUserId(user?.id ?? null);
-    if (!user) {
-      setHasPresentedNewSpecialsThisSession(false);
-      setPresentedNewSpecialsNoticeId(null);
-      setPendingHomeLoginNoticeId(null);
-      if (pathname === "/") setCanPresentNewSpecialsOnLaunchHome(true);
-    }
-  }
+  const cataloguePublication = useMemo(() => latestCataloguePublication(products), [products]);
+  const hasPresentedNewSpecialsToday = lastShownNewSpecialsDate === getLocalDateKey();
 
   const shouldPresentNewSpecialsModal =
-    !!user &&
     !loadingProducts &&
     isLaunchSplashFinished &&
-    !!loginNotice &&
-    !!newSpecials &&
     newSpecials.total > 0 &&
     pathname === "/" &&
-    (canPresentNewSpecialsOnLaunchHome || hasPendingHomeLogin) &&
-    !hasPresentedNewSpecialsThisSession &&
-    loginNotice.id !== presentedNewSpecialsNoticeId;
-
-  // A login notice is recorded by AuthProvider before it reaches this
-  // component. Sync the matching pending id during the render that receives
-  // the new notice so a login from Settings can survive this header's route
-  // remount when Home is opened.
-  if (loginNotice && loginNotice.id !== lastTrackedLoginNoticeId) {
-    setLastTrackedLoginNoticeId(loginNotice.id);
-    setPendingHomeLoginNoticeId(readSessionNumber(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY) === loginNotice.id ? loginNotice.id : null);
-  }
+    !hasPresentedNewSpecialsToday;
 
   useEffect(() => {
-    if (!shouldPresentNewSpecialsModal || !loginNotice) return;
+    if (!shouldPresentNewSpecialsModal) return;
     const presentationTimer = window.setTimeout(() => {
-      setPresentedNewSpecialsNoticeId(loginNotice.id);
-      setHasPresentedNewSpecialsThisSession(true);
-      setPendingHomeLoginNoticeId(null);
+      const date = getLocalDateKey();
+      setLastShownNewSpecialsDate(date);
+      setLastShownNewSpecialsPublication(cataloguePublication);
       try {
-        window.sessionStorage.setItem(NEW_SPECIALS_PRESENTED_SESSION_KEY, "1");
-        window.sessionStorage.removeItem(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
+        window.localStorage.setItem(NEW_SPECIALS_LAST_SHOWN_DATE_KEY, date);
+        if (cataloguePublication !== null) {
+          window.localStorage.setItem(NEW_SPECIALS_LAST_SHOWN_PUBLICATION_KEY, String(cataloguePublication));
+        }
       } catch {
-        // Session storage can be unavailable in restricted WebViews; the
+        // Local storage can be unavailable in restricted WebViews; the
         // in-memory state still prevents duplicate presentations this mount.
       }
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [loginNotice, shouldPresentNewSpecialsModal]);
-
-  useEffect(() => {
-    if (pathname === "/") return;
-    try {
-      window.sessionStorage.setItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY, "1");
-    } catch {
-      // Session storage can be unavailable in restricted WebViews; the
-      // in-memory guard still prevents this mounted header from reopening it.
-    }
-  }, [pathname]);
+  }, [cataloguePublication, shouldPresentNewSpecialsModal]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
@@ -354,7 +324,6 @@ export default function AppHeader({
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
-    if (pathname !== "/") setCanPresentNewSpecialsOnLaunchHome(false);
     setIsMenuOpen(false);
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);
@@ -580,11 +549,10 @@ export default function AppHeader({
     </div>
 
     <NewSpecialsModal
-      open={isNewSpecialsModalOpen && pathname === "/" && !!user}
+      open={isNewSpecialsModalOpen && pathname === "/"}
       summary={newSpecials ?? { byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 }, realDeals: 0, dodgyDeals: 0, total: 0 }}
       onClose={() => setIsNewSpecialsModalOpen(false)}
       onSelectFilter={(filter) => {
-        if (!loginNotice) return;
         setIsNewSpecialsModalOpen(false);
         openSearchForFilter(filter, { focus: false });
       }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@dodgey-deals/shared";
 import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
@@ -34,7 +34,6 @@ interface AuthContextValue {
   profileLoading: boolean;
   profileError: string | null;
   authConfigured: boolean;
-  loginNotice: { id: number; since: number | null } | null;
   isAuthSheetOpen: boolean;
   authSheetPrompt: string | undefined;
   openAuthSheet: (prompt?: string) => void;
@@ -51,45 +50,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const LAST_LOGIN_STORAGE_KEY = "dd-last-login-at";
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
-const NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY = "dd-new-specials-pending-home-login";
-const NEW_SPECIALS_PRESENTED_SESSION_KEY = "dd-new-specials-presented";
-const NEW_SPECIALS_LEFT_HOME_SESSION_KEY = "dd-new-specials-left-home";
-
-function readLastLoginAt(): number | null {
-  if (typeof window === "undefined") return null;
-  const value = Number(window.localStorage.getItem(LAST_LOGIN_STORAGE_KEY));
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function writeLastLoginAt(): void {
-  if (typeof window !== "undefined") window.localStorage.setItem(LAST_LOGIN_STORAGE_KEY, String(Date.now()));
-}
-
-function writePendingHomeLoginNotice(id: number): void {
-  if (typeof window !== "undefined") {
-    try {
-      window.sessionStorage.setItem(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY, String(id));
-    } catch {
-      // Session storage can be unavailable in restricted WebViews; the
-      // in-memory login notice still drives the Home presentation when the
-      // header remains mounted.
-    }
-  }
-}
-
-function clearNewSpecialsSessionMarkers(): void {
-  if (typeof window !== "undefined") {
-    try {
-      window.sessionStorage.removeItem(NEW_SPECIALS_PRESENTED_SESSION_KEY);
-      window.sessionStorage.removeItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY);
-      window.sessionStorage.removeItem(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
-    } catch {
-      // Session storage can be unavailable in restricted WebViews.
-    }
-  }
-}
 
 async function readProfile(
   client: NonNullable<ReturnType<typeof getAccountsSupabaseClient>>,
@@ -112,24 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!client);
-  const [loginNotice, setLoginNotice] = useState<{ id: number; since: number | null } | null>(null);
   const [isAuthSheetOpen, setIsAuthSheetOpen] = useState(false);
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
-  const pendingLoginRef = useRef(false);
-  const pendingLoginSinceRef = useRef<number | null>(null);
   const pendingProviderProfileRef = useRef(false);
-  const loginNoticeUserIdRef = useRef<string | null>(null);
-
-  const recordLoginNotice = useCallback((userId: string, sinceOverride?: number | null) => {
-    if (loginNoticeUserIdRef.current === userId) return;
-    loginNoticeUserIdRef.current = userId;
-    const since = sinceOverride !== undefined ? sinceOverride : readLastLoginAt();
-    if (since === null) clearNewSpecialsSessionMarkers();
-    const notice = { id: Date.now(), since };
-    setLoginNotice(notice);
-    writePendingHomeLoginNotice(notice.id);
-    writeLastLoginAt();
-  }, []);
 
   useEffect(() => {
     if (!client) {
@@ -172,14 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
-      if (!data.session?.user) {
-        loginNoticeUserIdRef.current = null;
-        setLoginNotice(null);
-        clearNewSpecialsSessionMarkers();
-      }
-      if (data.session?.user && !data.session.user.is_anonymous) {
-        recordLoginNotice(data.session.user.id);
-      }
       void syncProfile(data.session?.user ?? null, providerReturn);
     });
 
@@ -187,18 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
-      if (!nextSession?.user) {
-        loginNoticeUserIdRef.current = null;
-        setLoginNotice(null);
-        clearNewSpecialsSessionMarkers();
-      }
       const resumeProviderFlow = pendingProviderProfileRef.current;
       pendingProviderProfileRef.current = false;
-      if (_event === "SIGNED_IN" && (pendingLoginRef.current || resumeProviderFlow)) {
-        if (nextSession?.user) recordLoginNotice(nextSession.user.id, pendingLoginSinceRef.current);
-        pendingLoginRef.current = false;
-        pendingLoginSinceRef.current = null;
-      }
       void syncProfile(nextSession?.user ?? null, resumeProviderFlow);
     });
 
@@ -206,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       subscription.subscription.unsubscribe();
     };
-  }, [client, recordLoginNotice]);
+  }, [client]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -217,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileLoading,
       profileError,
       authConfigured: !!client,
-      loginNotice,
       isAuthSheetOpen,
       authSheetPrompt,
       openAuthSheet: (prompt) => {
@@ -235,16 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       verifyOtp: async (email, token) => {
         if (!client) return { error: configurationError(), profile: null };
-        pendingLoginSinceRef.current = readLastLoginAt();
-        pendingLoginRef.current = true;
         const { data, error } = await client.auth.verifyOtp({
           email: email.trim().toLowerCase(),
           token: token.trim(),
           type: "email",
         });
         if (error || !data.user) {
-          pendingLoginRef.current = false;
-          pendingLoginSinceRef.current = null;
           return { error: error?.message ?? "That code could not be verified.", profile: null };
         }
         try {
@@ -265,7 +188,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const authResult = await signInWithNativeApple(client);
             if (authResult.error) pendingProviderProfileRef.current = false;
-            else if (authResult.data.user) recordLoginNotice(authResult.data.user.id);
             return { error: authResult.error?.message ?? null };
           } catch (error) {
             pendingProviderProfileRef.current = false;
@@ -278,7 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const authResult = await signInWithNativeGoogle(client);
             if (authResult.error) pendingProviderProfileRef.current = false;
-            else if (authResult.data.user) recordLoginNotice(authResult.data.user.id);
             return { error: authResult.error?.message ?? null };
           } catch (error) {
             pendingProviderProfileRef.current = false;
@@ -338,7 +259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         if (!client) return;
         await client.auth.signOut();
-        clearNewSpecialsSessionMarkers();
       },
       isAnonymousSession: !!user?.is_anonymous,
       signInAsDevUser: async () => {
@@ -350,7 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error?.message ?? null };
       },
     }),
-    [client, user, session, profile, loading, profileLoading, profileError, loginNotice, isAuthSheetOpen, authSheetPrompt, recordLoginNotice]
+    [client, user, session, profile, loading, profileLoading, profileError, isAuthSheetOpen, authSheetPrompt]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
