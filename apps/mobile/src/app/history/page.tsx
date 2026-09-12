@@ -175,8 +175,8 @@ export default function HistoryPage() {
           <Image
             src="/all-checks-login.webp"
             alt="A checklist with a magnifying glass"
-            width={483}
-            height={512}
+            width={288}
+            height={305}
             sizes="144px"
             preload
             className="mascot-wave h-auto w-full max-w-[9rem]"

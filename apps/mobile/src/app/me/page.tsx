@@ -119,8 +119,8 @@ export default function MePage() {
           <Image
             src="/deal-stats-login.webp"
             alt="An ascending savings chart with a check mark"
-            width={512}
-            height={468}
+            width={288}
+            height={263}
             sizes="144px"
             preload
             className="mascot-wave h-auto w-full max-w-[9rem]"
@@ -149,10 +149,10 @@ export default function MePage() {
             image is served directly because the deployed image optimizer can
             reject it with a 402, leaving the hero blank in the iOS WebView. */}
         <Image
-          src="/deal-stats-calculating.png"
+          src="/deal-stats-calculating.webp"
           alt="Dodgy Deal mascot calculating deal statistics"
-          width={1312}
-          height={1199}
+          width={320}
+          height={292}
           sizes="160px"
           priority
           unoptimized

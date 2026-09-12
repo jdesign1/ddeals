@@ -83,10 +83,10 @@ export default function HowItWorksPage() {
       <div className="space-y-2">
         <div className="-mx-2 -mt-2 mb-1 flex justify-center">
           <Image
-            src="/empowering-shoppers.png"
+            src="/empowering-shoppers.webp"
             alt="Dodgy Deal mascot holding a verified price card beside a grocery basket"
-            width={720}
-            height={768}
+            width={288}
+            height={310}
             preload
             className="mascot-wave h-auto w-full max-w-[9rem]"
           />

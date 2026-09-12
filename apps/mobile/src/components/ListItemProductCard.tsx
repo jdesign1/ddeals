@@ -394,8 +394,8 @@ function NotOnSpecialSheet({
               <Image
                 src="/lists-login.webp"
                 alt="Dodgey mascot waiting for a special"
-                width={482}
-                height={512}
+                width={288}
+                height={306}
                 sizes="112px"
                 className="mascot-wave h-auto w-28"
               />

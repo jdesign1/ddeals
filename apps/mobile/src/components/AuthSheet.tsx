@@ -356,10 +356,10 @@ export default function AuthSheet({
               {mode === "signin" && (
                 <div className="flex justify-center pb-2">
                   <Image
-                    src="/auth-wave.png"
+                    src="/auth-wave.webp"
                     alt="Dodgy Deal mascot waving"
-                    width={1165}
-                    height={1350}
+                    width={192}
+                    height={222}
                     sizes="112px"
                     className="mascot-wave h-auto w-24"
                   />

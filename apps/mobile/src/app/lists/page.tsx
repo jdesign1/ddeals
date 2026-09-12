@@ -426,8 +426,8 @@ export default function ListsPage() {
           <Image
             src="/lists-login.webp"
             alt="Dodgey mascot with an empty shopping list"
-            width={482}
-            height={512}
+            width={288}
+            height={306}
             sizes="144px"
             preload
             className="mascot-wave h-auto w-full max-w-[8.5rem]"
@@ -532,8 +532,8 @@ export default function ListsPage() {
             <Image
               src="/lists-login.webp"
               alt="Dodgey mascot with an empty shopping list"
-              width={482}
-              height={512}
+              width={288}
+              height={306}
               sizes="128px"
               className="mascot-wave mb-2 h-auto w-full max-w-[8rem]"
             />

@@ -157,10 +157,10 @@ export default function AccountPage() {
               <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
                 <div className="flex justify-center">
                   <Image
-                    src="/auth-wave.png"
+                    src="/auth-wave.webp"
                     alt="Dodgy Deal mascot waving"
-                    width={1165}
-                    height={1350}
+                    width={192}
+                    height={222}
                     sizes="112px"
                     className="mascot-wave h-auto w-24"
                   />

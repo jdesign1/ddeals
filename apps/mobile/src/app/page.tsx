@@ -564,10 +564,10 @@ function TrendingSection({
   const { isGridLayout } = useCardLayout();
   const noResultsIllustration = (
     <Image
-      src="/empty-results-mascot.png"
+      src="/empty-results-mascot.webp"
       alt="Dodgy Deal mascot looking into an empty shopping basket"
-      width={1413}
-      height={1113}
+      width={256}
+      height={202}
       sizes="128px"
       className="mascot-wave h-auto w-full max-w-[8rem]"
     />
@@ -824,8 +824,8 @@ function MyListSection({
         <Image
           src="/lists-login.webp"
           alt="A checked shopping list"
-          width={482}
-          height={512}
+          width={288}
+          height={306}
           sizes="144px"
           preload
           className="mascot-wave h-auto w-full max-w-[9rem]"

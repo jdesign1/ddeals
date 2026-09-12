@@ -65,8 +65,8 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <Image
                   src="/all-checks-login.webp"
                   alt="Dodgy Deal mascot looking for new specials"
-                  width={483}
-                  height={512}
+                  width={288}
+                  height={305}
                   sizes="160px"
                   className="mascot-wave h-auto w-36"
                 />
