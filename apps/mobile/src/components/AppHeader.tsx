@@ -251,6 +251,7 @@ export default function AppHeader({
     return readSessionNumber(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
   });
   const [lastTrackedLoginNoticeId, setLastTrackedLoginNoticeId] = useState<number | null>(null);
+  const [lastAuthenticatedUserId, setLastAuthenticatedUserId] = useState<string | null>(user?.id ?? null);
   // The notice is shown on Home only. A successful login from another route
   // carries an explicit pending-home marker; ordinary navigation back from a
   // deal page must not reopen a notice that was already waiting or presented.
@@ -277,6 +278,17 @@ export default function AppHeader({
     [products, loginNotice]
   );
   const hasPendingHomeLogin = pendingHomeLoginNoticeId === loginNotice?.id;
+
+  if ((user?.id ?? null) !== lastAuthenticatedUserId) {
+    setLastAuthenticatedUserId(user?.id ?? null);
+    if (!user) {
+      setHasPresentedNewSpecialsThisSession(false);
+      setPresentedNewSpecialsNoticeId(null);
+      setPendingHomeLoginNoticeId(null);
+      if (pathname === "/") setCanPresentNewSpecialsOnLaunchHome(true);
+    }
+  }
+
   const shouldPresentNewSpecialsModal =
     !!user &&
     !loadingProducts &&

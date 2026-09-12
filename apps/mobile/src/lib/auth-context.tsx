@@ -160,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
+      if (!data.session?.user) clearNewSpecialsSessionMarkers();
       if (data.session?.user && !data.session.user.is_anonymous) {
         const since = readLastLoginAt();
         if (since === null) clearNewSpecialsSessionMarkers();
@@ -175,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
+      if (!nextSession?.user) clearNewSpecialsSessionMarkers();
       const resumeProviderFlow = pendingProviderProfileRef.current;
       pendingProviderProfileRef.current = false;
       if (_event === "SIGNED_IN" && (pendingLoginRef.current || resumeProviderFlow)) {
@@ -324,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         if (!client) return;
         await client.auth.signOut();
+        clearNewSpecialsSessionMarkers();
       },
       isAnonymousSession: !!user?.is_anonymous,
       signInAsDevUser: async () => {
