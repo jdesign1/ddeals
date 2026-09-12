@@ -54,6 +54,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const LAST_LOGIN_STORAGE_KEY = "dd-last-login-at";
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 const NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY = "dd-new-specials-pending-home-login";
+const NEW_SPECIALS_PRESENTED_SESSION_KEY = "dd-new-specials-presented";
+const NEW_SPECIALS_LEFT_HOME_SESSION_KEY = "dd-new-specials-left-home";
 
 function readLastLoginAt(): number | null {
   if (typeof window === "undefined") return null;
@@ -73,6 +75,18 @@ function writePendingHomeLoginNotice(id: number): void {
       // Session storage can be unavailable in restricted WebViews; the
       // in-memory login notice still drives the Home presentation when the
       // header remains mounted.
+    }
+  }
+}
+
+function clearNewSpecialsSessionMarkers(): void {
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage.removeItem(NEW_SPECIALS_PRESENTED_SESSION_KEY);
+      window.sessionStorage.removeItem(NEW_SPECIALS_LEFT_HOME_SESSION_KEY);
+      window.sessionStorage.removeItem(NEW_SPECIALS_PENDING_HOME_LOGIN_SESSION_KEY);
+    } catch {
+      // Session storage can be unavailable in restricted WebViews.
     }
   }
 }
@@ -147,7 +161,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.session?.user ?? null);
       setLoading(false);
       if (data.session?.user && !data.session.user.is_anonymous) {
-        const notice = { id: Date.now(), since: readLastLoginAt() };
+        const since = readLastLoginAt();
+        if (since === null) clearNewSpecialsSessionMarkers();
+        const notice = { id: Date.now(), since };
         setLoginNotice(notice);
         writePendingHomeLoginNotice(notice.id);
         writeLastLoginAt();
@@ -162,7 +178,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const resumeProviderFlow = pendingProviderProfileRef.current;
       pendingProviderProfileRef.current = false;
       if (_event === "SIGNED_IN" && (pendingLoginRef.current || resumeProviderFlow)) {
-        const notice = { id: Date.now(), since: pendingLoginSinceRef.current ?? readLastLoginAt() };
+        const since = pendingLoginSinceRef.current ?? readLastLoginAt();
+        if (since === null) clearNewSpecialsSessionMarkers();
+        const notice = { id: Date.now(), since };
         setLoginNotice(notice);
         writePendingHomeLoginNotice(notice.id);
         pendingLoginRef.current = false;
