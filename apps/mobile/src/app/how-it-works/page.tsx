@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { AlertTriangle, Info, ShieldCheck, type LucideIcon } from "lucide-react";
 import { usePageHeader } from "@/lib/header-context";
 
 /**
@@ -102,24 +103,27 @@ export default function HowItWorksPage() {
         <h2 className="dd-type-section text-center text-stone-900">Our deal rating system</h2>
         <div className="flex flex-col gap-3">
           <RatingCard
+            icon={AlertTriangle}
             label="Dodgy Deal"
             labelClassName="text-alert-700"
             tag="Dodgy"
-            tagClassName="bg-alert-600 text-white"
+            tagClassName="dd-badge-alert"
             description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
           />
           <RatingCard
+            icon={Info}
             label="Fair Deal"
             labelClassName="text-dodgy-700"
-            tag="Fair"
-            tagClassName="bg-dodgy-600 text-white"
+            tag="Fair price"
+            tagClassName="dd-badge-dodgy"
             description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
           />
           <RatingCard
+            icon={ShieldCheck}
             label="Real Saver"
             labelClassName="text-fair-700"
-            tag="Real"
-            tagClassName="bg-fair-600 text-white"
+            tag="Verified special"
+            tagClassName="dd-badge-fair"
             description="A deep, authentic discount well below the recent average price. A genuinely outstanding deal."
           />
         </div>
@@ -147,12 +151,14 @@ export default function HowItWorksPage() {
 }
 
 function RatingCard({
+  icon: Icon,
   label,
   labelClassName,
   tag,
   tagClassName,
   description,
 }: {
+  icon: LucideIcon;
   label: string;
   labelClassName: string;
   tag: string;
@@ -164,7 +170,10 @@ function RatingCard({
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className={`dd-type-control ${labelClassName}`}>{label}</span>
-          <span className={`rounded-md px-1.5 py-0.5 dd-type-badge ${tagClassName}`}>{tag}</span>
+          <span className={`dd-badge ${tagClassName}`}>
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            {tag}
+          </span>
         </div>
         <p className="dd-type-secondary text-stone-600">{description}</p>
       </div>
