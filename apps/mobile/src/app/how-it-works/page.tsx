@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Info, ShieldCheck, type LucideIcon } from "lucide-react";
 import { usePageHeader } from "@/lib/header-context";
@@ -145,6 +146,10 @@ export default function HowItWorksPage() {
           </Step>
         </div>
       </section>
+
+      <Link href="/" className="dd-btn dd-btn-primary w-full cursor-pointer text-center font-display">
+        Search for deals
+      </Link>
       </main>
     </>
   );
