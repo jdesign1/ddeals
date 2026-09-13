@@ -3,6 +3,7 @@ import {
   fetchByIds,
   STORE_DISPLAY_FALLBACK,
   titleCase,
+  productTitleCase,
   FALLBACK_PRODUCT_IMAGE,
   VIEW_VERDICT_TO_DEAL_TYPE,
   type SupabaseRestConfig,
@@ -515,7 +516,7 @@ export function buildListItemProductCard(
   return {
     id: productId,
     brand: titleCase(meta.brand) || "Unbranded",
-    name: titleCase(meta.name),
+    name: productTitleCase(meta.name),
     category: meta.category || "Grocery",
     image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
     standardPrice: displayedPrice.price,

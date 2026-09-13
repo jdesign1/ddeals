@@ -14,6 +14,7 @@ import {
   storeMatchesFilter,
   matchesAnySelectedStore,
   titleCase,
+  productTitleCase,
   fetchAllRows,
   loadLiveProducts,
   invalidateLiveProductsPublicationMarker,
@@ -78,6 +79,12 @@ test("titleCase capitalizes the first letter of every word", () => {
   assert.equal(titleCase("pak'nsave butter"), "Pak'Nsave Butter");
   assert.equal(titleCase(null), "");
   assert.equal(titleCase(undefined), "");
+});
+
+test("productTitleCase keeps possessive apostrophes readable", () => {
+  assert.equal(productTitleCase("banana's"), "Banana's");
+  assert.equal(productTitleCase("mcdonald's chocolate"), "Mcdonald's Chocolate");
+  assert.equal(productTitleCase("pak'nsave butter"), "Pak'Nsave Butter");
 });
 
 // ---- normalizeStoreKey / storeMatchesFilter ----

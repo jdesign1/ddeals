@@ -188,7 +188,7 @@ export default function ProductListCard({
           isGridLayout
             ? "px-3 pb-9 pt-3"
             : "pb-9 pl-4 pr-9 pt-4"
-        }`}
+        } product-card-content`}
       >
         <div className="flex flex-col justify-center gap-0.5">
         {/* Retailer badges sit immediately above the product name so the
@@ -230,7 +230,7 @@ export default function ProductListCard({
           {product.name}
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
-        <span className="mt-1 font-display text-2xl font-extrabold text-stone-900">
+        <span className={`${specialPriceRange ? "product-price-range" : "text-2xl"} mt-1 font-display font-extrabold text-stone-900`}>
           {specialPriceRange
             ? `$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`
             : `$${deal.price.toFixed(2)}`}

@@ -653,7 +653,7 @@ export default function DealAssessmentPage() {
         : "text-alert-700";
   const multiStoreDealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
-  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal, isMultiStoreDeal ? "multi-store" : "single-store");
+  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
   const lowestSpecialStoreNames =
     lowestSpecialPriceCents == null
@@ -891,7 +891,7 @@ export default function DealAssessmentPage() {
         <div className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex items-center justify-between">
             <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
-              {verdict === "Early read" ? "More checks needed" : verdict === "Limited history" ? "Needs more evidence" : verdict}
+              {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
             </h2>
             <DealActions productId={product.id} productName={product.name} />
           </div>

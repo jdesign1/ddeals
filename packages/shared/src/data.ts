@@ -278,6 +278,15 @@ export const titleCase = (s: string | null | undefined): string =>
   (s || "").replace(/\b\w/g, (c) => c.toUpperCase());
 
 /**
+ * Product names use title case for catalogue readability, but the generic
+ * word-boundary rule also turns possessives such as "Banana's" into
+ * "Banana'S". Keep apostrophe names such as "Pak'Nsave" intact while fixing
+ * the common lowercase possessive suffix.
+ */
+export const productTitleCase = (s: string | null | undefined): string =>
+  titleCase(s).replace(/(['’])S(?=$|[\s.,;:!?()[\]{}])/g, "$1s");
+
+/**
  * PostgREST can cap responses (commonly at 1000 rows) even when the caller
  * requests a larger range. Fetches page 1 with `Prefer: count=exact`, then
  * uses the number of rows actually returned as the real page size before
@@ -548,7 +557,7 @@ export function buildProductCardsFromSpecials(
     products.push({
       id: groupId,
       brand: titleCase(meta.brand) || "Unbranded",
-      name: titleCase(meta.name),
+      name: productTitleCase(meta.name),
       category: meta.category || "Grocery",
       image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
       standardPrice: normalPrices.length
@@ -1196,7 +1205,7 @@ export async function fetchNonSpecialProductCards(
       return {
         id: row.product_id,
         brand: titleCase(meta.brand) || "Unbranded",
-        name: titleCase(meta.name),
+        name: productTitleCase(meta.name),
         category: meta.category || "Grocery",
         image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
         standardPrice: row.price,

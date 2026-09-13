@@ -109,6 +109,24 @@
   font-feature-settings: "liga";
 }
 
+/* Cross-supermarket price ranges can be longer than a single price. Size the
+   range from the card's actual content width, rather than the viewport, so it
+   stays on one line in both list and grid layouts on small iPhones and wider
+   screens. */
+.product-card-content {
+  container-type: inline-size;
+}
+
+.product-price-range {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: clamp(0.875rem, 9cqw, 1.375rem);
+  letter-spacing: -0.035em;
+  line-height: 1.5rem;
+}
+
 /*
  * Design tokens ported from the Stitch UI design system (see project.md,
  * "Stitch UI Design — Screen Inventory"). Material 3 tokens, mobile-first.

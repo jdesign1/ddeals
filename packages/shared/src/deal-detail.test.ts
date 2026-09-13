@@ -161,7 +161,7 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
   assert.match(realCopy.body, /\$5\.00/);
 });
 
-test("buildAssessmentSummaryCopy: keeps the original single-store incomplete-history heading", () => {
+test("buildAssessmentSummaryCopy: uses concise incomplete-history copy for a single store", () => {
   const copy = buildAssessmentSummaryCopy(
     fakeDeal({
       evidenceStatus: "LIMITED",
@@ -169,19 +169,20 @@ test("buildAssessmentSummaryCopy: keeps the original single-store incomplete-his
     })
   );
 
-  assert.equal(copy.heading, "Why this isn't confirmed yet");
+  assert.equal(copy.heading, "Needs more history");
+  assert.equal(copy.body, "Current price: $5.00, recent normal price: $7.00. We need a little more price history to confirm this deal.");
 });
 
-test("buildAssessmentSummaryCopy: uses the multi-store incomplete-history heading when requested", () => {
+test("buildAssessmentSummaryCopy: uses concise copy for an early-read assessment", () => {
   const copy = buildAssessmentSummaryCopy(
     fakeDeal({
-      evidenceStatus: "LIMITED",
+      evidenceStatus: "EARLY",
       dealType: "Unverified Deal",
-    }),
-    "multi-store"
+    })
   );
 
-  assert.equal(copy.heading, "We aren't sure yet, needs more history");
+  assert.equal(copy.heading, "Needs more history");
+  assert.equal(copy.body, "Current price: $5.00, recent normal price: $7.00. We need a few more recent price checks to confirm this deal.");
 });
 
 test("findBestDodgyDeal: finds a Dodgy retailer deal even when another store has a better discount", () => {
