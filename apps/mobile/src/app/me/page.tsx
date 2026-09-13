@@ -1,14 +1,155 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
-import { fetchDealCheckHistory, computeDealStats, describeFetchError, type DealStats } from "@dodgey-deals/shared";
+import {
+  fetchDealCheckHistory,
+  computeDealStats,
+  describeFetchError,
+  matchesAnySelectedStore,
+  STORE_DISPLAY_FALLBACK,
+  type CurrentDeal,
+  type DealCheckRow,
+  type DealStats,
+  type ProductCard,
+} from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
+import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
+import { useSearch } from "@/lib/search-context";
+
+const STATS_STORES = Object.entries(STORE_DISPLAY_FALLBACK)
+  .filter(([key]) => key !== "supervalue")
+  .map(([key, label]) => ({ key, label }));
+
+const MONTH_COUNT = 6;
+
+interface CurrentStoreStats {
+  key: string;
+  store: string;
+  real: number;
+  dodgy: number;
+}
+
+interface MonthlyStoreStats extends CurrentStoreStats {
+  realProductIds: Set<string>;
+  dodgyProductIds: Set<string>;
+}
+
+interface MonthlyStats {
+  key: string;
+  label: string;
+  stores: MonthlyStoreStats[];
+}
+
+interface StoreRanking {
+  key: string;
+  store: string;
+  realDeals: number;
+  averageDiscount: number;
+  totalSavings: number;
+}
+
+function bestCurrentDeal(product: ProductCard, storeKey: string, filter: DealFilter): CurrentDeal | undefined {
+  return product.currentDeals
+    .filter(
+      (deal) => matchesAnySelectedStore(deal.store, [storeKey]) && matchesDealFilter(deal, filter)
+    )
+    .reduce<CurrentDeal | undefined>((best, deal) => (!best || deal.price < best.price ? deal : best), undefined);
+}
+
+function buildCurrentStoreStats(products: ProductCard[]): CurrentStoreStats[] {
+  return STATS_STORES.map(({ key, label }) => {
+    const realProducts = new Set<string>();
+    const dodgyProducts = new Set<string>();
+
+    for (const product of products) {
+      if (bestCurrentDeal(product, key, "real")) realProducts.add(product.id);
+      if (bestCurrentDeal(product, key, "dodgy")) dodgyProducts.add(product.id);
+    }
+
+    return { key, store: label, real: realProducts.size, dodgy: dodgyProducts.size };
+  });
+}
+
+function buildStoreRankings(products: ProductCard[]): StoreRanking[] {
+  return STATS_STORES.map(({ key, label }) => {
+    const deals = products
+      .map((product) => bestCurrentDeal(product, key, "real"))
+      .filter((deal): deal is CurrentDeal => Boolean(deal));
+    const discounts = deals.filter((deal) => Number.isFinite(deal.discountPercentage));
+    const averageDiscount = discounts.length
+      ? discounts.reduce((sum, deal) => sum + deal.discountPercentage, 0) / discounts.length
+      : 0;
+    const totalSavings = deals.reduce((sum, deal) => sum + Math.max(0, deal.originalPrice - deal.price), 0);
+
+    return {
+      key,
+      store: label,
+      realDeals: deals.length,
+      averageDiscount,
+      totalSavings,
+    };
+  }).sort((a, b) => b.averageDiscount - a.averageDiscount || b.realDeals - a.realDeals);
+}
+
+function recentMonthKeys(): { key: string; label: string }[] {
+  const current = new Date();
+  current.setDate(1);
+  current.setHours(0, 0, 0, 0);
+  const formatter = new Intl.DateTimeFormat("en-NZ", { month: "short", year: "numeric" });
+
+  return Array.from({ length: MONTH_COUNT }, (_, index) => {
+    const date = new Date(current);
+    date.setMonth(current.getMonth() - index);
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      label: formatter.format(date),
+    };
+  });
+}
+
+function buildMonthlyStats(history: DealCheckRow[]): MonthlyStats[] {
+  const months = recentMonthKeys();
+  const byMonth = new Map<string, MonthlyStoreStats[]>();
+
+  for (const month of months) {
+    byMonth.set(
+      month.key,
+      STATS_STORES.map(({ key, label }) => ({
+        key,
+        store: label,
+        real: 0,
+        dodgy: 0,
+        realProductIds: new Set<string>(),
+        dodgyProductIds: new Set<string>(),
+      }))
+    );
+  }
+
+  for (const row of history) {
+    const date = new Date(row.checked_at);
+    if (Number.isNaN(date.getTime())) continue;
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const store = byMonth.get(monthKey)?.find((item) => matchesAnySelectedStore(row.store, [item.key]));
+    if (!store) continue;
+    if (row.deal_type === "Dodgy Deal") store.dodgyProductIds.add(row.product_id);
+    if (row.deal_type === "Real Deal" || row.deal_type === "Fair Price") store.realProductIds.add(row.product_id);
+  }
+
+  return months.map((month) => ({
+    ...month,
+    stores: (byMonth.get(month.key) ?? []).map((store) => ({
+      ...store,
+      real: store.realProductIds.size,
+      dodgy: store.dodgyProductIds.size,
+    })),
+  }));
+}
 
 /**
  * Me / Deal Stats — ported from Prototype/index.html's `ProfileTab`
@@ -48,7 +189,9 @@ import ErrorState from "@/components/ErrorState";
  */
 export default function MePage() {
   const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { products, loadingProducts, toggleStore, setDealFilter } = useSearch();
   const [stats, setStats] = useState<DealStats | null>(null);
+  const [history, setHistory] = useState<DealCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Same plain-counter retry pattern established across this app on
@@ -64,9 +207,10 @@ export default function MePage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    fetchDealCheckHistory(requireAccountsSupabaseClient())
+    fetchDealCheckHistory(requireAccountsSupabaseClient(), { limit: 1000 })
       .then((history) => {
         if (!cancelled) {
+          setHistory(history);
           setStats(computeDealStats(history));
           setError(null);
         }
@@ -81,6 +225,29 @@ export default function MePage() {
       cancelled = true;
     };
   }, [user, retryTick]);
+
+  const currentStoreStats = useMemo(() => buildCurrentStoreStats(products), [products]);
+  const monthlyStats = useMemo(() => buildMonthlyStats(history), [history]);
+  const storeRankings = useMemo(() => buildStoreRankings(products), [products]);
+  const monthlySpotlight = useMemo(() => {
+    return STATS_STORES.map(({ key, label }) => {
+      const storeMonths = monthlyStats.flatMap((month) => month.stores.filter((store) => store.key === key));
+      return {
+        store: label,
+        real: storeMonths.reduce((sum, month) => sum + month.real, 0),
+        dodgy: storeMonths.reduce((sum, month) => sum + month.dodgy, 0),
+      };
+    }).sort((a, b) => b.real - a.real || b.dodgy - a.dodgy)[0];
+  }, [monthlyStats]);
+
+  const openFilteredDeals = useCallback(
+    (storeKey: string, filter: Extract<DealFilter, "real" | "dodgy">) => {
+      toggleStore("all");
+      toggleStore(storeKey);
+      setDealFilter(filter);
+    },
+    [setDealFilter, toggleStore]
+  );
 
   if (authLoading) {
     return (
@@ -191,35 +358,170 @@ export default function MePage() {
         {!loading && !error && stats && (
           <div className="flex flex-col gap-4 px-5">
             <div className="grid grid-cols-3 divide-x divide-stone-100 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <StatCell label="Deals checked" value={stats.totalChecked} valueClassName="text-stone-900" />
+              <StatCell
+                label={
+                  <>
+                    <span>Deals</span>
+                    <span>Checked</span>
+                  </>
+                }
+                value={stats.totalChecked}
+                valueClassName="text-stone-900"
+              />
               <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
               <StatCell label="Dodgy deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <h2 className="dd-type-section text-stone-900">Break down by supermarket</h2>
+              <h2 className="dd-type-section text-stone-900">Breakdown by supermarket</h2>
+              <p className="dd-type-secondary text-stone-500">
+                Live Real Saver and Dodgy deals in the app. Tap a number to browse them.
+              </p>
               <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
                 <span className="col-span-6">Supermarket</span>
                 <span className="col-span-3 text-center">Real savers</span>
                 <span className="col-span-3 text-center">Dodgy deals</span>
               </div>
               <div className="flex flex-col gap-2">
-                {stats.storeStats.map((store) => (
-                  <div key={store.store} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
+                {currentStoreStats.map((store) => (
+                  <div key={store.key} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
                     <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
                     <div className="col-span-3 text-center">
-                      <span className="inline-block min-w-[32px] rounded-md bg-fair-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-fair-600">
-                        {store.real}
-                      </span>
+                      <Link
+                        href="/"
+                        onClick={() => openFilteredDeals(store.key, "real")}
+                        aria-label={`View ${store.real} real saver deals at ${store.store}`}
+                        className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-fair-50 px-2 py-1 text-base font-black tabular-nums text-fair-700 transition-colors hover:bg-fair-100"
+                      >
+                        {loadingProducts ? "…" : store.real}
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
                     </div>
                     <div className="col-span-3 text-center">
-                      <span className="inline-block min-w-[32px] rounded-md bg-alert-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-alert-600">
-                        {store.dodgy}
-                      </span>
+                      <Link
+                        href="/"
+                        onClick={() => openFilteredDeals(store.key, "dodgy")}
+                        aria-label={`View ${store.dodgy} dodgy deals at ${store.store}`}
+                        className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-alert-50 px-2 py-1 text-base font-black tabular-nums text-alert-700 transition-colors hover:bg-alert-100"
+                      >
+                        {loadingProducts ? "…" : store.dodgy}
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <div>
+                <h2 className="dd-type-section text-stone-900">Monthly deal pulse</h2>
+                <p className="mt-1 dd-type-secondary text-stone-500">
+                  Your checked Real Savers and Dodgy deals over the last six months.
+                </p>
+              </div>
+
+              {monthlySpotlight && monthlySpotlight.real > 0 && (
+                <div className="rounded-xl border border-fair-100 bg-fair-50/70 p-4">
+                  <p className="dd-type-meta dd-type-meta-strong text-fair-800">Your real-saver spotlight</p>
+                  <div className="mt-1 flex items-end justify-between gap-3">
+                    <p className="dd-type-control text-fair-950">{monthlySpotlight.store}</p>
+                    <p className="text-right text-sm font-bold text-fair-700">
+                      {monthlySpotlight.real} real {monthlySpotlight.real === 1 ? "saver" : "savers"}
+                    </p>
+                  </div>
+                  <p className="mt-1 dd-type-secondary text-fair-800">
+                    The supermarket with the most real-saver deals you&rsquo;ve checked in this period.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3">
+                {monthlyStats.map((month) => (
+                  <div key={month.key} className="rounded-xl border border-stone-100 bg-stone-50/70 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="dd-type-control text-stone-800">{month.label}</p>
+                      <p className="dd-type-meta text-stone-500">
+                        {month.stores.reduce((sum, store) => sum + store.real + store.dodgy, 0)} deals
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 border-b border-stone-200 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
+                      <span>Supermarket</span>
+                      <span className="text-center text-fair-700">Real</span>
+                      <span className="text-center text-alert-700">Dodgy</span>
+                    </div>
+                    <div className="divide-y divide-stone-100">
+                      {month.stores.map((store) => (
+                        <div key={store.key} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 py-2 last:pb-0">
+                          <span className="truncate dd-type-secondary dd-type-secondary-strong text-stone-700">{store.store}</span>
+                          <span className="text-center text-base font-black tabular-nums text-fair-700">{store.real}</span>
+                          <span className="text-center text-base font-black tabular-nums text-alert-700">{store.dodgy}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <div>
+                <h2 className="dd-type-section text-stone-900">Supermarket value ranking</h2>
+                <p className="mt-1 dd-type-secondary text-stone-500">
+                  Ranked by average percentage saved across current Real Saver deals, so expensive products do not skew the result.
+                </p>
+              </div>
+
+              {loadingProducts ? (
+                <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating current rankings&hellip;</p>
+              ) : storeRankings[0]?.realDeals ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-fair-100 bg-fair-50/70 p-4">
+                      <p className="dd-type-meta dd-type-meta-strong text-fair-800">Best current value</p>
+                      <p className="mt-1 dd-type-control text-fair-950">{storeRankings[0].store}</p>
+                      <p className="mt-1 text-lg font-black tabular-nums text-fair-700">
+                        {formatPercent(storeRankings[0].averageDiscount)} avg saving
+                      </p>
+                    </div>
+                    {(() => {
+                      const lowest = [...storeRankings].reverse().find((store) => store.realDeals > 0);
+                      return lowest ? (
+                        <div className="rounded-xl border border-alert-100 bg-alert-50/70 p-4">
+                          <p className="dd-type-meta dd-type-meta-strong text-alert-800">Lowest average</p>
+                          <p className="mt-1 dd-type-control text-alert-950">{lowest.store}</p>
+                          <p className="mt-1 text-lg font-black tabular-nums text-alert-700">
+                            {formatPercent(lowest.averageDiscount)} avg saving
+                          </p>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  <div className="flex flex-col divide-y divide-stone-100">
+                    {storeRankings.map((store, index) => (
+                      <div key={store.key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-black tabular-nums text-stone-600">
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="dd-type-control truncate text-stone-800">{store.store}</p>
+                          <p className="dd-type-meta text-stone-500">
+                            {store.realDeals} real {store.realDeals === 1 ? "deal" : "deals"} &middot; {formatCurrency(store.totalSavings)} total savings
+                          </p>
+                        </div>
+                        <span className="text-right text-base font-black tabular-nums text-fair-700">
+                          {formatPercent(store.averageDiscount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
+                  Rankings will appear when current Real Saver deals are available.
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
@@ -252,20 +554,28 @@ export default function MePage() {
   );
 }
 
+function formatPercent(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(value);
+}
+
 function StatCell({
   label,
   value,
   valueClassName,
   labelClassName = "text-stone-500",
 }: {
-  label: string;
+  label: ReactNode;
   value: number;
   valueClassName: string;
   labelClassName?: string;
 }) {
   return (
     <div className="flex flex-col items-center justify-between gap-2 px-1 text-center">
-      <span className={`flex min-h-[32px] items-start justify-center dd-type-meta dd-type-meta-strong leading-tight ${labelClassName}`}>
+      <span className={`flex min-h-[32px] w-full flex-col items-center justify-start dd-type-meta dd-type-meta-strong leading-tight ${labelClassName}`}>
         {label}
       </span>
       <span className={`dd-type-page-title tabular-nums ${valueClassName}`}>{value}</span>
