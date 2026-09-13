@@ -55,6 +55,14 @@ interface StoreRanking {
   totalSavings: number;
 }
 
+interface PriceChangeRanking {
+  key: string;
+  store: string;
+  averageChanges: number;
+  totalChanges: number;
+  itemsTracked: number;
+}
+
 function dealTimestamp(deal: CurrentDeal): number {
   const saleStartedAt = Date.parse(deal.saleStartedAt ?? "");
   if (Number.isFinite(saleStartedAt)) return saleStartedAt;
@@ -112,6 +120,24 @@ function buildStoreRankings(products: ProductCard[]): StoreRanking[] {
       totalSavings,
     };
   }).sort((a, b) => b.averageDiscount - a.averageDiscount || b.realDeals - a.realDeals);
+}
+
+function buildPriceChangeRankings(products: ProductCard[]): PriceChangeRanking[] {
+  return STATS_STORES.map(({ key, label }) => {
+    const deals = products
+      .map((product) => bestCurrentDeal(product, key, "all"))
+      .filter((deal): deal is CurrentDeal => Boolean(deal));
+    const historyBackedDeals = deals.filter((deal) => Number.isFinite(deal.ninetyDaySamples));
+    const totalChanges = historyBackedDeals.reduce((sum, deal) => sum + (deal.ninetyDaySamples ?? 0), 0);
+
+    return {
+      key,
+      store: label,
+      averageChanges: historyBackedDeals.length ? totalChanges / historyBackedDeals.length : 0,
+      totalChanges,
+      itemsTracked: historyBackedDeals.length,
+    };
+  }).sort((a, b) => b.averageChanges - a.averageChanges || b.itemsTracked - a.itemsTracked);
 }
 
 function recentMonthKeys(): { key: string; label: string }[] {
@@ -218,6 +244,7 @@ export default function MePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMonthlyPulseOpen, setIsMonthlyPulseOpen] = useState(false);
+  const [isPriceChangeOpen, setIsPriceChangeOpen] = useState(false);
   // Same plain-counter retry pattern established across this app on
   // 2026-08-11 (search-context.tsx/specials/page.tsx/lists/page.tsx) —
   // lets ErrorState's Try Again button re-run the fetch below.
@@ -253,6 +280,8 @@ export default function MePage() {
   const currentStoreStats = useMemo(() => buildCurrentStoreStats(products), [products]);
   const monthlyStats = useMemo(() => buildMonthlyStats(products), [products]);
   const storeRankings = useMemo(() => buildStoreRankings(products), [products]);
+  const priceChangeRankings = useMemo(() => buildPriceChangeRankings(products), [products]);
+  const lowestValueRanking = [...storeRankings].reverse().find((store) => store.realDeals > 0);
   const monthlySpotlight = useMemo(() => {
     return STATS_STORES.map(({ key, label }) => {
       const storeMonths = monthlyStats.flatMap((month) => month.stores.filter((store) => store.key === key));
@@ -516,25 +545,36 @@ export default function MePage() {
               ) : storeRankings[0]?.realDeals ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-fair-100 bg-fair-50/70 p-4">
-                      <p className="dd-type-meta dd-type-meta-strong text-fair-800">Best value · last 90 days</p>
-                      <p className="mt-1 dd-type-control text-fair-950">{storeRankings[0].store}</p>
-                      <p className="mt-1 text-lg font-black tabular-nums text-fair-700">
-                        {formatPercent(storeRankings[0].averageDiscount)} avg saving
+                    <div className="rounded-2xl border border-fair-200 bg-fair-50 p-4">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Best value</p>
+                      <div className="mt-3 flex flex-col gap-1">
+                        <p className="text-lg font-bold leading-tight text-fair-950">{storeRankings[0].store}</p>
+                        <p className="dd-type-meta text-fair-800">Last 90 days</p>
+                      </div>
+                      <p className="mt-4 text-3xl font-black leading-none tabular-nums text-fair-700">
+                        {formatPercent(storeRankings[0].averageDiscount)}
+                      </p>
+                      <p className="mt-1 text-[12px] font-semibold text-fair-800">average saving</p>
+                      <p className="mt-3 dd-type-meta text-fair-800">
+                        {storeRankings[0].realDeals} current real {storeRankings[0].realDeals === 1 ? "deal" : "deals"}
                       </p>
                     </div>
-                    {(() => {
-                      const lowest = [...storeRankings].reverse().find((store) => store.realDeals > 0);
-                      return lowest ? (
-                        <div className="rounded-xl border border-alert-100 bg-alert-50/70 p-4">
-                          <p className="dd-type-meta dd-type-meta-strong text-alert-800">Lowest average · last 90 days</p>
-                          <p className="mt-1 dd-type-control text-alert-950">{lowest.store}</p>
-                          <p className="mt-1 text-lg font-black tabular-nums text-alert-700">
-                            {formatPercent(lowest.averageDiscount)} avg saving
-                          </p>
+                    {lowestValueRanking && (
+                      <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-stone-500">Lowest average</p>
+                        <div className="mt-3 flex flex-col gap-1">
+                          <p className="text-lg font-semibold leading-tight text-stone-800">{lowestValueRanking.store}</p>
+                          <p className="dd-type-meta text-stone-500">Last 90 days</p>
                         </div>
-                      ) : null;
-                    })()}
+                        <p className="mt-4 text-3xl font-bold leading-none tabular-nums text-stone-700">
+                          {formatPercent(lowestValueRanking.averageDiscount)}
+                        </p>
+                        <p className="mt-1 text-[12px] font-semibold text-stone-500">average saving</p>
+                        <p className="mt-3 dd-type-meta text-stone-500">
+                          {lowestValueRanking.realDeals} current real {lowestValueRanking.realDeals === 1 ? "deal" : "deals"}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col divide-y divide-stone-100">
@@ -560,6 +600,86 @@ export default function MePage() {
                 <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
                   Rankings will appear when current Real Saver deals are available.
                 </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsPriceChangeOpen((open) => !open)}
+                aria-expanded={isPriceChangeOpen}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block dd-type-section text-stone-900">Price change frequency</span>
+                  <span className="mt-1 block dd-type-secondary text-stone-500">
+                    Which supermarkets change prices most often?
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isPriceChangeOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {isPriceChangeOpen && (
+                <div className="flex flex-col gap-4">
+                  <p className="dd-type-secondary text-stone-500">
+                    Average recorded price changes per current item, based on the last 90 days of catalogue history.
+                  </p>
+
+                  {loadingProducts ? (
+                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating price history&hellip;</p>
+                  ) : priceChangeRankings[0]?.itemsTracked ? (
+                    <>
+                      <div className="rounded-2xl border border-ink-100 bg-ink-50/60 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most frequent changes</p>
+                        <div className="mt-3 flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-bold leading-tight text-stone-900">{priceChangeRankings[0].store}</p>
+                            <p className="mt-1 dd-type-meta text-stone-500">
+                              {priceChangeRankings[0].itemsTracked} items with 90-day history
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-black leading-none tabular-nums text-ink-700">
+                              {formatFrequency(priceChangeRankings[0].averageChanges)}
+                            </p>
+                            <p className="mt-1 text-[12px] font-semibold text-stone-500">changes per item</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-4">
+                        {priceChangeRankings.map((store) => (
+                          <div key={store.key}>
+                            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                              <p className="dd-type-control text-stone-800">{store.store}</p>
+                              <p className="dd-type-meta font-bold tabular-nums text-stone-600">
+                                {formatFrequency(store.averageChanges)} per item
+                              </p>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
+                              <div
+                                className="h-full rounded-full bg-ink-600 transition-[width]"
+                                style={{
+                                  width: `${priceChangeRankings[0].averageChanges > 0 ? Math.max(4, (store.averageChanges / priceChangeRankings[0].averageChanges) * 100) : 0}%`,
+                                }}
+                              />
+                            </div>
+                            <p className="mt-1 dd-type-meta text-stone-500">
+                              {store.totalChanges} recorded changes across {store.itemsTracked} {store.itemsTracked === 1 ? "item" : "items"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
+                      Price-change rankings will appear as the catalogue builds its 90-day history.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -595,6 +715,10 @@ export default function MePage() {
 
 function formatPercent(value: number): string {
   return `${Math.round(value)}%`;
+}
+
+function formatFrequency(value: number): string {
+  return value >= 10 ? value.toFixed(0) : value.toFixed(1);
 }
 
 function formatCurrency(value: number): string {
