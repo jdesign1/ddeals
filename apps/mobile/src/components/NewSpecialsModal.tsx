@@ -26,6 +26,9 @@ interface NewSpecialsModalProps {
 }
 
 export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter }: NewSpecialsModalProps) {
+  const hasNewSpecials = summary.total > 0;
+  const hasRatedSpecials = summary.realDeals > 0 || summary.dodgyDeals > 0;
+
   return (
     <BottomSheetPortal open={open}>
       <AnimatePresence>
@@ -75,35 +78,61 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
 
               <div className="text-center">
                 <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
-                  We&rsquo;ve spotted some new specials
+                  {!hasNewSpecials
+                    ? "You’re all caught up"
+                    : hasRatedSpecials
+                      ? "We&rsquo;ve spotted some new specials"
+                      : "Fresh specials are here"}
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-stone-600">
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.woolworths}</strong>{" "}at Woolworths,{" "}
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.newworld}</strong>{" "}at New World,{" "}
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.paknsave}</strong>{" "}at PAK&apos;nSAVE, and{" "}
-                  <strong className="font-extrabold text-stone-900">{summary.byStore.foursquare}</strong>{" "}at Four Square.
-                </p>
-                <p className="mt-3 text-sm font-semibold text-stone-700">Start checking the deals below.</p>
+                {!hasNewSpecials ? (
+                  <p className="mt-3 text-sm leading-6 text-stone-600">
+                    There aren&rsquo;t any new specials to show right now. We&rsquo;ll let you know when fresh deals land.
+                  </p>
+                ) : !hasRatedSpecials ? (
+                  <p className="mt-3 text-sm leading-6 text-stone-600">
+                    We found fresh specials, but none have a confirmed Real Saver or Dodgy rating yet.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-3 text-sm leading-6 text-stone-600">
+                      <strong className="font-extrabold text-stone-900">{summary.byStore.woolworths}</strong>{" "}at Woolworths,{" "}
+                      <strong className="font-extrabold text-stone-900">{summary.byStore.newworld}</strong>{" "}at New World,{" "}
+                      <strong className="font-extrabold text-stone-900">{summary.byStore.paknsave}</strong>{" "}at PAK&apos;nSAVE, and{" "}
+                      <strong className="font-extrabold text-stone-900">{summary.byStore.foursquare}</strong>{" "}at Four Square.
+                    </p>
+                    <p className="mt-3 text-sm font-semibold text-stone-700">Start checking the deals below.</p>
+                  </>
+                )}
               </div>
 
-              <div className="mt-6 flex flex-col gap-3">
+              {hasRatedSpecials ? (
+                <div className="mt-6 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onSelectFilter("real")}
+                    className="dd-btn dd-btn-outline new-specials-real-button min-h-14 w-full cursor-pointer"
+                  >
+                    <span>{summary.realDeals} Real deals</span>
+                    <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectFilter("dodgy")}
+                    className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-14 w-full cursor-pointer"
+                  >
+                    <span>{summary.dodgyDeals} Dodgy deals</span>
+                    <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => onSelectFilter("real")}
-                  className="dd-btn dd-btn-outline new-specials-real-button min-h-14 w-full cursor-pointer"
+                  onClick={onClose}
+                  className="dd-btn dd-btn-primary mt-6 min-h-14 w-full cursor-pointer"
                 >
-                  <span>{summary.realDeals} Real deals</span>
-                  <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  Back to deals
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onSelectFilter("dodgy")}
-                  className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-14 w-full cursor-pointer"
-                >
-                  <span>{summary.dodgyDeals} Dodgy deals</span>
-                  <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-                </button>
-              </div>
+              )}
             </motion.div>
           </>
         )}
