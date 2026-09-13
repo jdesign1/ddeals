@@ -181,68 +181,73 @@ export default function MePage() {
         </div>
       )}
 
-      <LoadingMascot loading={loading} />
-      {error && <ErrorState message="Couldn't load your deal stats." detail={error} onRetry={retry} />}
-
-      {!loading && !error && stats && (
-        <div className="flex flex-col gap-4 px-5">
-          <div className="grid grid-cols-3 divide-x divide-stone-100 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-            <StatCell label="Deals checked" value={stats.totalChecked} valueClassName="text-stone-900" />
-            <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
-            <StatCell label="Dodgy deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
-          </div>
-
-          <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-            <h2 className="dd-type-section text-stone-900">Break down by supermarket</h2>
-            <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
-              <span className="col-span-6">Supermarket</span>
-              <span className="col-span-3 text-center">Real savers</span>
-              <span className="col-span-3 text-center">Dodgy deals</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {stats.storeStats.map((store) => (
-                <div key={store.store} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
-                  <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
-                  <div className="col-span-3 text-center">
-                    <span className="inline-block min-w-[32px] rounded-md bg-fair-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-fair-600">
-                      {store.real}
-                    </span>
-                  </div>
-                  <div className="col-span-3 text-center">
-                    <span className="inline-block min-w-[32px] rounded-md bg-alert-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-alert-600">
-                      {store.dodgy}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="dd-type-control text-fair-950">Estimated Savings</span>
-              <span className="dd-type-display tabular-nums text-fair-700">
-                ${stats.moneySaved.toFixed(2)}
-              </span>
-            </div>
-            <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
-              <p className="mb-1.5 dd-type-meta dd-type-meta-strong text-fair-800">How we calculate this</p>
-              <p className="dd-type-secondary text-stone-600">
-                Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
-                from. This is the sum of every real saving across everything you&rsquo;ve checked.
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/history"
-            className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 dd-type-control text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
-          >
-            <span>See all your checked deals</span>
-            <ChevronRight className="h-4 w-4 text-stone-400" aria-hidden="true" />
-          </Link>
+      <div className={`relative ${loading ? "min-h-[112px]" : ""}`}>
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <LoadingMascot loading={loading} />
         </div>
-      )}
+
+        {error && <ErrorState message="Couldn't load your deal stats." detail={error} onRetry={retry} />}
+
+        {!loading && !error && stats && (
+          <div className="flex flex-col gap-4 px-5">
+            <div className="grid grid-cols-3 divide-x divide-stone-100 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <StatCell label="Deals checked" value={stats.totalChecked} valueClassName="text-stone-900" />
+              <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
+              <StatCell label="Dodgy deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <h2 className="dd-type-section text-stone-900">Break down by supermarket</h2>
+              <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
+                <span className="col-span-6">Supermarket</span>
+                <span className="col-span-3 text-center">Real savers</span>
+                <span className="col-span-3 text-center">Dodgy deals</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {stats.storeStats.map((store) => (
+                  <div key={store.store} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
+                    <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
+                    <div className="col-span-3 text-center">
+                      <span className="inline-block min-w-[32px] rounded-md bg-fair-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-fair-600">
+                        {store.real}
+                      </span>
+                    </div>
+                    <div className="col-span-3 text-center">
+                      <span className="inline-block min-w-[32px] rounded-md bg-alert-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-alert-600">
+                        {store.dodgy}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="dd-type-control text-fair-950">Estimated Savings</span>
+                <span className="dd-type-display tabular-nums text-fair-700">
+                  ${stats.moneySaved.toFixed(2)}
+                </span>
+              </div>
+              <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
+                <p className="mb-1.5 dd-type-meta dd-type-meta-strong text-fair-800">How we calculate this</p>
+                <p className="dd-type-secondary text-stone-600">
+                  Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
+                  from. This is the sum of every real saving across everything you&rsquo;ve checked.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/history"
+              className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 dd-type-control text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
+            >
+              <span>See all your checked deals</span>
+              <ChevronRight className="h-4 w-4 text-stone-400" aria-hidden="true" />
+            </Link>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
