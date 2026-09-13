@@ -29,6 +29,8 @@ import LoadingMascot from "@/components/LoadingMascot";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import ShareListsSheet from "@/components/ShareListsSheet";
 
+const LIST_EXPANSION_STORAGE_KEY = "dodgy-deal:list-expansion:v1";
+
 /**
  * S1 — My Lists, per project.md's Stitch screen inventory. First real
  * (auth-gated, persisted) screen built on top of the 2026-08-08
@@ -174,9 +176,9 @@ import ShareListsSheet from "@/components/ShareListsSheet";
  *    `CurrentDeal` data existed per item to link to.
  *
  * Items expanded by default, 2026-08-20 (cont., Jay: "The lists should be
- * expanded by default") -- `ListCard`'s `isExpanded` now starts `true`
- * instead of `false`; still fully toggleable per-card, just a different
- * initial value.
+ * expanded by default") -- a list with no saved preference still starts
+ * expanded. Since 2026-09-13, each list's choice is persisted by list ID so
+ * returning to this page restores the user's last expanded/collapsed state.
  *
  * Remove confirmation, 2026-08-20 (cont., Jay: "When selecting an X on a
  * product on a list, there should be a remove confirmation") -- an item's
@@ -239,10 +241,68 @@ export default function ListsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
   const [newlyCreatedListId, setNewlyCreatedListId] = useState<string | null>(null);
-  const [expandAll, setExpandAll] = useState(true);
+  const [expandedListsById, setExpandedListsById] = useState<Record<string, boolean>>({});
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const listExpansionStorageKey = user ? `${LIST_EXPANSION_STORAGE_KEY}:${user.id}` : null;
+
+  // List expansion is a UI preference, not part of the list data. Keep it in
+  // local storage per user so switching routes (which remounts this page)
+  // does not reset every card, while a different account never inherits the
+  // previous account's choices.
+  useEffect(() => {
+    if (!listExpansionStorageKey) {
+      setExpandedListsById({});
+      return;
+    }
+    try {
+      const saved = window.localStorage.getItem(listExpansionStorageKey);
+      const parsed: unknown = saved ? JSON.parse(saved) : {};
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        setExpandedListsById({});
+        return;
+      }
+      const validEntries = Object.entries(parsed).filter(([, value]) => typeof value === "boolean");
+      setExpandedListsById(Object.fromEntries(validEntries));
+    } catch {
+      setExpandedListsById({});
+    }
+  }, [listExpansionStorageKey]);
+
+  const setListExpanded = useCallback(
+    (listId: string, expanded: boolean) => {
+      setExpandedListsById((current) => {
+        const next = { ...current, [listId]: expanded };
+        if (listExpansionStorageKey) {
+          try {
+            window.localStorage.setItem(listExpansionStorageKey, JSON.stringify(next));
+          } catch {
+            // Storage can be unavailable in private browsing; in-memory state still works for this visit.
+          }
+        }
+        return next;
+      });
+    },
+    [listExpansionStorageKey]
+  );
+
+  const allListsExpanded = lists.length > 0 && lists.every((list) => expandedListsById[list.id] ?? true);
+  const toggleAllLists = useCallback(() => {
+    const expanded = !allListsExpanded;
+    setExpandedListsById((current) => {
+      const next = { ...current };
+      for (const list of lists) next[list.id] = expanded;
+      if (listExpansionStorageKey) {
+        try {
+          window.localStorage.setItem(listExpansionStorageKey, JSON.stringify(next));
+        } catch {
+          // Storage can be unavailable in private browsing; in-memory state still works for this visit.
+        }
+      }
+      return next;
+    });
+  }, [allListsExpanded, listExpansionStorageKey, lists]);
 
   // The actual composite fetch (fetch this user's lists, their items, price
   // lookups, product meta, and build item cards) moved out of this page
@@ -466,13 +526,11 @@ export default function ListsPage() {
       <div className="flex items-center justify-between gap-2 px-5">
         <button
           type="button"
-          onClick={() => {
-            setExpandAll((expanded) => !expanded);
-          }}
+          onClick={toggleAllLists}
           disabled={loadingLists || lists.length === 0}
           className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {expandAll ? "Collapse all" : "Expand all"}
+          {allListsExpanded ? "Collapse all" : "Expand all"}
         </button>
         <div className="flex items-center gap-2">
           <button
@@ -572,7 +630,8 @@ export default function ListsPage() {
                 onRename={(name) => handleRename(list.id, name)}
                 onRemoveItem={(productId) => handleRemoveItem(list.id, productId)}
                 onRefresh={reload}
-                expandAll={expandAll}
+                isExpanded={expandedListsById[list.id] ?? true}
+                onExpandedChange={(expanded) => setListExpanded(list.id, expanded)}
                 pricesLoading={loadingLists}
                 isDeleting={deletingListId === list.id}
                 isNew={newlyCreatedListId === list.id}
@@ -777,7 +836,8 @@ function ListCard({
   onRename,
   onRemoveItem,
   onRefresh,
-  expandAll,
+  isExpanded,
+  onExpandedChange,
   pricesLoading,
   isDeleting,
   isNew,
@@ -792,7 +852,8 @@ function ListCard({
   onRename: (name: string) => Promise<void>;
   onRemoveItem: (productId: string) => void;
   onRefresh: (options?: { showLoading?: boolean }) => void;
-  expandAll: boolean;
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   pricesLoading: boolean;
   isDeleting: boolean;
   isNew: boolean;
@@ -829,23 +890,6 @@ function ListCard({
   // edit mode (see `startEditing` below) -- editing a list without seeing
   // what's actually in it first would be a regression, not an
   // improvement, so that one path from the old combined behavior is kept.
-  // Defaults to `true` (2026-08-20 (cont.), per Jay: "The lists should be
-  // expanded by default") -- was `false` (collapsed on first render, every
-  // card required an explicit tap to reveal its own items). Still fully
-  // toggleable per-card same as before; this only changes the initial
-  // value each `ListCard` instance's own `useState` starts at, not
-  // anything about how the toggle itself behaves.
-  const [isExpanded, setIsExpanded] = useState(expandAll);
-
-  // Keep each card mounted when the page-level control changes. Remounting
-  // here would make React insert/remove the item list instantly, bypassing
-  // the AnimatePresence height transition below. A frame-delayed sync gives
-  // the current render a stable starting height, then lets every card animate
-  // its own expansion or collapse on the same frame.
-  useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => setIsExpanded(expandAll));
-    return () => window.cancelAnimationFrame(frameId);
-  }, [expandAll]);
   const itemCount = items.length;
   const liveItems = items.filter((item) => itemCards.get(item.product_id)?.currentDeals[0]?.isOnSpecial === true);
   const notOnSpecialItems = items.filter((item) => !liveItems.includes(item));
@@ -1008,7 +1052,7 @@ function ListCard({
                     // without also seeing the list's own items would be a
                     // regression from the old combined pencil-does-both
                     // behavior, not an improvement.
-                    setIsExpanded(true);
+                    onExpandedChange(true);
                   }}
                   aria-label={`Edit ${list.name}`}
                   className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
@@ -1034,7 +1078,7 @@ function ListCard({
                   the far right. */}
               <button
                 type="button"
-                onClick={() => setIsExpanded((e) => !e)}
+                onClick={() => onExpandedChange(!isExpanded)}
                 aria-expanded={isExpanded}
                 aria-label={`${isExpanded ? "Hide" : "Show"} items in ${list.name}`}
                 className="flex w-full min-w-0 items-center gap-2 text-left text-sm text-stone-600 transition-colors hover:text-stone-900"

@@ -508,47 +508,52 @@ export default function MePage() {
 
               {isMonthlyPulseOpen && (
                 <div className="flex flex-col gap-4">
-              {monthlySpotlight && monthlySpotlight.real > 0 && (
-                <div className="rounded-xl border border-fair-100 bg-fair-50/70 p-4">
-                  <p className="dd-type-meta dd-type-meta-strong text-fair-800">Your real-saver spotlight</p>
-                  <div className="mt-1 flex items-end justify-between gap-3">
-                    <p className="dd-type-control text-fair-950">{monthlySpotlight.store}</p>
-                    <p className="text-right text-sm font-bold text-fair-700">
-                      {monthlySpotlight.real} real {monthlySpotlight.real === 1 ? "saver" : "savers"}
-                    </p>
-                  </div>
-                  <p className="mt-1 dd-type-secondary text-fair-800">
-                    The supermarket with the most current real-saver deals in this period.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                {monthlyStats.map((month) => (
-                  <div key={month.key} className="rounded-xl border border-stone-100 bg-stone-50/70 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <p className="dd-type-control text-stone-800">{month.label}</p>
-                      <p className="dd-type-meta text-stone-500">
-                        {month.stores.reduce((sum, store) => sum + store.real + store.dodgy, 0)} deals
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 border-b border-stone-200 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
-                      <span>Supermarket</span>
-                      <span className="text-center text-fair-700">Real</span>
-                      <span className="text-center text-alert-700">Dodgy</span>
-                    </div>
-                    <div className="divide-y divide-stone-100">
-                      {month.stores.map((store) => (
-                        <div key={store.key} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 py-2 last:pb-0">
-                          <span className="truncate dd-type-secondary dd-type-secondary-strong text-stone-700">{store.store}</span>
-                          <span className="text-center text-base font-black tabular-nums text-fair-700">{store.real}</span>
-                          <span className="text-center text-base font-black tabular-nums text-alert-700">{store.dodgy}</span>
+                  {monthlySpotlight && monthlySpotlight.real > 0 && (
+                    <div className="rounded-2xl border border-fair-100 bg-fair-50 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Real-saver spotlight</p>
+                          <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-fair-950">{monthlySpotlight.store}</p>
+                          <p className="mt-1 dd-type-secondary text-fair-800">Most current Real Saver deals in the last 90 days</p>
                         </div>
-                      ))}
+                        <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
+                          <span className="text-2xl font-black leading-none tabular-nums text-fair-700">{monthlySpotlight.real}</span>
+                          <span className="mt-1 text-[11px] font-bold leading-tight text-fair-800">real saver deals</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-fair-100 pt-3">
+                        <span className="dd-type-meta text-fair-800">Dodgy deals in period</span>
+                        <span className="text-sm font-bold tabular-nums text-alert-700">{monthlySpotlight.dodgy}</span>
+                      </div>
                     </div>
+                  )}
+
+                  <div className="flex flex-col gap-3">
+                    {monthlyStats.map((month) => (
+                      <div key={month.key} className="rounded-xl border border-stone-100 bg-stone-50/70 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <p className="dd-type-control text-stone-800">{month.label}</p>
+                          <p className="dd-type-meta text-stone-500">
+                            {month.stores.reduce((sum, store) => sum + store.real + store.dodgy, 0)} deals
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 border-b border-stone-200 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
+                          <span>Supermarket</span>
+                          <span className="text-center text-fair-700">Real</span>
+                          <span className="text-center text-alert-700">Dodgy</span>
+                        </div>
+                        <div className="divide-y divide-stone-100">
+                          {month.stores.map((store) => (
+                            <div key={store.key} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 py-2 last:pb-0">
+                              <span className="truncate dd-type-secondary dd-type-secondary-strong text-stone-700">{store.store}</span>
+                              <span className="text-center text-base font-black tabular-nums text-fair-700">{store.real}</span>
+                              <span className="text-center text-base font-black tabular-nums text-alert-700">{store.dodgy}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
                 </div>
               )}
             </div>
@@ -669,20 +674,24 @@ export default function MePage() {
                   ) : priceChangeRankings[0]?.itemsTracked ? (
                     <>
                       <div className="rounded-2xl border border-ink-100 bg-ink-50/60 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most frequent changes</p>
-                        <div className="mt-3 flex items-end justify-between gap-3">
-                          <div>
-                            <p className="text-lg font-bold leading-tight text-stone-900">{priceChangeRankings[0].store}</p>
-                            <p className="mt-1 dd-type-meta text-stone-500">
-                              {priceChangeRankings[0].itemsTracked} items with 90-day history
-                            </p>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most frequent changes</p>
+                            <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-stone-900">{priceChangeRankings[0].store}</p>
+                            <p className="mt-1 dd-type-secondary text-stone-500">Highest average in the last 90 days</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-3xl font-black leading-none tabular-nums text-ink-700">
+                          <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
+                            <span className="text-2xl font-black leading-none tabular-nums text-ink-700">
                               {formatFrequency(priceChangeRankings[0].averageChanges)}
-                            </p>
-                            <p className="mt-1 text-[12px] font-semibold text-stone-500">changes per item</p>
+                            </span>
+                            <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">changes / item</span>
                           </div>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-3 border-t border-ink-100 pt-3">
+                          <span className="dd-type-meta text-stone-500">Catalogue history coverage</span>
+                          <span className="text-sm font-bold tabular-nums text-stone-700">
+                            {priceChangeRankings[0].itemsTracked} {priceChangeRankings[0].itemsTracked === 1 ? "item" : "items"}
+                          </span>
                         </div>
                       </div>
 
