@@ -151,16 +151,18 @@ export default function SettingsPage() {
 
         <div className="mt-4 flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
           <div>
-            <p className="text-[15px] font-semibold leading-5 text-stone-900">Dark mode</p>
+            <p className="text-[15px] font-semibold leading-5 text-stone-900">
+              {isDarkMode ? "Dark mode" : "Light mode"}
+            </p>
             <p className="mt-1 text-[13px] leading-5 text-stone-500">
-              {isDarkMode ? "A darker appearance for low light" : "Warm paper appearance"}
+              {isDarkMode ? "A darker appearance for low light" : "A lighter appearance for daytime"}
             </p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={isDarkMode}
-            aria-label="Dark mode"
+            aria-label={isDarkMode ? "Dark mode" : "Light mode"}
             onClick={() => setTheme(isDarkMode ? "light" : "dark")}
             className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
               isDarkMode ? "bg-ink-600" : "bg-stone-300"
