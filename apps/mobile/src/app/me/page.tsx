@@ -243,8 +243,11 @@ export default function MePage() {
   const [history, setHistory] = useState<DealCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(true);
   const [isMonthlyPulseOpen, setIsMonthlyPulseOpen] = useState(false);
+  const [isValueRankingOpen, setIsValueRankingOpen] = useState(true);
   const [isPriceChangeOpen, setIsPriceChangeOpen] = useState(false);
+  const [isSavingsOpen, setIsSavingsOpen] = useState(true);
   // Same plain-counter retry pattern established across this app on
   // 2026-08-11 (search-context.tsx/specials/page.tsx/lists/page.tsx) —
   // lets ErrorState's Try Again button re-run the fetch below.
@@ -426,44 +429,62 @@ export default function MePage() {
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <h2 className="dd-type-section text-stone-900">Breakdown by supermarket</h2>
-              <p className="dd-type-secondary text-stone-500">
-                Live Real Saver and Dodgy deals in the app. Tap a number to browse them.
-              </p>
-              <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
-                <span className="col-span-6">Supermarket</span>
-                <span className="col-span-3 text-center">Real savers</span>
-                <span className="col-span-3 text-center">Dodgy deals</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {currentStoreStats.map((store) => (
-                  <div key={store.key} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
-                    <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
-                    <div className="col-span-3 text-center">
-                      <Link
-                        href="/"
-                        onClick={() => openFilteredDeals(store.key, "real")}
-                        aria-label={`View ${store.real} real saver deals at ${store.store}`}
-                        className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-fair-50 px-2 py-1 text-base font-black tabular-nums text-fair-700 transition-colors hover:bg-fair-100"
-                      >
-                        {loadingProducts ? "…" : store.real}
-                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </Link>
-                    </div>
-                    <div className="col-span-3 text-center">
-                      <Link
-                        href="/"
-                        onClick={() => openFilteredDeals(store.key, "dodgy")}
-                        aria-label={`View ${store.dodgy} dodgy deals at ${store.store}`}
-                        className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-alert-50 px-2 py-1 text-base font-black tabular-nums text-alert-700 transition-colors hover:bg-alert-100"
-                      >
-                        {loadingProducts ? "…" : store.dodgy}
-                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </Link>
-                    </div>
+              <button
+                type="button"
+                onClick={() => setIsBreakdownOpen((open) => !open)}
+                aria-expanded={isBreakdownOpen}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block dd-type-section text-stone-900">Breakdown by supermarket</span>
+                  <span className="mt-1 block dd-type-secondary text-stone-500">
+                    Live Real Saver and Dodgy deals in the app. Tap a number to browse them.
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isBreakdownOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {isBreakdownOpen && (
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
+                    <span className="col-span-6">Supermarket</span>
+                    <span className="col-span-3 text-center">Real savers</span>
+                    <span className="col-span-3 text-center">Dodgy deals</span>
                   </div>
-                ))}
-              </div>
+                  <div className="flex flex-col gap-2">
+                    {currentStoreStats.map((store) => (
+                      <div key={store.key} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
+                        <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
+                        <div className="col-span-3 text-center">
+                          <Link
+                            href="/"
+                            onClick={() => openFilteredDeals(store.key, "real")}
+                            aria-label={`View ${store.real} real saver deals at ${store.store}`}
+                            className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-fair-50 px-2 py-1 text-base font-black tabular-nums text-fair-700 transition-colors hover:bg-fair-100"
+                          >
+                            {loadingProducts ? "…" : store.real}
+                            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Link>
+                        </div>
+                        <div className="col-span-3 text-center">
+                          <Link
+                            href="/"
+                            onClick={() => openFilteredDeals(store.key, "dodgy")}
+                            aria-label={`View ${store.dodgy} dodgy deals at ${store.store}`}
+                            className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-alert-50 px-2 py-1 text-base font-black tabular-nums text-alert-700 transition-colors hover:bg-alert-100"
+                          >
+                            {loadingProducts ? "…" : store.dodgy}
+                            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
@@ -533,17 +554,30 @@ export default function MePage() {
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <div>
-                <h2 className="dd-type-section text-stone-900">Supermarket value ranking</h2>
-                <p className="mt-1 dd-type-secondary text-stone-500">
-                  Ranked by average percentage saved across current Real Saver deals from the last 90 days, so expensive products do not skew the result.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsValueRankingOpen((open) => !open)}
+                aria-expanded={isValueRankingOpen}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block dd-type-section text-stone-900">Supermarket value ranking</span>
+                  <span className="mt-1 block dd-type-secondary text-stone-500">
+                    Average percentage saved across current Real Saver deals from the last 90 days.
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isValueRankingOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
 
-              {loadingProducts ? (
-                <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating current rankings&hellip;</p>
-              ) : storeRankings[0]?.realDeals ? (
-                <>
+              {isValueRankingOpen && (
+                <div className="flex flex-col gap-4">
+                  {loadingProducts ? (
+                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating current rankings&hellip;</p>
+                  ) : storeRankings[0]?.realDeals ? (
+                    <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-2xl border border-fair-200 bg-fair-50 p-4">
                       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Best value</p>
@@ -595,11 +629,13 @@ export default function MePage() {
                       </div>
                     ))}
                   </div>
-                </>
-              ) : (
-                <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                  Rankings will appear when current Real Saver deals are available.
-                </p>
+                    </>
+                  ) : (
+                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
+                      Rankings will appear when current Real Saver deals are available.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -684,19 +720,33 @@ export default function MePage() {
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="dd-type-control text-fair-950">Estimated Savings</span>
-                <span className="dd-type-display tabular-nums text-fair-700">
-                  ${stats.moneySaved.toFixed(2)}
+              <button
+                type="button"
+                onClick={() => setIsSavingsOpen((open) => !open)}
+                aria-expanded={isSavingsOpen}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block dd-type-section text-fair-950">Estimated savings</span>
+                  <span className="mt-1 block dd-type-secondary text-fair-800">Total savings from your checked deals.</span>
                 </span>
-              </div>
-              <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
-                <p className="mb-1.5 dd-type-meta dd-type-meta-strong text-fair-800">How we calculate this</p>
-                <p className="dd-type-secondary text-stone-600">
-                  Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
-                  from. This is the sum of every real saving across everything you&rsquo;ve checked.
-                </p>
-              </div>
+                <span className="flex items-center gap-2">
+                  <span className="dd-type-display tabular-nums text-fair-700">${stats.moneySaved.toFixed(2)}</span>
+                  <ChevronDown
+                    className={`h-5 w-5 flex-shrink-0 text-fair-700 transition-transform ${isSavingsOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </span>
+              </button>
+              {isSavingsOpen && (
+                <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
+                  <p className="mb-1.5 dd-type-meta dd-type-meta-strong text-fair-800">How we calculate this</p>
+                  <p className="dd-type-secondary text-stone-600">
+                    Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
+                    from. This is the sum of every real saving across everything you&rsquo;ve checked.
+                  </p>
+                </div>
+              )}
             </div>
 
             <Link
