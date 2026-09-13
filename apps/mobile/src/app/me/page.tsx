@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   fetchDealCheckHistory,
   computeDealStats,
@@ -26,7 +26,8 @@ const STATS_STORES = Object.entries(STORE_DISPLAY_FALLBACK)
   .filter(([key]) => key !== "supervalue")
   .map(([key, label]) => ({ key, label }));
 
-const MONTH_COUNT = 6;
+const MONTH_COUNT = 3;
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
 interface CurrentStoreStats {
   key: string;
@@ -54,10 +55,25 @@ interface StoreRanking {
   totalSavings: number;
 }
 
-function bestCurrentDeal(product: ProductCard, storeKey: string, filter: DealFilter): CurrentDeal | undefined {
+function dealTimestamp(deal: CurrentDeal): number {
+  const saleStartedAt = Date.parse(deal.saleStartedAt ?? "");
+  if (Number.isFinite(saleStartedAt)) return saleStartedAt;
+  const scrapedAt = Date.parse(deal.scrapedAt ?? "");
+  return Number.isFinite(scrapedAt) ? scrapedAt : -Infinity;
+}
+
+function bestCurrentDeal(
+  product: ProductCard,
+  storeKey: string,
+  filter: DealFilter,
+  sinceTimestamp?: number
+): CurrentDeal | undefined {
   return product.currentDeals
     .filter(
-      (deal) => matchesAnySelectedStore(deal.store, [storeKey]) && matchesDealFilter(deal, filter)
+      (deal) =>
+        matchesAnySelectedStore(deal.store, [storeKey]) &&
+        matchesDealFilter(deal, filter) &&
+        (sinceTimestamp === undefined || dealTimestamp(deal) >= sinceTimestamp)
     )
     .reduce<CurrentDeal | undefined>((best, deal) => (!best || deal.price < best.price ? deal : best), undefined);
 }
@@ -77,9 +93,10 @@ function buildCurrentStoreStats(products: ProductCard[]): CurrentStoreStats[] {
 }
 
 function buildStoreRankings(products: ProductCard[]): StoreRanking[] {
+  const sinceTimestamp = Date.now() - NINETY_DAYS_MS;
   return STATS_STORES.map(({ key, label }) => {
     const deals = products
-      .map((product) => bestCurrentDeal(product, key, "real"))
+      .map((product) => bestCurrentDeal(product, key, "real", sinceTimestamp))
       .filter((deal): deal is CurrentDeal => Boolean(deal));
     const discounts = deals.filter((deal) => Number.isFinite(deal.discountPercentage));
     const averageDiscount = discounts.length
@@ -113,9 +130,10 @@ function recentMonthKeys(): { key: string; label: string }[] {
   });
 }
 
-function buildMonthlyStats(history: DealCheckRow[]): MonthlyStats[] {
+function buildMonthlyStats(products: ProductCard[]): MonthlyStats[] {
   const months = recentMonthKeys();
   const byMonth = new Map<string, MonthlyStoreStats[]>();
+  const sinceTimestamp = Date.now() - NINETY_DAYS_MS;
 
   for (const month of months) {
     byMonth.set(
@@ -131,14 +149,19 @@ function buildMonthlyStats(history: DealCheckRow[]): MonthlyStats[] {
     );
   }
 
-  for (const row of history) {
-    const date = new Date(row.checked_at);
-    if (Number.isNaN(date.getTime())) continue;
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    const store = byMonth.get(monthKey)?.find((item) => matchesAnySelectedStore(row.store, [item.key]));
-    if (!store) continue;
-    if (row.deal_type === "Dodgy Deal") store.dodgyProductIds.add(row.product_id);
-    if (row.deal_type === "Real Deal" || row.deal_type === "Fair Price") store.realProductIds.add(row.product_id);
+  for (const product of products) {
+    for (const deal of product.currentDeals) {
+      if (!deal.isOnSpecial) continue;
+      const timestamp = dealTimestamp(deal);
+      if (timestamp < sinceTimestamp) continue;
+      const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) continue;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const store = byMonth.get(monthKey)?.find((item) => matchesAnySelectedStore(deal.store, [item.key]));
+      if (!store) continue;
+      if (matchesDealFilter(deal, "dodgy")) store.dodgyProductIds.add(product.id);
+      if (matchesDealFilter(deal, "real")) store.realProductIds.add(product.id);
+    }
   }
 
   return months.map((month) => ({
@@ -183,7 +206,7 @@ function buildMonthlyStats(history: DealCheckRow[]): MonthlyStats[] {
  * have the title in the top nav bar" -- `AppHeader.tsx` already shows
  * "Deal stats" for this route via `ROUTE_TITLES`, so a same-page "Me"
  * label (already stale next to that title anyway) was a plain duplicate.
- * The hero `<h1>` further down ("This is how Dodgy Deal works for you")
+ * The hero `<h1>` further down ("How Dodgy Deal works for you")
  * is deliberately kept -- it's a distinct tagline, not a restated page
  * name, so it isn't the kind of duplicate this request was about.
  */
@@ -194,6 +217,7 @@ export default function MePage() {
   const [history, setHistory] = useState<DealCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMonthlyPulseOpen, setIsMonthlyPulseOpen] = useState(false);
   // Same plain-counter retry pattern established across this app on
   // 2026-08-11 (search-context.tsx/specials/page.tsx/lists/page.tsx) —
   // lets ErrorState's Try Again button re-run the fetch below.
@@ -227,7 +251,7 @@ export default function MePage() {
   }, [user, retryTick]);
 
   const currentStoreStats = useMemo(() => buildCurrentStoreStats(products), [products]);
-  const monthlyStats = useMemo(() => buildMonthlyStats(history), [history]);
+  const monthlyStats = useMemo(() => buildMonthlyStats(products), [products]);
   const storeRankings = useMemo(() => buildStoreRankings(products), [products]);
   const monthlySpotlight = useMemo(() => {
     return STATS_STORES.map(({ key, label }) => {
@@ -327,7 +351,7 @@ export default function MePage() {
           className="animate-deal-stats-mascot mx-auto mb-2 h-auto w-36 sm:w-40"
         />
         <h1 className="dd-type-section text-stone-900">
-          This is how Dodgy Deal works for you
+          How Dodgy Deal works for you
         </h1>
       </header>
 
@@ -414,13 +438,26 @@ export default function MePage() {
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <div>
-                <h2 className="dd-type-section text-stone-900">Monthly deal pulse</h2>
-                <p className="mt-1 dd-type-secondary text-stone-500">
-                  Your checked Real Savers and Dodgy deals over the last six months.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsMonthlyPulseOpen((open) => !open)}
+                aria-expanded={isMonthlyPulseOpen}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block dd-type-section text-stone-900">Monthly deal pulse</span>
+                  <span className="mt-1 block dd-type-secondary text-stone-500">
+                    Current deals grouped by sale start over the last 90 days.
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isMonthlyPulseOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
 
+              {isMonthlyPulseOpen && (
+                <div className="flex flex-col gap-4">
               {monthlySpotlight && monthlySpotlight.real > 0 && (
                 <div className="rounded-xl border border-fair-100 bg-fair-50/70 p-4">
                   <p className="dd-type-meta dd-type-meta-strong text-fair-800">Your real-saver spotlight</p>
@@ -431,7 +468,7 @@ export default function MePage() {
                     </p>
                   </div>
                   <p className="mt-1 dd-type-secondary text-fair-800">
-                    The supermarket with the most real-saver deals you&rsquo;ve checked in this period.
+                    The supermarket with the most current real-saver deals in this period.
                   </p>
                 </div>
               )}
@@ -462,13 +499,15 @@ export default function MePage() {
                   </div>
                 ))}
               </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
               <div>
                 <h2 className="dd-type-section text-stone-900">Supermarket value ranking</h2>
                 <p className="mt-1 dd-type-secondary text-stone-500">
-                  Ranked by average percentage saved across current Real Saver deals, so expensive products do not skew the result.
+                  Ranked by average percentage saved across current Real Saver deals from the last 90 days, so expensive products do not skew the result.
                 </p>
               </div>
 
@@ -478,7 +517,7 @@ export default function MePage() {
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl border border-fair-100 bg-fair-50/70 p-4">
-                      <p className="dd-type-meta dd-type-meta-strong text-fair-800">Best current value</p>
+                      <p className="dd-type-meta dd-type-meta-strong text-fair-800">Best value · last 90 days</p>
                       <p className="mt-1 dd-type-control text-fair-950">{storeRankings[0].store}</p>
                       <p className="mt-1 text-lg font-black tabular-nums text-fair-700">
                         {formatPercent(storeRankings[0].averageDiscount)} avg saving
@@ -488,7 +527,7 @@ export default function MePage() {
                       const lowest = [...storeRankings].reverse().find((store) => store.realDeals > 0);
                       return lowest ? (
                         <div className="rounded-xl border border-alert-100 bg-alert-50/70 p-4">
-                          <p className="dd-type-meta dd-type-meta-strong text-alert-800">Lowest average</p>
+                          <p className="dd-type-meta dd-type-meta-strong text-alert-800">Lowest average · last 90 days</p>
                           <p className="mt-1 dd-type-control text-alert-950">{lowest.store}</p>
                           <p className="mt-1 text-lg font-black tabular-nums text-alert-700">
                             {formatPercent(lowest.averageDiscount)} avg saving
