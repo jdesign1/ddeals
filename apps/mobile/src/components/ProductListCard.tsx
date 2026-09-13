@@ -164,16 +164,16 @@ export default function ProductListCard({
           text sits underneath it. */}
       <div
         className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden bg-stone-50 ${
-          isGridLayout ? "aspect-[5/2.75] w-full p-3" : "h-[96px] w-36 p-2.5"
+          isGridLayout ? "aspect-[5/2.75] w-full p-3" : "min-h-[112px] w-36 self-stretch p-2.5"
         }`}
       >
-        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isGridLayout ? "h-full w-full" : "h-[76px] w-[76px]"}`}>
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl">
           <ProductImage
             src={product.image}
             alt={product.name}
             width={112}
             height={112}
-            sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "96px"}
+            sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "144px"}
             loading="lazy"
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
           />
