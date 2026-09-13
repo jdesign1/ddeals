@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePageHeader } from "@/lib/header-context";
-import { BalanceFilledIcon, WarningFilledIcon, WorkspacePremiumFilledIcon } from "@/components/icons/MaterialSymbols";
 
 /**
  * "How Dodgy Deal works" -- ported from Prototype/index.html's
@@ -103,8 +102,6 @@ export default function HowItWorksPage() {
         <h2 className="dd-type-section text-center text-stone-900">Our deal rating system</h2>
         <div className="flex flex-col gap-3">
           <RatingCard
-            icon={<WarningFilledIcon className="text-[28px]" />}
-            iconBg="text-alert-600"
             label="Dodgy Deal"
             labelClassName="text-alert-700"
             tag="Dodgy"
@@ -112,8 +109,6 @@ export default function HowItWorksPage() {
             description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
           />
           <RatingCard
-            icon={<BalanceFilledIcon className="text-[28px]" />}
-            iconBg="text-dodgy-500"
             label="Fair Deal"
             labelClassName="text-dodgy-700"
             tag="Fair"
@@ -121,8 +116,6 @@ export default function HowItWorksPage() {
             description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
           />
           <RatingCard
-            icon={<WorkspacePremiumFilledIcon className="text-[28px]" />}
-            iconBg="text-fair-600"
             label="Real Saver"
             labelClassName="text-fair-700"
             tag="Real"
@@ -154,16 +147,12 @@ export default function HowItWorksPage() {
 }
 
 function RatingCard({
-  icon,
-  iconBg,
   label,
   labelClassName,
   tag,
   tagClassName,
   description,
 }: {
-  icon: ReactNode;
-  iconBg: string;
   label: string;
   labelClassName: string;
   tag: string;
@@ -171,8 +160,7 @@ function RatingCard({
   description: string;
 }) {
   return (
-    <div className="flex gap-4 rounded-2xl bg-white p-4.5 shadow-sm">
-      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center ${iconBg}`}>{icon}</div>
+    <div className="rounded-2xl bg-white p-4.5 shadow-sm">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className={`dd-type-control ${labelClassName}`}>{label}</span>
