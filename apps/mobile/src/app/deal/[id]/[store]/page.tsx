@@ -274,7 +274,6 @@ export default function DealAssessmentPage() {
     },
     [historyRouteKey]
   );
-  const selectedHistoryStore = historySelection.routeKey === historyRouteKey ? historySelection.store : null;
   const historyStoreDeals = useMemo(() => {
     if (!product) return [];
     const seen = new Set<string>();
@@ -287,6 +286,16 @@ export default function DealAssessmentPage() {
       return true;
     });
   }, [product]);
+  // Multi-supermarket products should open with the comparison graph visible
+  // across every available supermarket. A user's explicit selection still
+  // wins after the route has been initialised; single-supermarket products
+  // keep the existing single-store presentation.
+  const selectedHistoryStore =
+    historySelection.routeKey === historyRouteKey
+      ? historySelection.store
+      : historyStoreDeals.length > 1
+        ? ALL_STORES_VALUE
+        : null;
   const historyDeal = useMemo(
     () =>
       selectedHistoryStore === ALL_STORES_VALUE
