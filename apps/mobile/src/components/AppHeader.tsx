@@ -342,7 +342,7 @@ export default function AppHeader({
   // page ("remove the dodgy deal logo man from deal assessment pages top
   // nav bar"), Manage Account ("remove the mascot icon from the manage
   // account page"), and How Dodgy Deal Works ("also remove the mascot from
-  // the how dodgy deals works page"). That's now every route `override`
+  // the How Dodgy Deal works page"). That's now every route `override`
   // covers, but still gated on pathname rather than on `override` itself --
   // `override` is only set from a child page's own `useEffect` (see
   // header-context.tsx), so it's briefly null on first paint even on these

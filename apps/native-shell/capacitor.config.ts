@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Native shell for the Dodgy Deals iOS/Android apps.
+ * Native shell for the Dodgy Deal iOS/Android apps.
  *
  * Load strategy: REMOTE URL (decided 2026-08-07, see project.md). The
  * `server.url` below points the WebView at the deployed apps/mobile Next.js
@@ -33,7 +33,7 @@ try {
 
 const config: CapacitorConfig = {
   appId: "nz.dodgydeals.app",
-  appName: "Dodgy Deals",
+  appName: "Dodgy Deal",
   webDir: "www",
   // Match the WebView/loading surface to the app and native launch
   // backgrounds so the iOS safe-area region never shows a colour seam.

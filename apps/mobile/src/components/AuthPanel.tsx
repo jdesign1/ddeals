@@ -309,7 +309,7 @@ export default function AuthPanel({
   return (
     <div className="flex flex-col gap-4">
       <p className="dd-type-secondary text-stone-600">
-        {mode === "signup" ? "Create an account to save lists and spot more dodgy deals." : "Login to Dodgy deals with your email and a one-time code."}
+        {mode === "signup" ? "Create an account to save lists and spot more dodgy deals." : "Log in to Dodgy Deal with your email and a one-time code."}
       </p>
       <form onSubmit={handleRequestOtp} className="flex flex-col gap-4" noValidate>
         {mode === "signup" && (

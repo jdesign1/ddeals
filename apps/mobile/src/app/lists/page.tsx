@@ -425,7 +425,7 @@ export default function ListsPage() {
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <Image
             src="/lists-login.webp"
-            alt="Dodgey mascot with an empty shopping list"
+            alt="Dodgy Deal mascot with an empty shopping list"
             width={288}
             height={306}
             sizes="144px"
@@ -532,7 +532,7 @@ export default function ListsPage() {
           <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-stone-200/80 bg-white py-10 text-center">
             <Image
               src="/lists-login.webp"
-              alt="Dodgey mascot with an empty shopping list"
+              alt="Dodgy Deal mascot with an empty shopping list"
               width={288}
               height={306}
               sizes="128px"

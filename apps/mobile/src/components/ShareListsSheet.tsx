@@ -22,7 +22,7 @@ function buildShareText(
     return [list.name, ...itemLines].join("\n");
   });
 
-  return ["Dodgey Deals shopping lists", ...sections].join("\n\n");
+  return ["Dodgy Deal shopping lists", ...sections].join("\n\n");
 }
 
 function isShareCancellation(error: unknown): boolean {
@@ -78,7 +78,7 @@ export default function ShareListsSheet({
     setError(null);
     try {
       await navigator.share({
-        title: selectedLists.length === 1 ? selectedLists[0].name : "Dodgey Deals shopping lists",
+        title: selectedLists.length === 1 ? selectedLists[0].name : "Dodgy Deal shopping lists",
         text: buildShareText(selectedLists, itemsByList, productMeta),
       });
       close();

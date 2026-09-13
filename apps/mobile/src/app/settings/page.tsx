@@ -331,7 +331,7 @@ export default function SettingsPage() {
                       className="mascot-wave h-auto w-24"
                     />
                   </div>
-                  <p className="dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deals?</p>
+                  <p className="dd-type-body text-stone-600">Are you sure you want to log out of Dodgy Deal?</p>
                   <div className="mt-auto flex flex-col gap-3 pt-4">
                     <button
                       type="button"
