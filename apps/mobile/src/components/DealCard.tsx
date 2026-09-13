@@ -5,6 +5,7 @@ import { ShieldCheck, ShieldAlert } from "lucide-react";
 import { getSpecialPriceRange, type ProductCard, type CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
+import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import { isNewSpecial } from "@/lib/special-freshness";
 
 /**
@@ -82,15 +83,17 @@ export default function DealCard({
         )}
         <AddToListButton productId={product.id} productName={product.name} />
       </div>
-      <div className="product-card-content flex flex-col gap-0.5 p-3">
+      <div className="flex flex-col gap-0.5 p-3">
         <span className="dd-type-meta text-stone-500">{deal.store}</span>
         <span className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</span>
         <div className="mt-1 flex items-baseline gap-2">
-            <span className={`${specialPriceRange ? "product-price-range" : "text-lg leading-6"} font-extrabold text-stone-900`}>
-              {specialPriceRange
-                ? `$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`
-                : `$${deal.price.toFixed(2)}`}
-            </span>
+          {specialPriceRange ? (
+            <ResponsivePriceRange
+              text={`$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`}
+            />
+          ) : (
+            <span className="text-lg leading-6 font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+          )}
           {showWasPrice && (
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>
           )}
