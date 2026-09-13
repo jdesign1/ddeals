@@ -265,7 +265,7 @@ function StatCell({
 }) {
   return (
     <div className="flex flex-col items-center justify-between gap-2 px-1 text-center">
-      <span className={`flex min-h-[32px] items-center justify-center dd-type-meta dd-type-meta-strong leading-tight ${labelClassName}`}>
+      <span className={`flex min-h-[32px] items-start justify-center dd-type-meta dd-type-meta-strong leading-tight ${labelClassName}`}>
         {label}
       </span>
       <span className={`dd-type-page-title tabular-nums ${valueClassName}`}>{value}</span>
