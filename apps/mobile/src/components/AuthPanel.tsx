@@ -55,10 +55,12 @@ export default function AuthPanel({
     profile,
     profileLoading,
     profileError,
+    refreshProfile,
     requestOtp,
     verifyOtp,
     signInWithProvider,
     completeProfile,
+    signOut,
   } = useAuth();
   const [view, setView] = useState<AuthView>("details");
   const [email, setEmail] = useState("");
@@ -82,7 +84,7 @@ export default function AuthPanel({
   }
 
   const profileIncomplete = !!user && !profileLoading && !profile?.onboarding_complete;
-  const showProfile = view === "profile" || profileIncomplete;
+  const showProfile = !profileError && (view === "profile" || profileIncomplete);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -191,6 +193,11 @@ export default function AuthPanel({
     }
   }
 
+  async function handleRetryProfile() {
+    setError(null);
+    await refreshProfile();
+  }
+
   const inputClass =
     "dd-auth-field w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 shadow-sm transition-colors placeholder:text-stone-500 focus:border-stone-900 focus:outline-none";
   const labelClass = "block dd-type-meta dd-type-meta-strong text-stone-500";
@@ -199,6 +206,25 @@ export default function AuthPanel({
 
   if (profileLoading) {
     return <p className="py-8 text-center dd-type-secondary text-stone-500">Checking your account…</p>;
+  }
+
+  if (profileError && user) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="dd-type-section text-stone-900">We couldn&apos;t verify your account</p>
+          <p className="mt-1 dd-type-secondary text-stone-600">
+            Your sign-in succeeded, but we couldn&apos;t load your account details. Please try again.
+          </p>
+        </div>
+        <button type="button" onClick={() => void handleRetryProfile()} className="dd-btn dd-btn-primary w-full cursor-pointer">
+          Try again
+        </button>
+        <button type="button" onClick={() => void signOut()} className="dd-btn dd-btn-outline w-full cursor-pointer">
+          Log out
+        </button>
+      </div>
+    );
   }
 
   if (showProfile) {

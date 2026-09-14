@@ -61,6 +61,16 @@ async function readProfile(
   return (data as AccountProfile | null) ?? null;
 }
 
+function isJwtTimingError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /jwt|token/i.test(message) && /future|issued|expired|clock|time/i.test(message);
+}
+
+function profileLoadErrorMessage(error: unknown): string {
+  if (isJwtTimingError(error)) return "We couldn't verify your account. Please try again.";
+  return "We couldn't load your account details. Please try again.";
+}
+
 function configurationError(): string {
   return "Account sign-in is not configured yet. Add the Accounts Supabase publishable key to .env.local.";
 }
@@ -76,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthSheetOpen, setIsAuthSheetOpen] = useState(false);
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
   const pendingProviderProfileRef = useRef(false);
+  const profileRecoveryInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!client) {
@@ -84,7 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
-    const syncProfile = async (nextUser: User | null, resumeProviderFlow = false) => {
+    const syncProfile = async (
+      nextUser: User | null,
+      resumeProviderFlow = false,
+      allowJwtRecovery = true
+    ) => {
       if (!nextUser) {
         setProfile(null);
         setProfileError(null);
@@ -103,8 +118,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         if (cancelled) return;
+
+        // A stale/native token can be rejected by PostgREST with a JWT timing
+        // error. Refresh it once before deciding that the profile is missing.
+        // The auth listener also receives TOKEN_REFRESHED, so the ref prevents
+        // that event from starting a second recovery loop while this retry is
+        // in flight.
+        if (allowJwtRecovery && !profileRecoveryInFlightRef.current && isJwtTimingError(error)) {
+          profileRecoveryInFlightRef.current = true;
+          try {
+            const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+            if (!refreshError && refreshed.session) {
+              await syncProfile(refreshed.user ?? nextUser, resumeProviderFlow, false);
+              return;
+            }
+          } finally {
+            profileRecoveryInFlightRef.current = false;
+          }
+        }
+
         setProfile(null);
-        setProfileError(error instanceof Error ? error.message : "Unable to load account details.");
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[auth] Profile lookup failed", {
+            userId: nextUser.id,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+        setProfileError(profileLoadErrorMessage(error));
         if (resumeProviderFlow) setIsAuthSheetOpen(true);
       } finally {
         if (!cancelled) setProfileLoading(false);
@@ -162,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       verifyOtp: async (email, token) => {
         if (!client) return { error: configurationError(), profile: null };
+        setProfileError(null);
         const { data, error } = await client.auth.verifyOtp({
           email: email.trim().toLowerCase(),
           token: token.trim(),
@@ -176,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: null, profile: nextProfile };
         } catch (profileReadError) {
           setProfile(null);
-          setProfileError(profileReadError instanceof Error ? profileReadError.message : "Unable to load account details.");
+          setProfileError(profileLoadErrorMessage(profileReadError));
           return { error: null, profile: null };
         }
       },
@@ -246,14 +287,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshProfile: async () => {
         if (!client || !user) return null;
+        setProfileLoading(true);
+        setProfileError(null);
         try {
-          const nextProfile = await readProfile(client, user.id);
+          const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+          if (refreshError) throw new Error(refreshError.message);
+          const nextProfile = await readProfile(client, refreshed.user?.id ?? user.id);
           setProfile(nextProfile);
-          setProfileError(null);
           return nextProfile;
         } catch (error) {
-          setProfileError(error instanceof Error ? error.message : "Unable to load account details.");
+          setProfile(null);
+          setProfileError(profileLoadErrorMessage(error));
           return null;
+        } finally {
+          setProfileLoading(false);
         }
       },
       signOut: async () => {
