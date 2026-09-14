@@ -1563,7 +1563,21 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 /* Compact rows in Lists and All Checks use a lower-contrast hairline than
    full-size product cards, so the dark theme keeps focus on the item content. */
 [data-theme="dark"] .dd-compact-product-card {
-  border-color: #302c27 !important;
+  border-color: #2a2723 !important;
+}
+
+/* Product tiles and deal-assessment cards use a quiet separation line in
+   dark mode. Keep the border visible enough to define each surface without
+   competing with the product or chart content. */
+[data-theme="dark"] .dd-deal-assessment-card {
+  border-color: #37322c !important;
+}
+
+/* The selected cheaper-alternatives page dot should use the dark theme's
+   light ink role; the light-mode `bg-ink-600` would otherwise remain nearly
+   black and disappear against the dark page. */
+[data-theme="dark"] .deal-assessment-page .dd-carousel-dot-selected {
+  background-color: #ded6c9;
 }
 
 /* Bottom-sheet separators should not read as bright rules against the dark

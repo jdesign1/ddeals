@@ -189,8 +189,8 @@ export default function InsightCarousel({
                 if (!el) return;
                 el.scrollTo({ left: i * getSlideStep(el), behavior: "smooth" });
               }}
-              className={`h-1.5 rounded-full transition-all ${
-                i === activeIndex ? "w-4 bg-ink-600" : "w-1.5 bg-stone-300"
+              className={`dd-carousel-dot h-1.5 rounded-full transition-all ${
+                i === activeIndex ? "dd-carousel-dot-selected w-4 bg-ink-600" : "w-1.5 bg-stone-300"
               }`}
             />
           ))}

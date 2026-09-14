@@ -25,7 +25,7 @@ export default function CheaperAlternativesSection({
   if (alternatives.length === 0) return null;
 
   return (
-    <div className={isMultiStoreDeal ? "space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
+    <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
       <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
       <p className="mb-3 text-sm text-stone-600">
         {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
@@ -65,7 +65,7 @@ export default function CheaperAlternativesSection({
                   const meta = getStoreLogoMeta(store);
                   return (
                     <div key={`${alternativeProduct.id}-${store}`}>
-                      <div className="relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
+                      <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
                         <AddToListButton productId={alternativeProduct.id} productName={alternativeProduct.name} />
                         <div className="flex items-start gap-4">
                           <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
