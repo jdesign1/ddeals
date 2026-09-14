@@ -750,7 +750,17 @@ select {
 }
 
 .theme-loader-surface {
-  background-color: var(--background);
+  /* Keep the first loader paint deterministic in WKWebView. The explicit
+     fallback and dark-mode value prevent a brief light surface while the
+     custom-property theme cascade is being applied during navigation. */
+  background-color: #faf8f4;
+  contain: paint;
+  isolation: isolate;
+  will-change: opacity;
+}
+
+html[data-theme="dark"] .theme-loader-surface {
+  background-color: #171513;
 }
 
 [data-theme="dark"] .theme-logo {
@@ -1168,6 +1178,16 @@ select {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 34%, black 100%);
 }
 
+/* Keep the nav mounted while a sheet is open. WKWebView can take a visible
+   moment to recreate a fixed element after `display: none` is removed, which
+   makes the nav appear late when the sheet closes. Opacity keeps its layout
+   and composited layer warm, while the short transition makes its return
+   imperceptible as the sheet finishes dismissing. */
+.app-bottom-nav,
+.app-bottom-nav-backdrop {
+  transition: opacity 100ms ease-out, visibility 0s linear;
+}
+
 /* Bottom sheets must cover the fixed navigation pill, including when they
    are opened from a nested card or route. The portal layer establishes a
    viewport-level stacking context above all app chrome; this matters on iOS
@@ -1237,7 +1257,9 @@ body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav,
 body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav,
 body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav-backdrop,
 body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav-backdrop {
-  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 /* Remove Safari's default tap highlight from custom segmented controls so
    the selected segment uses the app's dark ink state consistently on iOS. */

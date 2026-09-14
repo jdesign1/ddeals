@@ -456,7 +456,7 @@ export default function MePage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     {currentStoreStats.map((store) => (
-                      <div key={store.key} className="grid grid-cols-12 items-center gap-2 border-b border-stone-50 py-1.5 last:border-0">
+                      <div key={store.key} className="grid grid-cols-12 items-center gap-2 border-b border-stone-100 py-1.5 last:border-0">
                         <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
                         <div className="col-span-3 text-center">
                           <Link
