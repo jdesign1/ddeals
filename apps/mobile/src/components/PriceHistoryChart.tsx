@@ -115,7 +115,9 @@ export default function PriceHistoryChart({
           value={selectedStore}
           onChange={(event) => onStoreChange?.(event.target.value)}
           aria-label="Select supermarket for price history"
-          className="min-h-10 w-fit max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-right text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0"
+          className={`min-h-10 max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-right text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0 ${
+            selectedStore === ALL_STORES_VALUE ? "w-16" : "w-fit"
+          }`}
         >
           {storeOptions.map((option) => (
             <option key={option.value} value={option.value}>

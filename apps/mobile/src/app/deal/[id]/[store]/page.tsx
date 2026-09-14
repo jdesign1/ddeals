@@ -691,7 +691,7 @@ export default function DealAssessmentPage() {
 
       {isMultiStoreDeal ? (
         <>
-      <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs" aria-labelledby="deal-assessment-heading">
+      <section className="space-y-5 rounded-2xl border border-stone-200 bg-white px-5 pb-0 pt-5 text-left shadow-xs" aria-labelledby="deal-assessment-heading">
         <div className="flex items-center justify-between gap-3">
           <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
             Deal assessment
@@ -769,7 +769,7 @@ export default function DealAssessmentPage() {
                     </span>
                   </>
                 );
-                const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 last:pb-0 text-left ${
+                const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
                   isCurrentStore ? "rounded-md outline-2 outline outline-offset-0 outline-stone-400" : ""
                 }`;
                 return (
