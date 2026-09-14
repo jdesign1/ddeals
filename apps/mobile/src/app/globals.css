@@ -767,6 +767,21 @@ html[data-theme="dark"] .theme-loader-surface {
   filter: invert(1) brightness(1.08);
 }
 
+/* Raster mascot illustrations have explicit light/dark assets. Keep the
+   hidden variant out of layout so switching theme cannot move nearby content
+   or change the illustration's measured size. */
+.theme-mascot-dark {
+  display: none !important;
+}
+
+[data-theme="dark"] .theme-mascot-light {
+  display: none !important;
+}
+
+[data-theme="dark"] .theme-mascot-dark {
+  display: block !important;
+}
+
 .launch-splash--exit {
   animation: launchSplashExit 260ms ease-out forwards;
   pointer-events: none;
@@ -1543,6 +1558,23 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
 
 [data-theme="dark"] .border-stone-200 {
   border-color: #4a433b;
+}
+
+/* Compact rows in Lists and All Checks use a lower-contrast hairline than
+   full-size product cards, so the dark theme keeps focus on the item content. */
+[data-theme="dark"] .dd-compact-product-card {
+  border-color: #302c27 !important;
+}
+
+/* Bottom-sheet separators should not read as bright rules against the dark
+   sheet surface. Preserve the sheet's spacing while making only separator
+   borders transparent. */
+[data-theme="dark"] .dd-bottom-sheet .border-b,
+[data-theme="dark"] .dd-bottom-sheet .border-t,
+[data-theme="dark"] .dd-bottom-sheet .border-y,
+[data-theme="dark"] .dd-bottom-sheet [class*="divide-y"] > :not(:last-child),
+[data-theme="dark"] .dd-bottom-sheet [class*="divide-x"] > :not(:last-child) {
+  border-color: transparent !important;
 }
 
 [data-theme="dark"] .border-stone-300 {

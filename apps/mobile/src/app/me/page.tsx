@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   fetchDealCheckHistory,
@@ -21,6 +20,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { useSearch } from "@/lib/search-context";
+import MascotImage from "@/components/MascotImage";
 
 const STATS_STORES = Object.entries(STORE_DISPLAY_FALLBACK)
   .filter(([key]) => key !== "supervalue")
@@ -339,8 +339,9 @@ export default function MePage() {
             call sites for the full "why" (same change, same reasoning, all
             3 branches of this page). */}
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
-          <Image
+          <MascotImage
             src="/deal-stats-login.webp"
+            darkSrc="/deal-stats-login-dark.webp"
             alt="An ascending savings chart with a check mark"
             width={288}
             height={263}
@@ -372,8 +373,9 @@ export default function MePage() {
             feels alive without reading as a loading indicator. This local
             image is served directly because the deployed image optimizer can
             reject it with a 402, leaving the hero blank in the iOS WebView. */}
-        <Image
+        <MascotImage
           src="/deal-stats-calculating.webp"
+          darkSrc="/deal-stats-calculating-dark.webp"
           alt="Dodgy Deal mascot calculating deal statistics"
           width={320}
           height={292}

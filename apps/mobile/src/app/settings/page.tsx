@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronRight, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -13,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getAccountDisplayName, getAccountEmailDisplay } from "@/lib/account-display";
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import MascotImage from "@/components/MascotImage";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -323,8 +323,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
                   <div className="flex justify-center">
-                    <Image
+                    <MascotImage
                       src="/auth-wave.webp"
+                      darkSrc="/auth-wave-dark.webp"
                       alt="Dodgy Deal mascot waving"
                       width={192}
                       height={222}

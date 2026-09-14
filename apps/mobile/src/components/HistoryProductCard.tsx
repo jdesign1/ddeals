@@ -48,7 +48,7 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
       // A card tap remains available without claiming vertical swipes from
       // the page's scroll container.
       style={{ touchAction: "pan-y" }}
-      className="group flex min-h-20 cursor-pointer items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-transform duration-150 active:scale-[0.985]"
+      className="dd-compact-product-card group flex min-h-20 cursor-pointer items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-transform duration-150 active:scale-[0.985]"
     >
       <AddToListButton productId={product.id} productName={product.name} />
       <div className="product-image-frame flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">

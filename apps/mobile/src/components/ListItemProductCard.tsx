@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -8,6 +7,7 @@ import { Check, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 
 /**
@@ -258,7 +258,7 @@ export default function ListItemProductCard({
       // doc comment) -- excluded during `confirmingRemove` on purpose, that
       // state already has its own distinct alert-colored look and dimming
       // it on top would make the confirm text harder to read, not clearer.
-      className={`group flex items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-colors hover:bg-stone-50 ${
+      className={`dd-compact-product-card group flex items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-colors hover:bg-stone-50 ${
         isNotOnSpecial && !confirmingRemove ? "grayscale opacity-60" : ""
       }`}
       ref={cardRef}
@@ -391,8 +391,9 @@ function NotOnSpecialSheet({
               </button>
             </div>
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-5 text-center">
-              <Image
+              <MascotImage
                 src="/lists-login.webp"
+                darkSrc="/lists-login-dark.webp"
                 alt="Dodgy Deal mascot waiting for a special"
                 width={288}
                 height={306}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, X } from "lucide-react";
@@ -14,6 +13,7 @@ import {
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
+import MascotImage from "@/components/MascotImage";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
@@ -563,8 +563,9 @@ function TrendingSection({
 }) {
   const { isGridLayout } = useCardLayout();
   const noResultsIllustration = (
-    <Image
+    <MascotImage
       src="/empty-results-mascot.webp"
+      darkSrc="/empty-results-mascot-dark.webp"
       alt="Dodgy Deal mascot looking into an empty shopping basket"
       width={256}
       height={202}
@@ -822,8 +823,9 @@ function MyListSection({
   if (!signedIn) {
     return (
       <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
-        <Image
+        <MascotImage
           src="/lists-login.webp"
+          darkSrc="/lists-login-dark.webp"
           alt="A checked shopping list"
           width={288}
           height={306}

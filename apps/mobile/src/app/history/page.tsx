@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import {
@@ -20,6 +19,7 @@ import { useSearch } from "@/lib/search-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
+import MascotImage from "@/components/MascotImage";
 
 /**
  * All Checks — ported from Prototype/index.html's `HistoryTab` (2026-08-11,
@@ -172,8 +172,9 @@ export default function HistoryPage() {
             call sites for the full "why" (same change, same reasoning, all
             3 branches of this page). */}
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
-          <Image
+          <MascotImage
             src="/all-checks-login.webp"
+            darkSrc="/all-checks-login-dark.webp"
             alt="A checklist with a magnifying glass"
             width={288}
             height={305}

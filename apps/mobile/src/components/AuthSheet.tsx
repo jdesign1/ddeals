@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import AuthPanel from "@/components/AuthPanel";
+import MascotImage from "@/components/MascotImage";
 import { useAuth } from "@/lib/auth-context";
 
 /**
@@ -355,8 +356,9 @@ export default function AuthSheet({
             >
               {mode === "signin" && (
                 <div className="flex justify-center pb-2">
-                  <Image
+                  <MascotImage
                     src="/auth-wave.webp"
+                    darkSrc="/auth-wave-dark.webp"
                     alt="Dodgy Deal mascot waving"
                     width={192}
                     height={222}

@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useState } from "react";
-import Image from "next/image";
 import LoadingMascot from "@/components/LoadingMascot";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import MascotImage from "@/components/MascotImage";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountEmailDisplay } from "@/lib/account-display";
 import { usePageHeader } from "@/lib/header-context";
@@ -156,8 +156,9 @@ export default function AccountPage() {
               </div>
               <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
                 <div className="flex justify-center">
-                  <Image
+                  <MascotImage
                     src="/auth-wave.webp"
+                    darkSrc="/auth-wave-dark.webp"
                     alt="Dodgy Deal mascot waving"
                     width={192}
                     height={222}

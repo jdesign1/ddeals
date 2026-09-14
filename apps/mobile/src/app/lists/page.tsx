@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Pencil, Plus, Check, X, ChevronDown, Share } from "lucide-react";
 import {
@@ -26,6 +25,7 @@ import ErrorState from "@/components/ErrorState";
 import SearchBar from "@/components/SearchBar";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import LoadingMascot from "@/components/LoadingMascot";
+import MascotImage from "@/components/MascotImage";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import ShareListsSheet from "@/components/ShareListsSheet";
 
@@ -483,8 +483,9 @@ export default function ListsPage() {
     return (
       <main className="flex flex-col gap-4 pt-6 pb-8">
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
-          <Image
+          <MascotImage
             src="/lists-login.webp"
+            darkSrc="/lists-login-dark.webp"
             alt="Dodgy Deal mascot with an empty shopping list"
             width={288}
             height={306}
@@ -588,8 +589,9 @@ export default function ListsPage() {
 
         {!loadingLists && lists.length === 0 && (
           <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-stone-200/80 bg-white py-10 text-center">
-            <Image
+            <MascotImage
               src="/lists-login.webp"
+              darkSrc="/lists-login-dark.webp"
               alt="Dodgy Deal mascot with an empty shopping list"
               width={288}
               height={306}

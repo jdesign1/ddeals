@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Info, ShieldCheck, type LucideIcon } from "lucide-react";
 import { usePageHeader } from "@/lib/header-context";
+import MascotImage from "@/components/MascotImage";
 
 /**
  * "How Dodgy Deal works" -- ported from Prototype/index.html's
@@ -83,8 +83,9 @@ export default function HowItWorksPage() {
       >
       <div className="space-y-2">
         <div className="-mx-2 -mt-2 mb-1 flex justify-center">
-          <Image
+          <MascotImage
             src="/empowering-shoppers.webp"
+            darkSrc="/empowering-shoppers-dark.webp"
             alt="Dodgy Deal mascot holding a verified price card beside a grocery basket"
             width={288}
             height={310}

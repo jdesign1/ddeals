@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import MascotImage from "@/components/MascotImage";
 
 export interface NewSpecialsSummary {
   byStore: {
@@ -65,8 +65,9 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               </button>
 
               <div className="flex justify-center pr-3">
-                <Image
+                <MascotImage
                   src="/all-checks-login.webp"
+                  darkSrc="/all-checks-login-dark.webp"
                   alt="Dodgy Deal mascot looking for new specials"
                   width={288}
                   height={305}
