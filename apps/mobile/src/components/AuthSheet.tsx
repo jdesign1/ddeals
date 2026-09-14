@@ -358,7 +358,7 @@ export default function AuthSheet({
                 <div className="flex justify-center pb-2">
                   <MascotImage
                     src="/auth-wave.webp"
-                    darkSrc="/auth-wave-dark.webp"
+                    darkSrc="/auth-wave-dark.png"
                     alt="Dodgy Deal mascot waving"
                     width={192}
                     height={222}

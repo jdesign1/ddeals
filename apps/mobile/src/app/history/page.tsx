@@ -174,7 +174,7 @@ export default function HistoryPage() {
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <MascotImage
             src="/all-checks-login.webp"
-            darkSrc="/all-checks-login-dark.webp"
+                    darkSrc="/all-checks-login-dark.png"
             alt="A checklist with a magnifying glass"
             width={288}
             height={305}
