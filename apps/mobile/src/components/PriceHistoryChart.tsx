@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 
@@ -109,19 +109,22 @@ export default function PriceHistoryChart({
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
     <div className="flex justify-end">
-      <select
-        id="price-history-store"
-        value={selectedStore}
-        onChange={(event) => onStoreChange?.(event.target.value)}
-        aria-label="Select supermarket for price history"
-        className="min-h-8 w-fit max-w-full border-0 bg-transparent px-2.5 text-right text-[10px] leading-4 font-normal text-stone-800 shadow-none outline-none focus:border-0"
-      >
-        {storeOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div className="relative inline-flex items-center">
+        <select
+          id="price-history-store"
+          value={selectedStore}
+          onChange={(event) => onStoreChange?.(event.target.value)}
+          aria-label="Select supermarket for price history"
+          className="min-h-10 w-fit max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-right text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0"
+        >
+          {storeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-1 h-4 w-4 text-stone-600" aria-hidden="true" />
+      </div>
     </div>
   ) : null;
 
@@ -250,7 +253,7 @@ export default function PriceHistoryChart({
             return (
               <g key={value}>
                 <line x1={PLOT_LEFT} x2={PLOT_RIGHT} y1={y} y2={y} stroke="var(--dd-chart-grid)" strokeDasharray="3 4" />
-                <text x={PLOT_LEFT - 6} y={y + 4} textAnchor="end" fontSize="12" fill="var(--dd-chart-axis)">
+                <text x={PLOT_LEFT - 6} y={y + 4} textAnchor="end" fontSize="14" fontWeight="600" fill="var(--dd-chart-axis)">
                   ${value.toFixed(2)}
                 </text>
               </g>
@@ -306,14 +309,14 @@ export default function PriceHistoryChart({
             ))
           )}
 
-          <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="12" fontWeight="700" fill="var(--dd-chart-axis)">
+          <text x={PLOT_LEFT} y={PLOT_BOTTOM + 28} textAnchor="start" fontSize="14" fontWeight="700" fill="var(--dd-chart-axis)">
             90 days ago
           </text>
-          <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 28} textAnchor="end" fontSize="12" fontWeight="700" fill="var(--dd-chart-axis)">
+          <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 28} textAnchor="end" fontSize="14" fontWeight="700" fill="var(--dd-chart-axis)">
             Today
           </text>
         </svg>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-sm leading-4 font-bold text-stone-700">
+        <div className="-mt-1 flex flex-wrap items-center justify-center gap-3 text-[15px] leading-5 font-bold text-stone-700">
           {showingAllStores
             ? renderedSeries.map((series) => (
                 <div key={series.store} className="flex items-center gap-1.5">

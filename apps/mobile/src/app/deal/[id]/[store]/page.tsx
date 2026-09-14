@@ -769,7 +769,7 @@ export default function DealAssessmentPage() {
                     </span>
                   </>
                 );
-                const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
+                const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 last:pb-0 text-left ${
                   isCurrentStore ? "rounded-md outline-2 outline outline-offset-0 outline-stone-400" : ""
                 }`;
                 return (
