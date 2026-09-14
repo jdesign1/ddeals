@@ -1365,7 +1365,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   --dd-chart-special: #77c98a;
   --dd-chart-regular: #a59b8d;
   --dd-chart-point-stroke: #24211d;
-  --dd-chart-average: #777067;
+  --dd-chart-average: #8a8379;
   --dd-insight-avg-bg: #20314a;
   --dd-insight-frequency-bg: #1d4329;
 }
