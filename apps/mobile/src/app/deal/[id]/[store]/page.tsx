@@ -182,12 +182,15 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
 function getEvidenceSummary(deal: CurrentDeal, verdict: AssessmentVerdict): string | null {
   const days = Number.isFinite(deal.regularHistoryDays) ? Math.max(0, Math.round(deal.regularHistoryDays ?? 0)) : null;
   const checks = Number.isFinite(deal.regularPriceSamples) ? Math.max(0, Math.round(deal.regularPriceSamples ?? 0)) : null;
+  const storedDays = days || (Number.isFinite(deal.ninetyDayDaysTracked) ? Math.max(0, Math.round(deal.ninetyDayDaysTracked ?? 0)) : null);
   const daysText = days ? `${days} day${days === 1 ? "" : "s"}` : null;
-  const checksText = checks ? `${checks} check${checks === 1 ? "" : "s"}` : null;
+  const checksText = checks ? `${checks} price check${checks === 1 ? "" : "s"}` : null;
   const evidenceText = [daysText, checksText].filter(Boolean).join(" & ");
+  if (verdict === "Limited history") {
+    return storedDays ? `Not enough history yet — ${storedDays} day${storedDays === 1 ? "" : "s"} stored` : "Not enough history yet";
+  }
   if (!evidenceText) return isUncertainAssessment(verdict) ? "Not enough history yet" : null;
   if (verdict === "Early read") return `Early read, based on ${evidenceText}`;
-  if (verdict === "Limited history") return `Limited history — based on ${evidenceText}`;
   if (daysText && checksText) return `Based on ${daysText} of history & ${checksText}`;
   if (daysText) return `Based on ${daysText} of history`;
   return `Based on ${checksText}`;
