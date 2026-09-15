@@ -13,6 +13,7 @@ import {
   applyTargetedDealToProducts,
   updateCatalogueCacheProducts,
   type ProductCard,
+  type CurrentDeal,
   type PriceHistoryPoint,
   type AssessmentVerdict,
   isUncertainAssessment,
@@ -177,6 +178,20 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
   "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
+
+function getEvidenceSummary(deal: CurrentDeal, verdict: AssessmentVerdict): string | null {
+  const days = Number.isFinite(deal.regularHistoryDays) ? Math.max(0, Math.round(deal.regularHistoryDays ?? 0)) : null;
+  const checks = Number.isFinite(deal.regularPriceSamples) ? Math.max(0, Math.round(deal.regularPriceSamples ?? 0)) : null;
+  const daysText = days ? `${days} day${days === 1 ? "" : "s"}` : null;
+  const checksText = checks ? `${checks} check${checks === 1 ? "" : "s"}` : null;
+  const evidenceText = [daysText, checksText].filter(Boolean).join(" & ");
+  if (!evidenceText) return isUncertainAssessment(verdict) ? "Not enough history yet" : null;
+  if (verdict === "Early read") return `Early read, based on ${evidenceText}`;
+  if (verdict === "Limited history") return `Limited history — based on ${evidenceText}`;
+  if (daysText && checksText) return `Based on ${daysText} of history & ${checksText}`;
+  if (daysText) return `Based on ${daysText} of history`;
+  return `Based on ${checksText}`;
+}
 
 const STORE_TEXT_COLOR: Record<string, string> = {
   "bg-emerald-600": "text-emerald-600",
@@ -654,6 +669,7 @@ export default function DealAssessmentPage() {
   const multiStoreDealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
   const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
+  const evidenceSummary = getEvidenceSummary(selectedDeal, verdict);
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
   const lowestSpecialStoreNames =
     lowestSpecialPriceCents == null
@@ -855,6 +871,12 @@ export default function DealAssessmentPage() {
               <AssessmentText text={crossStoreSpecialSummary} />
             </p>
           )}
+          {evidenceSummary && (
+            <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold leading-5 text-stone-500">
+              <Clock3 className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.5} aria-hidden="true" />
+              <span>{evidenceSummary}</span>
+            </p>
+          )}
         </div>
 
         {/* `bg-white` added to both action buttons below (2026-08-17,
@@ -937,6 +959,12 @@ export default function DealAssessmentPage() {
             <p className="whitespace-pre-line text-sm leading-relaxed text-stone-600">
               <AssessmentText text={assessmentSummary.body} />
             </p>
+            {evidenceSummary && (
+              <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold leading-5 text-stone-500">
+                <Clock3 className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.5} aria-hidden="true" />
+                <span>{evidenceSummary}</span>
+              </p>
+            )}
           </div>
 
           {lowestCurrentPriceItem && (

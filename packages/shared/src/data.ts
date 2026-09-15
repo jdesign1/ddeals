@@ -130,6 +130,9 @@ export interface CurrentDeal {
    * not ninetyDaySamples/ninetyDaySpecialSamples (event counts). */
   ninetyDayDaysTracked: number | null;
   ninetyDaySpecialDays: number | null;
+  /** Regular-price evidence used by the classifier for this supermarket. */
+  regularPriceSamples?: number | null;
+  regularHistoryDays?: number | null;
   /** Evidence metadata used to keep incomplete-history specials neutral. */
   evidenceStatus?: "SUFFICIENT" | "EARLY" | "INSUFFICIENT" | "LIMITED" | null;
   evidenceStrength?: EvidenceStrength | null;
@@ -509,6 +512,8 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     ninetyDaySpecialSamples: row.price_history_90d_special_samples ?? null,
     ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
     ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
+    regularPriceSamples: row.regular_price_samples ?? null,
+    regularHistoryDays: row.regular_history_days ?? null,
     evidenceStatus: row.evidence_status ?? null,
     evidenceStrength: row.evidence_strength ?? null,
     storeHistoryReady: row.store_history_ready ?? null,
