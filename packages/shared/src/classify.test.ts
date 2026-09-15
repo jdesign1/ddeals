@@ -46,6 +46,43 @@ test("EARLY when older regular history supports an indicative read but recent ev
   assert.equal(result.savingPct, 20);
 });
 
+test("REAL_SAVER when stable regular history is split across earlier special periods", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -80), price: 7.95, is_special: false },
+    { scraped_at: day(now, -70), price: 6.95, is_special: true },
+    { scraped_at: day(now, -60), price: 7.95, is_special: false },
+    { scraped_at: day(now, -50), price: 6.95, is_special: true },
+    { scraped_at: day(now, -40), price: 7.95, is_special: false },
+    { scraped_at: day(now, -30), price: 6.95, is_special: true },
+    { scraped_at: day(now, -10), price: 7.95, is_special: false },
+    { scraped_at: day(now, -1), price: 6.30, is_special: true },
+  ];
+  const result = classifySpecial(6.30, rows);
+  assert.equal(result.verdict, "REAL_SAVER");
+  assert.equal(result.evidenceStatus, "SUFFICIENT");
+  assert.equal(result.evidenceStrength, "STRONG");
+  assert.equal(result.normalPrice, 7.95);
+});
+
+test("keeps an early read when recent and extended normal prices disagree", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -80), price: 7.95, is_special: false },
+    { scraped_at: day(now, -70), price: 6.95, is_special: true },
+    { scraped_at: day(now, -60), price: 7.95, is_special: false },
+    { scraped_at: day(now, -50), price: 6.95, is_special: true },
+    { scraped_at: day(now, -40), price: 7.95, is_special: false },
+    { scraped_at: day(now, -30), price: 6.95, is_special: true },
+    { scraped_at: day(now, -10), price: 9.50, is_special: false },
+    { scraped_at: day(now, -1), price: 6.30, is_special: true },
+  ];
+  const result = classifySpecial(6.30, rows);
+  assert.equal(result.verdict, "UNKNOWN");
+  assert.equal(result.evidenceStatus, "EARLY");
+  assert.equal(result.normalPrice, 7.95);
+});
+
 test("REAL_SAVER when one regular price was held for at least 14 days before the sale", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [

@@ -61,8 +61,10 @@ export const MIN_REGULAR_HISTORY_DAYS = 14;
 export const EARLY_READ_MIN_REGULAR_PRICE_SAMPLES = 2;
 /** Minimum fallback span before we can provide an indicative read. */
 export const EARLY_READ_MIN_REGULAR_HISTORY_DAYS = 7;
-/** Wider history window used only for an indicative read. */
+/** Wider history window used for stable confirmation or an indicative read. */
 export const EARLY_READ_LOOKBACK_DAYS = 90;
+/** Maximum recent-vs-extended baseline difference for a confirmed read. */
+export const BASELINE_STABILITY_THRESHOLD = 0.05;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function median(nums: number[]): number | null {
@@ -116,7 +118,8 @@ function normalizedComparativeUnitPrice(unitPrice: number | null | undefined, un
  * Classifies one (product_id, store_id) current special using its own
  * price_history series (+ optional $/unit comparative pricing).
  *
- *   normal_price = median of regular price spans overlapping the 30-day lookback
+ *   normal_price = median of recent regular price spans, or stable extended
+ *   history when recent evidence is interrupted by specials
  *   inflate_pct  = how much price was pumped in the 7 days before the sale
  *   verdict, checked in order: UNKNOWN (insufficient evidence) / DODGY
  *   (material over-normal pricing, reliable shrinkflation, or repeated
@@ -201,6 +204,8 @@ export function classifySpecial(
     (total, { start, end }) => total + overlapDays(start, end, fallbackCutoff),
     0
   );
+  const recentNormalPrice = median(recentRegularRows.map((r) => r.price as number));
+  const fallbackNormalPrice = median(fallbackPreSale.map((r) => r.price as number));
   const hasRecentRegularAnchor = recentRegularSpans.length > 0;
   const hasLongRecentRegularSpan = recentRegularSpans.some(
     ({ start, end }) => overlapDays(start, end, lookbackCutoff) >= MIN_REGULAR_HISTORY_DAYS
@@ -215,17 +220,32 @@ export function classifySpecial(
     recentRegularCoverageDays >= MIN_REGULAR_HISTORY_DAYS &&
     hasLongRecentRegularSpan;
   const hasSufficientRecentEvidence = hasStrongRecentEvidence || hasDurationOnlyRecentEvidence;
-  const hasEarlyEvidence =
+  // A product can have reliable regular-price history split across several
+  // earlier special periods. Let that evidence confirm the current deal when
+  // there is a recent anchor, enough cumulative coverage and the recent and
+  // extended normal prices agree. This avoids treating every intervening
+  // special as if it erased useful evidence, while still rejecting a stale
+  // older price regime when the product's normal price has moved.
+  const hasStableExtendedEvidence =
     !hasSufficientRecentEvidence &&
+    hasRecentRegularAnchor &&
+    fallbackRegularCoverageDays >= MIN_REGULAR_HISTORY_DAYS &&
+    fallbackPreSale.length >= MIN_REGULAR_PRICE_SAMPLES &&
+    recentNormalPrice != null &&
+    fallbackNormalPrice != null &&
+    Math.abs(recentNormalPrice - fallbackNormalPrice) / fallbackNormalPrice <= BASELINE_STABILITY_THRESHOLD;
+  const hasSufficientEvidence = hasSufficientRecentEvidence || hasStableExtendedEvidence;
+  const hasEarlyEvidence =
+    !hasSufficientEvidence &&
     hasRecentRegularAnchor &&
     fallbackRegularCoverageDays >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS &&
     (hasLongFallbackRegularSpan || fallbackPreSale.length >= EARLY_READ_MIN_REGULAR_PRICE_SAMPLES);
 
   // A short-lived regular scrape is not enough to provide even an indicative
-  // comparison. A long-held regular price can qualify on duration alone; a
-  // wider 90-day fallback can provide an Early read, but it must never enter
-  // the confirmed verdict branches below.
-  if (!hasSufficientRecentEvidence) {
+  // comparison. A long-held regular price can qualify on duration alone. A
+  // wider 90-day history can also confirm when its baseline is stable against
+  // the recent anchor; conflicting or incomplete history remains Early.
+  if (!hasSufficientEvidence) {
     if (hasEarlyEvidence) {
       const normalPrice = median(fallbackPreSale.map((r) => r.price as number));
       const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : null;
@@ -250,11 +270,12 @@ export function classifySpecial(
     };
   }
 
-  const evidenceStrength: EvidenceStrength = hasStrongRecentEvidence ? "STRONG" : "DURATION_ONLY";
+  const usesStableExtendedEvidence = hasStableExtendedEvidence && !hasSufficientRecentEvidence;
+  const evidenceStrength: EvidenceStrength = hasStrongRecentEvidence || hasStableExtendedEvidence ? "STRONG" : "DURATION_ONLY";
   const canPublishDirectionalVerdict =
     storeEvidencePolicy === "STANDARD" || evidenceStrength === "STRONG";
 
-  const normalPrice = median(recentRegularRows.map((r) => r.price as number));
+  const normalPrice = usesStableExtendedEvidence ? fallbackNormalPrice : recentNormalPrice;
 
   const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
   const veryEarly = preSale
@@ -289,9 +310,10 @@ export function classifySpecial(
         && saleUnitBasis != null
         && parseComparativeUnitLabel(row.unit_label)?.baseUnit === saleUnitBasis.baseUnit
     );
-    const selectedUnitSpans = recentUnitSpans.length ? recentUnitSpans : fallbackUnitSpans;
+    const useFallbackUnitEvidence = usesStableExtendedEvidence || recentUnitSpans.length === 0;
+    const selectedUnitSpans = useFallbackUnitEvidence ? fallbackUnitSpans : recentUnitSpans;
     const baselineUnitRows = selectedUnitSpans.map(({ row }) => row);
-    const selectedCutoff = selectedUnitSpans === recentUnitSpans ? lookbackCutoff : fallbackCutoff;
+    const selectedCutoff = useFallbackUnitEvidence ? fallbackCutoff : lookbackCutoff;
     const unitPriceSamples = baselineUnitRows.length;
     const unitPriceCoverageDays = selectedUnitSpans.reduce(
       (total, { start, end }) => total + overlapDays(start, end, selectedCutoff),
