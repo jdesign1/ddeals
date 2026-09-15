@@ -767,10 +767,15 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 [data-theme="dark"] .theme-logo {
-  /* The dark raster illustrations use a dark mascot with a warm light edge;
-     reproduce that treatment for the shared SVG logo without distorting its
-     existing proportions or replacing it with a lower-resolution asset. */
-  filter: drop-shadow(0 0 1px #f5f1e8) drop-shadow(0 0 1px #f5f1e8);
+  /* Use a crisp paper-colour backing and solid outline instead of a glow.
+     The transparent eye cut-outs in the shared SVG then read as the same
+     light background used by the dedicated dark mascot illustrations. */
+  box-sizing: border-box;
+  padding: 2px;
+  border: 1px solid #f5f1e8;
+  border-radius: 9999px;
+  background-color: #f5f1e8;
+  filter: none;
 }
 
 [data-theme="dark"] .wink-mascot__mark-fill {
