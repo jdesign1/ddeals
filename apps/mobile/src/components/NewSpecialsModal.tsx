@@ -67,7 +67,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               <div className="flex justify-center pr-3">
                 <MascotImage
                   src="/all-checks-login.webp"
-                  darkSrc="/all-checks-login-dark.png"
+                  darkSrc="/all-checks-login-dark.webp"
                   alt="Dodgy Deal mascot looking for new specials"
                   width={288}
                   height={305}

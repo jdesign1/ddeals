@@ -158,7 +158,7 @@ export default function AccountPage() {
                 <div className="flex justify-center">
                   <MascotImage
                     src="/auth-wave.webp"
-                    darkSrc="/auth-wave-dark.png"
+                    darkSrc="/auth-wave-dark.webp"
                     alt="Dodgy Deal mascot waving"
                     width={192}
                     height={222}

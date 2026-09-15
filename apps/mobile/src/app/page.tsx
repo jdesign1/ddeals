@@ -565,7 +565,7 @@ function TrendingSection({
   const noResultsIllustration = (
     <MascotImage
       src="/empty-results-mascot.webp"
-      darkSrc="/empty-results-mascot-dark.png"
+      darkSrc="/empty-results-mascot-dark.webp"
       alt="Dodgy Deal mascot looking into an empty shopping basket"
       width={256}
       height={202}
@@ -825,7 +825,7 @@ function MyListSection({
       <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
         <MascotImage
           src="/lists-login.webp"
-          darkSrc="/lists-login-dark.png"
+          darkSrc="/lists-login-dark.webp"
           alt="A checked shopping list"
           width={288}
           height={306}

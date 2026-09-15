@@ -393,7 +393,7 @@ function NotOnSpecialSheet({
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-5 text-center">
               <MascotImage
                 src="/lists-login.webp"
-                darkSrc="/lists-login-dark.png"
+                darkSrc="/lists-login-dark.webp"
                 alt="Dodgy Deal mascot waiting for a special"
                 width={288}
                 height={306}

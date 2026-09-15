@@ -85,7 +85,7 @@ export default function HowItWorksPage() {
         <div className="-mx-2 -mt-2 mb-1 flex justify-center">
           <MascotImage
             src="/empowering-shoppers.webp"
-            darkSrc="/empowering-shoppers-dark.png"
+            darkSrc="/empowering-shoppers-dark.webp"
             alt="Dodgy Deal mascot holding a verified price card beside a grocery basket"
             width={288}
             height={310}

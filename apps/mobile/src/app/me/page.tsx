@@ -341,7 +341,7 @@ export default function MePage() {
         <div className="mx-5 flex flex-col items-center gap-3 rounded-3xl bg-white py-10 text-center">
           <MascotImage
             src="/deal-stats-login.webp"
-                    darkSrc="/deal-stats-login-dark.png"
+                    darkSrc="/deal-stats-login-dark.webp"
             alt="An ascending savings chart with a check mark"
             width={288}
             height={263}
@@ -375,7 +375,7 @@ export default function MePage() {
             reject it with a 402, leaving the hero blank in the iOS WebView. */}
         <MascotImage
           src="/deal-stats-calculating.webp"
-                      darkSrc="/deal-stats-calculating-dark.png"
+                      darkSrc="/deal-stats-calculating-dark.webp"
           alt="Dodgy Deal mascot calculating deal statistics"
           width={320}
           height={292}
