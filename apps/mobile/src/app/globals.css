@@ -322,8 +322,11 @@
   --dd-chart-special: #77c98a;
   --dd-chart-regular: #a59b8d;
   --dd-chart-point-stroke: #24211d;
-  --dd-mascot-fill: #f5f1e8;
-  --dd-mascot-eye: #171513;
+  /* Dark-mode wink/loading treatment: keep the mascot ink dark and use the
+     warm paper colour for its eye whites and outline, matching the dedicated
+     dark raster illustrations used elsewhere in the app. */
+  --dd-mascot-fill: #171513;
+  --dd-mascot-eye: #f5f1e8;
 }
 
 @theme inline {
@@ -764,7 +767,18 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 [data-theme="dark"] .theme-logo {
-  filter: invert(1) brightness(1.08);
+  /* The dark raster illustrations use a dark mascot with a warm light edge;
+     reproduce that treatment for the shared SVG logo without distorting its
+     existing proportions or replacing it with a lower-resolution asset. */
+  filter: drop-shadow(0 0 1px #f5f1e8) drop-shadow(0 0 1px #f5f1e8);
+}
+
+[data-theme="dark"] .wink-mascot__mark-fill {
+  fill: #171513;
+  stroke: #f5f1e8;
+  stroke-width: 10;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
 }
 
 /* Raster mascot illustrations have explicit light/dark assets. Keep the
