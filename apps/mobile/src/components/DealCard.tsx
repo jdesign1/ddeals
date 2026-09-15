@@ -50,7 +50,7 @@ export default function DealCard({
       // tapping the card still navigates normally.
       style={{ touchAction: "pan-y" }}
       // Product item cards use a subtle outline rather than elevation.
-      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
+      className="dd-product-card flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
     >
       <div className="product-image-frame relative aspect-square w-full overflow-hidden bg-stone-100">
         <ProductImage

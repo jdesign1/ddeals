@@ -1560,6 +1560,12 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   border-color: #4a433b;
 }
 
+/* Full product cards keep a quieter hairline in dark mode so the outline
+   separates the card from the page without competing with its content. */
+[data-theme="dark"] .dd-product-card {
+  border-color: #2a2723 !important;
+}
+
 /* Compact rows in Lists and All Checks use a lower-contrast hairline than
    full-size product cards, so the dark theme keeps focus on the item content. */
 [data-theme="dark"] .dd-compact-product-card {
