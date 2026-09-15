@@ -1746,6 +1746,14 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   background-color: var(--dd-chart-average, #171710);
 }
 
+/* The price-change frequency bars use the ink accent. In dark mode that
+   accent is intentionally a light warm grey, so keep the colour token here
+   instead of the literal `bg-ink-600` utility, whose dark-mode override is a
+   near-black control fill. */
+.dd-price-change-bar {
+  background-color: var(--color-ink-600);
+}
+
 /* The average and frequency tiles use Tailwind's blue/emerald palette in
    light mode, which has no automatic dark mapping. Give them the same deep
    surface/light-copy contrast as the theme-aware top-row tiles. */

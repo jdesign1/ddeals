@@ -708,7 +708,7 @@ export default function MePage() {
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
                               <div
-                                className="h-full rounded-full bg-ink-600 transition-[width]"
+                                className="dd-price-change-bar h-full rounded-full transition-[width]"
                                 style={{
                                   width: `${priceChangeRankings[0].averageChanges > 0 ? Math.max(4, (store.averageChanges / priceChangeRankings[0].averageChanges) * 100) : 0}%`,
                                 }}
