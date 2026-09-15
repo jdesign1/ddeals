@@ -767,15 +767,14 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 [data-theme="dark"] .theme-logo {
-  /* Use a crisp paper-colour backing and solid outline instead of a glow.
-     The transparent eye cut-outs in the shared SVG then read as the same
-     light background used by the dedicated dark mascot illustrations. */
-  box-sizing: border-box;
-  padding: 2px;
-  border: 1px solid #f5f1e8;
-  border-radius: 9999px;
-  background-color: #f5f1e8;
-  filter: none;
+  /* Outline the mascot's actual transparent silhouette, not the image box.
+     Four zero-blur directional shadows create a crisp 1px edge without the
+     circular backing or soft glow of the previous treatment. */
+  filter:
+    drop-shadow(1px 0 0 #f5f1e8)
+    drop-shadow(-1px 0 0 #f5f1e8)
+    drop-shadow(0 1px 0 #f5f1e8)
+    drop-shadow(0 -1px 0 #f5f1e8);
 }
 
 [data-theme="dark"] .wink-mascot__mark-fill {
