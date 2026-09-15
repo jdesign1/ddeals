@@ -53,7 +53,11 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchAutoHide: true,
+      // Keep the native storyboard over the WebView's first frame until the
+      // web theme provider has applied the saved light/dark preference. The
+      // provider then calls SplashScreen.hide(), avoiding a white flash when
+      // a dark-mode app starts cold.
+      launchAutoHide: false,
     },
     StatusBar: {
       style: "DARK",

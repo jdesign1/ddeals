@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Preferences } from "@capacitor/preferences";
+import { SplashScreen } from "@capacitor/splash-screen";
 
 export type Theme = "light" | "dark";
 
@@ -32,6 +33,15 @@ function persistNativeTheme(theme: Theme) {
   void Preferences.set({ key: THEME_STORAGE_KEY, value: theme }).catch(() => {
     // The web preference still applies when the native bridge is absent or
     // unavailable, such as a normal desktop browser session.
+  });
+}
+
+function hideNativeSplash() {
+  // The native shell keeps its launch storyboard visible until the WebView
+  // has resolved the saved theme. This prevents a light WebView frame from
+  // appearing between the native splash and the dark launch animation.
+  void SplashScreen.hide().catch(() => {
+    // The web build has no native splash to hide.
   });
 }
 
@@ -72,12 +82,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         // The native value is the fallback for a WebView where localStorage
         // was cleared or unavailable. Do not let a stale asynchronous read
         // overwrite a toggle the user has already made in this session.
-        if (cancelled || themeChangeVersionRef.current > 0) return;
+        if (cancelled || themeChangeVersionRef.current > 0) {
+          hideNativeSplash();
+          return;
+        }
         if (!isTheme(value)) {
           // This also migrates an existing localStorage-only Display setting
           // into the native store on the first launch after native splash
           // support is installed.
           persistNativeTheme(isTheme(browserTheme) ? browserTheme : "light");
+          hideNativeSplash();
           return;
         }
         setThemeState(value);
@@ -88,9 +102,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           // The native preference remains available even if localStorage is
           // unavailable in this WebView.
         }
+        hideNativeSplash();
       })
       .catch(() => {
         // The inline browser bootstrap remains the immediate fallback.
+        hideNativeSplash();
       });
 
     return () => {
