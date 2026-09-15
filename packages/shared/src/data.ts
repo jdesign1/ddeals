@@ -417,17 +417,31 @@ export interface MatchIndex {
  * time it's re-resolved -- there's no way to migrate `list_items.product_id`
  * retroactively from here, this only guarantees stability GOING FORWARD.
  */
-export async function buildMatchIndex(config: SupabaseRestConfig): Promise<MatchIndex> {
-  const [canonicalRows, comparableRows] = await Promise.all([
-    fetchAllRows<{ id: string; canonical_product_id: string }>(
-      config,
-      "products?select=id,canonical_product_id&canonical_product_id=not.is.null"
-    ),
-    fetchAllRows<{ left_product_id: string; right_product_id: string }>(
-      config,
-      "app_comparable_family_links?select=left_product_id,right_product_id"
-    ),
-  ]);
+export async function buildMatchIndex(config: SupabaseRestConfig, productIds?: string[]): Promise<MatchIndex> {
+  const scopedProductIds = productIds ? [...new Set(productIds)].filter(Boolean) : null;
+  const comparableRows = await fetchAllRows<{ left_product_id: string; right_product_id: string }>(
+    config,
+    "app_comparable_family_links?select=left_product_id,right_product_id"
+  );
+  const canonicalProductIds = scopedProductIds
+    ? [...new Set([
+        ...scopedProductIds,
+        ...comparableRows.flatMap((row) => [row.left_product_id, row.right_product_id]),
+      ])]
+    : null;
+  const canonicalRows = canonicalProductIds
+    ? await fetchByIds<{ id: string; canonical_product_id: string }>(
+        config,
+        "products",
+        "id",
+        "id,canonical_product_id",
+        canonicalProductIds,
+        500
+      )
+    : await fetchAllRows<{ id: string; canonical_product_id: string }>(
+        config,
+        "products?select=id,canonical_product_id&canonical_product_id=not.is.null"
+      );
 
   const parent = new Map<string, string>();
   const find = (x: string): string => {
@@ -454,10 +468,14 @@ export async function buildMatchIndex(config: SupabaseRestConfig): Promise<Match
     else parent.set(ra, rb);
   };
 
-  for (const row of canonicalRows) union(row.id, row.canonical_product_id);
+  // The old full-table query filtered out null canonical_product_id values.
+  // Keep that contract for scoped lookups too; null is not a product ID and
+  // must never become a union-find node or count as an edge.
+  const usableCanonicalRows = canonicalRows.filter((row) => row.canonical_product_id);
+  for (const row of usableCanonicalRows) union(row.id, row.canonical_product_id);
   for (const row of comparableRows) union(row.left_product_id, row.right_product_id);
 
-  return { find, edgeCount: canonicalRows.length + comparableRows.length };
+  return { find, edgeCount: usableCanonicalRows.length + comparableRows.length };
 }
 
 interface ProductMetaInput {
@@ -590,76 +608,7 @@ interface LiveProductsLoadResult {
 }
 
 async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<LiveProductsLoadResult> {
-  const [specialRows, matchIndex] = await Promise.all([
-    // 2026-08-09: production 500s on this exact query traced (via Supabase API
-    // + Postgres logs, not guessed) to `canceling statement due to statement
-    // timeout` on `dodgy_deals`. Root cause: `dodgy_deals` is a plain (not
-    // materialized) view with an expensive CTE chain -- a window function
-    // over the *entire* price_history table plus several joins/sorts -- that
-    // measured ~3s per execution standalone. Because it's a view, PostgREST
-    // recomputes the whole thing from scratch for *every page*, and
-    // fetchAllRows's default 1000-row page size meant one Home-tab load fired
-    // ~9 concurrent full recomputes of that 3s query (for ~9k current-special
-    // rows) via its Promise.all page fan-out. That 9x concurrent DB load is
-    // what pushed individual executions past the 2min statement_timeout,
-    // producing the intermittent 500s (interleaved with 200s/206s from
-    // whichever concurrent copies finished in time) seen in the API logs.
-    // Fix: request one page large enough to cover the current row count
-    // (~9k, checked via Supabase MCP) so this fetch runs the view ONCE
-    // instead of ~9 times concurrently. Doesn't touch the view itself --
-    // the 30s in-flight request cache above still collapses same-session
-    // overlapping callers on top of this. See project.md (2026-08-09 entry)
-    // for the full diagnosis.
-    //
-    // 2026-08-12: pointed at `dodgy_deals_cache` (a materialized view, new
-    // this session) instead of `dodgy_deals` (the live view) itself. Even
-    // after that same day's `pre_sale` LATERAL fix, live EXPLAIN ANALYZE
-    // (run repeatedly, both directly and by independent peer review) still
-    // measured `dodgy_deals` swinging ~480ms-3,770ms run to run -- the slow
-    // end already exceeds the anon role's 3s statement_timeout outright on
-    // a cold cache, which is why this exact endpoint kept producing
-    // recurring 500s across five separate sessions despite several rounds
-    // of CTE-level optimization.
-    // `dodgy_deals_cache` is `CREATE MATERIALIZED VIEW ... AS SELECT * FROM
-    // dodgy_deals` (same columns/types/verdict logic, zero duplicated
-    // business logic to keep in sync), refreshed on a 15-minute pg_cron
-    // schedule (`REFRESH MATERIALIZED VIEW CONCURRENTLY`, non-blocking for
-    // readers) rather than recomputed per-request -- live EXPLAIN ANALYZE
-    // measured reading it at ~3.5ms. `dodgy_deals` itself is untouched and
-    // still directly queryable if a real-time (not up-to-15-minutes-stale)
-    // read is ever needed. See project.md (2026-08-12 "efficiency deep
-    // dive" entry) for the full measurement/design writeup.
-    //
-    // 2026-08-19: shipped the 5 price_history_90d_* columns in this select=
-    // string BEFORE migrations/20260819_dodgy_deals_price_history_insights.sql
-    // reached the live database -- caused a live PostgREST 400 on every page
-    // ("Couldn't load today's specials", reported by Jay), hotfixed by
-    // reverting this string, then re-added here ONLY after Jay confirmed the
-    // migration was applied to the real database (see project.md's
-    // 2026-08-19 entry for the full incident writeup). If this 400s again,
-    // that almost certainly means the migration got rolled back or applied
-    // to the wrong project -- check `select column_name from
-    // information_schema.columns where table_name = 'dodgy_deals_cache' and
-    // column_name like 'price_history_90d%'` returns 5 rows before assuming
-    // it's something else.
-    //
-    // 2026-08-20: price_history_90d_days_tracked/price_history_90d_special_days
-    // added below ONLY after Jay confirmed migrations/20260820_dodgy_deals_
-    // time_weighted_history.sql AND migrations/20260820_rebuild_dodgy_deals_
-    // cache_for_time_weighted_columns.sql are both live -- verified via a
-    // direct column read (`SELECT price_history_90d_low,
-    // price_history_90d_days_tracked, price_history_90d_special_days FROM
-    // public.dodgy_deals_cache LIMIT 1`, not information_schema -- that
-    // excludes materialized views entirely and always returns 0 rows for
-    // dodgy_deals_cache regardless of real state, a separate bug this
-    // project already hit twice; see project.md's 2026-08-20 entry). Real
-    // data came back (0.99 / 12 / 10), confirming both migrations are live
-    // and dodgy_deals_cache actually carries these columns, not just the
-    // dodgy_deals view. If this 400s, check that same direct-column query
-    // before assuming anything else -- same incident shape as 2026-08-19.
-    fetchSpecialRows(config),
-    buildMatchIndex(config),
-  ]);
+  const specialRows = await fetchSpecialRows(config);
   const sourceUpdatedAt = specialRows.reduce<number | null>((latest, row) => {
     const timestamp = row.cache_refreshed_at ? Date.parse(row.cache_refreshed_at) : NaN;
     if (!Number.isFinite(timestamp)) return latest;
@@ -667,6 +616,14 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Liv
   }, null);
   if (!specialRows.length) return { products: [], sourceUpdatedAt };
 
+  const matchIndex = await buildMatchIndex(config, specialRows.map((row) => row.product_id));
+  /*
+   * The full match index used to fetch every product row on every cold
+   * catalogue refresh. The app only needs canonical links for products that
+   * are present in this specials snapshot; comparable links remain a compact
+   * two-column approved-link read so their transitive grouping semantics are
+   * unchanged.
+   */
   const byGroup = new Map<string, DodgyDealsRow[]>();
   for (const row of specialRows) {
     const groupId = matchIndex.find(row.product_id);
@@ -681,6 +638,12 @@ interface LiveProductsCacheEntry {
   promise: Promise<LiveProductsLoadResult>;
   resolvedAt: number | null;
 }
+
+const CATALOGUE_SPECIALS_SELECT =
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+
+const LEGACY_CATALOGUE_SPECIALS_SELECT =
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples";
 
 const ENRICHED_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
@@ -948,7 +911,7 @@ export function applyTargetedDealToProducts(
 
 async function fetchSpecialRows(config: SupabaseRestConfig): Promise<DodgyDealsRow[]> {
   try {
-    return await fetchAllRows<DodgyDealsRow>(config, ENRICHED_SPECIALS_SELECT, 20000);
+    return await fetchAllRows<DodgyDealsRow>(config, CATALOGUE_SPECIALS_SELECT, 20000);
   } catch (err) {
     // Keep the catalogue usable during the brief migration window while the
     // materialized view is being rebuilt. The fallback deliberately carries
@@ -956,7 +919,7 @@ async function fetchSpecialRows(config: SupabaseRestConfig): Promise<DodgyDealsR
     // classifier v2; the next cache refresh will populate the new contract.
     if (!(err instanceof Error) || !/HTTP 400/.test(err.message)) throw err;
     console.warn("Evidence-aware deal fields are not live yet; using the legacy cache shape.");
-    return fetchAllRows<DodgyDealsRow>(config, LEGACY_SPECIALS_SELECT, 20000);
+    return fetchAllRows<DodgyDealsRow>(config, LEGACY_CATALOGUE_SPECIALS_SELECT, 20000);
   }
 }
 

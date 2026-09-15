@@ -43,10 +43,14 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * or incomplete results. The v8 verdict-contract rollout invalidates v7
  * records whose legacy DODGY rows may already have been downgraded to Fair
  * Price by the client compatibility rule. Version 9 also refreshes cached
- * names after the product-title apostrophe casing fix. Keep this version tied
- * to the deployed catalogue contract, not only TypeScript shape changes.
+ * names after the product-title apostrophe casing fix. Version 10 also
+ * invalidates cards that were populated with bulk price-history summaries;
+ * those summaries are now mostly filled by the targeted detail refresh.
+ * Version 11 restores only the sample-count field needed by the account
+ * statistics without restoring the larger summary payload. Keep this version
+ * tied to the deployed catalogue contract, not only TypeScript shape changes.
  */
-const CATALOGUE_CACHE_VERSION = 9;
+const CATALOGUE_CACHE_VERSION = 11;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {

@@ -502,6 +502,34 @@ test("buildMatchIndex: find() is stable regardless of row fetch order", async ()
   assert.equal(indexReversed.find("p-c"), "p-a");
 });
 
+test("buildMatchIndex: scoped canonical lookups ignore products without a canonical link", async () => {
+  const calls: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    const body = url.includes("app_comparable_family_links")
+      ? []
+      : [{ id: "p-special", canonical_product_id: null }];
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => body,
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const index = await buildMatchIndex({ url: "https://fake-scoped.example.com", anonKey: "k" }, ["p-special"]);
+    assert.equal(index.find("p-special"), "p-special");
+    assert.equal(index.edgeCount, 0);
+    assert.match(calls[0], /app_comparable_family_links/);
+    assert.match(calls[1], /id=in\.\(/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 // ---- loadLiveProducts request cache ----
 // Added 2026-08-08 alongside the fix for real production 500s traced to
 // concurrent overlapping calls (Home + Specials + React Strict Mode's
@@ -542,13 +570,12 @@ test("loadLiveProducts: concurrent overlapping calls share one in-flight fetch, 
     const config = fakeConfig("concurrent");
     const [a, b] = await Promise.all([loadLiveProducts(config), loadLiveProducts(config)]);
     assert.deepEqual(a, b);
-    // loadLiveProductsUncached makes 3 underlying fetchAllRows calls
-    // (dodgy_deals_cache as of 2026-08-12, products, app_comparable_family_links)
-    // -- 2 overlapping loadLiveProducts() calls sharing one fetch means 3
-    // catalogue calls total, not 6. The one publication-marker request is
-    // also shared by the overlapping callers. This is the exact
+    // An empty specials snapshot needs only the one catalogue request; the
+    // scoped match-index reads are skipped because there are no product IDs
+    // to group. Two overlapping loadLiveProducts() calls sharing one fetch
+    // therefore make one request total, not two. This is the exact
     // production failure mode: before this cache existed, this would be 6.
-    assert.equal(calls.length, 3, `expected 3 underlying fetches for 2 overlapping callers, got ${calls.length}`);
+    assert.equal(calls.length, 1, `expected 1 underlying fetch for 2 overlapping callers, got ${calls.length}`);
   } finally {
     restore();
   }
@@ -559,10 +586,10 @@ test("loadLiveProducts: a second call after the cache entry is evicted fetches a
   try {
     const config = fakeConfig("eviction");
     await loadLiveProducts(config);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 1);
     __liveProductsCache.delete(`${config.url}::${config.anonKey}`);
     await loadLiveProducts(config);
-    assert.equal(calls.length, 6, "expected a fresh catalogue pipeline after manual cache eviction");
+    assert.equal(calls.length, 2, "expected a fresh catalogue request after manual cache eviction");
   } finally {
     restore();
   }
@@ -689,6 +716,14 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     const result = await loadLiveProducts(config);
     assert.equal(result.length, 1, "expected one product card built from the one real dodgy_deals row");
     assert.equal(calls.length, 4, "expected the 3-call pipeline plus one publication marker");
+    const productFetch = calls.find((url) => url.includes("/products?"));
+    assert.ok(productFetch, "expected the scoped canonical-product lookup");
+    assert.match(productFetch, /id=in\.\(/);
+    assert.doesNotMatch(productFetch, /canonical_product_id=not\.is\.null/);
+    const specialsFetch = calls.find((url) => url.includes("dodgy_deals_cache?select="));
+    assert.ok(specialsFetch, "expected the bulk specials lookup");
+    assert.match(specialsFetch, /price_history_90d_samples/);
+    assert.doesNotMatch(specialsFetch, /price_history_90d_low|price_history_90d_high|price_history_90d_avg|price_history_90d_special_samples|price_history_90d_days_tracked|price_history_90d_special_days/);
 
     // writeCatalogueCache is fire-and-forget inside loadLiveProducts (not
     // awaited, matching the prototype's own pattern) -- give it a couple of
