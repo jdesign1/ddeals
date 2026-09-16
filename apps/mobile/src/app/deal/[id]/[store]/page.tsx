@@ -1393,6 +1393,18 @@ export default function DealAssessmentPage() {
           </div>
         </div>
       </div>
+      <section className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs" aria-labelledby="report-deal-heading">
+        <h2 id="report-deal-heading" className="dd-type-section text-stone-900">
+          Is this deal incorrect?
+        </h2>
+        <p className="mt-1 text-sm leading-relaxed text-stone-600">Get in touch and let us know.</p>
+        <Link
+          href="/report-deal"
+          className="mt-4 flex min-h-11 w-full items-center justify-center rounded-xl border border-stone-300 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
+        >
+          Report an incorrect deal
+        </Link>
+      </section>
     </div>
       </motion.div>
 
