@@ -258,6 +258,7 @@ export default function AppHeader({
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
+  const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
   const [lastShownNewSpecialsDate, setLastShownNewSpecialsDate] = useState(
     () => readNewSpecialsPresentation().date
   );
@@ -292,6 +293,11 @@ export default function AppHeader({
     if (!shouldPresentNewSpecialsModal) return;
     const presentationTimer = window.setTimeout(() => {
       const date = getLocalDateKey();
+      // Freeze the counts that caused this presentation before advancing the
+      // last-shown publication marker below. `newSpecials` is derived from
+      // that marker, so passing it directly to the modal would immediately
+      // recalculate the open modal to zero new deals.
+      setNewSpecialsModalSummary(newSpecials);
       setLastShownNewSpecialsDate(date);
       setLastShownNewSpecialsPublication(cataloguePublication);
       try {
@@ -306,7 +312,7 @@ export default function AppHeader({
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [cataloguePublication, shouldPresentNewSpecialsModal]);
+  }, [cataloguePublication, newSpecials, shouldPresentNewSpecialsModal]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
@@ -550,7 +556,7 @@ export default function AppHeader({
 
     <NewSpecialsModal
       open={isNewSpecialsModalOpen && pathname === "/"}
-      summary={newSpecials ?? { byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 }, realDeals: 0, dodgyDeals: 0, total: 0 }}
+      summary={newSpecialsModalSummary ?? newSpecials}
       onClose={() => setIsNewSpecialsModalOpen(false)}
       onSelectFilter={(filter) => {
         setIsNewSpecialsModalOpen(false);
