@@ -82,7 +82,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   {!hasNewSpecials
                     ? "You’re all caught up"
                     : hasRatedSpecials
-                      ? "We&rsquo;ve spotted some new specials"
+                      ? "We’ve spotted some new specials"
                       : "Fresh specials are here"}
                 </h2>
                 {!hasNewSpecials ? (
