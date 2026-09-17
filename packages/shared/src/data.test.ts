@@ -408,6 +408,7 @@ test("buildProductCardsFromSpecials: maps price_history_90d_* columns to ninetyD
       price_history_90d_avg: 6.25,
       price_history_90d_samples: 30,
       price_history_90d_special_samples: 0, // legitimately 0 ("never on special"), not "missing"
+      price_history_90d_price_changes: 7,
     }),
   ];
   const cards = buildProductCardsFromSpecials([["group-1", rows]]);
@@ -417,6 +418,7 @@ test("buildProductCardsFromSpecials: maps price_history_90d_* columns to ninetyD
   assert.equal(deal.ninetyDayAvg, 6.25);
   assert.equal(deal.ninetyDaySamples, 30);
   assert.equal(deal.ninetyDaySpecialSamples, 0);
+  assert.equal(deal.ninetyDayPriceChanges, 7);
 });
 
 test("buildProductCardsFromSpecials: ninetyDay* fields are null when price_history_90d_* is absent from the row (pre-migration/no history)", () => {
@@ -432,6 +434,7 @@ test("buildProductCardsFromSpecials: ninetyDay* fields are null when price_histo
   assert.equal(deal.ninetyDayAvg, null);
   assert.equal(deal.ninetyDaySamples, null);
   assert.equal(deal.ninetyDaySpecialSamples, null);
+  assert.equal(deal.ninetyDayPriceChanges, null);
 });
 
 test("buildProductCardsFromSpecials: standardPrice falls back to min sale_price when no normal_price exists", () => {
@@ -723,6 +726,7 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     const specialsFetch = calls.find((url) => url.includes("dodgy_deals_cache?select="));
     assert.ok(specialsFetch, "expected the bulk specials lookup");
     assert.match(specialsFetch, /price_history_90d_samples/);
+    assert.match(specialsFetch, /price_history_90d_price_changes/);
     assert.doesNotMatch(specialsFetch, /price_history_90d_low|price_history_90d_high|price_history_90d_avg|price_history_90d_special_samples|price_history_90d_days_tracked|price_history_90d_special_days/);
 
     // writeCatalogueCache is fire-and-forget inside loadLiveProducts (not

@@ -72,6 +72,8 @@ export interface DodgyDealsRow {
   price_history_90d_avg?: number | null;
   price_history_90d_samples?: number | null;
   price_history_90d_special_samples?: number | null;
+  /** Count of distinct price changes in the rolling 90-day window (not scrape rows or special-flag flips). */
+  price_history_90d_price_changes?: number | null;
   // Duration-weighted frequency (2026-08-20) -- see dodgy_deals_view.sql's
   // "Fix (2026-08-20)" header comment: price_history_90d_samples/
   // _special_samples above COUNT transition rows, not days -- misleading
@@ -125,6 +127,8 @@ export interface CurrentDeal {
   ninetyDayAvg: number | null;
   ninetyDaySamples: number | null;
   ninetyDaySpecialSamples: number | null;
+  /** Distinct recorded price transitions in this product/store's last 90 days. */
+  ninetyDayPriceChanges?: number | null;
   /** Duration-weighted frequency (2026-08-20) -- see DodgyDealsRow's own
    * doc comment. Use these for "how often is this on special" display,
    * not ninetyDaySamples/ninetyDaySpecialSamples (event counts). */
@@ -528,6 +532,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     ninetyDayAvg: row.price_history_90d_avg ?? null,
     ninetyDaySamples: row.price_history_90d_samples ?? null,
     ninetyDaySpecialSamples: row.price_history_90d_special_samples ?? null,
+    ninetyDayPriceChanges: row.price_history_90d_price_changes ?? null,
     ninetyDayDaysTracked: row.price_history_90d_days_tracked ?? null,
     ninetyDaySpecialDays: row.price_history_90d_special_days ?? null,
     regularPriceSamples: row.regular_price_samples ?? null,
@@ -640,13 +645,13 @@ interface LiveProductsCacheEntry {
 }
 
 const CATALOGUE_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,price_history_90d_price_changes,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
 
 const LEGACY_CATALOGUE_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples";
 
 const ENRICHED_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_price_changes,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
 
 const LEGACY_SPECIALS_SELECT =
   "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";

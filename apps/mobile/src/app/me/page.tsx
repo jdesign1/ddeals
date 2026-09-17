@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   fetchDealCheckHistory,
   computeDealStats,
+  buildPriceChangeStats,
   describeFetchError,
   matchesAnySelectedStore,
   STORE_DISPLAY_FALLBACK,
@@ -55,14 +56,6 @@ interface StoreRanking {
   totalSavings: number;
 }
 
-interface PriceChangeRanking {
-  key: string;
-  store: string;
-  averageChanges: number;
-  totalChanges: number;
-  itemsTracked: number;
-}
-
 function dealTimestamp(deal: CurrentDeal): number {
   const saleStartedAt = Date.parse(deal.saleStartedAt ?? "");
   if (Number.isFinite(saleStartedAt)) return saleStartedAt;
@@ -87,13 +80,14 @@ function bestCurrentDeal(
 }
 
 function buildCurrentStoreStats(products: ProductCard[]): CurrentStoreStats[] {
+  const sinceTimestamp = Date.now() - NINETY_DAYS_MS;
   return STATS_STORES.map(({ key, label }) => {
     const realProducts = new Set<string>();
     const dodgyProducts = new Set<string>();
 
     for (const product of products) {
-      if (bestCurrentDeal(product, key, "real")) realProducts.add(product.id);
-      if (bestCurrentDeal(product, key, "dodgy")) dodgyProducts.add(product.id);
+      if (bestCurrentDeal(product, key, "real", sinceTimestamp)) realProducts.add(product.id);
+      if (bestCurrentDeal(product, key, "dodgy", sinceTimestamp)) dodgyProducts.add(product.id);
     }
 
     return { key, store: label, real: realProducts.size, dodgy: dodgyProducts.size };
@@ -120,24 +114,6 @@ function buildStoreRankings(products: ProductCard[]): StoreRanking[] {
       totalSavings,
     };
   }).sort((a, b) => b.averageDiscount - a.averageDiscount || b.realDeals - a.realDeals);
-}
-
-function buildPriceChangeRankings(products: ProductCard[]): PriceChangeRanking[] {
-  return STATS_STORES.map(({ key, label }) => {
-    const deals = products
-      .map((product) => bestCurrentDeal(product, key, "all"))
-      .filter((deal): deal is CurrentDeal => Boolean(deal));
-    const historyBackedDeals = deals.filter((deal) => Number.isFinite(deal.ninetyDaySamples));
-    const totalChanges = historyBackedDeals.reduce((sum, deal) => sum + (deal.ninetyDaySamples ?? 0), 0);
-
-    return {
-      key,
-      store: label,
-      averageChanges: historyBackedDeals.length ? totalChanges / historyBackedDeals.length : 0,
-      totalChanges,
-      itemsTracked: historyBackedDeals.length,
-    };
-  }).sort((a, b) => b.averageChanges - a.averageChanges || b.itemsTracked - a.itemsTracked);
 }
 
 function recentMonthKeys(): { key: string; label: string }[] {
@@ -247,6 +223,7 @@ export default function MePage() {
   const [isMonthlyPulseOpen, setIsMonthlyPulseOpen] = useState(false);
   const [isValueRankingOpen, setIsValueRankingOpen] = useState(true);
   const [isPriceChangeOpen, setIsPriceChangeOpen] = useState(false);
+  const [isTopChangedItemsOpen, setIsTopChangedItemsOpen] = useState(false);
   const [isSavingsOpen, setIsSavingsOpen] = useState(true);
   // Same plain-counter retry pattern established across this app on
   // 2026-08-11 (search-context.tsx/specials/page.tsx/lists/page.tsx) —
@@ -283,7 +260,10 @@ export default function MePage() {
   const currentStoreStats = useMemo(() => buildCurrentStoreStats(products), [products]);
   const monthlyStats = useMemo(() => buildMonthlyStats(products), [products]);
   const storeRankings = useMemo(() => buildStoreRankings(products), [products]);
-  const priceChangeRankings = useMemo(() => buildPriceChangeRankings(products), [products]);
+  const priceChangeStats = useMemo(
+    () => buildPriceChangeStats(products, STATS_STORES.map(({ key, label }) => ({ key, store: label }))),
+    [products]
+  );
   const lowestValueRanking = [...storeRankings].reverse().find((store) => store.realDeals > 0);
   const monthlySpotlight = useMemo(() => {
     return STATS_STORES.map(({ key, label }) => {
@@ -440,7 +420,7 @@ export default function MePage() {
                 <span>
                   <span className="block dd-type-section text-stone-900">Breakdown by supermarket</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Live Real Saver and Dodgy deals in the app. Tap a number to browse them.
+                    Current Real Saver and Dodgy deals found in the last 90 days, by supermarket. Tap a number to browse.
                   </span>
                 </span>
                 <ChevronDown
@@ -499,7 +479,7 @@ export default function MePage() {
                 <span>
                   <span className="block dd-type-section text-stone-900">Monthly deal pulse</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Current deals grouped by sale start over the last 90 days.
+                    How many current Real Saver and Dodgy deals the app found, grouped by the month each special started.
                   </span>
                 </span>
                 <ChevronDown
@@ -656,7 +636,7 @@ export default function MePage() {
                 <span>
                   <span className="block dd-type-section text-stone-900">Price change frequency</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Which supermarkets change prices most often?
+                    Share of tracked current-deal items with an actual price change in the last 90 days.
                   </span>
                 </span>
                 <ChevronDown
@@ -668,54 +648,54 @@ export default function MePage() {
               {isPriceChangeOpen && (
                 <div className="flex flex-col gap-4">
                   <p className="dd-type-secondary text-stone-500">
-                    Average recorded price changes per current item, based on the last 90 days of catalogue history.
+                    Bars compare the share of items with at least one price change. Counts include only items with two or more recorded price states.
                   </p>
 
                   {loadingProducts ? (
                     <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating price history&hellip;</p>
-                  ) : priceChangeRankings[0]?.itemsTracked ? (
+                  ) : priceChangeStats.stores.some((store) => store.itemsTracked > 0) ? (
                     <>
                       <div className="rounded-2xl border border-ink-100 bg-ink-50/60 p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most frequent changes</p>
-                            <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-stone-900">{priceChangeRankings[0].store}</p>
-                            <p className="mt-1 dd-type-secondary text-stone-500">Highest average in the last 90 days</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most items changed</p>
+                            <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-stone-900">{priceChangeStats.stores[0].store}</p>
+                            <p className="mt-1 dd-type-secondary text-stone-500">Largest share of tracked items with a price change</p>
                           </div>
                           <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
                             <span className="text-2xl font-black leading-none tabular-nums text-ink-700">
-                              {formatFrequency(priceChangeRankings[0].averageChanges)}
+                              {priceChangeStats.stores[0].changeRatePct}%
                             </span>
-                            <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">changes / item</span>
+                            <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">items changed</span>
                           </div>
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3 border-t border-ink-100 pt-3">
-                          <span className="dd-type-meta text-stone-500">Catalogue history coverage</span>
+                          <span className="dd-type-meta text-stone-500">Items with a price change</span>
                           <span className="text-sm font-bold tabular-nums text-stone-700">
-                            {priceChangeRankings[0].itemsTracked} {priceChangeRankings[0].itemsTracked === 1 ? "item" : "items"}
+                            {priceChangeStats.stores[0].itemsChanged} of {priceChangeStats.stores[0].itemsTracked}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-4">
-                        {priceChangeRankings.map((store) => (
+                        {priceChangeStats.stores.filter((store) => store.itemsTracked > 0).map((store) => (
                           <div key={store.key}>
                             <div className="mb-1.5 flex items-baseline justify-between gap-3">
                               <p className="dd-type-control text-stone-800">{store.store}</p>
                               <p className="dd-type-meta font-bold tabular-nums text-stone-600">
-                                {formatFrequency(store.averageChanges)} per item
+                                {store.changeRatePct}% of items
                               </p>
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
                               <div
                                 className="dd-price-change-bar h-full rounded-full transition-[width]"
                                 style={{
-                                  width: `${priceChangeRankings[0].averageChanges > 0 ? Math.max(4, (store.averageChanges / priceChangeRankings[0].averageChanges) * 100) : 0}%`,
+                                  width: `${priceChangeStats.stores[0].changeRatePct > 0 ? Math.max(4, (store.changeRatePct / priceChangeStats.stores[0].changeRatePct) * 100) : 0}%`,
                                 }}
                               />
                             </div>
                             <p className="mt-1 dd-type-meta text-stone-500">
-                              {store.totalChanges} recorded changes across {store.itemsTracked} {store.itemsTracked === 1 ? "item" : "items"}
+                              {store.itemsChanged} of {store.itemsTracked} tracked {store.itemsTracked === 1 ? "item" : "items"} changed · {store.totalChanges} total {store.totalChanges === 1 ? "change" : "changes"}
                             </p>
                           </div>
                         ))}
@@ -723,10 +703,58 @@ export default function MePage() {
                     </>
                   ) : (
                     <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                      Price-change rankings will appear as the catalogue builds its 90-day history.
+                      This comparison will appear as current deal items build enough 90-day price history.
                     </p>
                   )}
                 </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsTopChangedItemsOpen((open) => !open)}
+                aria-expanded={isTopChangedItemsOpen}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block dd-type-section text-stone-900">Top 10 price-changing items</span>
+                  <span className="mt-1 block dd-type-secondary text-stone-500">
+                    Current deal items with the most actual price changes across supermarkets in the last 90 days.
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isTopChangedItemsOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {isTopChangedItemsOpen && (
+                loadingProducts ? (
+                  <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating price history&hellip;</p>
+                ) : priceChangeStats.topProducts.length ? (
+                  <div className="flex flex-col divide-y divide-stone-100">
+                    {priceChangeStats.topProducts.map((product, index) => (
+                      <div key={product.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-ink-50 text-sm font-black tabular-nums text-ink-700">
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="dd-type-meta truncate text-stone-500">{product.brand}</p>
+                          <p className="dd-type-control text-stone-800">{product.name}</p>
+                          <p className="dd-type-meta text-stone-500">Across {product.storeCount} {product.storeCount === 1 ? "supermarket" : "supermarkets"}</p>
+                        </div>
+                        <span className="flex-shrink-0 text-right text-base font-black tabular-nums text-ink-700">
+                          {product.totalChanges} {product.totalChanges === 1 ? "change" : "changes"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
+                    The list will appear once current deal items have enough recorded price history.
+                  </p>
+                )
               )}
             </div>
 
@@ -776,10 +804,6 @@ export default function MePage() {
 
 function formatPercent(value: number): string {
   return `${Math.round(value)}%`;
-}
-
-function formatFrequency(value: number): string {
-  return value >= 10 ? value.toFixed(0) : value.toFixed(1);
 }
 
 function formatCurrency(value: number): string {
