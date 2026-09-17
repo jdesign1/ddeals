@@ -1098,7 +1098,7 @@ function ListCard({
                   <span className="dd-badge dd-badge-neutral shrink-0">Checking prices…</span>
                 ) : summary?.hasSavingsData && summary.savingsAmount > 0 ? (
                   <span className="dd-badge dd-badge-fair shrink-0">
-                    -${summary.savingsAmount.toFixed(2)} saved
+                    ${summary.savingsAmount.toFixed(2)} saved
                   </span>
                 ) : (
                   null
