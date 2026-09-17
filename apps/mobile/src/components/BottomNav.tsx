@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearch } from "@/lib/search-context";
+import { useNotifications } from "@/lib/notifications-context";
 
 type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
@@ -226,6 +227,7 @@ const CONTACT_ROUTES = ["/support", "/report-deal"];
 export default function BottomNav() {
   const pathname = usePathname();
   const { isActive: isSearchActive, closeSearch } = useSearch();
+  const { unreadCount } = useNotifications();
 
   if (pathname.startsWith("/deal/") || pathname === "/settings" || CONTACT_ROUTES.includes(pathname)) return null;
 
@@ -242,11 +244,13 @@ export default function BottomNav() {
       >
         {TABS.map(({ href, label, icon }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const hasUnreadUpdates = href === "/lists" && unreadCount > 0;
           return (
             <Link
               key={href}
               href={href}
               aria-current={isActive ? "page" : undefined}
+              aria-label={hasUnreadUpdates ? `${label}, new list updates` : undefined}
               onClick={() => {
                 if (isSearchActive) closeSearch();
               }}
@@ -279,15 +283,23 @@ export default function BottomNav() {
                     />
                   )}
                 </AnimatePresence>
-                <span
-                  className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
-                  style={{
-                    color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
-                    fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
-                  }}
-                  aria-hidden="true"
-                >
-                  {icon}
+                <span className="relative inline-flex h-5 w-5 items-center justify-center">
+                  <span
+                    className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
+                    style={{
+                      color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
+                      fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                    }}
+                    aria-hidden="true"
+                  >
+                    {icon}
+                  </span>
+                  {hasUnreadUpdates && (
+                    <span
+                      className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white"
+                      aria-hidden="true"
+                    />
+                  )}
                 </span>
                 {label}
               </span>

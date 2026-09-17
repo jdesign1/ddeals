@@ -13,18 +13,27 @@ import { getAccountDisplayName, getAccountEmailDisplay } from "@/lib/account-dis
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
+import { useNotifications } from "@/lib/notifications-context";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
   const { user, profile, loading: authLoading, signOut, updateProfileName } = useAuth();
+  const {
+    pushEnabled,
+    pushReady,
+    pushAvailableOnDevice,
+    notificationError,
+    setPushEnabled,
+  } = useNotifications();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNameSheetOpen, setIsNameSheetOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const backNavigationStartedRef = useRef(false);
 
@@ -75,6 +84,15 @@ export default function SettingsPage() {
       setIsNameSheetOpen(false);
     } finally {
       setIsSavingName(false);
+    }
+  }
+
+  async function handlePushToggle() {
+    setIsSavingNotifications(true);
+    try {
+      await setPushEnabled(!pushEnabled);
+    } finally {
+      setIsSavingNotifications(false);
     }
   }
 
@@ -174,6 +192,50 @@ export default function SettingsPage() {
             />
           </button>
         </div>
+      </section>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm" aria-labelledby="settings-notifications-title">
+        <div className="mb-4">
+          <h2 id="settings-notifications-title" className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">
+            Notifications
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-stone-600">
+            Get a quiet update when something on your list returns on special or gets a meaningfully better price.
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold leading-5 text-stone-900">Push notifications</p>
+            <p className="mt-1 text-[13px] leading-5 text-stone-500">
+              {!user
+                ? "Sign in to turn on list updates."
+                : !pushAvailableOnDevice
+                  ? "Push notifications are available in the iOS app."
+                  : !pushReady
+                    ? "Server setup is needed before push notifications can be enabled."
+                    : pushEnabled
+                      ? "Updates are grouped by list. You can turn these off anytime."
+                      : "Only meaningful price changes will send an update."}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={pushEnabled}
+            aria-label="Push notifications"
+            disabled={authLoading || !user || (!pushAvailableOnDevice && !pushEnabled) || (!pushReady && !pushEnabled) || isSavingNotifications}
+            onClick={() => void handlePushToggle()}
+            className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+              pushEnabled ? "bg-ink-600" : "bg-stone-300"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`}
+            />
+          </button>
+        </div>
+        {notificationError && <p role="status" className="mt-3 text-[13px] leading-5 text-alert-700">{notificationError}</p>}
       </section>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">

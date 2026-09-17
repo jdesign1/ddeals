@@ -28,6 +28,8 @@ import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import ShareListsSheet from "@/components/ShareListsSheet";
+import UnreadListItem from "@/components/UnreadListItem";
+import { useNotifications } from "@/lib/notifications-context";
 
 const LIST_EXPANSION_STORAGE_KEY = "dodgy-deal:list-expansion:v1";
 
@@ -212,6 +214,7 @@ const LIST_EXPANSION_STORAGE_KEY = "dodgy-deal:list-expansion:v1";
  */
 export default function ListsPage() {
   const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { unreadListItemKeys, markListItemViewed } = useNotifications();
   const [lists, setLists] = useState<ListRow[]>([]);
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [summaries, setSummaries] = useState<Map<string, ListSummary>>(new Map());
@@ -245,6 +248,7 @@ export default function ListsPage() {
   const [sortMode, setSortMode] = useState<"recent" | "savings">("recent");
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const deepLinkHandledRef = useRef(false);
   const listExpansionStorageKey = user ? `${LIST_EXPANSION_STORAGE_KEY}:${user.id}` : null;
 
   // List expansion is a UI preference, not part of the list data. Keep it in
@@ -286,6 +290,35 @@ export default function ListsPage() {
     },
     [listExpansionStorageKey]
   );
+
+  useEffect(() => {
+    if (deepLinkHandledRef.current || lists.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const listId = params.get("listId");
+    const productId = params.get("productId");
+    const targetList = lists.find((list) => list.id === listId);
+    if (!targetList) return;
+    const targetItems = itemsByList.get(targetList.id) ?? [];
+    if (productId && !targetItems.some((item) => item.product_id === productId)) return;
+
+    deepLinkHandledRef.current = true;
+    let scrollTimer: number | undefined;
+    const expandTimer = window.setTimeout(() => {
+      setListExpanded(targetList.id, true);
+      window.history.replaceState(window.history.state, "", "/lists");
+      if (productId) {
+        scrollTimer = window.setTimeout(() => {
+          document
+            .querySelector<HTMLElement>(`[data-list-id="${targetList.id}"][data-product-id="${productId}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 350);
+      }
+    }, 0);
+    return () => {
+      window.clearTimeout(expandTimer);
+      if (scrollTimer) window.clearTimeout(scrollTimer);
+    };
+  }, [itemsByList, lists, setListExpanded]);
 
   const allListsExpanded = lists.length > 0 && lists.every((list) => expandedListsById[list.id] ?? true);
   const toggleAllLists = useCallback(() => {
@@ -638,6 +671,8 @@ export default function ListsPage() {
                 isDeleting={deletingListId === list.id}
                 isNew={newlyCreatedListId === list.id}
                 onNewAnimationComplete={() => setNewlyCreatedListId(null)}
+                unreadListItemKeys={unreadListItemKeys}
+                onItemViewed={(listItemId) => void markListItemViewed(list.id, listItemId)}
               />
             ))}
           </motion.div>
@@ -844,6 +879,8 @@ function ListCard({
   isDeleting,
   isNew,
   onNewAnimationComplete,
+  unreadListItemKeys,
+  onItemViewed,
 }: {
   list: ListRow;
   items: ListItemRow[];
@@ -860,6 +897,8 @@ function ListCard({
   isDeleting: boolean;
   isNew: boolean;
   onNewAnimationComplete: () => void;
+  unreadListItemKeys: ReadonlySet<string>;
+  onItemViewed: (listItemId: string) => void;
 }) {
   // Inline "are you sure?" state (2026-08-14, Jay: "create an are you sure?
   // state on the card incase the user doesn't want to delete the card") --
@@ -1141,25 +1180,39 @@ function ListCard({
 
                 if (card) {
                   return (
-                    <ListItemProductCard
+                    <UnreadListItem
                       key={item.id}
-                      product={card}
-                      deal={card.currentDeals[0]}
-                      quantity={item.quantity}
-                      onRemove={() => onRemoveItem(item.product_id)}
-                      removeLabel={removeLabel}
-                      onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
-                    />
+                      listId={list.id}
+                      productId={item.product_id}
+                      isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
+                      onViewed={() => onItemViewed(item.id)}
+                    >
+                      <ListItemProductCard
+                        product={card}
+                        deal={card.currentDeals[0]}
+                        quantity={item.quantity}
+                        onRemove={() => onRemoveItem(item.product_id)}
+                        removeLabel={removeLabel}
+                        onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
+                      />
+                    </UnreadListItem>
                   );
                 }
                 return (
-                  <FallbackItemRow
+                  <UnreadListItem
                     key={item.id}
-                    label={label}
-                    quantity={item.quantity}
-                    removeLabel={removeLabel}
-                    onRemove={() => onRemoveItem(item.product_id)}
-                  />
+                    listId={list.id}
+                    productId={item.product_id}
+                    isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
+                    onViewed={() => onItemViewed(item.id)}
+                  >
+                    <FallbackItemRow
+                      label={label}
+                      quantity={item.quantity}
+                      removeLabel={removeLabel}
+                      onRemove={() => onRemoveItem(item.product_id)}
+                    />
+                  </UnreadListItem>
                 );
               })}
               {notOnSpecialItems.length > 0 && (
@@ -1173,25 +1226,39 @@ function ListCard({
 
                     if (card) {
                       return (
-                        <ListItemProductCard
+                        <UnreadListItem
                           key={item.id}
-                          product={card}
-                          deal={card.currentDeals[0]}
-                          quantity={item.quantity}
-                          onRemove={() => onRemoveItem(item.product_id)}
-                          removeLabel={removeLabel}
-                          onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
-                        />
+                          listId={list.id}
+                          productId={item.product_id}
+                          isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
+                          onViewed={() => onItemViewed(item.id)}
+                        >
+                          <ListItemProductCard
+                            product={card}
+                            deal={card.currentDeals[0]}
+                            quantity={item.quantity}
+                            onRemove={() => onRemoveItem(item.product_id)}
+                            removeLabel={removeLabel}
+                            onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
+                          />
+                        </UnreadListItem>
                       );
                     }
                     return (
-                      <FallbackItemRow
+                      <UnreadListItem
                         key={item.id}
-                        label={label}
-                        quantity={item.quantity}
-                        removeLabel={removeLabel}
-                        onRemove={() => onRemoveItem(item.product_id)}
-                      />
+                        listId={list.id}
+                        productId={item.product_id}
+                        isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
+                        onViewed={() => onItemViewed(item.id)}
+                      >
+                        <FallbackItemRow
+                          label={label}
+                          quantity={item.quantity}
+                          removeLabel={removeLabel}
+                          onRemove={() => onRemoveItem(item.product_id)}
+                        />
+                      </UnreadListItem>
                     );
                   })}
                 </div>

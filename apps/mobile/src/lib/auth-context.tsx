@@ -305,6 +305,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         if (!client) return;
+        // Push tokens are unique to this installed app. Remove this account's
+        // server registration before clearing its auth session, so a signed-out
+        // device does not keep receiving list updates for the previous user.
+        try {
+          await client.rpc("unregister_push_devices");
+        } catch {
+          // A transient API failure must never strand the user signed in.
+        }
         await client.auth.signOut();
       },
       isAnonymousSession: !!user?.is_anonymous,
