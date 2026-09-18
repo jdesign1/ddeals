@@ -24,8 +24,10 @@ export default function SettingsPage() {
     pushEnabled,
     pushReady,
     pushAvailableOnDevice,
+    pushPermissionState,
     notificationError,
     setPushEnabled,
+    openNotificationSettings,
   } = useNotifications();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
@@ -95,6 +97,42 @@ export default function SettingsPage() {
       setIsSavingNotifications(false);
     }
   }
+
+  async function handleEnableNotifications() {
+    setIsSavingNotifications(true);
+    try {
+      await setPushEnabled(true);
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  }
+
+  async function handleOpenNotificationSettings() {
+    setIsSavingNotifications(true);
+    try {
+      await openNotificationSettings();
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  }
+
+  const notificationPermissionDenied = pushPermissionState === "denied";
+  const canManagePushNotifications = Boolean(user && pushAvailableOnDevice && pushReady);
+  const pushNotificationDescription = !user
+    ? "Sign in to turn on list updates."
+    : !pushAvailableOnDevice
+      ? "Push notifications are available in the iOS app."
+      : !pushReady
+        ? "Server setup is needed before push notifications can be enabled."
+        : notificationPermissionDenied
+          ? "Notifications are blocked in iPhone Settings. Turn them on there to receive list updates."
+          : pushPermissionState === null
+            ? "Checking notification access on this iPhone."
+            : pushPermissionState !== "granted"
+              ? "Turn on notifications to get meaningful list price updates."
+              : pushEnabled
+                ? "Updates are grouped by list. You can turn these off anytime."
+                : "Only meaningful price changes will send an update.";
 
   return (
     <motion.main
@@ -206,35 +244,38 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
           <div className="min-w-0">
             <p className="text-[15px] font-semibold leading-5 text-stone-900">Push notifications</p>
-            <p className="mt-1 text-[13px] leading-5 text-stone-500">
-              {!user
-                ? "Sign in to turn on list updates."
-                : !pushAvailableOnDevice
-                  ? "Push notifications are available in the iOS app."
-                  : !pushReady
-                    ? "Server setup is needed before push notifications can be enabled."
-                    : pushEnabled
-                      ? "Updates are grouped by list. You can turn these off anytime."
-                      : "Only meaningful price changes will send an update."}
-            </p>
+            <p className="mt-1 text-[13px] leading-5 text-stone-500">{pushNotificationDescription}</p>
           </div>
+          {canManagePushNotifications && pushPermissionState === "granted" && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pushEnabled}
+              aria-label="Push notifications"
+              disabled={authLoading || isSavingNotifications}
+              onClick={() => void handlePushToggle()}
+              className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                pushEnabled ? "bg-ink-600" : "bg-stone-300"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`}
+              />
+            </button>
+          )}
+        </div>
+        {canManagePushNotifications && pushPermissionState !== "granted" && (
           <button
             type="button"
-            role="switch"
-            aria-checked={pushEnabled}
-            aria-label="Push notifications"
-            disabled={authLoading || !user || (!pushAvailableOnDevice && !pushEnabled) || (!pushReady && !pushEnabled) || isSavingNotifications}
-            onClick={() => void handlePushToggle()}
-            className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50 ${
-              pushEnabled ? "bg-ink-600" : "bg-stone-300"
-            }`}
+            disabled={authLoading || isSavingNotifications}
+            onClick={() => void (notificationPermissionDenied ? handleOpenNotificationSettings() : handleEnableNotifications())}
+            className="mt-4 flex w-full items-center justify-between rounded-xl border border-stone-200 px-4 py-3 text-left text-[14px] font-semibold text-ink-700 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span
-              aria-hidden="true"
-              className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`}
-            />
+            <span>{notificationPermissionDenied ? "Open iPhone Settings" : "Enable notifications"}</span>
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
           </button>
-        </div>
+        )}
         {notificationError && <p role="status" className="mt-3 text-[13px] leading-5 text-alert-700">{notificationError}</p>}
       </section>
 

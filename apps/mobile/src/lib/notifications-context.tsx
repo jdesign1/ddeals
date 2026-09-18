@@ -1,6 +1,8 @@
 "use client";
 
-import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
+import { AppLauncher } from "@capacitor/app-launcher";
+import { Capacitor, type PermissionState } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -17,10 +19,12 @@ interface NotificationsContextValue {
   pushEnabled: boolean;
   pushReady: boolean;
   pushAvailableOnDevice: boolean;
+  pushPermissionState: PermissionState | null;
   notificationError: string | null;
   unreadCount: number;
   unreadListItemKeys: ReadonlySet<string>;
   setPushEnabled: (enabled: boolean) => Promise<boolean>;
+  openNotificationSettings: () => Promise<void>;
   markListItemViewed: (listId: string, listItemId: string) => Promise<void>;
   refreshNotifications: () => Promise<void>;
 }
@@ -38,15 +42,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [pushEnabled, setPushEnabledState] = useState(false);
   const [pushReady, setPushReady] = useState(false);
   const [pushAvailableOnDevice, setPushAvailableOnDevice] = useState(false);
+  const [pushPermissionState, setPushPermissionState] = useState<PermissionState | null>(null);
   const [unreadAlerts, setUnreadAlerts] = useState<UnreadListAlert[]>([]);
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const registeredTokenRef = useRef<string | null>(null);
   const viewedRequestsRef = useRef(new Set<string>());
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setPushAvailableOnDevice(isNativeIos()), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   const refreshNotifications = useCallback(async () => {
     if (!client || !user) {
@@ -87,20 +87,60 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setUnreadAlerts(nextUnreadAlerts);
   }, [client, user]);
 
+  const refreshPushPermission = useCallback(async (): Promise<PermissionState | null> => {
+    if (!isNativeIos()) {
+      setPushPermissionState(null);
+      return null;
+    }
+    try {
+      const permission = await PushNotifications.checkPermissions();
+      setPushPermissionState(permission.receive);
+      return permission.receive;
+    } catch {
+      setPushPermissionState(null);
+      return null;
+    }
+  }, []);
+
+  const refreshPushReadiness = useCallback(async () => {
+    try {
+      const response = await fetch("/api/notifications/status", { cache: "no-store" });
+      const result = response.ok ? await response.json() as { ready?: boolean } : null;
+      setPushReady(result?.ready === true);
+    } catch {
+      setPushReady(false);
+    }
+  }, []);
+
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPushAvailableOnDevice(isNativeIos());
+      void refreshPushReadiness();
+      void refreshPushPermission();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [refreshPushPermission, refreshPushReadiness]);
+
+  useEffect(() => {
+    if (!isNativeIos()) return;
     let cancelled = false;
-    void fetch("/api/notifications/status", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((result: { ready?: boolean } | null) => {
-        if (!cancelled) setPushReady(result?.ready === true);
-      })
-      .catch(() => {
-        if (!cancelled) setPushReady(false);
-      });
+    let appStateHandle: { remove: () => Promise<void> } | undefined;
+
+    void App.addListener("appStateChange", ({ isActive }) => {
+      if (!isActive) return;
+      void refreshPushPermission();
+      void refreshPushReadiness();
+      void refreshNotifications();
+    }).then((handle) => {
+      if (cancelled) void handle.remove();
+      else appStateHandle = handle;
+    });
+
     return () => {
       cancelled = true;
+      void appStateHandle?.remove();
     };
-  }, []);
+  }, [refreshNotifications, refreshPushPermission, refreshPushReadiness]);
 
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => void refreshNotifications(), 0);
@@ -160,7 +200,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   // If a preference is already on, re-register on launch so iOS can rotate
   // APNs tokens and the current account always has a fresh device address.
   useEffect(() => {
-    if (!client || !user || !pushEnabled || !isNativeIos()) return;
+    if (!client || !user || !pushEnabled || pushPermissionState !== "granted" || !isNativeIos()) return;
     let cancelled = false;
     let registrationHandle: { remove: () => Promise<void> } | undefined;
     let errorHandle: { remove: () => Promise<void> } | undefined;
@@ -197,7 +237,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       void registrationHandle?.remove();
       void errorHandle?.remove();
     };
-  }, [client, pushEnabled, user]);
+  }, [client, pushEnabled, pushPermissionState, user]);
 
   const setPushEnabled = useCallback(async (enabled: boolean): Promise<boolean> => {
     if (!client || !user) {
@@ -217,9 +257,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (enabled) {
       try {
         let permission = await PushNotifications.checkPermissions();
-        if (permission.receive !== "granted") permission = await PushNotifications.requestPermissions();
+        setPushPermissionState(permission.receive);
+        if (permission.receive === "prompt" || permission.receive === "prompt-with-rationale") {
+          permission = await PushNotifications.requestPermissions();
+          setPushPermissionState(permission.receive);
+        }
         if (permission.receive !== "granted") {
-          setNotificationError("Notifications are off for Dodgy Deal in iOS Settings. Turn them on there to get list updates.");
           return false;
         }
       } catch {
@@ -241,6 +284,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
     return true;
   }, [client, pushReady, user]);
+
+  const openNotificationSettings = useCallback(async () => {
+    setNotificationError(null);
+    try {
+      const result = await AppLauncher.openUrl({ url: "app-settings:" });
+      if (!result.completed) {
+        setNotificationError("We couldn't open iPhone Settings. Open Settings and find Dodgy Deal to allow notifications.");
+      }
+    } catch {
+      setNotificationError("We couldn't open iPhone Settings. Open Settings and find Dodgy Deal to allow notifications.");
+    }
+  }, []);
 
   const markListItemViewed = useCallback(async (listId: string, listItemId: string) => {
     if (!client || !user) return;
@@ -269,18 +324,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     pushEnabled,
     pushReady,
     pushAvailableOnDevice,
+    pushPermissionState,
     notificationError,
     unreadCount: unreadAlerts.length,
     unreadListItemKeys,
     setPushEnabled,
+    openNotificationSettings,
     markListItemViewed,
     refreshNotifications,
   }), [
     markListItemViewed,
     notificationError,
+    openNotificationSettings,
     pushEnabled,
     pushAvailableOnDevice,
     pushReady,
+    pushPermissionState,
     refreshNotifications,
     setPushEnabled,
     unreadAlerts.length,

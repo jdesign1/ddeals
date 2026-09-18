@@ -13,6 +13,7 @@ def capacitor_pods
   pod 'CapacitorCordova', :path => '../../../../node_modules/@capacitor/ios'
   pod 'CapacitorCommunityAppleSignIn', :path => '../../../../node_modules/@capacitor-community/apple-sign-in'
   pod 'CapacitorApp', :path => '../../../../node_modules/@capacitor/app'
+  pod 'CapacitorAppLauncher', :path => '../../../../node_modules/@capacitor/app-launcher'
   pod 'CapacitorHaptics', :path => '../../../../node_modules/@capacitor/haptics'
   pod 'CapacitorPreferences', :path => '../../../../node_modules/@capacitor/preferences'
   pod 'CapacitorPushNotifications', :path => '../../../../node_modules/@capacitor/push-notifications'
