@@ -1,6 +1,7 @@
+import { CONTACT_SUPPORT_EMAIL } from "@/lib/contact-config";
+
 // Temporary destination while the custom support inbox is being set up.
 // Override this in Vercel with CONTACT_FORM_TO_EMAIL when hello@ is ready.
-const DEFAULT_CONTACT_EMAIL = "dodgydealnz@gmail.com";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type ContactMode = "support" | "report";
@@ -100,12 +101,15 @@ export async function POST(request: Request) {
   // Quietly discard obvious bot submissions. The visible form never fills this field.
   if (payload.website) return Response.json({ ok: true });
 
+  const contactEmail = process.env.CONTACT_FORM_TO_EMAIL || CONTACT_SUPPORT_EMAIL;
   const apiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.CONTACT_FORM_FROM_EMAIL;
-  const contactEmail = process.env.CONTACT_FORM_TO_EMAIL || DEFAULT_CONTACT_EMAIL;
   if (!apiKey || !fromEmail) {
     console.error("Contact form email is not configured.");
-    return Response.json({ error: "Support is temporarily unavailable. Please try again later." }, { status: 503 });
+    return Response.json({
+      error: "Support is temporarily unavailable. Please try again later.",
+      fallbackEmail: contactEmail,
+    }, { status: 503 });
   }
 
   const email = buildEmail(payload);
@@ -127,11 +131,17 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       console.error("Contact form email provider rejected the request.", { status: response.status });
-      return Response.json({ error: "We couldn't send that right now. Please try again." }, { status: 502 });
+      return Response.json({
+        error: "We couldn't send that right now. Please try again.",
+        fallbackEmail: contactEmail,
+      }, { status: 502 });
     }
   } catch (error) {
     console.error("Contact form email request failed.", error instanceof Error ? error.message : "Unknown error");
-    return Response.json({ error: "We couldn't send that right now. Please try again." }, { status: 502 });
+    return Response.json({
+      error: "We couldn't send that right now. Please try again.",
+      fallbackEmail: contactEmail,
+    }, { status: 502 });
   }
 
   return Response.json({ ok: true });

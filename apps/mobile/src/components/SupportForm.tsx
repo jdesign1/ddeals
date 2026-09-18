@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CONTACT_SUPPORT_EMAIL } from "@/lib/contact-config";
 
 const INITIAL_FORM = {
   name: "",
@@ -19,15 +20,38 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitState, setSubmitState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [canEmailDirectly, setCanEmailDirectly] = useState(false);
+  const [fallbackEmail, setFallbackEmail] = useState(CONTACT_SUPPORT_EMAIL);
   const canSubmit =
     EMAIL_FORMAT_RE.test(form.email.trim()) &&
     Boolean(form.message.trim()) &&
     (!isReport || Boolean(form.product.trim()));
+  const fallbackSubject = isReport
+    ? `Incorrect deal report: ${form.product.trim().replace(/[\r\n]+/g, " ")}`
+    : "Dodgy Deal support request";
+  const fallbackBody = [
+    "Submitted from the Dodgy Deal mobile app",
+    `Name: ${form.name.trim() || "Not provided"}`,
+    `Reply email: ${form.email.trim()}`,
+    ...(isReport
+      ? [
+          `Product: ${form.product.trim()}`,
+          `Retailer: ${form.retailer.trim() || "Not provided"}`,
+          `Store or location: ${form.store.trim() || "Not provided"}`,
+          `Displayed price: ${form.displayedPrice.trim() || "Not provided"}`,
+        ]
+      : []),
+    "",
+    isReport ? "What needs correcting:" : "How can we help?",
+    form.message.trim(),
+  ].join("\n");
+  const fallbackMailto = `mailto:${fallbackEmail}?subject=${encodeURIComponent(fallbackSubject)}&body=${encodeURIComponent(fallbackBody)}`;
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     if (submitState !== "idle") setSubmitState("idle");
     setSubmitError(null);
+    setCanEmailDirectly(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -36,6 +60,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
 
     setSubmitState("sending");
     setSubmitError(null);
+    setCanEmailDirectly(false);
 
     try {
       const response = await fetch("/api/contact", {
@@ -43,17 +68,25 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ ...form, mode }),
       });
-      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      const result = (await response.json().catch(() => null)) as { error?: string; fallbackEmail?: string } | null;
 
       if (!response.ok) {
-        throw new Error(result?.error || "We couldn't send that right now. Please try again.");
+        const fallbackRecipient = result?.fallbackEmail?.trim();
+        if (fallbackRecipient && EMAIL_FORMAT_RE.test(fallbackRecipient)) setFallbackEmail(fallbackRecipient);
+        setCanEmailDirectly(
+          response.status === 403 || response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500
+        );
+        setSubmitState("error");
+        setSubmitError(result?.error || "We couldn't send that right now. Please try again.");
+        return;
       }
 
       setForm({ ...INITIAL_FORM });
       setSubmitState("success");
-    } catch (error) {
+    } catch {
       setSubmitState("error");
-      setSubmitError(error instanceof Error ? error.message : "We couldn't send that right now. Please try again.");
+      setCanEmailDirectly(true);
+      setSubmitError("We couldn't reach support just now.");
     }
   }
 
@@ -72,6 +105,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
           autoComplete="name"
           value={form.name}
           onChange={(event) => updateField("name", event.target.value)}
+          maxLength={200}
           className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm focus:border-stone-900 focus:outline-none"
         />
       </div>
@@ -87,6 +121,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
           autoComplete="email"
           value={form.email}
           onChange={(event) => updateField("email", event.target.value)}
+          maxLength={320}
           placeholder="name@example.com"
           className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
         />
@@ -104,6 +139,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
               required
               value={form.product}
               onChange={(event) => updateField("product", event.target.value)}
+              maxLength={300}
               placeholder="e.g. Coffee beans 1kg"
               className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
             />
@@ -119,6 +155,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
                 type="text"
                 value={form.retailer}
                 onChange={(event) => updateField("retailer", event.target.value)}
+                maxLength={200}
                 placeholder="e.g. Woolworths"
                 className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
               />
@@ -132,6 +169,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
                 type="text"
                 value={form.store}
                 onChange={(event) => updateField("store", event.target.value)}
+                maxLength={200}
                 placeholder="e.g. Auckland"
                 className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
               />
@@ -148,6 +186,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
               inputMode="decimal"
               value={form.displayedPrice}
               onChange={(event) => updateField("displayedPrice", event.target.value)}
+              maxLength={100}
               placeholder="e.g. $8.99"
               className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base font-normal text-stone-700 shadow-sm placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
             />
@@ -165,6 +204,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
           rows={5}
           value={form.message}
           onChange={(event) => updateField("message", event.target.value)}
+          maxLength={4000}
           placeholder={
             isReport
               ? "Tell us what looks wrong and what you expected to see."
@@ -183,6 +223,7 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
           autoComplete="off"
           value={form.website}
           onChange={(event) => updateField("website", event.target.value)}
+          maxLength={200}
         />
       </div>
 
@@ -207,9 +248,18 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
       )}
 
       {submitState === "error" && (
-        <p role="alert" className="rounded-xl border border-alert-100 bg-alert-50 p-3 text-[13px] font-semibold leading-relaxed text-alert-950">
-          {submitError}
-        </p>
+        <div className="rounded-xl border border-alert-100 bg-alert-50 p-3 text-[13px] leading-relaxed text-alert-950">
+          <p role="alert" className="font-semibold">{submitError}</p>
+          {canEmailDirectly && (
+            <div className="mt-3 border-t border-alert-100 pt-3">
+              <p>The message hasn&apos;t been sent yet. Open your email app to review and send it.</p>
+              <a href={fallbackMailto} className="dd-btn dd-btn-outline mt-3 w-full cursor-pointer text-center">
+                Open email app
+              </a>
+              <p className="mt-2 text-center text-xs">To: {fallbackEmail}</p>
+            </div>
+          )}
+        </div>
       )}
     </form>
   );
