@@ -312,7 +312,7 @@ export default function MePage() {
   // 2026-08-19, per Jay: bottom sheet, not a full-page swap -- see
   // lists/page.tsx's own version of this comment.
   if (!user) {
-    const prompt = "Log in to see your Deal Stats — track checked deals, real savers spotted, and estimated total savings.";
+    const prompt = "Log in to see your deal checks, Real Deals found and estimated savings.";
     return (
       <main className="flex flex-col gap-4 pt-6 pb-8">
         {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>`
@@ -375,13 +375,13 @@ export default function MePage() {
         // test account is a real Supabase anonymous sign-in now (see
         // auth-context.tsx's own doc comment), so these stats genuinely
         // reflect real check history like any other signed-in user; this
-        // no longer claims stats "will always show zero," it just flags
-        // the account itself has no email attached.
+        // no longer claims stats "will always show zero," it explains
+        // this anonymous test account cannot be accessed from another device.
         <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3">
           <p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p>
           <p className="dd-type-secondary text-amber-700">
-            You&rsquo;re using an anonymous test account — the stats below are real, but this account has no email
-            attached, so you can&rsquo;t sign back into it from another device.
+            You&rsquo;re using a test account. These stats are real, but you can&rsquo;t sign in to this account on
+            another device.
           </p>
         </div>
       )}
@@ -418,9 +418,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Breakdown by supermarket</span>
+                  <span className="block dd-type-section text-stone-900">Current deals by supermarket</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Current Real Saver and Dodgy deals found in the last 90 days, by supermarket. Tap a number to browse.
+                    Current specials from the last 90 days. Tap a number to browse that supermarket&rsquo;s deals.
                   </span>
                 </span>
                 <ChevronDown
@@ -477,9 +477,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Monthly deal pulse</span>
+                  <span className="block dd-type-section text-stone-900">Specials by month</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    How many current Real Saver and Dodgy deals the app found, grouped by the month each special started.
+                    Current specials, grouped by the month they started.
                   </span>
                 </span>
                 <ChevronDown
@@ -494,17 +494,17 @@ export default function MePage() {
                     <div className="rounded-2xl border border-fair-100 bg-fair-50 p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Real-saver spotlight</p>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Most Real Saver specials</p>
                           <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-fair-950">{monthlySpotlight.store}</p>
-                          <p className="mt-1 dd-type-secondary text-fair-800">Most current Real Saver deals in the last 90 days</p>
+                          <p className="mt-1 dd-type-secondary text-fair-800">In the last 90 days</p>
                         </div>
                         <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
                           <span className="text-2xl font-black leading-none tabular-nums text-fair-700">{monthlySpotlight.real}</span>
-                          <span className="mt-1 text-[11px] font-bold leading-tight text-fair-800">real saver deals</span>
+                          <span className="mt-1 text-[11px] font-bold leading-tight text-fair-800">Real Saver specials</span>
                         </div>
                       </div>
                       <div className="mt-4 flex items-center justify-between gap-3 border-t border-fair-100 pt-3">
-                        <span className="dd-type-meta text-fair-800">Dodgy deals in period</span>
+                        <span className="dd-type-meta text-fair-800">Dodgy specials</span>
                         <span className="text-sm font-bold tabular-nums text-alert-700">{monthlySpotlight.dodgy}</span>
                       </div>
                     </div>
@@ -548,9 +548,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Supermarket value ranking</span>
+                  <span className="block dd-type-section text-stone-900">Best value by supermarket</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Average percentage saved across current Real Saver deals from the last 90 days.
+                    Ranks supermarkets by average discount on current Real Saver specials over the last 90 days. The dollar total adds one discount per deal.
                   </span>
                 </span>
                 <ChevronDown
@@ -562,7 +562,7 @@ export default function MePage() {
               {isValueRankingOpen && (
                 <div className="flex flex-col gap-4">
                   {loadingProducts ? (
-                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating current rankings&hellip;</p>
+                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Loading supermarket rankings&hellip;</p>
                   ) : storeRankings[0]?.realDeals ? (
                     <>
                   <div className="grid grid-cols-2 gap-3">
@@ -575,14 +575,14 @@ export default function MePage() {
                       <p className="mt-4 text-3xl font-black leading-none tabular-nums text-fair-700">
                         {formatPercent(storeRankings[0].averageDiscount)}
                       </p>
-                      <p className="mt-1 text-[12px] font-semibold text-fair-800">average saving</p>
+                      <p className="mt-1 text-[12px] font-semibold text-fair-800">average discount</p>
                       <p className="mt-3 dd-type-meta text-fair-800">
-                        {storeRankings[0].realDeals} current real {storeRankings[0].realDeals === 1 ? "deal" : "deals"}
+                        Based on {storeRankings[0].realDeals} {storeRankings[0].realDeals === 1 ? "deal" : "deals"}
                       </p>
                     </div>
                     {lowestValueRanking && (
                       <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-stone-500">Lowest average</p>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-stone-500">Lowest average discount</p>
                         <div className="mt-3 flex flex-col gap-1">
                           <p className="text-lg font-semibold leading-tight text-stone-800">{lowestValueRanking.store}</p>
                           <p className="dd-type-meta text-stone-500">Last 90 days</p>
@@ -590,9 +590,9 @@ export default function MePage() {
                         <p className="mt-4 text-3xl font-bold leading-none tabular-nums text-stone-700">
                           {formatPercent(lowestValueRanking.averageDiscount)}
                         </p>
-                        <p className="mt-1 text-[12px] font-semibold text-stone-500">average saving</p>
+                        <p className="mt-1 text-[12px] font-semibold text-stone-500">average discount</p>
                         <p className="mt-3 dd-type-meta text-stone-500">
-                          {lowestValueRanking.realDeals} current real {lowestValueRanking.realDeals === 1 ? "deal" : "deals"}
+                          Based on {lowestValueRanking.realDeals} {lowestValueRanking.realDeals === 1 ? "deal" : "deals"}
                         </p>
                       </div>
                     )}
@@ -607,7 +607,7 @@ export default function MePage() {
                         <div className="min-w-0 flex-1">
                           <p className="dd-type-control truncate text-stone-800">{store.store}</p>
                           <p className="dd-type-meta text-stone-500">
-                            {store.realDeals} real {store.realDeals === 1 ? "deal" : "deals"} &middot; {formatCurrency(store.totalSavings)} total savings
+                            {store.realDeals} {store.realDeals === 1 ? "deal" : "deals"} &middot; {formatCurrency(store.totalSavings)} combined discounts
                           </p>
                         </div>
                         <span className="text-right text-base font-black tabular-nums text-fair-700">
@@ -619,7 +619,7 @@ export default function MePage() {
                     </>
                   ) : (
                     <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                      Rankings will appear when current Real Saver deals are available.
+                      No current Real Saver deals to rank yet.
                     </p>
                   )}
                 </div>
@@ -634,9 +634,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Price change frequency</span>
+                  <span className="block dd-type-section text-stone-900">How often prices change</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Share of tracked current-deal items with an actual price change in the last 90 days.
+                    How many current specials changed price in the last 90 days.
                   </span>
                 </span>
                 <ChevronDown
@@ -648,25 +648,25 @@ export default function MePage() {
               {isPriceChangeOpen && (
                 <div className="flex flex-col gap-4">
                   <p className="dd-type-secondary text-stone-500">
-                    Bars compare the share of items with at least one price change. Counts include only items with two or more recorded price states.
+                    Bars show the share of items with at least one price change. We need at least two recorded prices to compare.
                   </p>
 
                   {loadingProducts ? (
-                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating price history&hellip;</p>
+                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Loading price changes&hellip;</p>
                   ) : priceChangeStats.stores.some((store) => store.itemsTracked > 0) ? (
                     <>
                       <div className="rounded-2xl border border-ink-100 bg-ink-50/60 p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most items changed</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most often</p>
                             <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-stone-900">{priceChangeStats.stores[0].store}</p>
-                            <p className="mt-1 dd-type-secondary text-stone-500">Largest share of tracked items with a price change</p>
+                            <p className="mt-1 dd-type-secondary text-stone-500">More of its specials changed price than at other supermarkets</p>
                           </div>
                           <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
                             <span className="text-2xl font-black leading-none tabular-nums text-ink-700">
                               {priceChangeStats.stores[0].changeRatePct}%
                             </span>
-                            <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">items changed</span>
+                            <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">of items changed</span>
                           </div>
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3 border-t border-ink-100 pt-3">
@@ -695,7 +695,7 @@ export default function MePage() {
                               />
                             </div>
                             <p className="mt-1 dd-type-meta text-stone-500">
-                              {store.itemsChanged} of {store.itemsTracked} tracked {store.itemsTracked === 1 ? "item" : "items"} changed · {store.totalChanges} total {store.totalChanges === 1 ? "change" : "changes"}
+                              {store.itemsChanged} of {store.itemsTracked} items changed · {store.totalChanges} {store.totalChanges === 1 ? "price change" : "price changes"}
                             </p>
                           </div>
                         ))}
@@ -703,7 +703,7 @@ export default function MePage() {
                     </>
                   ) : (
                     <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                      This comparison will appear as current deal items build enough 90-day price history.
+                      We&rsquo;ll show this once more current specials have at least two recorded prices to compare.
                     </p>
                   )}
                 </div>
@@ -718,9 +718,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Top 10 price-changing items</span>
+                  <span className="block dd-type-section text-stone-900">Items with the most price changes</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Current deal items with the most actual price changes across supermarkets in the last 90 days.
+                    Current specials with the most price changes across supermarkets in the last 90 days.
                   </span>
                 </span>
                 <ChevronDown
@@ -731,7 +731,9 @@ export default function MePage() {
 
               {isTopChangedItemsOpen && (
                 loadingProducts ? (
-                  <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Updating price history&hellip;</p>
+                  <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
+                    Loading price changes&hellip;
+                  </p>
                 ) : priceChangeStats.topProducts.length ? (
                   <div className="flex flex-col divide-y divide-stone-100">
                     {priceChangeStats.topProducts.map((product, index) => (
@@ -752,7 +754,7 @@ export default function MePage() {
                   </div>
                 ) : (
                   <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                    The list will appear once current deal items have enough recorded price history.
+                    No price changes recorded for current specials yet. We need at least two prices to spot a change.
                   </p>
                 )
               )}
@@ -767,7 +769,7 @@ export default function MePage() {
               >
                 <span>
                   <span className="block dd-type-section text-fair-950">Estimated savings</span>
-                  <span className="mt-1 block dd-type-secondary text-fair-800">Total savings from your checked deals.</span>
+                  <span className="mt-1 block dd-type-secondary text-fair-800">Estimated price drops across the deals you checked.</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="dd-type-display tabular-nums text-fair-700">${stats.moneySaved.toFixed(2)}</span>
@@ -781,8 +783,8 @@ export default function MePage() {
                 <div className="rounded-xl border border-fair-100 bg-white/95 p-4">
                   <p className="mb-1.5 dd-type-meta dd-type-meta-strong text-fair-800">How we calculate this</p>
                   <p className="dd-type-secondary text-stone-600">
-                    Every time you check a deal, we compare its price against the recent price it&rsquo;s being discounted
-                    from. This is the sum of every real saving across everything you&rsquo;ve checked.
+                    For each checked deal priced below its reference price, we count the difference. This is an estimate,
+                    not a record of what you saved at checkout.
                   </p>
                 </div>
               )}
@@ -792,7 +794,7 @@ export default function MePage() {
               href="/history"
               className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 dd-type-control text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
             >
-              <span>See all your checked deals</span>
+              <span>View your deal check history</span>
               <ChevronRight className="h-4 w-4 text-stone-400" aria-hidden="true" />
             </Link>
           </div>
