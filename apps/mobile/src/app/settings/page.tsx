@@ -507,6 +507,18 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                  <div className="flex justify-center">
+                    <MascotImage
+                      src="/auth-wave.webp"
+                      darkSrc="/auth-wave-dark.webp"
+                      alt="Dodgy Deal mascot waving"
+                      width={192}
+                      height={222}
+                      sizes="112px"
+                      unoptimized
+                      className="mascot-wave h-auto w-24"
+                    />
+                  </div>
                   {accountDeleted ? (
                     <>
                       <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
@@ -547,7 +559,7 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => void handleDeleteAccount()}
                           disabled={isDeletingAccount}
-                          className="dd-btn w-full cursor-pointer border-2 border-alert-600 bg-alert-600 text-white transition-colors hover:bg-alert-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-not-allowed"
                         >
                           {isDeletingAccount ? "Deleting account…" : "Delete account"}
                         </button>
