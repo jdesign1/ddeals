@@ -14,7 +14,7 @@ function withSilencedConsoleError(fn: () => void) {
   }
 }
 
-test("describeFetchError: maps 401/403 to the same 'our end' message as 5xx, NOT a sign-in prompt", () => {
+test("describeFetchError: maps server-side availability errors to a helpful retry message", () => {
   // Peer review (2026-08-19): every HTTP-status error this function
   // actually sees comes from data.ts's anon-key PostgREST calls, never a
   // per-user JWT request -- a 401/403 here can only be a server-side
@@ -24,11 +24,11 @@ test("describeFetchError: maps 401/403 to the same 'our end' message as 5xx, NOT
   withSilencedConsoleError(() => {
     assert.equal(
       describeFetchError(new Error("products -> HTTP 401"), "Failed to load"),
-      "Something's wrong on our end -- try again shortly."
+      "We're having trouble on our end right now. Please try again a little later."
     );
     assert.equal(
       describeFetchError(new Error("products -> HTTP 403"), "Failed to load"),
-      "Something's wrong on our end -- try again shortly."
+      "We're having trouble on our end right now. Please try again a little later."
     );
   });
 });
@@ -48,12 +48,12 @@ test("describeFetchError: maps 429 to a rate-limit message", () => {
   });
 });
 
-test("describeFetchError: maps every 5xx to the same 'our end' message as 401/403", () => {
+test("describeFetchError: maps 402 and every 5xx to the helpful retry message", () => {
   withSilencedConsoleError(() => {
-    for (const status of [500, 502, 503, 504]) {
+    for (const status of [402, 500, 502, 503, 504]) {
       assert.equal(
         describeFetchError(new Error(`products -> HTTP ${status}`), "Failed to load"),
-        "Something's wrong on our end -- try again shortly."
+        "We're having trouble on our end right now. Please try again a little later."
       );
     }
   });

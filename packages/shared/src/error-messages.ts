@@ -56,8 +56,8 @@ export function describeFetchError(err: unknown, fallback: string): string {
     const status = Number(statusMatch[1]);
     if (status === 404) return "Couldn't find that.";
     if (status === 429) return "Too many requests right now -- try again in a moment.";
-    if (status === 401 || status === 403 || status >= 500) {
-      return "Something's wrong on our end -- try again shortly.";
+    if (status === 401 || status === 402 || status === 403 || status >= 500) {
+      return "We're having trouble on our end right now. Please try again a little later.";
     }
     // 400 and any other unmapped 4xx: keep the fallback's own wording, add
     // the bare status number for anyone who wants to report it precisely.

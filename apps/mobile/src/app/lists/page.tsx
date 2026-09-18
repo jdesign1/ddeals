@@ -448,7 +448,9 @@ export default function ListsPage() {
       setNewlyCreatedListId(createdList.id);
       await reload({ showLoading: false });
     } catch (err) {
-      setCreateError(describeFetchError(err, "Failed to create list"));
+      const detail = describeFetchError(err, "Failed to create list");
+      setCreateError(detail);
+      setError(detail);
     } finally {
       setCreating(false);
     }
@@ -620,7 +622,7 @@ export default function ListsPage() {
           <LoadingMascot loading={loadingLists} />
         </div>
 
-        {!loadingLists && lists.length === 0 && (
+        {!loadingLists && !error && lists.length === 0 && (
           <div className="mx-5 flex flex-col items-center gap-1.5 rounded-3xl border border-stone-200/80 bg-white py-10 text-center">
             <MascotImage
               src="/lists-login.webp"
@@ -703,7 +705,13 @@ export default function ListsPage() {
           type="button"
           onClick={() => setIsCreateSheetOpen(true)}
           aria-label="Create a new list"
-          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-stone-900 text-white shadow-lg transition-colors hover:bg-ink-600"
+          title={error ? "Lists are temporarily unavailable. Try again later." : undefined}
+          disabled={loadingLists || Boolean(error)}
+          className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-colors ${
+            loadingLists || error
+              ? "cursor-not-allowed bg-stone-200 text-stone-400 shadow-sm"
+              : "cursor-pointer bg-stone-900 text-white hover:bg-ink-600"
+          }`}
         >
           <Plus className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
         </button>
