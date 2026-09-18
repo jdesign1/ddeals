@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { isGridLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
-  const { user, profile, loading: authLoading, signOut, updateProfileName } = useAuth();
+  const { user, session, profile, loading: authLoading, signOut, updateProfileName } = useAuth();
   const {
     pushEnabled,
     pushReady,
@@ -37,6 +37,12 @@ export default function SettingsPage() {
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [isDeleteSheetOpen, setIsDeleteSheetOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [accountDeleteError, setAccountDeleteError] = useState<string | null>(null);
+  const [accountDeleted, setAccountDeleted] = useState(false);
+  const [appleSignInUsed, setAppleSignInUsed] = useState(false);
+  const [isFinishingDeletion, setIsFinishingDeletion] = useState(false);
   const backNavigationStartedRef = useRef(false);
 
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
@@ -60,6 +66,45 @@ export default function SettingsPage() {
       router.replace("/");
     } finally {
       setIsLoggingOut(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      setAccountDeleteError("Your session has expired. Please sign in again, then try deleting your account.");
+      return;
+    }
+
+    setAccountDeleteError(null);
+    setIsDeletingAccount(true);
+    try {
+      const response = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; error?: string; appleSignInUsed?: boolean } | null;
+      if (!response.ok || result?.ok !== true) {
+        setAccountDeleteError(result?.error ?? "We couldn't delete your account just now. Please try again.");
+        return;
+      }
+      setAppleSignInUsed(result?.appleSignInUsed === true);
+      setAccountDeleted(true);
+    } catch {
+      setAccountDeleteError("We couldn't delete your account just now. Check your connection and try again.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }
+
+  async function finishAccountDeletion() {
+    setIsFinishingDeletion(true);
+    try {
+      await signOut();
+    } finally {
+      setIsDeleteSheetOpen(false);
+      router.replace("/");
     }
   }
 
@@ -389,6 +434,132 @@ export default function SettingsPage() {
           </div>
         </section>
       )}
+
+      {!authLoading && user && (
+        <section className="rounded-2xl border border-alert-100 bg-white p-5 shadow-sm" aria-labelledby="settings-danger-zone-title">
+          <div className="mb-4">
+            <h2 id="settings-danger-zone-title" className="font-display text-[17px] font-extrabold tracking-normal text-alert-700">
+              Danger zone
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-stone-600">
+              Permanently remove your account and personal data.
+            </p>
+          </div>
+          <div className="border-t border-alert-100 pt-4">
+            <p className="text-[13px] leading-5 text-stone-600">
+              This permanently deletes your profile, saved lists, and browsing history. You can&apos;t undo this.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setAccountDeleteError(null);
+                setAccountDeleted(false);
+                setIsDeleteSheetOpen(true);
+              }}
+              className="dd-btn dd-btn-outline-alert mt-4 w-full cursor-pointer"
+            >
+              Delete account
+            </button>
+          </div>
+        </section>
+      )}
+
+      <BottomSheetPortal open={isDeleteSheetOpen}>
+        <AnimatePresence>
+          {isDeleteSheetOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close delete account confirmation"
+                disabled={isDeletingAccount || accountDeleted}
+                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+                onClick={() => {
+                  if (!isDeletingAccount && !accountDeleted) setIsDeleteSheetOpen(false);
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+              <motion.section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settings-delete-account-title"
+                aria-describedby="settings-delete-account-description"
+                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[48vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              >
+                <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
+                  <h2 id="settings-delete-account-title" className="dd-type-sheet-title text-stone-900">
+                    {accountDeleted ? "Account deleted" : "Delete your account?"}
+                  </h2>
+                  {!isDeletingAccount && !accountDeleted && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteSheetOpen(false)}
+                      aria-label="Close"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                    >
+                      <X className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm">
+                  {accountDeleted ? (
+                    <>
+                      <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
+                        Your Dodgy Deal account and saved data have been deleted.
+                      </p>
+                      {appleSignInUsed && (
+                        <p className="dd-type-secondary text-stone-600">
+                          To also remove Sign in with Apple access, open iPhone Settings, tap your name, then Sign in with Apple. Select Dodgy Deal and tap Delete.
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void finishAccountDeletion()}
+                        disabled={isFinishingDeletion}
+                        className="dd-btn dd-btn-primary mt-auto w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isFinishingDeletion ? "Signing out…" : "Done"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
+                        Your profile, saved lists, and browsing history will be permanently deleted. This can&apos;t be undone.
+                      </p>
+                      {accountDeleteError && (
+                        <p role="alert" className="dd-type-secondary text-alert-700">{accountDeleteError}</p>
+                      )}
+                      <div className="mt-auto flex flex-col gap-3 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setIsDeleteSheetOpen(false)}
+                          disabled={isDeletingAccount}
+                          className="dd-btn dd-btn-outline-muted w-full cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteAccount()}
+                          disabled={isDeletingAccount}
+                          className="dd-btn w-full cursor-pointer border-2 border-alert-600 bg-alert-600 text-white transition-colors hover:bg-alert-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isDeletingAccount ? "Deleting account…" : "Delete account"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </motion.section>
+            </>
+          )}
+        </AnimatePresence>
+      </BottomSheetPortal>
 
       <BottomSheetPortal open={isLogoutSheetOpen}>
         <AnimatePresence>
