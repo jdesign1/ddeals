@@ -1221,6 +1221,15 @@ html[data-theme="dark"] .theme-loader-surface {
   transition: opacity 100ms ease-out, visibility 0s linear;
 }
 
+/* The selected capsule sits inside a link with 6px of vertical padding.
+   Extend its fill 4px into that padding so only a 2px rim remains inside
+   the floating bar; this brings its end-cap roundness closer to the bar's
+   outer capsule without changing the nav's height or safe-area position. */
+.dd-bottom-nav-active-fill {
+  top: -4px;
+  bottom: -4px;
+}
+
 /* Bottom sheets must cover the fixed navigation pill, including when they
    are opened from a nested card or route. The portal layer establishes a
    viewport-level stacking context above all app chrome; this matters on iOS
