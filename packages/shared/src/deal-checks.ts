@@ -111,8 +111,11 @@ export async function fetchDealCheckHistory(
     .limit(options.limit ?? 200);
   if (options.startAt) query = query.gte("checked_at", options.startAt);
   if (options.endAt) query = query.lt("checked_at", options.endAt);
-  const { data, error } = await query;
-  if (error) throw new Error(`fetchDealCheckHistory: ${error.message}`);
+  const { data, error, status } = await query;
+  // Supabase returns the HTTP status alongside PostgrestError rather than on
+  // the error itself. Preserve it so callers can show service failures such
+  // as HTTP 402 with the shared, user-friendly retry message.
+  if (error) throw new Error(`fetchDealCheckHistory: ${error.message} -> HTTP ${status}`);
   return (data as DealCheckRow[]) ?? [];
 }
 
