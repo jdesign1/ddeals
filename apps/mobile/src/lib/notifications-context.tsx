@@ -213,7 +213,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           if (error) setNotificationError("We couldn't finish setting up push notifications. Please try again.");
         });
       }),
-      PushNotifications.addListener("registrationError", () => {
+      PushNotifications.addListener("registrationError", ({ error: registrationError }) => {
+        console.error("[notifications] APNs device registration failed", registrationError);
         if (!cancelled) setNotificationError("We couldn't register this device for notifications. Please try again.");
       }),
     ]).then(async ([registration, error]) => {
