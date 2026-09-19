@@ -50,6 +50,7 @@ import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
+import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
 
 /**
@@ -875,10 +876,11 @@ export default function DealAssessmentPage() {
             </p>
           )}
           {evidenceSummary && (
-            <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold leading-5 text-stone-500">
-              <Clock3 className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.5} aria-hidden="true" />
-              <span>{evidenceSummary}</span>
-            </p>
+            <AssessmentEvidenceCard
+              deal={selectedDeal}
+              verdict={verdict}
+              evidenceSummary={evidenceSummary}
+            />
           )}
         </div>
 
@@ -963,10 +965,11 @@ export default function DealAssessmentPage() {
               <AssessmentText text={assessmentSummary.body} />
             </p>
             {evidenceSummary && (
-              <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold leading-5 text-stone-500">
-                <Clock3 className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.5} aria-hidden="true" />
-                <span>{evidenceSummary}</span>
-              </p>
+              <AssessmentEvidenceCard
+                deal={selectedDeal}
+                verdict={verdict}
+                evidenceSummary={evidenceSummary}
+              />
             )}
           </div>
 
