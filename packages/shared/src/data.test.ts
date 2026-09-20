@@ -882,6 +882,8 @@ test("fetchPriceHistory90d: includes the carry-in state and ordered transition p
     const rows = url.includes("scraped_at=lt.")
       ? [{ price: 8, is_special: false, scraped_at: "2026-05-01T00:00:00Z" }]
       : [
+          { price: null, is_special: false, scraped_at: "2026-06-15T00:00:00Z" },
+          { price: 0, is_special: false, scraped_at: "2026-06-20T00:00:00Z" },
           { price: 7, is_special: true, scraped_at: "2026-06-01T00:00:00Z" },
           { price: 9, is_special: false, scraped_at: "2026-07-01T00:00:00Z" },
         ];

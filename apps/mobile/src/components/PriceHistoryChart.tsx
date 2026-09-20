@@ -57,7 +57,7 @@ function buildChartPoints(
 ): ChartPoint[] {
   const start = now - WINDOW_MS;
   const observed: ChartPoint[] = points
-    .filter((point) => Number.isFinite(point.price) && Number.isFinite(new Date(point.scrapedAt).getTime()))
+    .filter((point) => point.price > 0 && Number.isFinite(point.price) && Number.isFinite(new Date(point.scrapedAt).getTime()))
     .map((point) => ({ ...point }))
     .sort((a, b) => new Date(a.scrapedAt).getTime() - new Date(b.scrapedAt).getTime());
 

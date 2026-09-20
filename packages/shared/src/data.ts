@@ -826,7 +826,17 @@ export async function fetchPriceHistory90d(
   ]);
 
   return [carryIn, ...recent]
-    .filter((row): row is PriceHistoryRow => row != null && Number.isFinite(Number(row.price)) && !!row.scraped_at)
+    // `special_ended` lifecycle rows intentionally have a NULL price. They
+    // are state markers, not chart points; checking the value before Number()
+    // matters because Number(null) is 0 and would create a false zero-price
+    // dip in the iOS app.
+    .filter((row): row is PriceHistoryRow => (
+      row != null
+      && row.price != null
+      && Number(row.price) > 0
+      && Number.isFinite(Number(row.price))
+      && !!row.scraped_at
+    ))
     .map((row) => ({
       price: Number(row.price),
       isSpecial: Boolean(row.is_special),
