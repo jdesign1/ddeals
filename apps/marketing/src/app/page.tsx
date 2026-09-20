@@ -1,107 +1,150 @@
-const APP_URL = "https://app.dodgydeal.co.nz";
+import Image from "next/image";
 
-function Mark() {
+const APP_URL = "https://app.dodgydeal.co.nz";
+const BRAND_LOGO = "/logo.svg";
+
+const firstFeatures = [
+  {
+    title: "Quick search",
+    body: "Seen a special and not sure it’s a real saving? Search the product to get a quick verdict.",
+    image: "/images/features/quick-search.jpg",
+    imageAlt: "Stylised Dodgy Deal search example for tomatoes",
+  },
+  {
+    title: "Price history",
+    body: "See the last 90 days of prices to know whether today’s deal is genuinely low—or worth waiting for.",
+    image: "/images/features/price-history-graph-green.jpg",
+    imageAlt: "Stylised Dodgy Deal price history graph",
+    imageClassName: "feature-image-graph",
+  },
+  {
+    title: "Deal assessments",
+    body: "Get a quick Real or Dodgy verdict based on the product’s price history.",
+    image: "/images/features/deal-assessments.jpg",
+    imageAlt: "Stylised Dodgy Deal assessment showing a Real Deal badge",
+  },
+];
+
+const secondFeatures = [
+  {
+    title: "Cheaper options",
+    body: "See cheaper alternatives across stores and how much you could save.",
+    image: "/images/features/cheaper-options.jpg",
+    imageAlt: "Stylised Dodgy Deal carousel comparing cheaper milk options",
+  },
+  {
+    title: "Shopping tips",
+    body: "Use the 90-day view to see whether it’s better to buy now or wait.",
+    image: "/images/features/shopping-tips.jpg",
+    imageAlt: "Stylised Dodgy Deal 90-day price tips grid",
+  },
+  {
+    title: "Deal statistics",
+    body: "See how prices move over time and which specials are worth watching.",
+    image: "/images/features/deal-statistics-graph-green.jpg",
+    imageAlt: "Stylised Dodgy Deal price changes graph",
+    imageClassName: "feature-image-graph",
+  },
+];
+
+function Logo({ animated = false }: { animated?: boolean }) {
   return (
-    <span className="brand-mark" aria-hidden="true">
-      <span />
+    <span className="logo-lockup">
+      <Image src={BRAND_LOGO} alt="" width={38} height={38} priority className={animated ? "logo-mascot" : undefined} />
+      <span>Dodgy deal</span>
     </span>
   );
 }
 
-const steps = [
-  {
-    number: "01",
-    title: "Pick what you need",
-    body: "Search everyday groceries or save the things you buy often.",
-  },
-  {
-    number: "02",
-    title: "Compare NZ supermarkets",
-    body: "See current prices from Pak’nSave, New World, and Woolworths in one place.",
-  },
-  {
-    number: "03",
-    title: "Buy with confidence",
-    body: "We look at price history so a bright yellow tag does not do all the convincing.",
-  },
-];
+function StoreBadge() {
+  return (
+    <button className="store-badge" type="button" disabled aria-label="Download on the App Store, coming soon">
+      <Image
+        src="/images/download-on-the-app-store.svg"
+        alt="Download on the App Store — coming soon"
+        width={120}
+        height={40}
+      />
+    </button>
+  );
+}
 
-const reasons = [
-  ["Real prices", "Current supermarket prices, gathered for New Zealand shoppers."],
-  ["Useful history", "A discount is easier to judge when you can see what came before it."],
-  ["Less guesswork", "Compare the same product across stores before you add it to the trolley."],
-];
+function FeatureCard({ title, body, image, imageAlt, imageClassName }: { title: string; body: string; image: string; imageAlt: string; imageClassName?: string }) {
+  return (
+    <article className="feature-card">
+      <div className={`feature-image${imageClassName ? ` ${imageClassName}` : ""}`}>
+        <Image
+          src={image}
+          alt={imageAlt}
+          width={560}
+          height={360}
+          sizes="(max-width: 760px) calc(100vw - 40px), 31vw"
+        />
+      </div>
+      <h3>{title}</h3>
+      <p>{body}</p>
+    </article>
+  );
+}
 
 export default function Home() {
   return (
-    <main>
-      <nav className="site-nav" aria-label="Main navigation">
-        <a className="wordmark" href="#top" aria-label="Dodgy Deal home">
-          <Mark />
-          <span>Dodgy Deal</span>
-        </a>
-        <div className="nav-links">
-          <a href="#how-it-works">How it works</a>
-          <a href="#why-dodgy-deal">Why Dodgy Deal</a>
-          <a className="nav-cta" href={APP_URL}>Open the app <span aria-hidden="true">↗</span></a>
-        </div>
-      </nav>
+    <main id="top">
+      <header className="site-header">
+        <a href="#top" aria-label="Dodgy deal home"><Logo animated /></a>
+        <a className="header-link" href="#how-it-works">How does it work</a>
+      </header>
 
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="eyebrow"><span className="eyebrow-dot" /> Made for Aotearoa</p>
-          <h1>Know when a supermarket deal is actually a deal.</h1>
-          <p className="hero-lede">
-            Dodgy Deal compares everyday grocery prices across New Zealand supermarkets
-            and shows the context behind the discount.
-          </p>
-          <div className="hero-actions">
-            <a className="button button-primary" href={APP_URL}>Open Dodgy Deal <span aria-hidden="true">↗</span></a>
-            <a className="text-link" href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a>
+      <section className="download-hero" aria-labelledby="hero-title">
+        <div className="download-hero-inner">
+          <div className="download-copy">
+            <h1 id="hero-title">Download the Dodgy deal app</h1>
+            <p>Check whether a supermarket special is a real saving—or just a dodgy deal.</p>
+            <StoreBadge />
           </div>
-          <p className="quiet-note">Free to use · Built for Kiwi grocery shopping</p>
-        </div>
-
-        <div className="hero-card" aria-label="A Dodgy Deal product comparison example">
-          <div className="card-topline"><span>Today’s trolley check</span><span className="live-pill"><i /> LIVE</span></div>
-          <div className="product-row product-row-featured">
-            <div className="product-icon product-icon-green">🥛</div>
-            <div className="product-details"><strong>Standard Milk</strong><span>2L · compare stores</span></div>
-            <span className="price-tag">$4.79</span>
+          <div className="download-visual">
+            <Image
+              src="/images/app-hero-stylised-unsure.png"
+              alt="Dodgy Deal app mockup on an iPhone with the mascot looking unsure"
+              width={1536}
+              height={1024}
+              priority
+              sizes="(max-width: 760px) 100vw, 52vw"
+            />
           </div>
-          <div className="store-list">
-            <div><span className="store-name">Pak’nSave</span><strong>$4.79</strong><span className="best">LOWEST</span></div>
-            <div><span className="store-name">New World</span><strong>$5.29</strong><span className="muted">+$0.50</span></div>
-            <div><span className="store-name">Woolworths</span><strong>$5.49</strong><span className="muted">+$0.70</span></div>
-          </div>
-          <div className="history-callout"><span className="history-icon">↗</span><span><strong>Looks like a real saving</strong><br /><small>Price is below its usual range.</small></span></div>
-          <div className="card-footnote">Prices change. We keep the context visible.</div>
         </div>
       </section>
 
-      <section className="trust-strip" aria-label="What Dodgy Deal checks">
-        <p>Grocery shopping should not require detective work.</p>
-        <div><span>Pak’nSave</span><span>New World</span><span>Woolworths</span><span>Price history</span></div>
-      </section>
-
-      <section className="section" id="how-it-works">
-        <div className="section-heading"><p className="eyebrow">A clearer way to shop</p><h2>Three steps from “is this good?” to “I know.”</h2></div>
-        <div className="steps-grid">
-          {steps.map((step) => <article className="step-card" key={step.number}><span className="step-number">{step.number}</span><h3>{step.title}</h3><p>{step.body}</p></article>)}
+      <section className="feature-section" id="how-it-works" aria-labelledby="first-feature-title">
+        <div className="section-intro">
+          <h2 id="first-feature-title">Find the real specials</h2>
+          <p>Check supermarket prices across New Zealand and see what today’s special is really worth.</p>
+        </div>
+        <div className="feature-grid">
+          {firstFeatures.map((feature) => <FeatureCard key={feature.title} {...feature} />)}
         </div>
       </section>
 
-      <section className="section split-section" id="why-dodgy-deal">
-        <div className="split-copy"><p className="eyebrow">Useful, without the noise</p><h2>More context. Fewer “special” surprises.</h2><p>Not every discount is dodgy, and not every bright ticket is a bargain. Dodgy Deal gives you the price comparison and history to make the call yourself.</p><a className="button button-dark" href={APP_URL}>Try it with your next shop <span aria-hidden="true">↗</span></a></div>
-        <div className="reason-list">{reasons.map(([title, body], index) => <div className="reason" key={title}><span className="reason-check">{index + 1}</span><div><h3>{title}</h3><p>{body}</p></div></div>)}</div>
+      <section className="feature-section feature-section-secondary" aria-labelledby="second-feature-title">
+        <div className="section-intro">
+          <h2 id="second-feature-title">Shop smarter with price context</h2>
+          <p>Compare prices, spot patterns, and make more confident choices at the shelf.</p>
+        </div>
+        <div className="feature-grid">
+          {secondFeatures.map((feature) => <FeatureCard key={feature.title} {...feature} />)}
+        </div>
       </section>
 
-      <section className="download-panel">
-        <div><p className="eyebrow">Your smarter trolley starts here</p><h2>Take Dodgy Deal with you.</h2><p>Open the app in your browser now. Native iOS and Android experiences are on their way.</p></div>
-        <a className="button button-light" href={APP_URL}>Open the app <span aria-hidden="true">↗</span></a>
+      <section className="closing-cta" aria-labelledby="cta-title">
+        <h2 id="cta-title">Are your supermarket specials actually <span>saving you money?</span></h2>
+        <p>Specials change every day. Dodgy deal helps you see what’s genuinely worth buying.</p>
+        <StoreBadge />
       </section>
 
-      <footer className="site-footer"><a className="wordmark" href="#top"><Mark /><span>Dodgy Deal</span></a><p>Better grocery decisions for Aotearoa.</p><div><a href="mailto:hello@dodgydeal.co.nz">Contact</a><a href={`${APP_URL}/privacy`}>Privacy</a><a href={`${APP_URL}/terms`}>Terms</a></div></footer>
+      <footer className="site-footer">
+        <Logo />
+        <div className="footer-links"><a href="mailto:hello@dodgydeal.co.nz">Contact</a><a href={`${APP_URL}/privacy`}>Privacy</a><a href={`${APP_URL}/terms`}>Terms</a></div>
+      </footer>
     </main>
   );
 }

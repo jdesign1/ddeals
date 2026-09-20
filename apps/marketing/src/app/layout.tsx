@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dodgy Deal — Know when a supermarket deal is actually a deal",
-  description: "Compare grocery prices across New Zealand supermarkets and see the context behind the discount.",
+  title: "Dodgy Deal — Know when the special is actually special",
+  description: "Compare grocery prices across NZ supermarkets, check price history, and spot the real saving.",
   metadataBase: new URL("https://dodgydeal.co.nz"),
   openGraph: {
     title: "Dodgy Deal — Better grocery decisions for Aotearoa",
-    description: "Compare current prices and price history across NZ supermarkets.",
+    description: "Compare current prices, price history, and deal ratings across NZ supermarkets.",
     url: "https://dodgydeal.co.nz",
     siteName: "Dodgy Deal",
     type: "website",
