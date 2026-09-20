@@ -7,20 +7,20 @@ const firstFeatures = [
   {
     title: "Quick search",
     body: "Seen a special and not sure it’s a real saving? Search the product to get a quick verdict.",
-    image: "/images/features/quick-search.jpg",
+    image: "/images/features/quick-search.webp",
     imageAlt: "Stylised Dodgy Deal search example for tomatoes",
   },
   {
     title: "Price history",
     body: "See the last 90 days of prices to know whether today’s deal is genuinely low—or worth waiting for.",
-    image: "/images/features/price-history-graph-green.jpg",
+    image: "/images/features/price-history-graph-green.webp",
     imageAlt: "Stylised Dodgy Deal price history graph",
     imageClassName: "feature-image-graph",
   },
   {
     title: "Deal assessments",
     body: "Get a quick Real or Dodgy verdict based on the product’s price history.",
-    image: "/images/features/deal-assessments.jpg",
+    image: "/images/features/deal-assessments.webp",
     imageAlt: "Stylised Dodgy Deal assessment showing a Real Deal badge",
   },
 ];
@@ -29,19 +29,19 @@ const secondFeatures = [
   {
     title: "Cheaper options",
     body: "See cheaper alternatives across stores and how much you could save.",
-    image: "/images/features/cheaper-options.jpg",
+    image: "/images/features/cheaper-options.webp",
     imageAlt: "Stylised Dodgy Deal carousel comparing cheaper milk options",
   },
   {
     title: "Shopping tips",
     body: "Use the 90-day view to see whether it’s better to buy now or wait.",
-    image: "/images/features/shopping-tips.jpg",
+    image: "/images/features/shopping-tips.webp",
     imageAlt: "Stylised Dodgy Deal 90-day price tips grid",
   },
   {
     title: "Deal statistics",
     body: "See how prices move over time and which specials are worth watching.",
-    image: "/images/features/deal-statistics-graph-green.jpg",
+    image: "/images/features/deal-statistics-graph-green.webp",
     imageAlt: "Stylised Dodgy Deal price changes graph",
     imageClassName: "feature-image-graph",
   },
@@ -50,7 +50,7 @@ const secondFeatures = [
 function Logo({ animated = false }: { animated?: boolean }) {
   return (
     <span className="logo-lockup">
-      <Image src={BRAND_LOGO} alt="" width={38} height={38} priority className={animated ? "logo-mascot" : undefined} />
+      <Image src={BRAND_LOGO} alt="" width={38} height={38} priority unoptimized className={animated ? "logo-mascot" : undefined} />
       <span>Dodgy deal</span>
     </span>
   );
@@ -64,6 +64,7 @@ function StoreBadge() {
         alt="Download on the App Store — coming soon"
         width={120}
         height={40}
+        unoptimized
       />
     </button>
   );
@@ -79,6 +80,7 @@ function FeatureCard({ title, body, image, imageAlt, imageClassName }: { title: 
           width={560}
           height={360}
           sizes="(max-width: 760px) calc(100vw - 40px), 31vw"
+          unoptimized
         />
       </div>
       <h3>{title}</h3>
@@ -110,6 +112,7 @@ export default function Home() {
               height={1024}
               priority
               sizes="(max-width: 760px) 100vw, 52vw"
+              unoptimized
             />
           </div>
         </div>
