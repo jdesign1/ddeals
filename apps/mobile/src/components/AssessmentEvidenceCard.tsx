@@ -101,10 +101,7 @@ export default function AssessmentEvidenceCard({
                 transition={{ type: "spring", damping: 25, stiffness: 220 }}
                 className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
               >
-                <div className="flex flex-shrink-0 justify-center px-5 pt-2" aria-hidden="true">
-                  <div className="h-1 w-9 rounded-full bg-stone-300" />
-                </div>
-                <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-2">
+                <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
                   <h3 id={titleId} className="dd-type-sheet-title text-stone-900">How we assess this deal</h3>
                   <button
                     type="button"
