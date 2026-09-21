@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowLeft, Check, ChevronDown, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
@@ -215,6 +216,8 @@ export default function FullScreenSearch() {
     focusSearchOnOpen,
     closeSearch,
     pauseForDealNavigation,
+    finishDealNavigation,
+    returnToSearch,
     preserveSearchStateOnOpen,
     selectedStores,
     toggleStore,
@@ -222,6 +225,22 @@ export default function FullScreenSearch() {
     setDealFilter,
   } = useSearch();
   const { isGridLayout } = useCardLayout();
+  const pathname = usePathname();
+
+  // Keep the search surface over the selected card until the App Router has
+  // actually mounted the deal route. Closing it from the card's pointer
+  // handler exposes Check Deals underneath and makes the result appear to
+  // disappear/reflow before navigation completes. On a Back navigation,
+  // `preserveSearchStateOnOpen` keeps the surface hidden until the previous
+  // route is back on screen.
+  const isDealNavigationInFlight = pathname.startsWith("/deal/") && (returnToSearch !== null || preserveSearchStateOnOpen);
+  const shouldRenderOverlay = isOpen && !isDealNavigationInFlight;
+
+  useEffect(() => {
+    if (pathname.startsWith("/deal/") && returnToSearch) {
+      finishDealNavigation();
+    }
+  }, [finishDealNavigation, pathname, returnToSearch]);
 
   // Scroll position (2026-08-10, per Jay's ask to keep it across a
   // deal-page detour): the scrollable results container below unmounts
@@ -621,7 +640,7 @@ export default function FullScreenSearch() {
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {shouldRenderOverlay && (
         <motion.div
           // Opacity-only (no x/y), matching Prototype/index.html's own
           // comment on this exact animation: a `transform` on any ancestor

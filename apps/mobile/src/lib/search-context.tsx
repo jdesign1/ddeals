@@ -85,14 +85,14 @@ interface SearchContextValue {
    * inside the overlay, cleared once that return trip is consumed (or a
    * different one starts) -- see the two functions below. */
   returnToSearch: PendingDealReturn | null;
-  /** Hides the overlay (like `closeSearch`) but, deliberately unlike it,
-   * does NOT clear `query` -- called right before navigating to a deal
-   * from a search result (2026-08-10, per Jay's ask that the search term
-   * and results still be there on return), not when the user is
-   * genuinely exiting search via its own back arrow/clear button (that
-   * case should still reset, `closeSearch` unchanged for it). Also
-   * records which deal this was for, via `returnToSearch`. */
+  /** Records a pending deal navigation without hiding the overlay yet. The
+   * selected card must remain visible until the App Router has arrived at
+   * the deal route, otherwise Check Deals flashes underneath the closing
+   * search surface. */
   pauseForDealNavigation: (productId: string, store: string) => void;
+  /** Hides the search overlay after the deal route has mounted, preserving
+   * the query and `returnToSearch` so Back can restore the search state. */
+  finishDealNavigation: () => void;
   /** Reopens the overlay and clears `returnToSearch` -- called by the deal
    * page's own back button, only when `returnToSearch` matches the deal
    * actually being viewed (guards against a stale pending return from an
@@ -314,9 +314,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       returnToSearch,
       pauseForDealNavigation: (productId, store) => {
-        setIsActive(false);
         setReturnToSearch({ productId, store });
         setPreserveSearchStateOnOpen(false);
+      },
+      finishDealNavigation: () => {
+        setIsActive(false);
       },
       resumeAfterDealBack: () => {
         setPreserveSearchStateOnOpen(true);
