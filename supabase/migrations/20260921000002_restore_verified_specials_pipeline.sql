@@ -20,8 +20,12 @@ begin
       id,
       finished_at
     from public.scraper_runs
+    -- A partial-source run is still a completed, fresh observation for that
+    -- retailer. It may omit some products, but each published row below is
+    -- still tied to this exact run and the classified private cache. Failed,
+    -- rejected, and incomplete runs remain excluded.
     where status = 'completed'
-      and completeness_status = 'complete'
+      and completeness_status in ('complete', 'partial-source')
       and finished_at is not null
     order by source_id, finished_at desc
   loop
