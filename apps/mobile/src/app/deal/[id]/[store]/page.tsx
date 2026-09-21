@@ -880,9 +880,6 @@ export default function DealAssessmentPage() {
               deal={selectedDeal}
               verdict={verdict}
               evidenceSummary={evidenceSummary}
-              priceHistoryPoints={priceHistoryPoints}
-              priceHistoryLoading={priceHistoryLoading}
-              comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
             />
           )}
         </div>
@@ -972,9 +969,6 @@ export default function DealAssessmentPage() {
                 deal={selectedDeal}
                 verdict={verdict}
                 evidenceSummary={evidenceSummary}
-                priceHistoryPoints={priceHistoryPoints}
-                priceHistoryLoading={priceHistoryLoading}
-                comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
               />
             )}
           </div>
