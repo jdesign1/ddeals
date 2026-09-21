@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
+import { useState } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
@@ -26,12 +27,30 @@ interface NewSpecialsModalProps {
 }
 
 export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter }: NewSpecialsModalProps) {
+  // Keep the shared viewport lock active until the exit animation finishes.
+  // Otherwise the underlying page/nav becomes visible during the modal's
+  // fade-and-scale exit, which reads as a flicker on iOS cold starts.
+  const [isClosing, setIsClosing] = useState(false);
   const hasNewSpecials = summary.total > 0;
   const hasRatedSpecials = summary.realDeals > 0 || summary.dodgyDeals > 0;
 
+  const handleClose = () => {
+    setIsClosing(true);
+    onClose();
+  };
+
+  const handleSelectFilter = (filter: Extract<DealFilter, "real" | "dodgy">) => {
+    setIsClosing(true);
+    onSelectFilter(filter);
+  };
+
   return (
-    <BottomSheetPortal open={open}>
-      <AnimatePresence>
+    <BottomSheetPortal open={open || isClosing}>
+      <AnimatePresence
+        onExitComplete={() => {
+          if (!open) setIsClosing(false);
+        }}
+      >
         {open && (
           <>
             <motion.div
@@ -40,7 +59,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={onClose}
+              onClick={handleClose}
               className="dd-bottom-sheet-backdrop fixed inset-0 mx-auto w-full max-w-[480px] bg-stone-900/50 backdrop-blur-xs"
             />
             <motion.div
@@ -57,7 +76,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
             >
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 aria-label="Close new specials message"
                 className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
               >
@@ -110,7 +129,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <div className="mt-6 flex flex-col gap-3">
                   <button
                     type="button"
-                    onClick={() => onSelectFilter("real")}
+                    onClick={() => handleSelectFilter("real")}
                     className="dd-btn dd-btn-outline new-specials-real-button min-h-14 w-full cursor-pointer"
                   >
                     <span>{summary.realDeals} Real deals</span>
@@ -118,7 +137,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   </button>
                   <button
                     type="button"
-                    onClick={() => onSelectFilter("dodgy")}
+                    onClick={() => handleSelectFilter("dodgy")}
                     className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-14 w-full cursor-pointer"
                   >
                     <span>{summary.dodgyDeals} Dodgy deals</span>
@@ -128,7 +147,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               ) : (
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="dd-btn dd-btn-primary mt-6 min-h-14 w-full cursor-pointer"
                 >
                   Back to deals
