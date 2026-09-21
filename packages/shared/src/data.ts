@@ -24,6 +24,7 @@
  */
 
 import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
+import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
 import { MATERIAL_OVER_NORMAL_THRESHOLD, REAL_SAVER_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
 export interface DodgyDealsRow {
@@ -96,6 +97,8 @@ export interface DodgyDealsRow {
   classifier_version?: string | null;
   /** Timestamp of the materialized cache refresh that produced this row. */
   cache_refreshed_at?: string | null;
+  /** Per-store verification timestamp used to expire cached specials safely. */
+  specials_verified_at?: string | null;
 }
 
 export interface CurrentDeal {
@@ -117,6 +120,8 @@ export interface CurrentDeal {
   specialEndDate: string | null;
   /** Timestamp of the catalogue scrape that produced this current deal. */
   scrapedAt?: string | null;
+  /** When this store's complete specials snapshot was verified. */
+  specialsVerifiedAt?: string | null;
   /** Canonical retailer product page URL, when the scraper captured one. */
   productUrl?: string | null;
   /** Price History Insights (2026-08-19) -- see DodgyDealsRow's own doc
@@ -526,6 +531,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     saleStartedAt: row.sale_started_at || null,
     specialEndDate: row.special_end_date || null,
     scrapedAt: row.cache_refreshed_at ?? null,
+    specialsVerifiedAt: row.specials_verified_at ?? null,
     productUrl: row.product_url ?? null,
     ninetyDayLow: row.price_history_90d_low ?? null,
     ninetyDayHigh: row.price_history_90d_high ?? null,
@@ -603,7 +609,7 @@ export function buildProductCardsFromSpecials(
 /**
  * Loads current specials only (per the 2026-08-07 scope decision) — the app
  * searches/browses current specials, using history purely to rank them, not
- * full-catalogue browsing. Sourced from `dodgy_deals_cache` (see below),
+ * full-catalogue browsing. Sourced from `published_dodgy_deals_cache` (see below),
  * grouped into real cross-store match groups via the union-find matchIndex.
  */
 interface LiveProductsLoadResult {
@@ -645,16 +651,16 @@ interface LiveProductsCacheEntry {
 }
 
 const CATALOGUE_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,price_history_90d_price_changes,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+  "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,price_history_90d_price_changes,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at,specials_verified_at";
 
 const LEGACY_CATALOGUE_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples";
+  "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,specials_verified_at";
 
 const ENRICHED_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_price_changes,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at";
+  "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_price_changes,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at,specials_verified_at";
 
 const LEGACY_SPECIALS_SELECT =
-  "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days";
+  "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_days_tracked,price_history_90d_special_days,specials_verified_at";
 
 /** A detail-page validation is tiny compared with the full catalogue fetch. */
 export const TARGETED_DEAL_VALIDATION_COOLDOWN_MS = 5 * 60 * 1000;
@@ -1053,13 +1059,14 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
   if (cached) {
     const metadata = await readCatalogueCacheMetadata();
     const latestSourceUpdatedAt = await fetchLatestPublicationTimestampDeduped(config);
-    // Unknown freshness is fail-safe: keep the last good catalogue and let
-    // the next foreground check or normal TTL expiry retry the marker query.
+    // A failed publication-marker request is not proof the cached specials
+    // remain valid. The per-store verification timestamps in the cache can
+    // still serve only deals inside the database's 48-hour publication window.
     // A legacy record without a marker is treated as older than any known
     // server marker, so deploying this contract cannot leave old browsers
     // pinned to stale data for the remainder of the six-hour display TTL.
-    if (latestSourceUpdatedAt === null || latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
-      return cached;
+    if (latestSourceUpdatedAt !== null && latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+      return filterRecentlyVerifiedSpecials(cached);
     }
     markerAdvanced = true;
   }
@@ -1069,7 +1076,7 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
     : fresh.sourceUpdatedAt;
   if (fresh.products.length) writeCatalogueCache(fresh.products, sourceUpdatedAt);
-  return fresh.products;
+  return filterRecentlyVerifiedSpecials(fresh.products);
 }
 
 /** Returns true when an automatic six-hour refresh is due, without making a network request. */
@@ -1109,7 +1116,7 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
         // Empty is preferable to breaking the egress promise. In normal use
         // this is populated by IndexedDB or the in-memory fallback; it only
         // occurs when storage was evicted between two pull gestures.
-        products: cached ?? entry.products ?? [],
+        products: cached ?? filterRecentlyVerifiedSpecials(entry.products ?? []),
         refreshed: false,
         throttled: true,
         retryAfterMs: LIVE_PRODUCTS_REFRESH_COOLDOWN_MS - elapsed,

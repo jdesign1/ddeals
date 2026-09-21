@@ -1,7 +1,7 @@
 /**
  * Maps a raw fetch/HTTP error into a short, user-friendly message for
  * `ErrorState`'s `detail` line (2026-08-19, Jay's ask after seeing the raw
- * `dodgy_deals_cache?select=product_id,store_id,...(200+ chars)...
+ * `published_dodgy_deals_cache?select=product_id,store_id,...(200+ chars)...
  * -> HTTP 400` string rendered directly on screen during the Price History
  * Insights migration-order incident earlier this same session -- see
  * project.md's 2026-08-19 entry for that incident's own writeup).

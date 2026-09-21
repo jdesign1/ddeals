@@ -628,7 +628,27 @@ function fakeProductCard(id: string): ProductCard {
     image: "https://example.com/img.jpg",
     standardPrice: 5,
     unit: "500g",
-    currentDeals: [],
+    currentDeals: [{
+      store: "Woolworths",
+      price: 4,
+      originalPrice: 5,
+      discountPercentage: 20,
+      dealType: "Real Deal",
+      wasArtificiallyInflated: false,
+      reason: "Verified",
+      explanation: null,
+      isOnSpecial: true,
+      saleStartedAt: null,
+      specialEndDate: null,
+      specialsVerifiedAt: new Date().toISOString(),
+      ninetyDayLow: null,
+      ninetyDayHigh: null,
+      ninetyDayAvg: null,
+      ninetyDaySamples: null,
+      ninetyDaySpecialSamples: null,
+      ninetyDayDaysTracked: null,
+      ninetyDaySpecialDays: null,
+    }],
     priceHistory: [],
     description: "",
   };
@@ -653,6 +673,7 @@ const SAMPLE_DODGY_DEALS_ROW: DodgyDealsRow = {
   verdict: "GENUINE",
   reason: "Saving 28.6% vs recent normal price",
   cache_refreshed_at: "2026-08-26T14:00:00Z",
+  specials_verified_at: new Date().toISOString(),
 };
 
 function installFetchStubWithOneRealRow(): { calls: string[]; restore: () => void } {
@@ -723,7 +744,7 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     assert.ok(productFetch, "expected the scoped canonical-product lookup");
     assert.match(productFetch, /id=in\.\(/);
     assert.doesNotMatch(productFetch, /canonical_product_id=not\.is\.null/);
-    const specialsFetch = calls.find((url) => url.includes("dodgy_deals_cache?select="));
+    const specialsFetch = calls.find((url) => url.includes("published_dodgy_deals_cache?select="));
     assert.ok(specialsFetch, "expected the bulk specials lookup");
     assert.match(specialsFetch, /price_history_90d_samples/);
     assert.match(specialsFetch, /price_history_90d_price_changes/);

@@ -8,6 +8,7 @@ import {
   describeFetchError,
   type ProductCard,
   type RefreshLiveProductsResult,
+  filterRecentlyVerifiedSpecials,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
 import { publishCatalogueUpdate, subscribeToCatalogueUpdates } from "./catalogue-refresh";
@@ -209,6 +210,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   useEffect(() => subscribeToCatalogueUpdates((result) => {
     setProducts(result);
   }), []);
+
+  // Cached cards carry each store's verification time. Expire those deals
+  // locally even if this screen remains open during a Realtime outage.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setProducts((current) => filterRecentlyVerifiedSpecials(current));
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Revalidate when the database publishes a new catalogue. The realtime
   // event is only an invalidation signal; loadLiveProducts still compares the

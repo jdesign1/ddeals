@@ -178,14 +178,18 @@ export default function SpecialsPage() {
         ))}
       </div>
 
+      <p className="px-5 text-[12px] leading-4 text-stone-500">
+        Only recently verified specials are shown. A store may be temporarily hidden if its complete scrape is unavailable.
+      </p>
+
       <LoadingMascot loading={loading} />
       {error && <ErrorState message="Couldn't load specials." detail={error} onRetry={retry} />}
 
       {!loading && !error && filteredDeals.length === 0 && (
         <EmptyState className="mx-5">
           {storeFilter === "all"
-            ? "No specials found right now."
-            : "No specials found for this store right now."}
+            ? "No recently verified specials found right now. A store may be temporarily hidden while a complete scrape is verified."
+            : "No recently verified specials found for this store. It may be temporarily hidden while a complete scrape is verified."}
         </EmptyState>
       )}
 

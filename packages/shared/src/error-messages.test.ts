@@ -62,7 +62,7 @@ test("describeFetchError: maps 402 and every 5xx to the helpful retry message", 
 test("describeFetchError: unmapped 4xx (e.g. the real 400 that caused this) keeps the caller's fallback wording plus the bare status", () => {
   withSilencedConsoleError(() => {
     const longPath =
-      "dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples -> HTTP 400";
+      "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples -> HTTP 400";
     const result = describeFetchError(new Error(longPath), "Couldn't load today's specials.");
     assert.equal(result, "Couldn't load today's specials. (error 400)");
     // The raw 200+ character query string must never leak into the

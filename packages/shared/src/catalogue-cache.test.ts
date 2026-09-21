@@ -26,7 +26,27 @@ function fakeProduct(id: string): ProductCard {
     image: "https://example.com/img.jpg",
     standardPrice: 5,
     unit: "500g",
-    currentDeals: [],
+    currentDeals: [{
+      store: "Woolworths",
+      price: 4,
+      originalPrice: 5,
+      discountPercentage: 20,
+      dealType: "Real Deal",
+      wasArtificiallyInflated: false,
+      reason: "Verified",
+      explanation: null,
+      isOnSpecial: true,
+      saleStartedAt: null,
+      specialEndDate: null,
+      specialsVerifiedAt: new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString(),
+      ninetyDayLow: null,
+      ninetyDayHigh: null,
+      ninetyDayAvg: null,
+      ninetyDaySamples: null,
+      ninetyDaySpecialSamples: null,
+      ninetyDayDaysTracked: null,
+      ninetyDaySpecialDays: null,
+    }],
     priceHistory: [],
     description: "",
   };
@@ -98,6 +118,15 @@ test("readCatalogueCache: a record just inside the TTL is still a hit", async ()
   const products = [fakeProduct("p1")];
   await writeRawRecord({ version: __catalogueCacheTestInternals.VERSION, savedAt: freshTimestamp, products });
   assert.deepEqual(await readCatalogueCache(), products);
+});
+
+test("readCatalogueCache: removes a store deal after its verification window", async () => {
+  const staleProduct = fakeProduct("stale");
+  staleProduct.currentDeals[0].specialsVerifiedAt = new Date(
+    Date.now() - __catalogueCacheTestInternals.TTL_MS * 9
+  ).toISOString();
+  await writeCatalogueCache([staleProduct]);
+  assert.equal(await readCatalogueCache(), null);
 });
 
 test("readCatalogueCache: a version mismatch is treated as a miss (old cached shape never fed into code expecting new fields)", async () => {

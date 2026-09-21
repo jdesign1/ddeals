@@ -1,4 +1,5 @@
 import type { ProductCard } from "./data.ts";
+import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
 
 /**
  * Persistent, cross-session, same-browser cache of the fully-built
@@ -49,8 +50,10 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * Version 11 restores only the sample-count field needed by the account
  * statistics without restoring the larger summary payload. Keep this version
  * tied to the deployed catalogue contract, not only TypeScript shape changes.
+ * Version 12 stores per-store snapshot verification times and drops expired
+ * or legacy unverified specials from the persistent cache.
  */
-const CATALOGUE_CACHE_VERSION = 11;
+const CATALOGUE_CACHE_VERSION = 12;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {
@@ -108,7 +111,8 @@ export async function readCatalogueCache(): Promise<ProductCard[] | null> {
   if (record.version !== CATALOGUE_CACHE_VERSION) return null;
   if (!Array.isArray(record.products) || !record.products.length) return null;
   if (Date.now() - record.savedAt > CATALOGUE_CACHE_TTL_MS) return null;
-  return record.products;
+  const recentlyVerifiedProducts = filterRecentlyVerifiedSpecials(record.products);
+  return recentlyVerifiedProducts.length ? recentlyVerifiedProducts : null;
 }
 
 /** Returns the last successful catalogue write even when its products are past the display TTL. Never throws. */

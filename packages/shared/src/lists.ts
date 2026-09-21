@@ -299,10 +299,9 @@ export async function fetchListPriceLookups(
     // inlining -- the filter can only apply to the CTEs' already-computed
     // output, not narrow what they scan). Every Lists-page load was still
     // paying the view's full ~0.5-3.4s+ cost regardless of how few product
-    // ids were actually requested. Repointed to dodgy_deals_cache (same
-    // columns, refreshed every 15 min via pg_cron) -- see
-    // dodgy_deals_cache.sql for the full writeup.
-    fetchByIds<DodgyDealsLookupRow>(config, "dodgy_deals_cache", "product_id", "product_id,store_id,verdict,normal_price", ids),
+    // ids were actually requested. Read through the verified-membership view
+    // over the same 15-minute materialized cache.
+    fetchByIds<DodgyDealsLookupRow>(config, "published_dodgy_deals_cache", "product_id", "product_id,store_id,verdict,normal_price", ids),
   ]);
 
   // Cheapest current price per product, across any store.
@@ -312,9 +311,9 @@ export async function fetchListPriceLookups(
     if (!existing || row.price < existing.price) cheapestByProduct.set(row.product_id, row);
   }
 
-  // A list item's deal availability must match the same live deal source the
-  // deal-assessment page uses. `current_prices.is_special` alone can be stale
-  // or orphaned after a deal drops out of `dodgy_deals_cache`.
+  // A list item's deal availability must match the same verified live deal
+  // source the deal-assessment page uses. `current_prices.is_special` alone
+  // can be stale after a partial source run.
   const dealByProductStore = new Map<string, DodgyDealsLookupRow>();
   for (const row of dealRows) dealByProductStore.set(`${row.product_id}:${row.store_id}`, row);
 
