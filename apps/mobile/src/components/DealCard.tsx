@@ -5,6 +5,7 @@ import { ShieldCheck, ShieldAlert } from "lucide-react";
 import { getSpecialPriceRange, type ProductCard, type CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
+import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import { isNewSpecial } from "@/lib/special-freshness";
 
@@ -33,6 +34,7 @@ export default function DealCard({
   const router = useRouter();
   const isTrueSpecial = deal.dealType === "Real Deal";
   const isDodgy = deal.dealType === "Dodgy Deal";
+  const showPriceChangeBadge = isTrueSpecial || isDodgy || deal.dealType === "Fair Price";
   const showWasPrice = deal.originalPrice > deal.price;
   const specialPriceRange = getSpecialPriceRange(product);
 
@@ -97,6 +99,9 @@ export default function DealCard({
             />
           ) : (
             <span className="text-lg leading-6 font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+          )}
+          {showPriceChangeBadge && (
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} showAmount />
           )}
           {showWasPrice && (
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>

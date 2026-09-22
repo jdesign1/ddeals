@@ -24,7 +24,7 @@ import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
-import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -505,6 +505,12 @@ export default function FullScreenSearch() {
       sorted.sort((a, b) => compareLatestSpecials(a.bestDeal, b.bestDeal));
     } else if (popularSortBy === "price-asc") {
       sorted.sort((a, b) => a.bestDeal.price - b.bestDeal.price);
+    } else if (popularSortBy === "biggest-saver" || popularSortBy === "worst-dodgy") {
+      sorted.sort(
+        (a, b) =>
+          (getDealSortScore(b.bestDeal, popularSortBy) ?? Number.NEGATIVE_INFINITY) -
+          (getDealSortScore(a.bestDeal, popularSortBy) ?? Number.NEGATIVE_INFINITY)
+      );
     }
     return sorted;
   }, [popularSpecials, popularSortBy, dealFilter, popularCategoryFilter, selectedStores]);
@@ -543,7 +549,8 @@ export default function FullScreenSearch() {
       return true;
     });
 
-    const getBestPrice = (p: ProductCardData) => Math.min(...applicableDealsFor(p, selectedStores, dealFilter).map((d) => d.price));
+    const getBestDeal = (p: ProductCardData) => cheapestApplicableDeal(p, selectedStores, dealFilter);
+    const getBestPrice = (p: ProductCardData) => getBestDeal(p).price;
     const getLatestStart = (p: ProductCardData) => {
       const deals = applicableDealsFor(p, selectedStores, dealFilter);
       return Math.max(...deals.map((d) => new Date(d.saleStartedAt || 0).getTime()));
@@ -556,8 +563,19 @@ export default function FullScreenSearch() {
         relevance: getProductSearchRelevance(product, trimmedQuery),
       }))
       .sort((a, b) => {
+        if (resultsSortBy === "price-asc") {
+          const priceDifference = getBestPrice(a.product) - getBestPrice(b.product);
+          if (priceDifference !== 0) return priceDifference;
+        }
+        if (resultsSortBy === "biggest-saver" || resultsSortBy === "worst-dodgy") {
+          const sortDifference = (
+            getDealSortScore(getBestDeal(b.product), resultsSortBy) ?? Number.NEGATIVE_INFINITY
+          ) - (
+            getDealSortScore(getBestDeal(a.product), resultsSortBy) ?? Number.NEGATIVE_INFINITY
+          );
+          if (sortDifference !== 0) return sortDifference;
+        }
         if (b.relevance !== a.relevance) return b.relevance - a.relevance;
-        if (resultsSortBy === "price-asc") return getBestPrice(a.product) - getBestPrice(b.product);
         const newFirst = Number(hasNewSpecial(b.product)) - Number(hasNewSpecial(a.product));
         if (newFirst !== 0) return newFirst;
         return getLatestStart(b.product) - getLatestStart(a.product);

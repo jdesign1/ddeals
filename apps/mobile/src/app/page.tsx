@@ -28,7 +28,7 @@ import DealFilterSummary from "@/components/DealFilterSummary";
 import {
   subscribeToCheckDealsHeaderVisibility,
 } from "@/lib/scroll-events";
-import { CHECK_DEALS_SORT_OPTIONS, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
@@ -79,8 +79,8 @@ import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshnes
  *    reasoning as "on special in your list" but for *any* store carrying
  *    something similar to a listed item, which doesn't exist as a query
  *    against this data layer yet.
- *  - My List's sort control offers the same 2 options as Trending's
- *    (Biggest discount / Dodgy first) rather than the prototype's 4-option
+ *  - My List's sort control shares the same price-aware options as Trending's
+ *    (Biggest savers / Worst dodgy / price / latest) rather than the prototype's 4-option
  *    version (which adds "Most recent" and "Price low/high") — "Most
  *    recent" would need a list-item-added timestamp this data layer
  *    doesn't fetch, and a second price-direction option didn't seem worth
@@ -112,7 +112,7 @@ interface FlatDeal {
 }
 
 type DealSortBy = CheckDealsSortBy;
-type SortBy = "discount" | "dodgy";
+type SortBy = CheckDealsSortBy;
 
 /** Ported from Prototype/index.html's `ProductCard` call sites: other
  * stores (besides the one this card is already showing) currently running
@@ -133,12 +133,8 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
   const sorted = [...deals];
   if (sortBy === "price-asc") {
     sorted.sort((a, b) => a.deal.price - b.deal.price);
-  } else if (sortBy === "discount" || sortBy === "dodgy") {
-    if (sortBy === "dodgy") {
-      sorted.sort((a, b) => (b.deal.dealType === "Dodgy Deal" ? 1 : 0) - (a.deal.dealType === "Dodgy Deal" ? 1 : 0));
-    } else {
-      sorted.sort((a, b) => b.deal.discountPercentage - a.deal.discountPercentage);
-    }
+  } else if (sortBy === "biggest-saver" || sortBy === "worst-dodgy") {
+    sorted.sort((a, b) => (getDealSortScore(b.deal, sortBy) ?? Number.NEGATIVE_INFINITY) - (getDealSortScore(a.deal, sortBy) ?? Number.NEGATIVE_INFINITY));
   } else {
     // "latest" -- currently-new specials first, then most recently started.
     sorted.sort((a, b) => compareLatestSpecials(a.deal, b.deal));
@@ -429,17 +425,13 @@ export default function HomePage() {
  * into a bottom sheet) -- same scrim + spring slide-up pattern
  * `FullScreenSearch.tsx`'s Categories/Sort sheets use, just self-contained
  * here since both call sites (Trending/My List rails below) share the same
- * 2 fixed options, unlike that file's per-screen option lists. Picking a
+ * fixed options, unlike that file's per-screen option lists. Picking a
  * row applies it and closes immediately (single-select, matching what the
  * native `<select>` this replaced did), no separate "Done" footer. */
-const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-  { value: "discount", label: "Biggest discount" },
-  { value: "dodgy", label: "Dodgy first" },
-];
+const SORT_OPTIONS = CHECK_DEALS_SORT_OPTIONS;
 
-// Trending-only sort options, added 2026-08-21 -- see `TrendingSortBy`'s own
-// comment above for why Trending no longer shares `SORT_OPTIONS`/`SortBy`
-// with My List.
+// Trending uses the shared Check Deals options; My List reuses the same list
+// below so the price-aware sorting language stays consistent across rails.
 const TRENDING_SORT_OPTIONS = CHECK_DEALS_SORT_OPTIONS;
 
 // Made generic over `T extends string` 2026-08-21 so Trending's own

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
+import PriceChangeBadge from "@/components/PriceChangeBadge";
 
 interface PriceHistoryChartProps {
   points: PriceHistoryPoint[];
@@ -202,9 +203,6 @@ export default function PriceHistoryChart({
     .sort((a, b) => new Date(b.point.scrapedAt).getTime() - new Date(a.point.scrapedAt).getTime());
   const gridValues = [yMax, yMin + yRange / 2, yMin];
   const hasComparisonPrice = typeof comparisonPrice === "number" && Number.isFinite(comparisonPrice) && comparisonPrice > 0;
-  const comparisonPct = hasComparisonPrice ? Math.round(((currentPrice - comparisonPrice) / comparisonPrice) * 100) : 0;
-  const isCheaperThanComparison = hasComparisonPrice && currentPrice < comparisonPrice;
-
   return (
     <div className="space-y-3">
       {storeSelector}
@@ -228,20 +226,8 @@ export default function PriceHistoryChart({
           <span className="dd-type-control text-stone-700">
             {showingAllStores ? "All supermarkets" : <>{currentStore} {legacySingleStorePresentation ? "current price" : "price"} <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
           </span>
-          {!showingAllStores && hasComparisonPrice && comparisonPct !== 0 && (
-            <span
-              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 dd-type-badge text-white ${
-                isCheaperThanComparison ? "bg-fair-600" : "bg-alert-600"
-              }`}
-              aria-label={`${Math.abs(comparisonPct)}% ${isCheaperThanComparison ? "below" : "above"} the recent average`}
-            >
-              {isCheaperThanComparison ? (
-                <ArrowDown className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
-              ) : (
-                <ArrowUp className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
-              )}
-              {Math.abs(comparisonPct)}%
-            </span>
+          {!showingAllStores && hasComparisonPrice && (
+            <PriceChangeBadge currentPrice={currentPrice} comparisonPrice={comparisonPrice} />
           )}
         </div>
         <svg

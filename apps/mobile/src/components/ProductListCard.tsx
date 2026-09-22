@@ -6,6 +6,7 @@ import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/
 import { STORE_DISPLAY_FALLBACK, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
+import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { useCardLayout } from "@/lib/card-layout-context";
@@ -84,6 +85,7 @@ export default function ProductListCard({
   const isDodgy = deal.dealType === "Dodgy Deal";
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
+  const showPriceChangeBadge = isDodgy || isRealSaver || isFairDeal;
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const specialPriceRange = getSpecialPriceRange(product);
   const storeMeta = getStoreLogoMeta(deal.store);
@@ -235,13 +237,18 @@ export default function ProductListCard({
           {product.name}
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
-        {specialPriceRange ? (
-          <ResponsivePriceRange
-            text={`$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`}
-          />
-        ) : (
-          <span className="mt-1 font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-        )}
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          {specialPriceRange ? (
+            <ResponsivePriceRange
+              text={`$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`}
+            />
+          ) : (
+            <span className="font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+          )}
+          {showPriceChangeBadge && (
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} showAmount />
+          )}
+        </div>
         <div className="flex items-center gap-1.5">
           <span className="dd-type-meta dd-type-meta-strong text-stone-600">
             {specialPriceRange
