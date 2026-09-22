@@ -72,20 +72,25 @@ export default function DealCard({
             <span aria-hidden="true">NEW</span>
           </span>
         )}
-        {(isTrueSpecial || isDodgy) && (
-          <span
-            className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-full px-2 py-1 dd-type-badge text-white"
-            style={{
-              backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
-            }}
-          >
-            {isTrueSpecial ? (
-              <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-            ) : (
-              <ShieldAlert className="h-3 w-3" aria-hidden="true" />
+        {(showPriceChangeBadge || isTrueSpecial || isDodgy) && (
+          <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
+            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
+            {(isTrueSpecial || isDodgy) && (
+              <span
+                className="flex items-center gap-1 rounded-full px-2 py-1 dd-type-badge text-white"
+                style={{
+                  backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
+                }}
+              >
+                {isTrueSpecial ? (
+                  <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                ) : (
+                  <ShieldAlert className="h-3 w-3" aria-hidden="true" />
+                )}
+                {isTrueSpecial ? "True special" : "Dodgy Deal"}
+              </span>
             )}
-            {isTrueSpecial ? "True special" : "Dodgy Deal"}
-          </span>
+          </div>
         )}
         <AddToListButton productId={product.id} productName={product.name} />
       </div>
@@ -99,9 +104,6 @@ export default function DealCard({
             />
           ) : (
             <span className="text-lg leading-6 font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-          )}
-          {showPriceChangeBadge && (
-            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
           {showWasPrice && (
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>

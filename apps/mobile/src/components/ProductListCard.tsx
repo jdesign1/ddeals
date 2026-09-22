@@ -245,9 +245,6 @@ export default function ProductListCard({
           ) : (
             <span className="font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
           )}
-          {showPriceChangeBadge && (
-            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
-          )}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="dd-type-meta dd-type-meta-strong text-stone-600">
@@ -264,6 +261,7 @@ export default function ProductListCard({
       </div>
 
       <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
+        {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
         {isDodgy && (
           <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
             Dodgy
