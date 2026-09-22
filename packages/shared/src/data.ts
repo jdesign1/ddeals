@@ -387,10 +387,12 @@ export interface MatchIndex {
 }
 
 /**
- * Union-find over `products.canonical_product_id` (exact-SKU matches) and
- * `app_comparable_family_links` (reviewed "fair to compare" pairs) so
- * genuinely matched items from different retailer catalogue rows resolve to
- * one group id.
+ * Union-find over `products.canonical_product_id` only. This is the identity
+ * boundary for a product card: an explicit canonical link means the retailer
+ * rows represent the same product. `app_comparable_family_links` is a looser
+ * "fair to compare" relationship and must not be used here; transitive
+ * family links can otherwise merge unrelated products into one card and send
+ * a shopper to the wrong retailer URL.
  *
  * `union()`'s root choice is deliberately deterministic -- always keeps
  * whichever of the two roots sorts lexicographically FIRST, rather than
@@ -400,9 +402,9 @@ export interface MatchIndex {
  * `AddToListButton.tsx`'s own doc comment for the symptom). `find(x)`'s
  * returned root becomes `ProductCard.id` (`buildProductCardsFromSpecials`
  * below), which is exactly what gets written to `list_items.product_id`
- * when a product is added to a list. Neither of this function's two source
- * queries has an `ORDER BY` (`select=...` with no `order=`), so Postgres/
- * PostgREST doesn't guarantee row order is identical between calls --  and
+ * when a product is added to a list. The products query has no `ORDER BY`
+ * (`select=...` with no `order=`), so Postgres/PostgREST doesn't guarantee
+ * row order is identical between calls -- and
  * in practice it doesn't need to be malicious to actually change: the
  * 15-minute `dodgy_deals_cache` refresh, ordinary autovacuum, or simply a
  * different physical scan plan is enough. With the OLD "last union() call
@@ -428,23 +430,13 @@ export interface MatchIndex {
  */
 export async function buildMatchIndex(config: SupabaseRestConfig, productIds?: string[]): Promise<MatchIndex> {
   const scopedProductIds = productIds ? [...new Set(productIds)].filter(Boolean) : null;
-  const comparableRows = await fetchAllRows<{ left_product_id: string; right_product_id: string }>(
-    config,
-    "app_comparable_family_links?select=left_product_id,right_product_id"
-  );
-  const canonicalProductIds = scopedProductIds
-    ? [...new Set([
-        ...scopedProductIds,
-        ...comparableRows.flatMap((row) => [row.left_product_id, row.right_product_id]),
-      ])]
-    : null;
-  const canonicalRows = canonicalProductIds
+  const canonicalRows = scopedProductIds
     ? await fetchByIds<{ id: string; canonical_product_id: string }>(
         config,
         "products",
         "id",
         "id,canonical_product_id",
-        canonicalProductIds,
+        scopedProductIds,
         500
       )
     : await fetchAllRows<{ id: string; canonical_product_id: string }>(
@@ -482,9 +474,7 @@ export async function buildMatchIndex(config: SupabaseRestConfig, productIds?: s
   // must never become a union-find node or count as an edge.
   const usableCanonicalRows = canonicalRows.filter((row) => row.canonical_product_id);
   for (const row of usableCanonicalRows) union(row.id, row.canonical_product_id);
-  for (const row of comparableRows) union(row.left_product_id, row.right_product_id);
-
-  return { find, edgeCount: usableCanonicalRows.length + comparableRows.length };
+  return { find, edgeCount: usableCanonicalRows.length };
 }
 
 interface ProductMetaInput {
@@ -580,8 +570,9 @@ export function buildProductCardsFromSpecials(
 
     const bestDealByStore = new Map<string, CurrentDeal>();
     for (const deal of currentDeals) {
-      const existing = bestDealByStore.get(deal.store);
-      if (!existing || deal.price < existing.price) bestDealByStore.set(deal.store, deal);
+      const storeKey = canonicalStoreKey(deal.store);
+      const existing = bestDealByStore.get(storeKey);
+      if (!existing || deal.price < existing.price) bestDealByStore.set(storeKey, deal);
     }
     const dedupedDeals = [...bestDealByStore.values()];
     if (!dedupedDeals.length) continue;
@@ -604,6 +595,142 @@ export function buildProductCardsFromSpecials(
     });
   }
   return products;
+}
+
+const PRODUCT_IDENTITY_GENERIC_TOKENS = new Set([
+  "and",
+  "assorted",
+  "bag",
+  "bags",
+  "bar",
+  "block",
+  "bottle",
+  "bottles",
+  "can",
+  "cans",
+  "chocolate",
+  "each",
+  "family",
+  "jar",
+  "jars",
+  "l",
+  "liquid",
+  "pack",
+  "packs",
+  "product",
+  "range",
+  "size",
+  "sports",
+  "toothpaste",
+  "variety",
+  "drink",
+]);
+
+function productIdentityTokens(value: string | null | undefined, brand: string | null | undefined): string[] {
+  const brandTokens = new Set(normalizeIdentityText(brand));
+  return normalizeIdentityText(value).filter(
+    (token) => !brandTokens.has(token) && !PRODUCT_IDENTITY_GENERIC_TOKENS.has(token) && !/^\d+$/.test(token)
+  );
+}
+
+function normalizeIdentityText(value: string | null | undefined): string[] {
+  return (value || "")
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/&/g, " and ")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+/**
+ * Conservative guard for the identity data used to build a product card.
+ * Canonical links are the preferred signal, but a bad upstream link must not
+ * make the UI present unrelated products as different supermarket prices.
+ * Exact token aliases remain valid; generic category words alone do not.
+ */
+export function isLikelySameProduct(
+  left: Pick<DodgyDealsRow, "product_name" | "brand">,
+  right: Pick<DodgyDealsRow, "product_name" | "brand">
+): boolean {
+  const leftBrand = normalizeIdentityText(left.brand).join(" ");
+  const rightBrand = normalizeIdentityText(right.brand).join(" ");
+  if (leftBrand && rightBrand && leftBrand !== rightBrand) return false;
+
+  const leftName = normalizeIdentityText(left.product_name).join(" ");
+  const rightName = normalizeIdentityText(right.product_name).join(" ");
+  if (leftName && leftName === rightName) return true;
+
+  const leftRaw = productIdentityTokens(left.product_name, left.brand);
+  const rightRaw = productIdentityTokens(right.product_name, right.brand);
+  if (!leftRaw.length || !rightRaw.length) return false;
+
+  const leftRawSet = new Set(leftRaw);
+  const rightRawSet = new Set(rightRaw);
+  if (leftRawSet.size === rightRawSet.size && [...leftRawSet].every((token) => rightRawSet.has(token))) return true;
+
+  const leftDistinctive = leftRaw.filter((token) => !PRODUCT_IDENTITY_GENERIC_TOKENS.has(token));
+  const rightDistinctive = rightRaw.filter((token) => !PRODUCT_IDENTITY_GENERIC_TOKENS.has(token));
+  const rightSet = new Set(rightDistinctive);
+  const sharedDistinctive = [...new Set(leftDistinctive)].filter((token) => rightSet.has(token));
+  // Missing brand metadata is common in broad Four Square rows. Require a
+  // stronger name overlap in that case so a generic category row cannot be
+  // treated as the same SKU merely because it shares two words such as
+  // "craft" and "sausages".
+  const minimumSharedTokens = leftBrand && rightBrand ? 2 : 3;
+  const minimumTokenCount = Math.min(leftDistinctive.length, rightDistinctive.length);
+  return sharedDistinctive.length >= minimumSharedTokens
+    && minimumTokenCount > 0
+    && sharedDistinctive.length / minimumTokenCount >= 0.75;
+}
+
+/**
+ * Splits a canonical match group when its current retailer rows do not have
+ * enough product identity in common. This keeps the safety fix data-driven:
+ * one bad link cannot contaminate every future card in the same component.
+ */
+export function splitUnsafeMatchGroups(groupEntries: [string, DodgyDealsRow[]][]): [string, DodgyDealsRow[]][] {
+  const safeGroups: [string, DodgyDealsRow[]][] = [];
+  for (const [, rows] of groupEntries) {
+    const representatives = new Map<string, DodgyDealsRow>();
+    for (const row of rows) if (!representatives.has(row.product_id)) representatives.set(row.product_id, row);
+    const ids = [...representatives.keys()];
+    const parent = new Map<string, string>(ids.map((id) => [id, id]));
+    const find = (id: string): string => {
+      let root = id;
+      while (parent.get(root) !== root) root = parent.get(root) as string;
+      let current = id;
+      while (parent.get(current) !== root) {
+        const next = parent.get(current) as string;
+        parent.set(current, root);
+        current = next;
+      }
+      return root;
+    };
+    const union = (left: string, right: string) => {
+      const leftRoot = find(left);
+      const rightRoot = find(right);
+      if (leftRoot === rightRoot) return;
+      if (leftRoot < rightRoot) parent.set(rightRoot, leftRoot);
+      else parent.set(leftRoot, rightRoot);
+    };
+
+    for (let leftIndex = 0; leftIndex < ids.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < ids.length; rightIndex += 1) {
+        const leftId = ids[leftIndex];
+        const rightId = ids[rightIndex];
+        if (isLikelySameProduct(representatives.get(leftId)!, representatives.get(rightId)!)) union(leftId, rightId);
+      }
+    }
+
+    const rowsBySafeRoot = new Map<string, DodgyDealsRow[]>();
+    for (const row of rows) {
+      const root = find(row.product_id);
+      if (!rowsBySafeRoot.has(root)) rowsBySafeRoot.set(root, []);
+      rowsBySafeRoot.get(root)!.push(row);
+    }
+    for (const [root, safeRows] of rowsBySafeRoot) safeGroups.push([root, safeRows]);
+  }
+  return safeGroups;
 }
 
 /**
@@ -642,7 +769,7 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Liv
     byGroup.get(groupId)!.push(row);
   }
 
-  return { products: buildProductCardsFromSpecials([...byGroup.entries()]), sourceUpdatedAt };
+  return { products: buildProductCardsFromSpecials(splitUnsafeMatchGroups([...byGroup.entries()])), sourceUpdatedAt };
 }
 
 interface LiveProductsCacheEntry {
@@ -954,8 +1081,8 @@ export const __liveProductsCache = new Map<string, LiveProductsCacheEntry>();
  * `app_comparable_family_links`, all clustered in one burst of concurrent
  * paginated requests. Root cause: `loadLiveProducts()` fires a full
  * multi-page fetch pipeline (this table's paginated rows + the separate
- * `buildMatchIndex()` paginated fetches) EVERY time it's called, and once
- * both Home and Specials called it independently on the same load (plus
+ * `buildMatchIndex()`'s canonical-product fetch) EVERY time it's called, and
+ * once both Home and Specials called it independently on the same load (plus
  * React Strict Mode double-invoking effects in dev), several full pipelines
  * ran concurrently against the same free-tier Postgres instance.
  *
@@ -1041,7 +1168,7 @@ function loadLiveProductsDeduped(
  * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
  * browser, within its 6-hour TTL) skips the full catalogue network fetch when
  * the cheap published-cache timestamp has not advanced --
- * `dodgy_deals` AND `buildMatchIndex()`'s two paginated fetches, not just
+ * `dodgy_deals` AND `buildMatchIndex()`'s canonical-product fetch, not just
  * one of them. Only on a miss does this fall through to the in-memory
  * dedup + real network fetch, then best-effort writes the result back to
  * IndexedDB for the next load. The write is NOT awaited (matches the
@@ -1238,6 +1365,12 @@ export async function fetchNonSpecialProductCards(
 /** Store pill filter, ported from the prototype's normalizeStoreKey/storeMatchesFilter. */
 export const normalizeStoreKey = (s: string | null | undefined): string =>
   (s || "").toLowerCase().replace(/[^a-z]/g, "");
+
+/** Stable store identity for deal lookup and per-store deduplication. */
+export const canonicalStoreKey = (storeName: string | null | undefined): string => {
+  const normalized = normalizeStoreKey(storeName);
+  return Object.keys(STORE_DISPLAY_FALLBACK).find((knownStore) => normalized.includes(knownStore)) ?? normalized;
+};
 
 export const storeMatchesFilter = (storeName: string, filter: string): boolean =>
   filter === "all" || normalizeStoreKey(storeName).includes(filter);

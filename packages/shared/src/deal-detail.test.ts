@@ -4,6 +4,7 @@ import {
   buildPriceHistoryInsights,
   buildAssessmentSummaryCopy,
   findBestDodgyDeal,
+  findDealForStore,
   getAssessmentVerdict,
   getCurrentPriceRange,
   getSpecialPriceRange,
@@ -59,6 +60,16 @@ test("getStoreProductUrl: uses Woolworths NZ's live product search route", () =>
     getStoreProductUrl("Woolworths NZ", "Macro Organic Soy Milk Light 1l"),
     "https://www.woolworths.co.nz/shop/searchproducts?search=Macro%20Organic%20Soy%20Milk%20Light%201l"
   );
+});
+
+test("findDealForStore: matches retailer aliases exactly and does not use loose substrings", () => {
+  const deals = [
+    fakeDeal({ store: "Woolworths NZ", price: 5 }),
+    fakeDeal({ store: "New World", price: 4 }),
+  ];
+  assert.equal(findDealForStore(deals, "Woolworths")?.price, 5);
+  assert.equal(findDealForStore([fakeDeal({ store: "Woolworths", price: 6 })], "Woolworths NZ")?.price, 6);
+  assert.equal(findDealForStore(deals, "World")?.price, undefined);
 });
 
 test("getSpecialPriceRange: compares distinct special supermarkets and ignores regular listings", () => {

@@ -17,7 +17,6 @@ import {
   type PriceHistoryPoint,
   type AssessmentVerdict,
   isUncertainAssessment,
-  STORE_DISPLAY_FALLBACK,
   getAssessmentVerdict,
   buildAssessmentSummaryCopy,
   getStoreProductUrl,
@@ -30,6 +29,7 @@ import {
   buildPriceHistoryInsights,
   findCheaperAlternatives,
   findDealForStore,
+  canonicalStoreKey,
   normalizeStoreKey,
   logDealCheck,
   describeFetchError,
@@ -298,8 +298,7 @@ export default function DealAssessmentPage() {
     const seen = new Set<string>();
     return product.currentDeals.filter((candidate) => {
       if (!candidate.sourceProductId || !candidate.sourceStoreId) return false;
-      const normalizedStore = normalizeStoreKey(candidate.store);
-      const key = Object.keys(STORE_DISPLAY_FALLBACK).find((knownStore) => normalizedStore.includes(knownStore)) ?? normalizedStore;
+      const key = canonicalStoreKey(candidate.store);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

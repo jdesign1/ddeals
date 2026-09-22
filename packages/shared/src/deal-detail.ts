@@ -37,7 +37,7 @@
  */
 
 import type { ProductCard, CurrentDeal } from "./data.ts";
-import { matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
+import { canonicalStoreKey, matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
 
 /** Real 5-store list for this app's live catalogue (see file header note). */
 export const DEAL_DETAIL_STORES_LIST: string[] = Object.values(STORE_DISPLAY_FALLBACK);
@@ -49,7 +49,8 @@ export const DEAL_DETAIL_STORES_LIST: string[] = Object.values(STORE_DISPLAY_FAL
  * does everywhere else in this app.
  */
 export function findDealForStore(deals: CurrentDeal[] | undefined, store: string): CurrentDeal | undefined {
-  return (deals || []).find((d) => normalizeStoreKey(d.store).includes(normalizeStoreKey(store)));
+  const targetStoreKey = canonicalStoreKey(store);
+  return (deals || []).find((d) => canonicalStoreKey(d.store) === targetStoreKey);
 }
 
 /** Picks the cheapest Dodgy retailer deal after applying the active store filter. */

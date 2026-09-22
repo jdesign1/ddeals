@@ -12,8 +12,8 @@ import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
  * Ported 2026-08-08 in response to a second, related concern: `apps/mobile`
  * now has two screens (Home, Specials) independently calling
  * `loadLiveProducts()`, and every call that misses this cache re-fetches
- * the entire specials dataset PLUS `buildMatchIndex()`'s own two paginated
- * fetches (`products`, `app_comparable_family_links`) — real egress on a
+ * the entire specials dataset PLUS `buildMatchIndex()`'s scoped canonical
+ * product fetch — real egress on a
  * free-tier project, and the same endpoints already implicated in this
  * session's earlier statement-timeout 500s. A warm cache hit (same
  * browser, within `CATALOGUE_CACHE_TTL_MS`) skips the full catalogue
@@ -51,9 +51,13 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * statistics without restoring the larger summary payload. Keep this version
  * tied to the deployed catalogue contract, not only TypeScript shape changes.
  * Version 12 stores per-store snapshot verification times and drops expired
- * or legacy unverified specials from the persistent cache.
+ * or legacy unverified specials from the persistent cache. Version 13
+ * invalidates cards built with loose comparable-family links; product-card
+ * identity now uses canonical product matches only, so stale grouped cards
+ * cannot preserve links to unrelated retailer products. Version 14 also
+ * invalidates cards built before the conservative product-identity guard.
  */
-const CATALOGUE_CACHE_VERSION = 12;
+const CATALOGUE_CACHE_VERSION = 14;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {

@@ -10,7 +10,10 @@ import {
   mergeProductMeta,
   buildProductCardsFromSpecials,
   buildMatchIndex,
+  canonicalStoreKey,
+  isLikelySameProduct,
   normalizeStoreKey,
+  splitUnsafeMatchGroups,
   storeMatchesFilter,
   matchesAnySelectedStore,
   titleCase,
@@ -93,6 +96,13 @@ test("normalizeStoreKey strips non-letters and lowercases", () => {
   assert.equal(normalizeStoreKey("Woolworths NZ"), "woolworthsnz");
   assert.equal(normalizeStoreKey("Pak'nSave"), "paknsave");
   assert.equal(normalizeStoreKey(null), "");
+});
+
+test("canonicalStoreKey treats retailer aliases as one store without broad substring matches", () => {
+  assert.equal(canonicalStoreKey("Woolworths NZ"), "woolworths");
+  assert.equal(canonicalStoreKey("Woolworths"), "woolworths");
+  assert.equal(canonicalStoreKey("Pak'nSave"), "paknsave");
+  assert.equal(canonicalStoreKey("Example Store"), "examplestore");
 });
 
 test("storeMatchesFilter: 'all' matches everything, otherwise substring match on normalized key", () => {
@@ -180,6 +190,61 @@ test("buildProductCardsFromSpecials: dedupes to the lowest price per store withi
   assert.equal(cards.length, 1);
   assert.equal(cards[0].currentDeals.length, 1);
   assert.equal(cards[0].currentDeals[0].price, 4.5);
+});
+
+test("buildProductCardsFromSpecials: dedupes retailer name aliases to one store", () => {
+  const rows = [
+    row({ store_name: "Woolworths NZ", sale_price: 6 }),
+    row({ store_name: "Woolworths", sale_price: 4.5 }),
+  ];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  assert.equal(cards[0].currentDeals.length, 1);
+  assert.equal(cards[0].currentDeals[0].price, 4.5);
+});
+
+test("isLikelySameProduct: rejects different brands and generic category-only overlap", () => {
+  assert.equal(
+    isLikelySameProduct(
+      { brand: "Whittaker's", product_name: "Dark Almond 62% Cocoa Dark Chocolate Block" },
+      { brand: "donovans", product_name: "donovans chocolate drops dark" }
+    ),
+    false
+  );
+  assert.equal(
+    isLikelySameProduct(
+      { brand: "Gatorade", product_name: "Gatorade Sports Drink 1L" },
+      { brand: "Gatorade", product_name: "Blue Bolt Sports Drink" }
+    ),
+    false
+  );
+  assert.equal(
+    isLikelySameProduct(
+      { brand: "Hellers", product_name: "Craft Angus Beef Sausages" },
+      { brand: null, product_name: "Hellers Craft Traypack Sausages 6/10 Pack/Meatballs 400g/Burgers 4 Pack" }
+    ),
+    false
+  );
+});
+
+test("splitUnsafeMatchGroups: separates a bad canonical component but keeps a valid retailer alias together", () => {
+  const unsafe = splitUnsafeMatchGroups([[
+    "group-1",
+    [
+      row({ product_id: "p-whittaker", store_name: "Pak'nSave", product_name: "Dark Almond 62% Cocoa Dark Chocolate Block", brand: "Whittaker's" }),
+      row({ product_id: "p-donovans", store_name: "New World", product_name: "donovans chocolate drops dark", brand: "donovans" }),
+    ],
+  ]]);
+  assert.equal(unsafe.length, 2);
+
+  const valid = splitUnsafeMatchGroups([[
+    "group-2",
+    [
+      row({ product_id: "p-new-world", store_name: "New World", product_name: "Cadbury Chocolate Sharepack Flake", brand: "Cadbury" }),
+      row({ product_id: "p-paknsave", store_name: "Pak'nSave", product_name: "Flake Chocolate Sharepack", brand: "Cadbury" }),
+    ],
+  ]]);
+  assert.equal(valid.length, 1);
+  assert.equal(valid[0][1].length, 2);
 });
 
 test("buildProductCardsFromSpecials: maps verdict to dealType/reason and standardPrice to min normal_price", () => {
@@ -448,26 +513,23 @@ test("buildProductCardsFromSpecials: standardPrice falls back to min sale_price 
 // still show a Plus icon instead of a tick on Home/Search" (see
 // AddToListButton.tsx and buildMatchIndex's own doc comment for the full
 // trace). Root cause: `find()`'s returned group id becomes `ProductCard.id`,
-// which is exactly what gets written to `list_items.product_id` -- but
-// neither `products` nor `app_comparable_family_links` is fetched with an
-// `ORDER BY`, so nothing guaranteed the same real-world matched group
-// resolved to the same root id on two different fetches. This proves the
-// actual bug -- root id stability across different row-arrival orders --
-// not just that grouping still works.
+// which is exactly what gets written to `list_items.product_id` -- but the
+// `products` lookup is not fetched with an `ORDER BY`, so nothing guaranteed
+// the same real-world matched group resolved to the same root id on two
+// different fetches. This proves the
+// actual contract -- root id stability across different row-arrival orders --
+// while keeping loose comparable-family links out of product identity.
 
 function installMatchIndexFetchStub(
-  canonicalRows: { id: string; canonical_product_id: string }[],
-  comparableRows: { left_product_id: string; right_product_id: string }[]
+  canonicalRows: { id: string; canonical_product_id: string | null }[]
 ): { restore: () => void } {
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: string | URL | Request) => {
-    const url = String(input);
-    const body = url.includes("app_comparable_family_links") ? comparableRows : canonicalRows;
     return {
       ok: true,
       status: 200,
       headers: { get: () => null },
-      json: async () => body,
+      json: async () => canonicalRows,
     } as unknown as Response;
   }) as typeof fetch;
   return {
@@ -478,19 +540,21 @@ function installMatchIndexFetchStub(
 }
 
 test("buildMatchIndex: find() is stable regardless of row fetch order", async () => {
-  // Same 3-product match group (p-b <-> p-c via canonical, p-a <-> p-c via
-  // comparable), fetched in two different row orders -- simulates the DB
-  // returning rows differently across two independent page loads (no
-  // ORDER BY on either query, so this is legal, not a stub artifact).
-  const canonical = [{ id: "p-b", canonical_product_id: "p-c" }];
-  const comparableForward = [{ left_product_id: "p-a", right_product_id: "p-c" }];
-  const comparableReversed = [{ left_product_id: "p-c", right_product_id: "p-a" }];
+  // Same 3-product match group, fetched in two different row orders --
+  // simulates the DB returning rows differently across page loads. Loose
+  // comparable-family links are deliberately not part of this identity
+  // index, because transitive family links can merge unrelated products.
+  const canonicalForward = [
+    { id: "p-b", canonical_product_id: "p-c" },
+    { id: "p-a", canonical_product_id: "p-c" },
+  ];
+  const canonicalReversed = [...canonicalForward].reverse();
 
-  const stub1 = installMatchIndexFetchStub(canonical, comparableForward);
+  const stub1 = installMatchIndexFetchStub(canonicalForward);
   const indexForward = await buildMatchIndex({ url: "https://fake-order-a.example.com", anonKey: "k" });
   stub1.restore();
 
-  const stub2 = installMatchIndexFetchStub(canonical, comparableReversed);
+  const stub2 = installMatchIndexFetchStub(canonicalReversed);
   const indexReversed = await buildMatchIndex({ url: "https://fake-order-b.example.com", anonKey: "k" });
   stub2.restore();
 
@@ -511,14 +575,11 @@ test("buildMatchIndex: scoped canonical lookups ignore products without a canoni
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     calls.push(url);
-    const body = url.includes("app_comparable_family_links")
-      ? []
-      : [{ id: "p-special", canonical_product_id: null }];
     return {
       ok: true,
       status: 200,
       headers: { get: () => null },
-      json: async () => body,
+      json: async () => [{ id: "p-special", canonical_product_id: null }],
     } as unknown as Response;
   }) as typeof fetch;
 
@@ -526,8 +587,8 @@ test("buildMatchIndex: scoped canonical lookups ignore products without a canoni
     const index = await buildMatchIndex({ url: "https://fake-scoped.example.com", anonKey: "k" }, ["p-special"]);
     assert.equal(index.find("p-special"), "p-special");
     assert.equal(index.edgeCount, 0);
-    assert.match(calls[0], /app_comparable_family_links/);
-    assert.match(calls[1], /id=in\.\(/);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /id=in\.\(/);
   } finally {
     globalThis.fetch = original;
   }
@@ -739,7 +800,7 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     const config = fakeConfig("writeback");
     const result = await loadLiveProducts(config);
     assert.equal(result.length, 1, "expected one product card built from the one real dodgy_deals row");
-    assert.equal(calls.length, 4, "expected the 3-call pipeline plus one publication marker");
+    assert.equal(calls.length, 3, "expected the specials lookup, canonical-product lookup, and one publication marker");
     const productFetch = calls.find((url) => url.includes("/products?"));
     assert.ok(productFetch, "expected the scoped canonical-product lookup");
     assert.match(productFetch, /id=in\.\(/);
@@ -792,7 +853,7 @@ test("loadLiveProducts: refreshes a warm cache when the source timestamp advance
     const result = await loadLiveProducts(fakeConfig("source-advanced"));
     assert.notDeepEqual(result, cachedProducts);
     assert.equal(result.length, 1);
-    assert.equal(calls.length, 4, "expected one publication marker plus the three-call catalogue pipeline");
+    assert.equal(calls.length, 3, "expected one publication marker plus the two-request catalogue pipeline");
   } finally {
     globalThis.fetch = original;
   }
@@ -833,7 +894,7 @@ test("loadLiveProducts: a new publication bypasses a resolved pre-publication in
   try {
     const result = await loadLiveProducts(config);
     assert.equal(result[0]?.name, "Fresh Butter");
-    assert.equal(calls.length, 4, "an advanced marker must force the 3-call catalogue fetch");
+    assert.equal(calls.length, 3, "an advanced marker must force the 2-request catalogue fetch");
   } finally {
     globalThis.fetch = original;
   }
@@ -849,7 +910,7 @@ test("refreshLiveProducts: repeated pulls are throttled after one full catalogue
     assert.equal(first.refreshed, true);
     assert.equal(second.throttled, true);
     assert.deepEqual(second.products, first.products);
-    assert.equal(calls.length, 4, "repeated pull gestures must not download the catalogue again");
+    assert.equal(calls.length, 3, "repeated pull gestures must not download the catalogue again");
   } finally {
     restore();
   }
@@ -864,7 +925,7 @@ test("refreshLiveProducts: the cooldown survives an in-memory reset via IndexedD
 
     const second = await refreshLiveProducts(config);
     assert.equal(second.throttled, true);
-    assert.equal(calls.length, 4, "a reload/new tab must respect the persisted refresh timestamp");
+    assert.equal(calls.length, 3, "a reload/new tab must respect the persisted refresh timestamp");
   } finally {
     restore();
   }
