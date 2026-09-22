@@ -24,7 +24,7 @@ function usableProductImageSource(src?: string | null) {
  * Keep the direct retailer URL (so Vercel's image quota is not involved), but
  * recover locally when the URL is absent or fails to load.
  */
-export default function ProductImage({ src, alt, ...props }: ProductImageProps) {
+export default function ProductImage({ src, alt, decoding = "async", ...props }: ProductImageProps) {
   const source = usableProductImageSource(src);
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const imageSrc = failedSource === source ? PRODUCT_IMAGE_FALLBACK : source;
@@ -34,6 +34,7 @@ export default function ProductImage({ src, alt, ...props }: ProductImageProps) 
       {...props}
       src={imageSrc}
       alt={alt}
+      decoding={decoding}
       unoptimized
       onError={() => setFailedSource(source)}
     />

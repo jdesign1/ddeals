@@ -44,6 +44,9 @@ const config: CapacitorConfig = {
     // placeholder leaves Capacitor's launch splash visible forever.
     url: mobileAppUrl,
     cleartext: false,
+    // The native shell is remote-first, but this local page gives users a
+    // recoverable screen when the deployment or network cannot be reached.
+    errorPath: "error.html",
   },
   ios: {
     // The web UI owns safe-area spacing via env(safe-area-inset-*).
@@ -53,11 +56,12 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      // Keep the native storyboard over the WebView's first frame until the
-      // web theme provider has applied the saved light/dark preference. The
-      // provider then calls SplashScreen.hide(), avoiding a white flash when
-      // a dark-mode app starts cold.
-      launchAutoHide: false,
+      // The web app adds its own short branded hand-off layer. Auto-hide the
+      // native storyboard so a failed/slow remote deployment cannot leave the
+      // app stuck on the launch screen indefinitely. AppDelegate applies the
+      // saved native theme before this storyboard is shown.
+      launchShowDuration: 700,
+      launchAutoHide: true,
     },
     StatusBar: {
       style: "DARK",

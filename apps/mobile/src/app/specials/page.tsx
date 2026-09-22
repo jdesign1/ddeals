@@ -194,11 +194,12 @@ export default function SpecialsPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3 px-5">
-        {visibleDeals.map(({ product, deal }) => (
+        {visibleDeals.map(({ product, deal }, index) => (
           <DealCard
             key={`${product.id}-${deal.store}`}
             product={product}
             deal={deal}
+            imageLoading={index < 2 ? "eager" : "lazy"}
             showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
           />
         ))}

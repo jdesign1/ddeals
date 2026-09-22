@@ -114,7 +114,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setPushAvailableOnDevice(isNativeIos());
+      const nativeIos = isNativeIos();
+      setPushAvailableOnDevice(nativeIos);
+      if (!nativeIos) return;
       void refreshPushReadiness();
       void refreshPushPermission();
     }, 0);
@@ -143,9 +145,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [refreshNotifications, refreshPushPermission, refreshPushReadiness]);
 
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refreshNotifications(), 0);
     if (!user) return;
-
+    const initialRefresh = window.setTimeout(() => void refreshNotifications(), 0);
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void refreshNotifications();
     };

@@ -1,10 +1,35 @@
 "use client";
 
-import FullScreenSearch from "@/components/FullScreenSearch";
-import ScannerModal from "@/components/ScannerModal";
-import AuthSheet from "@/components/AuthSheet";
+import dynamic from "next/dynamic";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
+
+function OverlayChunkFallback() {
+  return (
+    <div
+      className="theme-loader-surface fixed inset-0 z-[50]"
+      role="status"
+      aria-label="Loading"
+    />
+  );
+}
+
+// These surfaces are not needed for the first paint of any route. Keep their
+// chunks out of the initial WebView bundle, then keep each component mounted
+// after first use so its local filters/animation state still persists while
+// the user moves between open and closed states.
+const FullScreenSearch = dynamic(() => import("@/components/FullScreenSearch"), {
+  ssr: false,
+  loading: OverlayChunkFallback,
+});
+const ScannerModal = dynamic(() => import("@/components/ScannerModal"), {
+  ssr: false,
+  loading: OverlayChunkFallback,
+});
+const AuthSheet = dynamic(() => import("@/components/AuthSheet"), {
+  ssr: false,
+  loading: OverlayChunkFallback,
+});
 
 /**
  * Mounted once in layout.tsx (2026-08-09, alongside the new
@@ -29,21 +54,25 @@ import { useAuth } from "@/lib/auth-context";
  *
  */
 export default function GlobalOverlays() {
-  const { isScannerOpen, closeScanner, openSearch } = useSearch();
-  const { isAuthSheetOpen, authSheetPrompt, closeAuthSheet } = useAuth();
+  const { isActive, hasOpenedSearch, isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearch();
+  const { isAuthSheetOpen, hasOpenedAuthSheet, authSheetPrompt, closeAuthSheet } = useAuth();
 
   return (
     <>
-      <FullScreenSearch />
-      <ScannerModal
-        isOpen={isScannerOpen}
-        onClose={closeScanner}
-        onSearchForItem={() => {
-          closeScanner();
-          openSearch();
-        }}
-      />
-      <AuthSheet isOpen={isAuthSheetOpen} prompt={authSheetPrompt} onClose={closeAuthSheet} />
+      {(hasOpenedSearch || isActive) && <FullScreenSearch />}
+      {(hasOpenedScanner || isScannerOpen) && (
+        <ScannerModal
+          isOpen={isScannerOpen}
+          onClose={closeScanner}
+          onSearchForItem={() => {
+            closeScanner();
+            openSearch();
+          }}
+        />
+      )}
+      {(hasOpenedAuthSheet || isAuthSheetOpen) && (
+        <AuthSheet isOpen={isAuthSheetOpen} prompt={authSheetPrompt} onClose={closeAuthSheet} />
+      )}
     </>
   );
 }

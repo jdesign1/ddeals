@@ -658,11 +658,12 @@ function TrendingSection({
           ) : (
             <>
               <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
-                {visible.map(({ product, deal }) => (
+                {visible.map(({ product, deal }, index) => (
                   <ProductListCard
                     key={`${product.id}-${deal.store}`}
                     product={product}
                     deal={deal}
+                    imageLoading={index < 2 ? "eager" : "lazy"}
                     showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
                     alsoSpecialStores={alsoSpecialStores(product, deal.store)}
                   />

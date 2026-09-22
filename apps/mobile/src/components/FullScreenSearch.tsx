@@ -1116,11 +1116,12 @@ export default function FullScreenSearch() {
                       )}
                     </div>
                     <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
-                      {visiblePopularSpecials.map(({ product, bestDeal }) => (
+                      {visiblePopularSpecials.map(({ product, bestDeal }, index) => (
                         <ProductListCard
                           key={product.id}
                           product={product}
                           deal={bestDeal}
+                          imageLoading={index < 2 ? "eager" : "lazy"}
                           showNewBadge={popularNewBadgeKeys.has(product.id)}
                           storeLinePrefix={null}
                           alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal)}
@@ -1318,13 +1319,14 @@ export default function FullScreenSearch() {
 
                   <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                     {sortedProducts.length > 0 ? (
-                      visibleSearchResults.map((product) => {
+                      visibleSearchResults.map((product, index) => {
                         const bestDeal = cheapestApplicableDeal(product, selectedStores, dealFilter);
                         return (
                           <ProductListCard
                             key={product.id}
                             product={product}
                             deal={bestDeal}
+                            imageLoading={index < 2 ? "eager" : "lazy"}
                             showNewBadge={searchNewBadgeKeys.has(product.id)}
                             storeLinePrefix={null}
                             alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter)}

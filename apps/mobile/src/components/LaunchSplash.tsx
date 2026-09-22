@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import WinkMascot from "@/components/WinkMascot";
 
-const SPLASH_DURATION_MS = 4_800;
+// Keep the web hand-off short: the native storyboard already covers the
+// first launch frame, and a long animation delays the first usable screen.
+const SPLASH_DURATION_MS = 700;
 const SPLASH_EXIT_MS = 260;
 const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
 export const LAUNCH_SPLASH_COMPLETE_EVENT = "dd-launch-splash-complete";

@@ -22,10 +22,13 @@ export default function DealCard({
   product,
   deal,
   showNewBadge = false,
+  imageLoading = "lazy",
 }: {
   product: ProductCard;
   deal: CurrentDeal;
   showNewBadge?: boolean;
+  /** The first visible card in a route/list can opt into eager loading. */
+  imageLoading?: "eager" | "lazy";
 }) {
   const router = useRouter();
   const isTrueSpecial = deal.dealType === "Real Deal";
@@ -58,7 +61,8 @@ export default function DealCard({
           alt={product.name}
           fill
           sizes="(max-width: 480px) 50vw, 256px"
-          loading="lazy"
+          loading={imageLoading}
+          fetchPriority={imageLoading === "eager" ? "high" : "auto"}
           className="product-image-content object-contain p-3"
         />
         {showNewBadge && isNewSpecial(deal) && (

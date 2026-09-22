@@ -35,6 +35,8 @@ interface AuthContextValue {
   profileError: string | null;
   authConfigured: boolean;
   isAuthSheetOpen: boolean;
+  /** True after the auth sheet has been opened once this session. */
+  hasOpenedAuthSheet: boolean;
   authSheetPrompt: string | undefined;
   openAuthSheet: (prompt?: string) => void;
   closeAuthSheet: () => void;
@@ -84,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!client);
   const [isAuthSheetOpen, setIsAuthSheetOpen] = useState(false);
+  const [hasOpenedAuthSheet, setHasOpenedAuthSheet] = useState(false);
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
   const pendingProviderProfileRef = useRef(false);
   const profileRecoveryInFlightRef = useRef(false);
@@ -114,7 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(nextProfile);
         if (resumeProviderFlow) {
           if (nextProfile?.onboarding_complete) setIsAuthSheetOpen(false);
-          else setIsAuthSheetOpen(true);
+          else {
+            setHasOpenedAuthSheet(true);
+            setIsAuthSheetOpen(true);
+          }
         }
       } catch (error) {
         if (cancelled) return;
@@ -145,7 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
         setProfileError(profileLoadErrorMessage(error));
-        if (resumeProviderFlow) setIsAuthSheetOpen(true);
+        if (resumeProviderFlow) {
+          setHasOpenedAuthSheet(true);
+          setIsAuthSheetOpen(true);
+        }
       } finally {
         if (!cancelled) setProfileLoading(false);
       }
@@ -186,8 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileError,
       authConfigured: !!client,
       isAuthSheetOpen,
+      hasOpenedAuthSheet,
       authSheetPrompt,
       openAuthSheet: (prompt) => {
+        setHasOpenedAuthSheet(true);
         setAuthSheetPrompt(prompt);
         setIsAuthSheetOpen(true);
       },
@@ -325,7 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error?.message ?? null };
       },
     }),
-    [client, user, session, profile, loading, profileLoading, profileError, isAuthSheetOpen, authSheetPrompt]
+    [client, user, session, profile, loading, profileLoading, profileError, isAuthSheetOpen, hasOpenedAuthSheet, authSheetPrompt]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

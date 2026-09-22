@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   loadLiveProducts,
@@ -61,6 +62,8 @@ interface SearchContextValue {
   query: string;
   setQuery: (value: string) => void;
   isActive: boolean;
+  /** True after the search overlay has been opened once this session. */
+  hasOpenedSearch: boolean;
   /** Whether the next fresh search opening should focus the input. */
   focusSearchOnOpen: boolean;
   /** Re-runs the initial specials fetch after a failed load (2026-08-11,
@@ -108,6 +111,8 @@ interface SearchContextValue {
    * rather than a fresh search entry. */
   preserveSearchStateOnOpen: boolean;
   isScannerOpen: boolean;
+  /** True after the scanner has been opened once this session. */
+  hasOpenedScanner: boolean;
   openScanner: () => void;
   closeScanner: () => void;
 }
@@ -152,10 +157,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [dealFilter, setDealFilter] = useState<DealFilter>("all");
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
+  const [hasOpenedSearch, setHasOpenedSearch] = useState(false);
   const [focusSearchOnOpen, setFocusSearchOnOpen] = useState(true);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [hasOpenedScanner, setHasOpenedScanner] = useState(false);
+  const pathname = usePathname();
+  const shouldLoadCatalogue = pathname === "/" || pathname === "/specials" || isActive;
   // Bumped by `retry()` below to force the effect to re-run. A plain counter
   // rather than calling the fetch directly from `retry()` so there's still
   // exactly one place (`fetchProducts` below) that owns the load-products
@@ -187,6 +196,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!shouldLoadCatalogue) return;
     let cancelled = false;
     loadLiveProductsWithRetry()
       .then((result) => {
@@ -201,7 +211,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [retryTick]);
+  }, [retryTick, shouldLoadCatalogue]);
 
   // Deal-detail targeted validation can update a single cached card without
   // downloading the full catalogue. Keep the global Check-deals/search state
@@ -214,11 +224,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   // Cached cards carry each store's verification time. Expire those deals
   // locally even if this screen remains open during a Realtime outage.
   useEffect(() => {
+    if (!shouldLoadCatalogue) return;
     const timer = window.setInterval(() => {
       setProducts((current) => filterRecentlyVerifiedSpecials(current));
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [shouldLoadCatalogue]);
 
   // Revalidate when the database publishes a new catalogue. The realtime
   // event is only an invalidation signal; loadLiveProducts still compares the
@@ -231,7 +242,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     let revalidationQueued = false;
 
     const revalidate = () => {
-      if (cancelled || document.visibilityState !== "visible") return;
+      if (cancelled || !shouldLoadCatalogue || document.visibilityState !== "visible") return;
       if (revalidation) {
         revalidationQueued = true;
         return;
@@ -275,7 +286,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pageshow", handlePageShow);
       unsubscribe();
     };
-  }, []);
+  }, [shouldLoadCatalogue]);
 
   const value = useMemo<SearchContextValue>(
     () => ({
@@ -289,6 +300,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       query,
       setQuery,
       isActive,
+      hasOpenedSearch,
       focusSearchOnOpen,
       // Resets `loadingProducts`/`error` here (an event handler, not the
       // effect body -- setting state synchronously inside the effect itself
@@ -304,11 +316,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       refreshCatalogue,
       openSearch: () => {
+        setHasOpenedSearch(true);
         setPreserveSearchStateOnOpen(false);
         setFocusSearchOnOpen(true);
         setIsActive(true);
       },
       openSearchForFilter: (filter, options) => {
+        setHasOpenedSearch(true);
         setQuery("");
         setDealFilter(filter);
         setPreserveSearchStateOnOpen(false);
@@ -331,16 +345,21 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setIsActive(false);
       },
       resumeAfterDealBack: () => {
+        setHasOpenedSearch(true);
         setPreserveSearchStateOnOpen(true);
         setIsActive(true);
         setReturnToSearch(null);
       },
       preserveSearchStateOnOpen,
       isScannerOpen,
-      openScanner: () => setIsScannerOpen(true),
+      hasOpenedScanner,
+      openScanner: () => {
+        setHasOpenedScanner(true);
+        setIsScannerOpen(true);
+      },
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, focusSearchOnOpen, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already

@@ -51,6 +51,8 @@ import { isNewSpecial } from "@/lib/special-freshness";
 export interface ProductListCardProps {
   product: ProductCardData;
   deal: CurrentDeal;
+  /** The first visible card in a route/list can opt into eager loading. */
+  imageLoading?: "eager" | "lazy";
   /** Text before the store name, e.g. "Lowest at" / "Special at". Pass
    * `null` when the store name should stand alone. */
   storeLinePrefix?: string | null;
@@ -72,6 +74,7 @@ export interface ProductListCardProps {
 export default function ProductListCard({
   product,
   deal,
+  imageLoading = "lazy",
   storeLinePrefix = "Lowest at",
   alsoSpecialStores = [],
   onNavigate,
@@ -174,7 +177,8 @@ export default function ProductListCard({
             width={112}
             height={112}
             sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "144px"}
-            loading="lazy"
+            loading={imageLoading}
+            fetchPriority={imageLoading === "eager" ? "high" : "auto"}
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
           />
         </div>

@@ -58,10 +58,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
  */
 
 /** Shared across all 4 call sites so there's one knob to retune, not four
- * independently-drifting magic numbers — see this file's own top comment
- * for why 200 was picked (order-of-magnitude below the real pool sizes
- * measured 2026-08-21, comfortably above what any real user scrolls to). */
-export const INFINITE_REVEAL_MAX_ITEMS = 200;
+ * independently-drifting magic numbers. This ceiling limits the worst-case
+ * DOM/memory cost on an iOS WebView while the existing small reveal batches
+ * preserve normal scrolling behaviour. */
+export const INFINITE_REVEAL_MAX_ITEMS = 120;
 
 interface UseInfiniteRevealArgs {
   /** Length of the already-filtered/sorted array being revealed. */
