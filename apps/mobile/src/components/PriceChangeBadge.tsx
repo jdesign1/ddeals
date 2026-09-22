@@ -4,11 +4,9 @@ import { getPriceChange } from "@/lib/price-change";
 export default function PriceChangeBadge({
   currentPrice,
   comparisonPrice,
-  showAmount = false,
 }: {
   currentPrice: number;
   comparisonPrice: number | null | undefined;
-  showAmount?: boolean;
 }) {
   if (comparisonPrice == null) return null;
   const change = getPriceChange(currentPrice, comparisonPrice);
@@ -22,11 +20,10 @@ export default function PriceChangeBadge({
       className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 dd-type-badge text-white ${
         isCheaper ? "bg-fair-600" : "bg-alert-600"
       }`}
-      aria-label={`${change.percentage}% ${isCheaper ? "below" : "above"} the reference price${showAmount ? `, ${isCheaper ? "saving" : "higher by"} $${change.amount.toFixed(2)}` : ""}`}
+      aria-label={`${change.percentage}% ${isCheaper ? "below" : "above"} the reference price`}
     >
       <ChangeIcon className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
       {change.percentage}%
-      {showAmount && <span aria-hidden="true"> · ${change.amount.toFixed(2)}</span>}
     </span>
   );
 }

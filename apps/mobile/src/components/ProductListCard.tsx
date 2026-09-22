@@ -246,7 +246,7 @@ export default function ProductListCard({
             <span className="font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
           )}
           {showPriceChangeBadge && (
-            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} showAmount />
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
         </div>
         <div className="flex items-center gap-1.5">

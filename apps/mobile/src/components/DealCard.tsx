@@ -101,7 +101,7 @@ export default function DealCard({
             <span className="text-lg leading-6 font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
           )}
           {showPriceChangeBadge && (
-            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} showAmount />
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
           {showWasPrice && (
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>

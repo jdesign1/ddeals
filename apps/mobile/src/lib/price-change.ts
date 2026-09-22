@@ -1,7 +1,6 @@
 export interface PriceChange {
   direction: "up" | "down";
   percentage: number;
-  amount: number;
 }
 
 /**
@@ -24,6 +23,5 @@ export function getPriceChange(currentPrice: number, comparisonPrice: number): P
   return {
     direction: signedPercentage > 0 ? "down" : "up",
     percentage,
-    amount: Math.abs(comparisonPrice - currentPrice),
   };
 }
