@@ -77,7 +77,7 @@ export default function HowItWorksPage() {
     <>
       <main
         aria-busy={!pageReady}
-        className={`flex flex-col gap-6 px-5 py-6 pb-10 transition-opacity duration-300 ease-out ${
+        className={`page-paper-surface min-h-full flex flex-col gap-6 px-5 py-6 pb-10 transition-opacity duration-300 ease-out ${
           pageReady ? "opacity-100" : "opacity-0"
         }`}
       >
