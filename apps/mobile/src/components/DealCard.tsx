@@ -8,6 +8,7 @@ import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import { isNewSpecial } from "@/lib/special-freshness";
+import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
 /**
  * One (product, store) deal card. Extracted from specials/page.tsx
@@ -34,7 +35,8 @@ export default function DealCard({
   const router = useRouter();
   const isTrueSpecial = deal.dealType === "Real Deal";
   const isDodgy = deal.dealType === "Dodgy Deal";
-  const showPriceChangeBadge = isTrueSpecial || isDodgy || deal.dealType === "Fair Price";
+  const hideCardBadges = hasMixedStoreVerdicts(product);
+  const showPriceChangeBadge = !hideCardBadges && (isTrueSpecial || isDodgy || deal.dealType === "Fair Price");
   const showWasPrice = deal.originalPrice > deal.price;
   const specialPriceRange = getSpecialPriceRange(product);
 
@@ -72,12 +74,12 @@ export default function DealCard({
             <span aria-hidden="true">NEW</span>
           </span>
         )}
-        {(showPriceChangeBadge || isTrueSpecial || isDodgy) && (
+        {!hideCardBadges && (showPriceChangeBadge || isTrueSpecial || isDodgy) && (
           <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
             {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
             {(isTrueSpecial || isDodgy) && (
               <span
-                className="flex items-center gap-1 rounded-full px-2 py-1 dd-type-badge text-white"
+                className="flex items-center gap-1 rounded-md p-1 dd-type-badge text-white shadow-xs"
                 style={{
                   backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
                 }}

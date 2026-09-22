@@ -17,7 +17,7 @@ export default function PriceChangeBadge({
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 dd-type-badge text-white ${
+      className={`inline-flex shrink-0 items-center gap-0.5 rounded-md p-1 dd-type-badge text-white shadow-xs ${
         isCheaper ? "bg-fair-600" : "bg-alert-600"
       }`}
       aria-label={`${change.percentage}% ${isCheaper ? "below" : "above"} the reference price`}

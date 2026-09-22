@@ -256,22 +256,25 @@ export default function ListsPage() {
   // does not reset every card, while a different account never inherits the
   // previous account's choices.
   useEffect(() => {
-    if (!listExpansionStorageKey) {
-      setExpandedListsById({});
-      return;
-    }
-    try {
-      const saved = window.localStorage.getItem(listExpansionStorageKey);
-      const parsed: unknown = saved ? JSON.parse(saved) : {};
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    const timer = window.setTimeout(() => {
+      if (!listExpansionStorageKey) {
         setExpandedListsById({});
         return;
       }
-      const validEntries = Object.entries(parsed).filter(([, value]) => typeof value === "boolean");
-      setExpandedListsById(Object.fromEntries(validEntries));
-    } catch {
-      setExpandedListsById({});
-    }
+      try {
+        const saved = window.localStorage.getItem(listExpansionStorageKey);
+        const parsed: unknown = saved ? JSON.parse(saved) : {};
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          setExpandedListsById({});
+          return;
+        }
+        const validEntries = Object.entries(parsed).filter(([, value]) => typeof value === "boolean");
+        setExpandedListsById(Object.fromEntries(validEntries));
+      } catch {
+        setExpandedListsById({});
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [listExpansionStorageKey]);
 
   const setListExpanded = useCallback(

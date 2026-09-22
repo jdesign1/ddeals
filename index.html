@@ -472,7 +472,8 @@ const FALLBACK_PRODUCTS = [
 // Mutable binding: reassigned to live Supabase data in the boot sequence
 // below (before first render) if the fetch succeeds; every other reference
 // to `mockProducts` throughout the app reads this same variable.
-let mockProducts = FALLBACK_PRODUCTS;
+// Do not surface demo specials while live verification is missing or loading.
+let mockProducts = [];
 
 /* ===================== lib/supabase-live.ts ===================== */
 /*
@@ -600,7 +601,7 @@ async function fetchByIds(path, column, select, ids, chunkSize = 100) {
 const CATALOGUE_CACHE_DB = 'dodgy_deals_cache';
 const CATALOGUE_CACHE_STORE = 'catalogue';
 const CATALOGUE_CACHE_KEY = 'live_products';
-const CATALOGUE_CACHE_VERSION = 2; // bumped 2026-08-07: cached shape changed when loadLiveProducts moved to sourcing from the dodgy_deals view (priceHistory is now always [], see loadLiveProducts)
+const CATALOGUE_CACHE_VERSION = 4; // bumped 2026-09-17: key verified snapshots by publication marker
 const CATALOGUE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function openCatalogueCacheDB() {
@@ -621,7 +622,7 @@ function openCatalogueCacheDB() {
 // TTL -- otherwise null. Never throws: any failure (blocked storage, private
 // browsing, corrupt record, etc.) is treated as a cache miss so the caller
 // always has a working fallback to the normal network path.
-async function readCatalogueCache() {
+async function readCatalogueCache(expectedPublicationMarker) {
   try {
     const db = await openCatalogueCacheDB();
     const record = await new Promise((resolve, reject) => {
@@ -633,9 +634,11 @@ async function readCatalogueCache() {
     db.close();
     if (!record) return null;
     if (record.version !== CATALOGUE_CACHE_VERSION) return null;
+    if (!expectedPublicationMarker || record.publicationMarker !== expectedPublicationMarker) return null;
     if (!Array.isArray(record.products) || !record.products.length) return null;
     if (Date.now() - record.savedAt > CATALOGUE_CACHE_TTL_MS) return null;
-    return record.products;
+    const freshProducts = filterRecentlyVerifiedSpecials(record.products);
+    return freshProducts.length ? freshProducts : null;
   } catch (err) {
     console.warn('Catalogue cache read skipped:', err);
     return null;
@@ -645,14 +648,14 @@ async function readCatalogueCache() {
 // Best-effort write -- failures (quota, blocked storage) are logged and
 // swallowed, never surfaced to the caller. Caching is an optimization, not
 // a requirement for the app to function.
-async function writeCatalogueCache(products) {
+async function writeCatalogueCache(products, publicationMarker = lastLoadedCataloguePublicationMarker) {
   try {
-    if (!Array.isArray(products) || !products.length) return;
+    if (!Array.isArray(products) || !products.length || !publicationMarker) return;
     const db = await openCatalogueCacheDB();
     await new Promise((resolve, reject) => {
       const tx = db.transaction(CATALOGUE_CACHE_STORE, 'readwrite');
       tx.objectStore(CATALOGUE_CACHE_STORE).put(
-        { version: CATALOGUE_CACHE_VERSION, savedAt: Date.now(), products },
+        { version: CATALOGUE_CACHE_VERSION, savedAt: Date.now(), publicationMarker, products },
         CATALOGUE_CACHE_KEY
       );
       tx.oncomplete = () => resolve();
@@ -662,6 +665,90 @@ async function writeCatalogueCache(products) {
   } catch (err) {
     console.warn('Catalogue cache write skipped:', err);
   }
+}
+
+function filterRecentlyVerifiedSpecials(products, now = Date.now()) {
+  let changed = false;
+  const freshProducts = products.flatMap((product) => {
+    const currentDeals = (product.currentDeals || []).filter((deal) => {
+      if (!deal.specialsVerifiedAt) return false;
+      const verifiedAt = Date.parse(deal.specialsVerifiedAt);
+      return Number.isFinite(verifiedAt)
+        && verifiedAt <= now + 5 * 60 * 1000
+        && now - verifiedAt < 48 * 60 * 60 * 1000;
+    });
+    if (!currentDeals.length) {
+      changed = true;
+      return [];
+    }
+    if (currentDeals.length === (product.currentDeals || []).length) return [product];
+    changed = true;
+    const regularPrices = currentDeals.map((deal) => deal.originalPrice).filter(Number.isFinite);
+    return [{
+      ...product,
+      currentDeals,
+      ...(regularPrices.length ? { standardPrice: Math.min(...regularPrices) } : {}),
+    }];
+  });
+  return changed ? freshProducts : products;
+}
+
+function startSpecialsFreshnessTimer() {
+  window.setInterval(() => {
+    const freshProducts = filterRecentlyVerifiedSpecials(mockProducts);
+    if (freshProducts === mockProducts) return;
+    mockProducts = freshProducts;
+    (window.__liveProductListeners || []).forEach((fn) => fn());
+  }, 60_000);
+}
+
+let lastLoadedCataloguePublicationMarker = null;
+let cataloguePublicationRefresh = null;
+let hasLoadedPublishedCatalogue = false;
+
+async function fetchCataloguePublicationMarker() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/catalogue_publications?select=version,published_at&id=eq.live&limit=1`,
+      { cache: 'no-store', headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    const row = rows[0];
+    return row ? `${row.version}:${row.published_at || ''}` : null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshCatalogueOnPublication() {
+  if (document.visibilityState !== 'visible' || cataloguePublicationRefresh) return;
+  cataloguePublicationRefresh = (async () => {
+    const marker = await fetchCataloguePublicationMarker();
+    if (hasLoadedPublishedCatalogue
+        && (!marker || marker === lastLoadedCataloguePublicationMarker)) return;
+    const products = await loadLiveProducts();
+    mockProducts = filterRecentlyVerifiedSpecials(products);
+    await writeCatalogueCache(mockProducts, marker);
+    if (marker) lastLoadedCataloguePublicationMarker = marker;
+    hasLoadedPublishedCatalogue = true;
+    (window.__liveProductListeners || []).forEach((fn) => fn());
+  })().catch((err) => {
+    console.warn('Published specials refresh skipped; will retry:', err);
+  }).finally(() => {
+    cataloguePublicationRefresh = null;
+  });
+  return cataloguePublicationRefresh;
+}
+
+function startCataloguePublicationRefresh() {
+  const revalidate = () => { void refreshCatalogueOnPublication(); };
+  window.setInterval(revalidate, 5 * 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') revalidate();
+  });
+  window.addEventListener('focus', revalidate);
+  revalidate();
 }
 
 function median(nums) {
@@ -1418,6 +1505,8 @@ function buildProductCardsFromSpecials(groupEntries) {
       // Retailer-advertised end date for this special, when the source
       // actually supplied one.
       specialEndDate: row.special_end_date || null,
+      specialsVerifiedAt: row.specials_verified_at || null,
+    });
     });
 
     // The identity-matching pipeline occasionally links two distinct
@@ -1518,7 +1607,7 @@ async function fetchNonSpecialProductCards(productIds) {
 // specials set is small enough to load in one shot.
 async function loadLiveProducts(onUpdate) {
   const [specialRows, matchIndex] = await Promise.all([
-    fetchAllRows('dodgy_deals?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason'),
+    fetchAllRows('published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,verdict,reason,specials_verified_at'),
     buildMatchIndex(),
   ]);
   if (!specialRows.length) return [];
@@ -2532,6 +2621,10 @@ function SearchTab({
                   })}
                 </div>
 
+                <p className="text-[11px] leading-4 text-stone-500">
+                  Only recently verified specials are shown. A store may be temporarily hidden until its complete scrape is available.
+                </p>
+
                 {sortedPopularSpecials.length > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -2615,9 +2708,11 @@ function SearchTab({
                 ) : (
                   <div className="text-center py-8 space-y-1">
                     <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">
-                      {popularTab === 'dodgy' ? 'No dodgy deals found right now' : 'No specials found right now'}
+                      {popularTab === 'dodgy' ? 'No dodgy deals found right now' : 'No recently verified specials found right now'}
                     </p>
-                    <p className="text-xs text-stone-400">Try widening the supermarket filter above.</p>
+                    <p className="text-xs text-stone-400">
+                      {popularTab === 'dodgy' ? 'Try widening the supermarket filter above.' : 'Try another supermarket, or check back after its next complete scrape.'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -7366,15 +7461,21 @@ function App() {
 /* ===================== boot ===================== */
 
 (async () => {
+  // Capture the durable marker before reading cached/live rows so a snapshot
+  // published during loading is picked up by the first post-load check.
+  lastLoadedCataloguePublicationMarker = await fetchCataloguePublicationMarker();
   // Cache check first (see readCatalogueCache above) -- a warm hit (same
   // browser, within CATALOGUE_CACHE_TTL_MS) skips the Supabase fetch
   // entirely, no egress spent this load. Any miss/error falls through to
   // the normal network path below unchanged.
-  const cachedProducts = await readCatalogueCache();
+  const cachedProducts = await readCatalogueCache(lastLoadedCataloguePublicationMarker);
   if (cachedProducts) {
     mockProducts = cachedProducts;
+    hasLoadedPublishedCatalogue = true;
     const root = createRoot(document.getElementById('root'));
     root.render(<App />);
+    startSpecialsFreshnessTimer();
+    startCataloguePublicationRefresh();
     return;
   }
 
@@ -7388,20 +7489,24 @@ function App() {
   let resolveFirstPage;
   const firstPageReady = new Promise((resolve) => { resolveFirstPage = resolve; });
   let sawAnyPage = false;
+  let initialCatalogueLoadFailed = false;
 
   const finalLoad = loadLiveProducts((pageSoFar) => {
     mockProducts = pageSoFar;
+    hasLoadedPublishedCatalogue = true;
     if (!sawAnyPage) {
       sawAnyPage = true;
       resolveFirstPage();
     }
     (window.__liveProductListeners || []).forEach((fn) => fn());
   }).catch((err) => {
-    console.error('Live Supabase fetch failed, falling back to demo data:', err);
+    initialCatalogueLoadFailed = true;
+    console.error('Live Supabase fetch failed; showing no unverified specials:', err);
     return [];
   }).then((finalProducts) => {
+    if (!initialCatalogueLoadFailed) hasLoadedPublishedCatalogue = true;
     if (!sawAnyPage && !finalProducts.length) {
-      console.warn('Supabase returned no usable current specials -- falling back to demo data.');
+      console.warn('Supabase returned no verified current specials.');
     }
     // Cache the fully-loaded catalogue for the next same-browser load. Only
     // caches on a genuine completed load with real rows -- writeCatalogueCache
@@ -7418,6 +7523,8 @@ function App() {
 
   const root = createRoot(document.getElementById('root'));
   root.render(<App />);
+  startSpecialsFreshnessTimer();
+  startCataloguePublicationRefresh();
 })();
 </script>
 

@@ -11,6 +11,7 @@ import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { isNewSpecial } from "@/lib/special-freshness";
+import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
 /**
  * Product card — ported from Prototype/index.html's shared
@@ -85,7 +86,8 @@ export default function ProductListCard({
   const isDodgy = deal.dealType === "Dodgy Deal";
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
-  const showPriceChangeBadge = isDodgy || isRealSaver || isFairDeal;
+  const hideCardBadges = hasMixedStoreVerdicts(product);
+  const showPriceChangeBadge = !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const specialPriceRange = getSpecialPriceRange(product);
   const storeMeta = getStoreLogoMeta(deal.store);
@@ -249,7 +251,7 @@ export default function ProductListCard({
         <div className="flex items-center gap-1.5">
           <span className="dd-type-meta dd-type-meta-strong text-stone-600">
             {specialPriceRange
-              ? "Multiple supermarkets"
+              ? "Various"
               : storeLinePrefix == null
               ? storeLabel
               : storeLinePrefix === "Lowest at"
@@ -260,24 +262,26 @@ export default function ProductListCard({
         </div>
       </div>
 
-      <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
-        {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
-        {isDodgy && (
-          <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
-            Dodgy
-          </span>
-        )}
-        {isRealSaver && (
-          <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">
-            Real
-          </span>
-        )}
-        {isFairDeal && (
-          <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">
-            Fair
-          </span>
-        )}
-      </div>
+      {!hideCardBadges && (
+        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
+          {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
+          {isDodgy && (
+            <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
+              Dodgy
+            </span>
+          )}
+          {isRealSaver && (
+            <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">
+              Real
+            </span>
+          )}
+          {isFairDeal && (
+            <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">
+              Fair
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
