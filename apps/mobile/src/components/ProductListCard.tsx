@@ -171,7 +171,7 @@ export default function ProductListCard({
       <AddToListButton
         productId={product.id}
         productName={product.name}
-        containerClassName={isCompactLayout ? "absolute right-2 top-2 z-10" : undefined}
+        containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : undefined}
       />
 
       {/* Single layout keeps the horizontal image-and-text card currently

@@ -96,7 +96,7 @@ function buildAssessmentPriceBody(currentPrice: string, normalPrice: string | nu
   const priceLine = normalPrice
     ? `Current price: ${currentPrice}, recent normal price: ${normalPrice}`
     : `Current price: ${currentPrice}`;
-  return `${priceLine}. ${conclusion}`;
+  return `${priceLine}.\n${conclusion}`;
 }
 
 /**

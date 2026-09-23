@@ -803,7 +803,7 @@ export default function DealAssessmentPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-      <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
+      <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         {/* Verdict badge -- "Verified special" (Real Saver) ADDED
             2026-08-20, per Jay: "remove verified specials badge from the
             lists. Add it to deal assessment pages for real savers" -- moved
@@ -900,7 +900,7 @@ export default function DealAssessmentPage() {
       </motion.div>
         </>
       ) : (
-        <div className={`space-y-5 rounded-2xl border bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
+        <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex items-center justify-between">
             <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
               {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}

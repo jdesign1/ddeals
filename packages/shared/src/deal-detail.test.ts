@@ -141,8 +141,7 @@ test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supe
 
   assert.equal(copy.heading, "5% above the recent normal price");
   assert.match(copy.body, /Current price: \$4\.39/);
-  assert.match(copy.body, /recent normal price: \$4\.19/);
-  assert.match(copy.body, /That's not a genuine saving/);
+  assert.match(copy.body, /recent normal price: \$4\.19\.\nThat's not a genuine saving\.$/);
   assert.doesNotMatch(copy.body, /Sale price/);
   assert.doesNotMatch(copy.body, /\(\$4\.39\)/);
   assert.doesNotMatch(copy.body, /recent special price/);
@@ -169,7 +168,7 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
     })
   );
   assert.match(realCopy.body, /Current price: \$3\.50/);
-  assert.match(realCopy.body, /\$5\.00/);
+  assert.match(realCopy.body, /\$5\.00\.\nThat's a genuine saving\.$/);
 });
 
 test("buildAssessmentSummaryCopy: uses concise incomplete-history copy for a single store", () => {
@@ -181,7 +180,7 @@ test("buildAssessmentSummaryCopy: uses concise incomplete-history copy for a sin
   );
 
   assert.equal(copy.heading, "Needs more history");
-  assert.equal(copy.body, "Current price: $5.00, recent normal price: $7.00. We need a little more price history to confirm this deal.");
+  assert.equal(copy.body, "Current price: $5.00, recent normal price: $7.00.\nWe need a little more price history to confirm this deal.");
 });
 
 test("buildAssessmentSummaryCopy: uses concise copy for an early-read assessment", () => {
@@ -193,7 +192,7 @@ test("buildAssessmentSummaryCopy: uses concise copy for an early-read assessment
   );
 
   assert.equal(copy.heading, "Needs more history");
-  assert.equal(copy.body, "Current price: $5.00, recent normal price: $7.00. We need a few more recent price checks to confirm this deal.");
+  assert.equal(copy.body, "Current price: $5.00, recent normal price: $7.00.\nWe need a few more recent price checks to confirm this deal.");
 });
 
 test("findBestDodgyDeal: finds a Dodgy retailer deal even when another store has a better discount", () => {
