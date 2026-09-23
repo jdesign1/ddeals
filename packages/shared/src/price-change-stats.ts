@@ -17,6 +17,7 @@ export interface MostChangedProduct {
   id: string;
   name: string;
   brand: string;
+  store: string;
   totalChanges: number;
   storeCount: number;
 }
@@ -27,6 +28,10 @@ export interface PriceChangeStats {
 }
 
 const MIN_HISTORY_STATES_FOR_COMPARISON = 2;
+
+function priceChangeCount(deal: CurrentDeal): number {
+  return Math.max(0, Math.floor(deal.ninetyDayPriceChanges ?? 0));
+}
 
 function matchingDealForStore(product: ProductCard, storeKey: string): CurrentDeal | undefined {
   return product.currentDeals
@@ -59,7 +64,7 @@ export function buildPriceChangeStats(
     for (const product of products) {
       const deal = matchingDealForStore(product, store.key);
       if (!deal) continue;
-      const changes = Math.max(0, Math.floor(deal.ninetyDayPriceChanges ?? 0));
+      const changes = priceChangeCount(deal);
       itemsTracked += 1;
       totalChanges += changes;
       if (changes > 0) itemsChanged += 1;
@@ -94,15 +99,17 @@ export function buildPriceChangeStats(
         if (!existing || deal.price < existing.price) byStore.set(storeKey, deal);
       }
 
-      const changes = [...byStore.values()].reduce(
-        (sum, deal) => sum + Math.max(0, Math.floor(deal.ninetyDayPriceChanges ?? 0)),
-        0
+      const dealsByChanges = [...byStore.values()].sort(
+        (a, b) => priceChangeCount(b) - priceChangeCount(a) || a.price - b.price || a.store.localeCompare(b.store)
       );
+      const changes = dealsByChanges.reduce((sum, deal) => sum + priceChangeCount(deal), 0);
       if (changes === 0) return null;
+      const representativeDeal = dealsByChanges[0];
       return {
         id: product.id,
         name: product.name,
         brand: product.brand,
+        store: representativeDeal.store,
         totalChanges: changes,
         storeCount: byStore.size,
       };

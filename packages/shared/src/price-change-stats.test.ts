@@ -81,8 +81,8 @@ test("top changed products sum distinct price changes across supermarkets and ra
   ], stores, 2);
 
   assert.deepEqual(stats.topProducts, [
-    { id: "one", name: "Item one", brand: "Brand one", totalChanges: 7, storeCount: 2 },
-    { id: "two", name: "Item two", brand: "Brand two", totalChanges: 5, storeCount: 1 },
+    { id: "one", name: "Item one", brand: "Brand one", store: "New World", totalChanges: 7, storeCount: 2 },
+    { id: "two", name: "Item two", brand: "Brand two", store: "Woolworths", totalChanges: 5, storeCount: 1 },
   ]);
 });
 

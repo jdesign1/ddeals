@@ -743,7 +743,13 @@ export default function MePage() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="dd-type-meta truncate text-stone-500">{product.brand}</p>
-                          <p className="dd-type-control text-stone-800">{product.name}</p>
+                          <Link
+                            href={`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(product.store)}`}
+                            aria-label={`View ${product.name} deal assessment at ${product.store}`}
+                            className="block dd-type-control text-stone-800 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600"
+                          >
+                            {product.name}
+                          </Link>
                           <p className="dd-type-meta text-stone-500">Across {product.storeCount} {product.storeCount === 1 ? "supermarket" : "supermarkets"}</p>
                         </div>
                         <span className="flex-shrink-0 text-right text-base font-black tabular-nums text-ink-700">
