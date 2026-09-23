@@ -208,7 +208,7 @@ export default function ProductListCard({
       <div
         className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
           isCompactLayout
-            ? "py-2 pl-2 pr-10"
+            ? "px-2 py-2"
             : isGridLayout
               ? "px-3 pb-9 pt-3"
               : "pb-9 pl-4 pr-9 pt-4"
@@ -219,7 +219,7 @@ export default function ProductListCard({
             bottom-right verdict badge has its own clear area. The main
             retailer is followed inline by any other supermarkets carrying
             the same product on special. */}
-        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start" : "mb-1.5"}`}>
+        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start pr-10" : "mb-1.5"}`}>
           <span className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
@@ -250,7 +250,7 @@ export default function ProductListCard({
             ask, landing at `text-[12px]`, not evidence the earlier sweep
             missed it. */}
         {!isCompactLayout && <span className="dd-type-meta text-stone-600">{brandSentenceCase}</span>}
-        <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
+        <h3 className={`line-clamp-2 font-display text-base font-bold leading-snug text-stone-900 ${isCompactLayout ? "pr-10" : ""}`}>
           {product.name}
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
@@ -268,9 +268,9 @@ export default function ProductListCard({
           )}
           {!hideCardBadges && isCompactLayout && (
             <>
-              {isDodgy && <span className="dd-badge dd-badge-compact dd-badge-alert">Dodgy</span>}
-              {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair">Real</span>}
-              {isFairDeal && <span className="dd-badge dd-badge-compact dd-badge-dodgy">Fair</span>}
+              {isDodgy && <span className="dd-badge dd-badge-inline dd-badge-alert ml-auto">Dodgy</span>}
+              {isRealSaver && <span className="dd-badge dd-badge-inline dd-badge-fair ml-auto">Real</span>}
+              {isFairDeal && <span className="dd-badge dd-badge-inline dd-badge-dodgy ml-auto">Fair</span>}
             </>
           )}
         </div>
