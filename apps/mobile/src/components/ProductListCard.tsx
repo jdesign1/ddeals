@@ -92,6 +92,7 @@ export default function ProductListCard({
   const specialPriceRange = getSpecialPriceRange(product);
   const storeMeta = getStoreLogoMeta(deal.store);
   const { isGridLayout, isCompactLayout } = useCardLayout();
+  const storeBadgePadding = isCompactLayout ? "px-1.5 py-0.5" : "p-1";
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
   // `product.brand` already arrives Title Cased from `packages/shared/src/
@@ -219,7 +220,7 @@ export default function ProductListCard({
             retailer is followed inline by any other supermarkets carrying
             the same product on special. */}
         <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "absolute right-2 top-2 z-10 justify-end" : "mb-1.5"}`}>
-          <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
+          <span className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
           {alsoSpecialStores.map((store) => {
@@ -228,7 +229,7 @@ export default function ProductListCard({
               <span
                 key={store}
                 title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                className={`shrink-0 select-none rounded-md p-1 dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
+                className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
               >
                 {meta.short}
               </span>
