@@ -80,8 +80,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 @keyframes hero-mascot-inspect {
   0%, 82%, 100% { opacity: 0; transform: translate3d(18%, 1.5%, 0) scale(.97) rotate(1deg); }
   20%, 35% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotate(0); }
-  43% { opacity: 1; transform: translate3d(0, -1.8%, 0) scale(1.005) rotate(-1.6deg); }
-  52% { opacity: 1; transform: translate3d(0, -1.8%, 0) scale(1.005) rotate(-1.6deg); }
+  43% { opacity: 1; transform: translate3d(0, -1.8%, 0) scale(1.005) rotate(-2deg); }
+  52% { opacity: 1; transform: translate3d(0, -1.8%, 0) scale(1.005) rotate(-2deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
