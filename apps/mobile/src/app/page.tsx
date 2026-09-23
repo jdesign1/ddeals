@@ -28,7 +28,7 @@ import DealFilterSummary from "@/components/DealFilterSummary";
 import {
   subscribeToCheckDealsHeaderVisibility,
 } from "@/lib/scroll-events";
-import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, getDefaultDealSort, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
@@ -166,7 +166,7 @@ export default function HomePage() {
   } = useSearch();
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
-  const [dealSortBy, setDealSortBy] = useState<DealSortBy>("latest");
+  const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
@@ -230,6 +230,11 @@ export default function HomePage() {
 
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
+
+  const handleDealFilterChange = (filter: DealFilter) => {
+    setDealFilter(filter);
+    setDealSortBy(getDefaultDealSort(filter));
+  };
 
   return (
     <>
@@ -296,7 +301,7 @@ export default function HomePage() {
           <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${isToolbarVisible ? "pb-2" : "pb-0"}`}>
             <DealFilterTabs
               value={dealFilter}
-              onChange={setDealFilter}
+              onChange={handleDealFilterChange}
             />
             <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
               <StorePill

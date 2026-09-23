@@ -24,7 +24,7 @@ import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
-import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, getDefaultDealSort, type CheckDealsSortBy } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -357,15 +357,15 @@ export default function FullScreenSearch() {
     };
   }, []);
 
-  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>("latest");
+  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>(() => getDefaultDealSort("all"));
   // The selected deal filter is shared with Check Deals through
   // SearchProvider, so switching screens keeps the same tab selected and
   // applies the same filter to both surfaces.
   const [resultsCategoryFilter, setResultsCategoryFilter] = useState<string[]>([]);
 
-  // Match Check Deals' default "Latest specials" ordering when search opens.
+  // Match Check Deals' filter-specific default ordering when search opens.
   // Users can still choose a different sort from the sheet below.
-  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>("latest");
+  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>(() => getDefaultDealSort("all"));
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
 
   // Track the open transition for scroll restoration. The shared deal filter
@@ -375,15 +375,15 @@ export default function FullScreenSearch() {
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
-      setPopularSortBy("latest");
-      setResultsSortBy("latest");
+      setPopularSortBy(getDefaultDealSort(dealFilter));
+      setResultsSortBy(getDefaultDealSort(dealFilter));
     }
   }
 
   const handleDealFilterChange = (filter: DealFilter) => {
     setDealFilter(filter);
-    setPopularSortBy("latest");
-    setResultsSortBy("latest");
+    setPopularSortBy(getDefaultDealSort(filter));
+    setResultsSortBy(getDefaultDealSort(filter));
   };
 
   const [categorySheetTarget, setCategorySheetTarget] = useState<"popular" | "results" | null>(null);

@@ -1,5 +1,6 @@
 import type { CurrentDeal } from "@dodgey-deals/shared";
 import { getSignedPriceChangePercentage } from "@/lib/price-change";
+import type { DealFilter } from "@/lib/deal-filters";
 
 export type CheckDealsSortBy = "price-asc" | "latest" | "biggest-saver" | "worst-dodgy";
 
@@ -10,6 +11,14 @@ export const CHECK_DEALS_SORT_OPTIONS: { value: CheckDealsSortBy; label: string 
   { value: "biggest-saver", label: "Biggest savers" },
   { value: "worst-dodgy", label: "Worst dodgy" },
 ];
+
+/** Default ordering for each deal tab. The sort control remains available for
+ * users who want a different order after the tab's useful default is applied. */
+export function getDefaultDealSort(filter: DealFilter): CheckDealsSortBy {
+  if (filter === "real") return "biggest-saver";
+  if (filter === "dodgy") return "worst-dodgy";
+  return "latest";
+}
 
 /** Returns a sortable score without rounding away small but real differences. */
 export function getDealSortScore(deal: CurrentDeal, sortBy: CheckDealsSortBy): number | null {
