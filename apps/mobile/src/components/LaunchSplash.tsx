@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import WinkMascot from "@/components/WinkMascot";
 
 // Keep the web hand-off short: the native storyboard already covers the
 // first launch frame, and a long animation delays the first usable screen.
 const SPLASH_DURATION_MS = 700;
 const SPLASH_EXIT_MS = 260;
+type LaunchSplashStyle = CSSProperties & { "--launch-cycle-duration": string };
 const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
 export const LAUNCH_SPLASH_COMPLETE_EVENT = "dd-launch-splash-complete";
 
@@ -30,6 +31,9 @@ export default function LaunchSplash() {
   });
   const [exiting, setExiting] = useState(false);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
+  const splashStyle: LaunchSplashStyle = {
+    "--launch-cycle-duration": `${SPLASH_DURATION_MS}ms`,
+  };
 
   useEffect(() => {
     if (!visible) return;
@@ -76,6 +80,7 @@ export default function LaunchSplash() {
     <div
       className={`launch-splash${exiting ? " launch-splash--exit" : ""}`}
       aria-hidden="true"
+      style={splashStyle}
     >
       <WinkMascot className="wink-mascot--startup" />
     </div>
