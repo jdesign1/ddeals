@@ -2,27 +2,31 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-export type CardLayout = "single" | "grid";
+export type CardLayout = "single" | "grid" | "compact";
 
 const CARD_LAYOUT_STORAGE_KEY = "dodgey-deals-card-layout";
 
 interface CardLayoutContextValue {
   cardLayout: CardLayout;
   isGridLayout: boolean;
+  isCompactLayout: boolean;
   setCardLayout: (layout: CardLayout) => void;
 }
 
 const CardLayoutContext = createContext<CardLayoutContextValue | null>(null);
 
 export function CardLayoutProvider({ children }: { children: ReactNode }) {
-  // Grid is the default layout. Users can switch to the single-column view
-  // from Settings, and a saved preference still takes priority in the browser.
+  // Grid is the default layout. Users can choose grid, single-column, or
+  // compact cards from Settings, and a saved preference still takes priority.
   const [cardLayout, setCardLayoutState] = useState<CardLayout>("grid");
 
   useEffect(() => {
     try {
       const savedLayout = window.localStorage.getItem(CARD_LAYOUT_STORAGE_KEY);
-      if (savedLayout === "single" || savedLayout === "grid") setCardLayoutState(savedLayout);
+      // Read the preference after hydration so the server-rendered default does
+      // not diverge from the first client render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (savedLayout === "single" || savedLayout === "grid" || savedLayout === "compact") setCardLayoutState(savedLayout);
     } catch {
       // Storage can be unavailable in private browsing; the default remains usable.
     }
@@ -38,7 +42,7 @@ export function CardLayoutProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ cardLayout, isGridLayout: cardLayout === "grid", setCardLayout }),
+    () => ({ cardLayout, isGridLayout: cardLayout === "grid", isCompactLayout: cardLayout === "compact", setCardLayout }),
     [cardLayout, setCardLayout]
   );
 

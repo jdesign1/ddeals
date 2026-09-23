@@ -15,9 +15,15 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import { useNotifications } from "@/lib/notifications-context";
 
+const CARD_LAYOUT_OPTIONS = [
+  { value: "grid" as const, label: "Grid", detail: "Two across" },
+  { value: "single" as const, label: "Single", detail: "Larger cards" },
+  { value: "compact" as const, label: "Compact", detail: "Short cards" },
+];
+
 export default function SettingsPage() {
   const router = useRouter();
-  const { isGridLayout, setCardLayout } = useCardLayout();
+  const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
   const { user, session, profile, loading: authLoading, signOut, updateProfileName } = useAuth();
   const {
@@ -226,28 +232,39 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
-          <div>
-            <p className="text-[15px] font-semibold leading-5 text-stone-900">Grid layout</p>
+        <div className="border-t border-stone-100 pt-4">
+          <div className="mb-3">
+            <p className="text-[15px] font-semibold leading-5 text-stone-900">Card layout</p>
             <p className="mt-1 text-[13px] leading-5 text-stone-500">
-              {isGridLayout ? "Grid layout — two cards per row" : "Single layout — one card per row"}
+              {cardLayout === "grid"
+                ? "Grid layout — two cards per row"
+                : cardLayout === "single"
+                  ? "Single layout — one card per row"
+                  : "Compact layout — shorter cards for faster browsing"}
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isGridLayout}
-            aria-label="Grid layout"
-            onClick={() => setCardLayout(isGridLayout ? "single" : "grid")}
-            className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
-              isGridLayout ? "bg-ink-600" : "bg-stone-300"
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isGridLayout ? "translate-x-5" : "translate-x-0"}`}
-            />
-          </button>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Card layout">
+            {CARD_LAYOUT_OPTIONS.map((option) => {
+              const isSelected = cardLayout === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => setCardLayout(option.value)}
+                  className={`flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
+                    isSelected
+                      ? "border-ink-700 bg-ink-50 text-ink-900"
+                      : "border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  <span className="text-sm font-bold leading-5">{option.label}</span>
+                  <span className="mt-0.5 text-[11px] leading-4">{option.detail}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4 border-t border-stone-100 pt-4">

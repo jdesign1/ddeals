@@ -696,7 +696,7 @@ select {
   width: 98px;
   height: 98px;
   --wink-glance: -22px;
-  animation: launchMascotCycle 4.8s ease-in-out 1 both;
+  animation: launchMascotCycle var(--launch-cycle-duration, 700ms) ease-in-out 1 both;
 }
 
 .wink-mascot__mark {
@@ -717,7 +717,7 @@ select {
 .wink-mascot__pupil {
   transform-box: fill-box;
   transform-origin: center;
-  animation: launchPupilScan 4.8s ease-in-out 1 both;
+  animation: launchPupilScan var(--launch-cycle-duration, 700ms) ease-in-out 1 both;
 }
 
 .wink-mascot__wink-mask {
@@ -725,7 +725,7 @@ select {
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-  animation: launchWinkMask 4.8s ease-in-out 1 both;
+  animation: launchWinkMask var(--launch-cycle-duration, 700ms) ease-in-out 1 both;
 }
 
 .wink-mascot__wink-line {
@@ -736,7 +736,7 @@ select {
   stroke: var(--dd-mascot-fill, #171710);
   stroke-linecap: round;
   stroke-width: 23.5;
-  animation: launchWinkLine 4.8s ease-in-out 1 both;
+  animation: launchWinkLine var(--launch-cycle-duration, 700ms) ease-in-out 1 both;
 }
 
 /* One-time startup animation (components/LaunchSplash.tsx): the native
@@ -824,12 +824,9 @@ html[data-theme="dark"] .theme-loader-surface {
     transform: scale(0.98);
   }
   16%,
-  82% {
+  82%,
+  100% {
     opacity: 1;
-    transform: scale(1);
-  }
-  94% {
-    opacity: 0;
     transform: scale(1);
   }
 }
@@ -1060,7 +1057,8 @@ html[data-theme="dark"] .theme-loader-surface {
 /* Compact verdict/quantity pills used inside the dense list-item rows. */
 .dd-badge-compact {
   gap: 4px;
-  padding: 4px 8px;
+  border-radius: 6px;
+  padding: 2px 6px;
   font-size: 12px;
   line-height: 1rem;
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { CurrentDeal, ProductCard as ProductCardData } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
+import PriceChangeBadge from "@/components/PriceChangeBadge";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 
 interface HistoryProductCardProps {
@@ -48,9 +49,13 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
       // A card tap remains available without claiming vertical swipes from
       // the page's scroll container.
       style={{ touchAction: "pan-y" }}
-      className="dd-compact-product-card group flex min-h-20 cursor-pointer items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-transform duration-150 active:scale-[0.985]"
+      className="dd-compact-product-card group relative flex min-h-20 cursor-pointer items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-transform duration-150 active:scale-[0.985]"
     >
-      <AddToListButton productId={product.id} productName={product.name} />
+      <AddToListButton
+        productId={product.id}
+        productName={product.name}
+        containerClassName="absolute left-2 top-2 z-10"
+      />
       <div className="product-image-frame flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
         <ProductImage
           src={product.image}
@@ -62,17 +67,24 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
           className="product-image-content h-full w-full object-contain"
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-8">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-16">
+        <div className="mb-0.5 flex min-w-0 justify-end">
+          <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
+            {storeMeta.short}
+          </span>
+        </div>
         <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
         <h3 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-          <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
-            {storeMeta.short}
-          </span>
-          {badge && <span className={`dd-badge ${badge.className}`}>{badge.label}</span>}
+          <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
         </div>
       </div>
+      {badge && (
+        <span className={`dd-badge dd-badge-compact absolute bottom-2 right-2 ${badge.className}`}>
+          {badge.label}
+        </span>
+      )}
     </div>
   );
 }

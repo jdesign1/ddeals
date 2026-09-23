@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 const MAX_FONT_SIZE_PX = 22;
+const MAX_COMPACT_FONT_SIZE_PX = 16;
 const MIN_FONT_SIZE_PX = 12;
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -13,8 +14,9 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
  * rendered text, so it accounts for both the card layout and the number of
  * digits in the prices instead of estimating from the viewport alone.
  */
-export default function ResponsivePriceRange({ text }: { text: string }) {
+export default function ResponsivePriceRange({ text, compact = false }: { text: string; compact?: boolean }) {
   const textRef = useRef<HTMLSpanElement>(null);
+  const maxFontSize = compact ? MAX_COMPACT_FONT_SIZE_PX : MAX_FONT_SIZE_PX;
 
   useIsomorphicLayoutEffect(() => {
     const node = textRef.current;
@@ -23,12 +25,12 @@ export default function ResponsivePriceRange({ text }: { text: string }) {
     const fitText = () => {
       // Measure at the maximum size first. scrollWidth remains the natural,
       // unwrapped text width even when the span is constrained by the card.
-      node.style.fontSize = `${MAX_FONT_SIZE_PX}px`;
+      node.style.fontSize = `${maxFontSize}px`;
       const availableWidth = node.clientWidth;
       const naturalWidth = node.scrollWidth;
       if (!availableWidth || !naturalWidth) return;
 
-      const fittedSize = Math.min(MAX_FONT_SIZE_PX, (MAX_FONT_SIZE_PX * availableWidth) / naturalWidth);
+      const fittedSize = Math.min(maxFontSize, (maxFontSize * availableWidth) / naturalWidth);
       node.style.fontSize = `${Math.max(MIN_FONT_SIZE_PX, fittedSize)}px`;
     };
 
@@ -42,12 +44,12 @@ export default function ResponsivePriceRange({ text }: { text: string }) {
     document.fonts?.ready.then(fitText).catch(() => {});
 
     return () => resizeObserver?.disconnect();
-  }, [text]);
+  }, [maxFontSize, text]);
 
   return (
     <span
       ref={textRef}
-      className="product-price-range mt-1 font-display font-extrabold text-stone-900"
+      className={`product-price-range font-display font-extrabold text-stone-900 ${compact ? "mt-0 text-base" : "mt-1"}`}
     >
       {text}
     </span>

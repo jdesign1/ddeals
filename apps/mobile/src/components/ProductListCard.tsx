@@ -91,7 +91,7 @@ export default function ProductListCard({
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const specialPriceRange = getSpecialPriceRange(product);
   const storeMeta = getStoreLogoMeta(deal.store);
-  const { isGridLayout } = useCardLayout();
+  const { isGridLayout, isCompactLayout } = useCardLayout();
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
   // `product.brand` already arrives Title Cased from `packages/shared/src/
@@ -160,10 +160,18 @@ export default function ProductListCard({
       // page's scroll container even when the gesture starts on this card.
       style={{ touchAction: "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
       className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border border-stone-200/80 bg-white ${
-        isGridLayout ? "flex flex-col" : "flex"
+        isCompactLayout
+          ? "dd-compact-product-card flex min-h-20 items-stretch gap-3 p-2"
+          : isGridLayout
+            ? "flex flex-col"
+            : "flex"
       }`}
     >
-      <AddToListButton productId={product.id} productName={product.name} />
+      <AddToListButton
+        productId={product.id}
+        productName={product.name}
+        containerClassName={isCompactLayout ? "absolute left-2 top-2 z-10" : undefined}
+      />
 
       {/* Single layout keeps the horizontal image-and-text card currently
           used by the app. Grid layout switches this same card to a stacked,
@@ -171,7 +179,11 @@ export default function ProductListCard({
           text sits underneath it. */}
       <div
         className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden bg-stone-50 ${
-          isGridLayout ? "aspect-[5/2.75] w-full p-3" : "min-h-[112px] w-36 self-stretch p-2.5"
+          isCompactLayout
+            ? "h-16 w-16 rounded-lg"
+            : isGridLayout
+              ? "aspect-[5/2.75] w-full p-3"
+              : "min-h-[112px] w-36 self-stretch p-2.5"
         }`}
       >
         <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl">
@@ -194,9 +206,11 @@ export default function ProductListCard({
       </div>
       <div
         className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
-          isGridLayout
-            ? "px-3 pb-9 pt-3"
-            : "pb-9 pl-4 pr-9 pt-4"
+          isCompactLayout
+            ? "py-2 pl-2 pr-16"
+            : isGridLayout
+              ? "px-3 pb-9 pt-3"
+              : "pb-9 pl-4 pr-9 pt-4"
         }`}
       >
         <div className="flex flex-col justify-center gap-0.5">
@@ -204,7 +218,7 @@ export default function ProductListCard({
             bottom-right verdict badge has its own clear area. The main
             retailer is followed inline by any other supermarkets carrying
             the same product on special. */}
-        <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "absolute right-2 top-2 z-10 justify-end" : "mb-1.5"}`}>
           <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
@@ -243,9 +257,13 @@ export default function ProductListCard({
           {specialPriceRange ? (
             <ResponsivePriceRange
               text={`$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`}
+              compact={isCompactLayout}
             />
           ) : (
-            <span className="font-display text-2xl font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+            <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
+          )}
+          {isCompactLayout && showPriceChangeBadge && (
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
         </div>
         <div className="flex items-center gap-1.5">
@@ -262,7 +280,7 @@ export default function ProductListCard({
         </div>
       </div>
 
-      {!hideCardBadges && (
+      {!hideCardBadges && !isCompactLayout && (
         <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
           {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
           {isDodgy && (
@@ -280,6 +298,14 @@ export default function ProductListCard({
               Fair
             </span>
           )}
+        </div>
+      )}
+
+      {!hideCardBadges && isCompactLayout && (
+        <div className="absolute bottom-2 right-2 z-10 flex items-center">
+          {isDodgy && <span className="dd-badge dd-badge-compact dd-badge-alert">Dodgy</span>}
+          {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair">Real</span>}
+          {isFairDeal && <span className="dd-badge dd-badge-compact dd-badge-dodgy">Fair</span>}
         </div>
       )}
     </div>
