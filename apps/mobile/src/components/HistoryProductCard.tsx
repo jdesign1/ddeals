@@ -63,7 +63,7 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
           className="product-image-content h-full w-full object-contain"
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-16">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-10">
         <div className="mb-0.5 flex min-w-0 justify-end">
           <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
@@ -73,13 +73,9 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
           <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
+          {badge && <span className={`dd-badge dd-badge-compact ${badge.className}`}>{badge.label}</span>}
         </div>
       </div>
-      {badge && (
-        <span className={`dd-badge dd-badge-compact absolute bottom-2 right-2 ${badge.className}`}>
-          {badge.label}
-        </span>
-      )}
     </div>
   );
 }

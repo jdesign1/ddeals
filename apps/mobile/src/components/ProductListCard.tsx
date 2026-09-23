@@ -208,7 +208,7 @@ export default function ProductListCard({
       <div
         className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
           isCompactLayout
-            ? "py-2 pl-2 pr-16"
+            ? "py-2 pl-2 pr-10"
             : isGridLayout
               ? "px-3 pb-9 pt-3"
               : "pb-9 pl-4 pr-9 pt-4"
@@ -266,6 +266,13 @@ export default function ProductListCard({
           {isCompactLayout && showPriceChangeBadge && (
             <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
+          {!hideCardBadges && isCompactLayout && (
+            <>
+              {isDodgy && <span className="dd-badge dd-badge-compact dd-badge-alert">Dodgy</span>}
+              {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair">Real</span>}
+              {isFairDeal && <span className="dd-badge dd-badge-compact dd-badge-dodgy">Fair</span>}
+            </>
+          )}
         </div>
         {!isCompactLayout && (
           <div className="flex items-center gap-1.5">
@@ -304,13 +311,6 @@ export default function ProductListCard({
         </div>
       )}
 
-      {!hideCardBadges && isCompactLayout && (
-        <div className="absolute bottom-2 right-2 z-10 flex items-center">
-          {isDodgy && <span className="dd-badge dd-badge-compact dd-badge-alert">Dodgy</span>}
-          {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair">Real</span>}
-          {isFairDeal && <span className="dd-badge dd-badge-compact dd-badge-dodgy">Fair</span>}
-        </div>
-      )}
     </div>
   );
 }
