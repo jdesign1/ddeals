@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ChevronRight, Info, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
@@ -23,10 +23,12 @@ function getEvidenceDetails(deal: CurrentDeal) {
   };
 }
 
-const VERDICT_BADGE: Partial<Record<AssessmentVerdict, { label: "Real" | "Fair" | "Dodgy"; className: string; icon: typeof ShieldCheck }>> = {
+const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
   "Real Saver": { label: "Real", className: "dd-badge-fair", icon: ShieldCheck },
   "Fair Deal": { label: "Fair", className: "dd-badge-dodgy", icon: Info },
   "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert", icon: AlertTriangle },
+  "Early read": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
+  "Limited history": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
 };
 
 function getConclusionText(verdict: AssessmentVerdict): string {
@@ -86,9 +88,9 @@ export default function AssessmentEvidenceCard({
         onClick={() => setIsOpen(true)}
         aria-expanded={isOpen}
         aria-controls={sheetId}
-        className="mt-3 flex w-full items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-left transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+        className="mt-3 flex min-h-12 w-full items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-left transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
       >
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
+        <Info className="h-4 w-4 flex-shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
         <span className="min-w-0 flex-1 text-[13px] font-semibold leading-5 text-stone-600">{evidenceSummary}</span>
         <ChevronRight className="h-5 w-5 flex-shrink-0 text-stone-400" strokeWidth={2.25} aria-hidden="true" />
       </button>
@@ -135,7 +137,7 @@ export default function AssessmentEvidenceCard({
                   </p>
 
                   {hasEvidenceCounts && (
-                    <div className="overflow-hidden rounded-2xl bg-stone-50 px-4 py-3">
+                    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
                       <p className="text-sm font-bold text-stone-900">
                         {trackedDays ? `Evidence from the last ${trackedDays}` : "Evidence from the available history"}
                       </p>
@@ -157,16 +159,13 @@ export default function AssessmentEvidenceCard({
                   )}
 
                   <div className="rounded-2xl border border-stone-200 bg-white px-4 py-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-bold text-stone-900">{verdict}</p>
-                      {verdictBadge && (
-                        <span className={`dd-badge ${verdictBadge.className} flex-shrink-0`}>
-                          <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                          {verdictBadge.label}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1.5 text-[15px] leading-6 text-stone-700">
+                    <h4 className="text-sm font-bold text-stone-900">
+                      <span className={`dd-badge ${verdictBadge.className}`}>
+                        <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                        {verdictBadge.label}
+                      </span>
+                    </h4>
+                    <p className="mt-3 text-[15px] leading-6 text-stone-700">
                       {getConclusionText(verdict)}
                     </p>
                   </div>

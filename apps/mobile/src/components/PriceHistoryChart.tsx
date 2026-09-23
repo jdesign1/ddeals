@@ -222,7 +222,7 @@ export default function PriceHistoryChart({
             className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 text-left"
             style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "none" : "auto" }}
           >
-        <div className="flex min-h-6 items-center justify-center gap-2 pb-1">
+        <div className="flex min-h-5 items-start justify-center gap-2 pb-0">
           <span className="dd-type-control text-stone-700">
             {showingAllStores ? "All supermarkets" : <>{currentStore} {legacySingleStorePresentation ? "current price" : "price"} <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
           </span>
@@ -232,7 +232,7 @@ export default function PriceHistoryChart({
         </div>
         <svg
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-          className="h-64 w-full"
+          className="block h-64 w-full"
           role="img"
           aria-label="Price history over the last 90 days, with on-special periods highlighted"
         >
@@ -304,7 +304,7 @@ export default function PriceHistoryChart({
             Today
           </text>
         </svg>
-        <div className="-mt-1 flex flex-wrap items-center justify-center gap-3 text-[15px] leading-5 font-bold text-stone-700">
+        <div className="-mt-3 flex flex-wrap items-center justify-center gap-2 text-sm leading-4 font-bold text-stone-700">
           {showingAllStores
             ? renderedSeries.map((series) => (
                 <div key={series.store} className="flex items-center gap-1.5">
