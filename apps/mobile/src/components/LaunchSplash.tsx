@@ -3,9 +3,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import WinkMascot from "@/components/WinkMascot";
 
-// Keep the web hand-off short: the native storyboard already covers the
-// first launch frame, and a long animation delays the first usable screen.
-const SPLASH_DURATION_MS = 700;
+// The native storyboard covers the first launch frame; give the WebView wink
+// enough time to read clearly without holding the first screen for too long.
+const SPLASH_DURATION_MS = 1200;
 const SPLASH_EXIT_MS = 260;
 type LaunchSplashStyle = CSSProperties & { "--launch-cycle-duration": string };
 const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
