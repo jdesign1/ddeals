@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronRight, Info, X } from "lucide-react";
+import { AlertTriangle, ChevronRight, Info, ShieldCheck, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
@@ -13,15 +13,21 @@ function getEvidenceDetails(deal: CurrentDeal) {
   const checks = Number.isFinite(deal.regularPriceSamples)
     ? Math.max(0, Math.round(deal.regularPriceSamples ?? 0))
     : null;
-  const storedDays =
-    days || (Number.isFinite(deal.ninetyDayDaysTracked) ? Math.max(0, Math.round(deal.ninetyDayDaysTracked ?? 0)) : null);
+  const trackedDays = [deal.ninetyDayDaysTracked, deal.regularHistoryDays]
+    .find((value) => Number.isFinite(value) && Number(value) > 0);
 
   return {
     days,
     checks,
-    storedDays,
+    trackedDays: trackedDays == null ? null : Math.round(trackedDays),
   };
 }
+
+const VERDICT_BADGE: Partial<Record<AssessmentVerdict, { label: "Real" | "Fair" | "Dodgy"; className: string; icon: typeof ShieldCheck }>> = {
+  "Real Saver": { label: "Real", className: "dd-badge-fair", icon: ShieldCheck },
+  "Fair Deal": { label: "Fair", className: "dd-badge-dodgy", icon: Info },
+  "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert", icon: AlertTriangle },
+};
 
 function getConclusionText(verdict: AssessmentVerdict): string {
   if (verdict === "Real Saver") {
@@ -57,11 +63,12 @@ export default function AssessmentEvidenceCard({
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
   const sheetId = useId();
-  const { days, checks, storedDays } = getEvidenceDetails(deal);
+  const { days, checks, trackedDays: trackedDaysValue } = getEvidenceDetails(deal);
   const ninetyDayChecks = formatCount(deal.ninetyDaySamples, "check");
-  const trackedDays = formatCount(deal.ninetyDayDaysTracked ?? days ?? storedDays, "day");
+  const trackedDays = formatCount(trackedDaysValue, "day");
   const priceChanges = formatCount(deal.ninetyDayPriceChanges, "change");
-  const hasEvidenceCounts = Boolean(days || checks || storedDays || ninetyDayChecks || trackedDays || priceChanges);
+  const hasEvidenceCounts = Boolean(days || checks || trackedDays || ninetyDayChecks || priceChanges);
+  const verdictBadge = VERDICT_BADGE[verdict];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,7 +136,9 @@ export default function AssessmentEvidenceCard({
 
                   {hasEvidenceCounts && (
                     <div className="overflow-hidden rounded-2xl bg-stone-50 px-4 py-3">
-                      <p className="text-sm font-bold text-stone-900">Evidence from the last 90 days</p>
+                      <p className="text-sm font-bold text-stone-900">
+                        {trackedDays ? `Evidence from the last ${trackedDays}` : "Evidence from the available history"}
+                      </p>
                       <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200/80 text-center">
                         <div className="px-2 first:pl-0 last:pr-0">
                           <p className="text-base font-extrabold text-stone-900">{ninetyDayChecks ?? formatCount(checks, "check") ?? "—"}</p>
@@ -148,7 +157,15 @@ export default function AssessmentEvidenceCard({
                   )}
 
                   <div className="rounded-2xl border border-stone-200 bg-white px-4 py-4">
-                    <p className="text-sm font-bold text-stone-900">{verdict}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold text-stone-900">{verdict}</p>
+                      {verdictBadge && (
+                        <span className={`dd-badge ${verdictBadge.className} flex-shrink-0`}>
+                          <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                          {verdictBadge.label}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1.5 text-[15px] leading-6 text-stone-700">
                       {getConclusionText(verdict)}
                     </p>

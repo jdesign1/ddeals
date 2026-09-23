@@ -13,7 +13,6 @@ import {
   applyTargetedDealToProducts,
   updateCatalogueCacheProducts,
   type ProductCard,
-  type CurrentDeal,
   type PriceHistoryPoint,
   type AssessmentVerdict,
   isUncertainAssessment,
@@ -180,21 +179,8 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
 
-function getEvidenceSummary(deal: CurrentDeal, verdict: AssessmentVerdict): string | null {
-  const days = Number.isFinite(deal.regularHistoryDays) ? Math.max(0, Math.round(deal.regularHistoryDays ?? 0)) : null;
-  const checks = Number.isFinite(deal.regularPriceSamples) ? Math.max(0, Math.round(deal.regularPriceSamples ?? 0)) : null;
-  const storedDays = days || (Number.isFinite(deal.ninetyDayDaysTracked) ? Math.max(0, Math.round(deal.ninetyDayDaysTracked ?? 0)) : null);
-  const daysText = days ? `${days} day${days === 1 ? "" : "s"}` : null;
-  const checksText = checks ? `${checks} price check${checks === 1 ? "" : "s"}` : null;
-  const evidenceText = [daysText, checksText].filter(Boolean).join(" & ");
-  if (verdict === "Limited history") {
-    return storedDays ? `Not enough history yet — ${storedDays} day${storedDays === 1 ? "" : "s"} stored` : "Not enough history yet";
-  }
-  if (!evidenceText) return isUncertainAssessment(verdict) ? "Not enough history yet" : null;
-  if (verdict === "Early read") return `Early read, based on ${evidenceText}`;
-  if (daysText && checksText) return `Based on ${daysText} of history & ${checksText}`;
-  if (daysText) return `Based on ${daysText} of history`;
-  return `Based on ${checksText}`;
+function getEvidenceSummary(verdict: AssessmentVerdict): string | null {
+  return isUncertainAssessment(verdict) ? "Needs more history" : "See the evidence";
 }
 
 const STORE_TEXT_COLOR: Record<string, string> = {
@@ -672,7 +658,7 @@ export default function DealAssessmentPage() {
   const multiStoreDealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
   const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
-  const evidenceSummary = getEvidenceSummary(selectedDeal, verdict);
+  const evidenceSummary = getEvidenceSummary(verdict);
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
   const lowestSpecialStoreNames =
     lowestSpecialPriceCents == null
