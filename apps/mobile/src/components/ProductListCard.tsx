@@ -249,7 +249,7 @@ export default function ProductListCard({
             +1px on top of that, specifically for this label, per this new
             ask, landing at `text-[12px]`, not evidence the earlier sweep
             missed it. */}
-        <span className="dd-type-meta text-stone-600">{brandSentenceCase}</span>
+        {!isCompactLayout && <span className="dd-type-meta text-stone-600">{brandSentenceCase}</span>}
         <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
           {product.name}
         </h3>

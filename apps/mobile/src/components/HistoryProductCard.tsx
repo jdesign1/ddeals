@@ -27,10 +27,6 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
   const router = useRouter();
   const storeMeta = getStoreLogoMeta(deal.store);
   const badge = deal.dealType === "Unverified Deal" ? undefined : DEAL_TYPE_BADGE[deal.dealType];
-  const brandSentenceCase = product.brand
-    ? product.brand.charAt(0).toUpperCase() + product.brand.slice(1).toLowerCase()
-    : product.brand;
-
   const goToDeal = () => {
     router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
   };
@@ -73,7 +69,6 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
             {storeMeta.short}
           </span>
         </div>
-        <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
         <h3 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
