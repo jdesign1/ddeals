@@ -17,6 +17,7 @@
   --fair: #079b60;
   --fair-dark: #087549;
   --white: #ffffff;
+  --hero-sand: #fdfbf9;
 }
 
 * { box-sizing: border-box; }
@@ -33,10 +34,10 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .logo-mascot { animation: mascotBlink 10s ease-in-out infinite; transform-origin: center; }
 .header-link { min-height: 44px; display: inline-flex; align-items: center; white-space: nowrap; font-size: .9rem; font-weight: 700; }.header-link:hover { color: var(--fair); }
 
-.download-hero { background: #fbfaf6; }
+.download-hero { background: var(--hero-sand); }
 .download-hero-inner { max-width: 1180px; min-height: 302px; margin: 0 auto; padding: 34px 32px 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .92fr); align-items: center; gap: 24px; }
 .download-copy { padding: 0 0 4px; }.download-copy h1 { max-width: 560px; margin: 0 0 19px; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: clamp(2.2rem, 3.8vw, 3.2rem); font-weight: 700; line-height: 1.06; letter-spacing: normal; }.download-copy p { margin: 0 0 22px; color: var(--ink); font-size: 1.02rem; line-height: 1.5; }
-.download-visual { align-self: stretch; min-height: 245px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fbfaf6; }
+.download-visual { align-self: stretch; min-height: 245px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--hero-sand); }
 .hero-animation { width: 100%; display: flex; justify-content: center; }
 .hero-animation__stage { position: relative; width: min(100%, 427px); aspect-ratio: 1536 / 1024; isolation: isolate; }
 .hero-animation__plate { position: absolute !important; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; z-index: 0; }
