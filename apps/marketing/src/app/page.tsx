@@ -70,6 +70,40 @@ function StoreBadge() {
   );
 }
 
+function HeroAnimation() {
+  return (
+    <div
+      className="hero-animation"
+      role="img"
+      aria-label="Dodgy Deal mascot moving into view to inspect the deals on the app"
+    >
+      <div className="hero-animation__stage">
+        <Image
+          src="/images/app-hero-background.webp"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 760px) 100vw, 430px"
+          unoptimized
+          className="hero-animation__plate"
+          aria-hidden="true"
+        />
+        <div className="hero-animation__mascot-mask" aria-hidden="true">
+          <Image
+            src="/images/mascot-head.webp"
+            alt=""
+            width={640}
+            height={426}
+            sizes="(max-width: 760px) 25vw, 110px"
+            unoptimized
+            className="hero-animation__mascot"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FeatureCard({ title, body, image, imageAlt, imageClassName }: { title: string; body: string; image: string; imageAlt: string; imageClassName?: string }) {
   return (
     <article className="feature-card">
@@ -105,15 +139,7 @@ export default function Home() {
             <StoreBadge />
           </div>
           <div className="download-visual">
-            <Image
-              src="/images/app-hero-stylised-unsure.png"
-              alt="Dodgy Deal app mockup on an iPhone with the mascot looking unsure"
-              width={1536}
-              height={1024}
-              priority
-              sizes="(max-width: 760px) 100vw, 52vw"
-              unoptimized
-            />
+            <HeroAnimation />
           </div>
         </div>
       </section>
