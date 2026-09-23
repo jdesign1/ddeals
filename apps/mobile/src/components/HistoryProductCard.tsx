@@ -50,9 +50,9 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
       <AddToListButton
         productId={product.id}
         productName={product.name}
-        containerClassName="absolute left-2 top-2 z-10"
+        containerClassName="absolute right-2 top-2 z-10"
       />
-      <div className="product-image-frame flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
+      <div className="product-image-frame -my-2 -ml-2 flex w-20 flex-shrink-0 self-stretch select-none items-center justify-center overflow-hidden rounded-l-xl bg-paper p-1.5">
         <ProductImage
           src={product.image}
           alt={product.name}

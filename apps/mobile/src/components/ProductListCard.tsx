@@ -171,7 +171,7 @@ export default function ProductListCard({
       <AddToListButton
         productId={product.id}
         productName={product.name}
-        containerClassName={isCompactLayout ? "absolute left-2 top-2 z-10" : undefined}
+        containerClassName={isCompactLayout ? "absolute right-2 top-2 z-10" : undefined}
       />
 
       {/* Single layout keeps the horizontal image-and-text card currently
@@ -179,12 +179,12 @@ export default function ProductListCard({
           image-first card: the grey image panel fills the card width and all
           text sits underneath it. */}
       <div
-        className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden bg-stone-50 ${
+        className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden ${
           isCompactLayout
-            ? "h-16 w-16 rounded-lg"
+            ? "-my-2 -ml-2 w-20 self-stretch rounded-l-xl bg-paper p-1.5"
             : isGridLayout
-              ? "aspect-[5/2.75] w-full p-3"
-              : "min-h-[112px] w-36 self-stretch p-2.5"
+              ? "aspect-[5/2.75] w-full bg-stone-50 p-3"
+              : "min-h-[112px] w-36 self-stretch bg-stone-50 p-2.5"
         }`}
       >
         <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl">
@@ -219,7 +219,7 @@ export default function ProductListCard({
             bottom-right verdict badge has its own clear area. The main
             retailer is followed inline by any other supermarkets carrying
             the same product on special. */}
-        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "absolute right-2 top-2 z-10 justify-end" : "mb-1.5"}`}>
+        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start" : "mb-1.5"}`}>
           <span className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
@@ -267,17 +267,19 @@ export default function ProductListCard({
             <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="dd-type-meta dd-type-meta-strong text-stone-600">
-            {specialPriceRange
-              ? "Various"
-              : storeLinePrefix == null
-              ? storeLabel
-              : storeLinePrefix === "Lowest at"
+        {!isCompactLayout && (
+          <div className="flex items-center gap-1.5">
+            <span className="dd-type-meta dd-type-meta-strong text-stone-600">
+              {specialPriceRange
+                ? "Various"
+                : storeLinePrefix == null
                 ? storeLabel
-                : `${storeLinePrefix} ${storeLabel}.`}
-          </span>
-        </div>
+                : storeLinePrefix === "Lowest at"
+                  ? storeLabel
+                  : `${storeLinePrefix} ${storeLabel}.`}
+            </span>
+          </div>
+        )}
         </div>
       </div>
 
