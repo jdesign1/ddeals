@@ -1353,8 +1353,8 @@ export default function FullScreenSearch() {
                         );
                       })
                     ) : (
-                      <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-6 py-12 text-center">
-                        <AlertCircle className="mx-auto h-12 w-12 text-stone-300" aria-hidden="true" />
+                      <div className="col-span-full w-full space-y-2 rounded-2xl border border-stone-200 bg-white px-4 py-6 text-center">
+                        <AlertCircle className="mx-auto h-10 w-10 text-stone-300" aria-hidden="true" />
                         <p className="dd-type-control text-stone-500">
                           {!selectedStores.includes("all")
                             ? selectedStores.length === 1
