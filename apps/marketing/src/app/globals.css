@@ -41,7 +41,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .hero-animation__stage { position: relative; width: min(100%, 427px); aspect-ratio: 1536 / 1024; isolation: isolate; }
 .hero-animation__plate { position: absolute !important; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; z-index: 0; }
 .hero-animation__mascot-mask { position: absolute; inset: 0; overflow: hidden; clip-path: polygon(0 0, 59% 0, 59% 100%, 0 100%); z-index: 1; pointer-events: none; }
-.hero-animation__mascot { position: absolute !important; top: 56.5%; left: 39%; width: 25%; height: auto; max-width: none; transform-origin: 72% 100%; will-change: transform, opacity; animation: hero-mascot-inspect 7.4s cubic-bezier(.22, .74, .28, 1) infinite; }
+.hero-animation__mascot { position: absolute !important; top: 56.5%; left: 39%; width: 25%; height: auto; max-width: none; transform-origin: 72% 100%; will-change: transform, opacity; animation: hero-mascot-inspect 7.6s cubic-bezier(.37, 0, .63, 1) infinite; }
 .store-badge { min-width: 120px; min-height: 40px; padding: 0; display: inline-flex; align-items: center; border: 0; background: transparent; cursor: not-allowed; }.store-badge:disabled { opacity: 1; }.store-badge img { display: block; width: 120px; height: 40px; }
 
 .feature-section { max-width: 1180px; margin: 0 auto; padding: 66px 32px 28px; }.feature-section-secondary { padding-top: 60px; padding-bottom: 84px; }.section-intro { margin: 0 auto 46px; text-align: center; }.section-intro h2 { margin: 0 0 18px; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: clamp(1.7rem, 2.55vw, 2.2rem); font-weight: 700; line-height: 1.1; letter-spacing: normal; }.section-intro p { margin: 0; color: var(--ink); font-size: 1rem; line-height: 1.5; }
@@ -77,13 +77,15 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 }
 
 @keyframes hero-mascot-inspect {
-  0%, 8% { opacity: 0; transform: translate3d(18%, 1%, 0) scale(.98) rotate(1deg); }
-  23% { opacity: .62; transform: translate3d(8%, 0, 0) scale(.99) rotate(.45deg); }
-  35%, 53% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotate(0); }
-  61% { opacity: 1; transform: translate3d(0, -2%, 0) scale(1.005) rotate(-1.4deg); }
-  69%, 78% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotate(0); }
-  92% { opacity: .22; transform: translate3d(13%, 1%, 0) scale(.98) rotate(1deg); }
-  100% { opacity: 0; transform: translate3d(18%, 1%, 0) scale(.98) rotate(1deg); }
+  0%, 100% { opacity: 0; transform: translate3d(18%, 1.5%, 0) scale(.97) rotate(1deg); }
+  14% { opacity: .18; transform: translate3d(13%, 1%, 0) scale(.98) rotate(.7deg); }
+  28% { opacity: .68; transform: translate3d(6%, .3%, 0) scale(.995) rotate(.25deg); }
+  40% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+  51% { opacity: 1; transform: translate3d(0, -.8%, 0) scale(1.002) rotate(-.8deg); }
+  60% { opacity: 1; transform: translate3d(0, -1.8%, 0) scale(1.005) rotate(-1.6deg); }
+  69% { opacity: .94; transform: translate3d(2.5%, -1%, 0) scale(1.002) rotate(-1deg); }
+  79% { opacity: .78; transform: translate3d(7%, 0, 0) scale(.99) rotate(-.25deg); }
+  89% { opacity: .48; transform: translate3d(12%, 1%, 0) scale(.98) rotate(.5deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
