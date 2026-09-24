@@ -327,7 +327,7 @@ export default function PriceHistoryChart({
                   x2={next.x}
                   y1={coordinate.y}
                   y2={next.y}
-                  stroke={showingAllStores ? series.color : coordinate.point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
+                  stroke={series.verdictColor}
                   strokeWidth="3"
                   strokeLinecap="round"
                   initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
