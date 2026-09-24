@@ -415,6 +415,12 @@ export interface ListItemProductMeta {
   unit_size: string | null;
 }
 
+/** Cheapest currently-listed price and its supermarket for one list item. */
+export interface ListItemLowestPrice {
+  price: number;
+  store: string;
+}
+
 /**
  * Builds a full `ProductCard` (+ one `CurrentDeal`) for a SINGLE list
  * item's product, reusing the exact `cheapestByProduct`/`dealByProductStore`
@@ -550,6 +556,7 @@ export interface ListsPageData {
   summaries: Map<string, ListSummary>;
   productMeta: Map<string, ListItemProductMeta>;
   itemCards: Map<string, ProductCard>;
+  lowestPriceByProduct: Map<string, ListItemLowestPrice>;
 }
 
 interface ListsPageCacheEntry {
@@ -614,12 +621,20 @@ async function loadListsPageDataUncached(
   );
 
   const itemCards = new Map<string, ProductCard>();
+  const lowestPriceByProduct = new Map<string, ListItemLowestPrice>();
   for (const productId of new Set(items.map((i) => i.product_id))) {
+    const lowestPrice = lookups.cheapestByProduct.get(productId);
+    if (lowestPrice) {
+      lowestPriceByProduct.set(productId, {
+        price: lowestPrice.price,
+        store: STORE_DISPLAY_FALLBACK[lowestPrice.store_id] || titleCase(lowestPrice.store_id),
+      });
+    }
     const card = buildListItemProductCard(productId, productMeta.get(productId), lookups);
     if (card) itemCards.set(productId, card);
   }
 
-  return { rows, grouped, summaries, productMeta, itemCards };
+  return { rows, grouped, summaries, productMeta, itemCards, lowestPriceByProduct };
 }
 
 /**

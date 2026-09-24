@@ -12,10 +12,13 @@ import {
   invalidateListsPageCache,
   LIST_MEMBERSHIP_CHANGED_EVENT,
   describeFetchError,
+  canonicalStoreKey,
+  STORE_DISPLAY_FALLBACK,
   type ListRow,
   type ListItemRow,
   type ListSummary,
   type ListItemProductMeta,
+  type ListItemLowestPrice,
   type ProductCard as ProductCardData,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
@@ -232,6 +235,7 @@ export default function ListsPage() {
   // no entry here -- `ListCard` below falls back to a plain-text row for
   // those specific items, same as every item rendered before this change.
   const [itemCards, setItemCards] = useState<Map<string, ProductCardData>>(new Map());
+  const [lowestPriceByProduct, setLowestPriceByProduct] = useState<Map<string, ListItemLowestPrice>>(new Map());
   const [loadingLists, setLoadingLists] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newListName, setNewListName] = useState("");
@@ -362,13 +366,14 @@ export default function ListsPage() {
     // Availability is external data and can change after the short list-page
     // cache is populated, so every page load gets a fresh price/special check.
     loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
-      .then(({ rows, grouped, summaries, productMeta, itemCards }) => {
+      .then(({ rows, grouped, summaries, productMeta, itemCards, lowestPriceByProduct }) => {
         if (cancelled) return;
         setLists(rows);
         setItemsByList(grouped);
         setSummaries(summaries);
         setProductMeta(productMeta);
         setItemCards(itemCards);
+        setLowestPriceByProduct(lowestPriceByProduct);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -398,7 +403,7 @@ export default function ListsPage() {
     // user's own just-made edit wouldn't show up until the TTL expired.
     invalidateListsPageCache(user.id);
     try {
-      const { rows, grouped, summaries, productMeta, itemCards } = await loadListsPageData(
+      const { rows, grouped, summaries, productMeta, itemCards, lowestPriceByProduct } = await loadListsPageData(
         requireAccountsSupabaseClient(),
         supabaseConfig,
         user.id
@@ -408,6 +413,7 @@ export default function ListsPage() {
       setSummaries(summaries);
       setProductMeta(productMeta);
       setItemCards(itemCards);
+      setLowestPriceByProduct(lowestPriceByProduct);
     } catch (err) {
       setError(describeFetchError(err, "Failed to load lists"));
     } finally {
@@ -868,6 +874,7 @@ export default function ListsPage() {
         lists={sortedLists}
         itemsByList={itemsByList}
         productMeta={productMeta}
+        lowestPriceByProduct={lowestPriceByProduct}
         onClose={() => setIsShareSheetOpen(false)}
       />
     </main>
@@ -943,8 +950,75 @@ function ListCard({
   // what's actually in it first would be a regression, not an
   // improvement, so that one path from the old combined behavior is kept.
   const itemCount = items.length;
-  const liveItems = items.filter((item) => itemCards.get(item.product_id)?.currentDeals[0]?.isOnSpecial === true);
-  const notOnSpecialItems = items.filter((item) => !liveItems.includes(item));
+  // Group all priced rows under their canonical supermarket while keeping
+  // specials first within each store. Regular-price rows stay clearly marked,
+  // and items without a current catalogue price are kept together at the end.
+  const itemGroupsByStore = new Map<string, {
+    store: string;
+    specialItems: ListItemRow[];
+    regularItems: ListItemRow[];
+    unpricedItems: ListItemRow[];
+  }>();
+  for (const item of items) {
+    const deal = itemCards.get(item.product_id)?.currentDeals[0];
+    const storeKey = deal ? canonicalStoreKey(deal.store) : "no-current-price";
+    const group = itemGroupsByStore.get(storeKey) ?? {
+      store: deal ? STORE_DISPLAY_FALLBACK[storeKey] ?? deal.store : "Price unavailable",
+      specialItems: [],
+      regularItems: [],
+      unpricedItems: [],
+    };
+    if (!deal) group.unpricedItems.push(item);
+    else if (deal.isOnSpecial) group.specialItems.push(item);
+    else group.regularItems.push(item);
+    itemGroupsByStore.set(storeKey, group);
+  }
+  const storeOrder = Object.keys(STORE_DISPLAY_FALLBACK);
+  const itemGroups = [...itemGroupsByStore.entries()].sort(([keyA, groupA], [keyB, groupB]) => {
+    if (keyA === "no-current-price") return 1;
+    if (keyB === "no-current-price") return -1;
+    const indexA = storeOrder.indexOf(keyA);
+    const indexB = storeOrder.indexOf(keyB);
+    if (indexA !== -1 || indexB !== -1) {
+      return (indexA === -1 ? storeOrder.length : indexA) - (indexB === -1 ? storeOrder.length : indexB);
+    }
+    return groupA.store.localeCompare(groupB.store);
+  });
+
+  function renderListItem(item: ListItemRow) {
+    const card = itemCards.get(item.product_id);
+    const meta = productMeta.get(item.product_id);
+    const label = meta?.name ?? "Item";
+    const removeLabel = `Remove ${label} from ${list.name}`;
+
+    return (
+      <UnreadListItem
+        key={item.id}
+        listId={list.id}
+        productId={item.product_id}
+        isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
+        onViewed={() => onItemViewed(item.id)}
+      >
+        {card ? (
+          <ListItemProductCard
+            product={card}
+            deal={card.currentDeals[0]}
+            quantity={item.quantity}
+            onRemove={() => onRemoveItem(item.product_id)}
+            removeLabel={removeLabel}
+            onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
+          />
+        ) : (
+          <FallbackItemRow
+            label={label}
+            quantity={item.quantity}
+            removeLabel={removeLabel}
+            onRemove={() => onRemoveItem(item.product_id)}
+          />
+        )}
+      </UnreadListItem>
+    );
+  }
 
   function enterDeleteMode() {
     setDeleteCardHeight(cardRef.current?.offsetHeight ?? null);
@@ -1182,98 +1256,20 @@ function ListCard({
                 transition={{ duration: 0.25, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-100 pt-2">
-              {liveItems.map((item) => {
-                const card = itemCards.get(item.product_id);
-                const meta = productMeta.get(item.product_id);
-                const label = meta?.name ?? "Item";
-                const removeLabel = `Remove ${label} from ${list.name}`;
-
-                if (card) {
-                  return (
-                    <UnreadListItem
-                      key={item.id}
-                      listId={list.id}
-                      productId={item.product_id}
-                      isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
-                      onViewed={() => onItemViewed(item.id)}
-                    >
-                      <ListItemProductCard
-                        product={card}
-                        deal={card.currentDeals[0]}
-                        quantity={item.quantity}
-                        onRemove={() => onRemoveItem(item.product_id)}
-                        removeLabel={removeLabel}
-                        onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
-                      />
-                    </UnreadListItem>
-                  );
-                }
-                return (
-                  <UnreadListItem
-                    key={item.id}
-                    listId={list.id}
-                    productId={item.product_id}
-                    isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
-                    onViewed={() => onItemViewed(item.id)}
-                  >
-                    <FallbackItemRow
-                      label={label}
-                      quantity={item.quantity}
-                      removeLabel={removeLabel}
-                      onRemove={() => onRemoveItem(item.product_id)}
-                    />
-                  </UnreadListItem>
-                );
-              })}
-              {notOnSpecialItems.length > 0 && (
-                <div className="mt-2 flex flex-col gap-1.5 border-t border-stone-100 pt-3">
-                  <h3 className="dd-type-meta dd-type-meta-strong text-stone-500">Not on special</h3>
-                  {notOnSpecialItems.map((item) => {
-                    const card = itemCards.get(item.product_id);
-                    const meta = productMeta.get(item.product_id);
-                    const label = meta?.name ?? "Item";
-                    const removeLabel = `Remove ${label} from ${list.name}`;
-
-                    if (card) {
-                      return (
-                        <UnreadListItem
-                          key={item.id}
-                          listId={list.id}
-                          productId={item.product_id}
-                          isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
-                          onViewed={() => onItemViewed(item.id)}
-                        >
-                          <ListItemProductCard
-                            product={card}
-                            deal={card.currentDeals[0]}
-                            quantity={item.quantity}
-                            onRemove={() => onRemoveItem(item.product_id)}
-                            removeLabel={removeLabel}
-                            onAfterNotOnSpecial={() => onRefresh({ showLoading: false })}
-                          />
-                        </UnreadListItem>
-                      );
-                    }
-                    return (
-                      <UnreadListItem
-                        key={item.id}
-                        listId={list.id}
-                        productId={item.product_id}
-                        isUnread={unreadListItemKeys.has(`${list.id}:${item.id}`)}
-                        onViewed={() => onItemViewed(item.id)}
-                      >
-                        <FallbackItemRow
-                          label={label}
-                          quantity={item.quantity}
-                          removeLabel={removeLabel}
-                          onRemove={() => onRemoveItem(item.product_id)}
-                        />
-                      </UnreadListItem>
-                    );
-                  })}
-                </div>
-              )}
+                <div className="mt-1 flex flex-col gap-3 border-t border-stone-100 pt-2">
+                  {itemGroups.map(([storeKey, group]) => (
+                    <section key={storeKey} className="flex flex-col gap-1.5">
+                      <h3 className="dd-type-meta dd-type-meta-strong text-stone-600">{group.store}</h3>
+                      {group.specialItems.map(renderListItem)}
+                      {group.regularItems.length > 0 && (
+                        <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-100 pt-2">
+                          <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">Not on special</h4>
+                          {group.regularItems.map(renderListItem)}
+                        </div>
+                      )}
+                      {group.unpricedItems.map(renderListItem)}
+                    </section>
+                  ))}
                 </div>
               </motion.div>
             )}

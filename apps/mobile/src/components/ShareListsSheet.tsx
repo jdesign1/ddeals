@@ -3,26 +3,37 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Share, X } from "lucide-react";
-import type { ListItemProductMeta, ListItemRow, ListRow } from "@dodgey-deals/shared";
+import type { ListItemLowestPrice, ListItemProductMeta, ListItemRow, ListRow } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 function buildShareText(
   selectedLists: ListRow[],
   itemsByList: Map<string, ListItemRow[]>,
   productMeta: Map<string, ListItemProductMeta>,
+  lowestPriceByProduct: Map<string, ListItemLowestPrice>,
 ): string {
   const sections = selectedLists.map((list) => {
     const items = itemsByList.get(list.id) ?? [];
     const itemLines = items.length
       ? items.map((item) => {
           const name = productMeta.get(item.product_id)?.name ?? "Item";
-          return `• ${name}${item.quantity > 1 ? ` × ${item.quantity}` : ""}`;
-        })
+          const quantity = item.quantity > 1 ? ` × ${item.quantity}` : "";
+          const lowestPrice = lowestPriceByProduct.get(item.product_id);
+          return lowestPrice
+            ? `• ${name}${quantity} — Lowest price: ${lowestPrice.store} ($${lowestPrice.price.toFixed(2)})`
+            : `• ${name}${quantity} — No current price available`;
+      })
       : ["• No items yet"];
     return [list.name, ...itemLines].join("\n");
   });
 
-  return ["Dodgy Deal shopping lists", ...sections].join("\n\n");
+  const sharedDate = new Intl.DateTimeFormat("en-NZ", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
+  return [`Dodgy Deal shopping lists\nShared ${sharedDate}`, ...sections].join("\n\n");
 }
 
 function isShareCancellation(error: unknown): boolean {
@@ -34,12 +45,14 @@ export default function ShareListsSheet({
   lists,
   itemsByList,
   productMeta,
+  lowestPriceByProduct,
   onClose,
 }: {
   open: boolean;
   lists: ListRow[];
   itemsByList: Map<string, ListItemRow[]>;
   productMeta: Map<string, ListItemProductMeta>;
+  lowestPriceByProduct: Map<string, ListItemLowestPrice>;
   onClose: () => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -79,7 +92,7 @@ export default function ShareListsSheet({
     try {
       await navigator.share({
         title: selectedLists.length === 1 ? selectedLists[0].name : "Dodgy Deal shopping lists",
-        text: buildShareText(selectedLists, itemsByList, productMeta),
+        text: buildShareText(selectedLists, itemsByList, productMeta, lowestPriceByProduct),
       });
       close();
     } catch (shareError) {
