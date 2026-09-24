@@ -18,8 +18,11 @@ import { useEffect, useState } from "react";
  */
 export default function LoadingMascot({
   loading,
+  overlay = false,
 }: {
   loading: boolean;
+  /** Keep the mascot out of document flow so content can fade in in place. */
+  overlay?: boolean;
 }) {
   // Stays mounted for one extra tick after `loading` goes false so the
   // opacity transition below has something to animate -- an immediate
@@ -47,7 +50,7 @@ export default function LoadingMascot({
 
   if (!mounted) return null;
 
-  return (
+  const mascot = (
     <div
       className={`flex flex-col items-center gap-3 px-5 py-10 transition-opacity duration-300 ease-out ${
         loading ? "opacity-100" : "opacity-0"
@@ -62,4 +65,10 @@ export default function LoadingMascot({
       />
     </div>
   );
+
+  return overlay ? (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+      {mascot}
+    </div>
+  ) : mascot;
 }

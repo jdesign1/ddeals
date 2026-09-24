@@ -902,9 +902,14 @@ export default function FullScreenSearch() {
               }
               lastScrollTopRef.current = scrollTop;
             }}
-            className="mobile-scroll-surface flex-1 space-y-6 overflow-y-auto px-5 pb-safe-nav"
+            className="mobile-scroll-surface relative flex-1 space-y-6 overflow-y-auto px-5 pb-safe-nav"
           >
-            <LoadingMascot loading={loading} />
+            <LoadingMascot loading={loading} overlay />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: loading ? 0 : 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
             {error && (
               // `-mx-5` cancels this scroll container's own `px-5` before
               // ErrorState re-applies its own `mx-5` -- same cancel/reapply
@@ -1398,6 +1403,7 @@ export default function FullScreenSearch() {
                 </section>
               </>
             )}
+            </motion.div>
           </div>
           <BackToTopButton scrollRef={scrollContainerRef} enabled={isOpen} />
 

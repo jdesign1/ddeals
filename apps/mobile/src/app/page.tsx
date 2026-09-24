@@ -250,13 +250,14 @@ export default function HomePage() {
 
   return (
     <>
-      {!isSearchActive && <LoadingMascot loading={loadingProducts} />}
+      <div className="relative">
+      {!isSearchActive && <LoadingMascot loading={loadingProducts} overlay />}
       <motion.main
-        initial={{ opacity: 0 }}
-        animate={{ opacity: loadingProducts ? 0 : 1 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
-      >
+          initial={{ opacity: 0 }}
+          animate={{ opacity: loadingProducts ? 0 : 1 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
+        >
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
           restyle session).
@@ -431,6 +432,7 @@ export default function HomePage() {
         </>
       )}
       </motion.main>
+      </div>
     </>
   );
 }
