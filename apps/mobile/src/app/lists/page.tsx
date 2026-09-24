@@ -1213,16 +1213,15 @@ function ListCard({
                   {itemCount} item{itemCount === 1 ? "" : "s"}
                   {summary?.totalPrice != null && (
                     <>
-                      {" "}
-                      · <span className="font-semibold text-stone-900">${summary.totalPrice.toFixed(2)}</span>
+                      {" "}· Total estimate: <span className="font-semibold text-stone-900">${summary.totalPrice.toFixed(2)}</span>
                     </>
                   )}
                 </span>
                 {pricesLoading ? (
                   <span className="dd-badge dd-badge-neutral shrink-0">Checking prices…</span>
                 ) : summary?.hasSavingsData && summary.savingsAmount > 0 ? (
-                  <span className="dd-badge dd-badge-fair shrink-0">
-                    ${summary.savingsAmount.toFixed(2)} saved
+                  <span className="shrink-0 font-semibold text-stone-900">
+                    · ${summary.savingsAmount.toFixed(2)} saved
                   </span>
                 ) : (
                   null
