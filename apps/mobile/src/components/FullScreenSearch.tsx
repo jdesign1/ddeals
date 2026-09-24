@@ -363,7 +363,10 @@ export default function FullScreenSearch() {
     };
   }, []);
 
-  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>(() => getDefaultDealSort("all"));
+  // Seed both search views from the shared filter. The New Specials launch
+  // modal can open this overlay already filtered to Real or Dodgy deals,
+  // before the overlay has had a prior open/close cycle to reset its sort.
+  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>(() => getDefaultDealSort(dealFilter));
   // The selected deal filter is shared with Check Deals through
   // SearchProvider, so switching screens keeps the same tab selected and
   // applies the same filter to both surfaces.
@@ -371,7 +374,7 @@ export default function FullScreenSearch() {
 
   // Match Check Deals' filter-specific default ordering when search opens.
   // Users can still choose a different sort from the sheet below.
-  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>(() => getDefaultDealSort("all"));
+  const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>(() => getDefaultDealSort(dealFilter));
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
 
   // Track the open transition for scroll restoration. The shared deal filter
