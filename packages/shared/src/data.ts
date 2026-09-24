@@ -23,7 +23,13 @@
  * view shape or grouping logic changes there.
  */
 
-import { readCatalogueCache, readCatalogueCacheMetadata, writeCatalogueCache, writeCatalogueCacheMetadata } from "./catalogue-cache.ts";
+import {
+  readCatalogueCache,
+  readCatalogueCacheMetadata,
+  writeCatalogueCache,
+  writeCatalogueCacheMetadata,
+  writeCataloguePublicationCheck,
+} from "./catalogue-cache.ts";
 import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
 import { MATERIAL_OVER_NORMAL_THRESHOLD, REAL_SAVER_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
@@ -879,6 +885,7 @@ interface LatestSourceTimestampCacheEntry {
 
 const latestSourceTimestampCache = new Map<string, LatestSourceTimestampCacheEntry>();
 const LATEST_SOURCE_TIMESTAMP_CACHE_TTL_MS = 30_000;
+const publicationMarkerInvalidations = new Map<string, number>();
 
 function fetchLatestPublicationTimestampDeduped(config: SupabaseRestConfig): Promise<number | null> {
   const key = `${config.url}::${config.anonKey}`;
@@ -903,11 +910,19 @@ function fetchLatestPublicationTimestampDeduped(config: SupabaseRestConfig): Pro
 }
 
 /**
- * A realtime publication event or foreground return means the 30-second
- * marker deduplication window must not hide a newly published version.
+ * An explicit publication invalidation means the marker cooldown must not
+ * hide a newly published version. The timestamp also forces a fresh fetch if
+ * an earlier asynchronous IndexedDB write has not completed yet.
  */
 export function invalidateLiveProductsPublicationMarker(config: SupabaseRestConfig): void {
-  latestSourceTimestampCache.delete(`${config.url}::${config.anonKey}`);
+  const key = `${config.url}::${config.anonKey}`;
+  latestSourceTimestampCache.delete(key);
+  // An explicit invalidation is a request to ignore the resolved catalogue
+  // promise as well as its marker. This also covers the tiny ordering window
+  // where the promise has settled but its bookkeeping callback has not yet
+  // marked the entry resolved.
+  __liveProductsCache.delete(key);
+  publicationMarkerInvalidations.set(key, Date.now());
 }
 
 async function fetchTargetedDealRow(
@@ -1133,6 +1148,13 @@ export const __liveProductsRefreshes = new Map<string, RefreshLiveProductsEntry>
 
 const LIVE_PRODUCTS_AUTO_REFRESH_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * Warm clients do not need to ask Supabase for the publication marker on
+ * every route transition, visibility event, or back/forward-cache restore.
+ * Manual refresh still bypasses this window through refreshLiveProducts().
+ */
+export const CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS = 10 * 60 * 1000;
+
 function loadLiveProductsDeduped(
   config: SupabaseRestConfig,
   forceRefresh = false
@@ -1182,26 +1204,63 @@ function loadLiveProductsDeduped(
  */
 export async function loadLiveProducts(config: SupabaseRestConfig): Promise<ProductCard[]> {
   const cached = await readCatalogueCache();
+  const cacheKey = `${config.url}::${config.anonKey}`;
+  const markerInvalidated = publicationMarkerInvalidations.has(cacheKey);
   let markerAdvanced = false;
   if (cached) {
     const metadata = await readCatalogueCacheMetadata();
+    const markerCheckedAt = metadata?.publicationCheckedAt ?? 0;
+    if (
+      Date.now() - markerCheckedAt < CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS
+      && !markerInvalidated
+    ) {
+      return filterRecentlyVerifiedSpecials(cached);
+    }
     const latestSourceUpdatedAt = await fetchLatestPublicationTimestampDeduped(config);
-    // A failed publication-marker request is not proof the cached specials
-    // remain valid. The per-store verification timestamps in the cache can
-    // still serve only deals inside the database's 48-hour publication window.
+    // A marker outage is not evidence that the cached catalogue is stale.
+    // Keep serving the last good, locally filtered snapshot instead of
+    // turning a small metadata failure into a full-feed request storm. The
+    // IndexedDB TTL and per-store verification filter still bound how long
+    // this stale fallback can remain usable.
+    if (latestSourceUpdatedAt === null) {
+      // Persist failed checks too, so a metadata outage does not cause every
+      // foreground event to repeat the same compatibility chain.
+      await writeCataloguePublicationCheck(null);
+      publicationMarkerInvalidations.delete(cacheKey);
+      return filterRecentlyVerifiedSpecials(cached);
+    }
+    // With a known publication marker, the per-store verification timestamps
+    // in the cache still serve only deals inside the database's publication
+    // window.
     // A legacy record without a marker is treated as older than any known
     // server marker, so deploying this contract cannot leave old browsers
     // pinned to stale data for the remainder of the six-hour display TTL.
     if (latestSourceUpdatedAt !== null && latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+      await writeCataloguePublicationCheck(latestSourceUpdatedAt);
+      publicationMarkerInvalidations.delete(cacheKey);
       return filterRecentlyVerifiedSpecials(cached);
     }
+    // Do not persist an advanced marker until its corresponding snapshot has
+    // been fetched successfully. Otherwise a failed refresh could make the
+    // next check believe the stale cache is current.
     markerAdvanced = true;
   }
 
-  const fresh = await loadLiveProductsDeduped(config, markerAdvanced);
+  let fresh: LiveProductsLoadResult;
+  try {
+    fresh = await loadLiveProductsDeduped(config, markerAdvanced || markerInvalidated);
+  } catch (error) {
+    // If a publication changed while the new snapshot is unavailable, the
+    // last good local copy is still more useful than an empty/error state.
+    // This is deliberately only a fallback: when there is no cached copy,
+    // preserve the original error so the UI can offer a retry.
+    if (cached) return filterRecentlyVerifiedSpecials(cached);
+    throw error;
+  }
   const sourceUpdatedAt = fresh.products.length
     ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
     : fresh.sourceUpdatedAt;
+  publicationMarkerInvalidations.delete(cacheKey);
   if (fresh.products.length) writeCatalogueCache(fresh.products, sourceUpdatedAt);
   return filterRecentlyVerifiedSpecials(fresh.products);
 }

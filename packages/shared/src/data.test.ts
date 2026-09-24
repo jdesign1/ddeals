@@ -20,6 +20,7 @@ import {
   productTitleCase,
   fetchAllRows,
   loadLiveProducts,
+  CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS,
   invalidateLiveProductsPublicationMarker,
   refreshLiveProducts,
   fetchPriceHistory90d,
@@ -34,7 +35,13 @@ import {
   type ProductCard,
   type SupabaseRestConfig,
 } from "./data.ts";
-import { readCatalogueCache, writeCatalogueCache, __clearCatalogueCacheForTests } from "./catalogue-cache.ts";
+import {
+  readCatalogueCache,
+  readCatalogueCacheMetadata,
+  writeCatalogueCache,
+  writeCataloguePublicationCheck,
+  __clearCatalogueCacheForTests,
+} from "./catalogue-cache.ts";
 
 // The persistent IndexedDB cache (unlike __liveProductsCache) isn't scoped
 // per-config -- it's one global "the live catalogue" entry, matching how
@@ -770,6 +777,10 @@ function installFetchStubWithOneRealRow(): { calls: string[]; restore: () => voi
 test("loadLiveProducts: a warm IndexedDB cache hit checks the marker but skips the full fetch", async () => {
   const cachedProducts = [fakeProductCard("p1"), fakeProductCard("p2")];
   await writeCatalogueCache(cachedProducts, Date.parse("2026-08-26T14:00:00Z"));
+  await writeCataloguePublicationCheck(
+    Date.parse("2026-08-26T14:00:00Z"),
+    Date.now() - CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS - 1,
+  );
 
   const original = globalThis.fetch;
   const calls: string[] = [];
@@ -826,6 +837,10 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
 test("loadLiveProducts: refreshes a warm cache when the source timestamp advances", async () => {
   const cachedProducts = [fakeProductCard("cached")];
   await writeCatalogueCache(cachedProducts, Date.parse("2026-08-26T14:00:00Z"));
+  await writeCataloguePublicationCheck(
+    Date.parse("2026-08-26T14:00:00Z"),
+    Date.now() - CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS - 1,
+  );
 
   const original = globalThis.fetch;
   const calls: string[] = [];
@@ -895,6 +910,72 @@ test("loadLiveProducts: a new publication bypasses a resolved pre-publication in
     const result = await loadLiveProducts(config);
     assert.equal(result[0]?.name, "Fresh Butter");
     assert.equal(calls.length, 3, "an advanced marker must force the 2-request catalogue fetch");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: marker failure serves the last good catalogue without a full-feed fallback", async () => {
+  const cachedProducts = [fakeProductCard("cached-marker-failure")];
+  await writeCatalogueCache(cachedProducts, Date.parse("2026-08-26T14:00:00Z"));
+  await writeCataloguePublicationCheck(
+    Date.parse("2026-08-26T14:00:00Z"),
+    Date.now() - CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS - 1,
+  );
+
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("catalogue_publications")) throw new Error("network unavailable");
+    throw new Error("full catalogue should not be requested");
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(fakeConfig("marker-failure"));
+    assert.deepEqual(result, cachedProducts);
+    assert.equal(calls.length, 3, "the marker compatibility chain should be attempted, but not the full catalogue");
+    assert.ok(calls.every((url) => (
+      url.includes("catalogue_publications")
+      || url.includes("dodgy_deals_cache?select=cache_refreshed_at")
+      || url.includes("current_prices?")
+    )));
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: failed refresh serves the last good catalogue and remains retryable", async () => {
+  const cachedProducts = [fakeProductCard("cached-refresh-failure")];
+  await writeCatalogueCache(cachedProducts, Date.parse("2026-08-26T14:00:00Z"));
+  await writeCataloguePublicationCheck(
+    Date.parse("2026-08-26T14:00:00Z"),
+    Date.now() - CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS - 1,
+  );
+
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("catalogue_publications")) {
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => [{ published_at: "2026-08-26T15:00:00Z" }],
+      } as unknown as Response;
+    }
+    throw new Error("snapshot unavailable");
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(fakeConfig("refresh-failure"));
+    assert.deepEqual(result, cachedProducts);
+    assert.ok(calls.some((url) => url.includes("published_dodgy_deals_cache")));
+    const metadata = await readCatalogueCacheMetadata();
+    assert.equal(metadata?.sourceUpdatedAt, Date.parse("2026-08-26T14:00:00Z"));
   } finally {
     globalThis.fetch = original;
   }

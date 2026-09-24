@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   loadLiveProducts,
-  invalidateLiveProductsPublicationMarker,
   refreshLiveProducts,
   describeFetchError,
   type ProductCard,
@@ -13,7 +12,6 @@ import {
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "./config";
 import { publishCatalogueUpdate, subscribeToCatalogueUpdates } from "./catalogue-refresh";
-import { subscribeToCataloguePublication } from "./catalogue-publication";
 import type { DealFilter } from "./deal-filters";
 
 /**
@@ -121,6 +119,13 @@ const SearchContext = createContext<SearchContextValue | null>(null);
 
 const INITIAL_CATALOGUE_RETRY_DELAYS_MS = [500, 1500];
 
+function addRetryJitter(delayMs: number): number {
+  // Avoid synchronising a large group of clients after the same CDN or
+  // database incident. Full jitter is bounded to the base delay so the
+  // retry remains quick for a user who is actively waiting for the catalogue.
+  return delayMs + Math.floor(Math.random() * delayMs);
+}
+
 function shouldRetryCatalogueLoad(error: unknown): boolean {
   if (!(error instanceof Error)) return true;
   const statusMatch = error.message.match(/HTTP (\d+)/);
@@ -139,7 +144,7 @@ async function loadLiveProductsWithRetry(): Promise<ProductCard[]> {
       lastError = error;
       const retryDelay = INITIAL_CATALOGUE_RETRY_DELAYS_MS[attempt];
       if (retryDelay === undefined || !shouldRetryCatalogueLoad(error)) throw error;
-      await new Promise((resolve) => window.setTimeout(resolve, retryDelay));
+      await new Promise((resolve) => window.setTimeout(resolve, addRetryJitter(retryDelay)));
     }
   }
 
@@ -231,15 +236,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer);
   }, [shouldLoadCatalogue]);
 
-  // Revalidate when the database publishes a new catalogue. The realtime
-  // event is only an invalidation signal; loadLiveProducts still compares the
-  // durable publication marker and downloads the full catalogue at most once
-  // per publication. Visibility handling catches events missed while the
-  // browser/webview was suspended, and SUBSCRIBED catches reconnects.
+  // Revalidate at foreground checkpoints instead of holding one database
+  // Realtime subscription per active client. The persisted marker cooldown in
+  // loadLiveProducts keeps these checks cheap, while a short jitter avoids
+  // synchronising a large group of clients after a resume or deploy.
   useEffect(() => {
     let cancelled = false;
     let revalidation: Promise<void> | null = null;
     let revalidationQueued = false;
+    let checkpointTimer: number | null = null;
 
     const revalidate = () => {
       if (cancelled || !shouldLoadCatalogue || document.visibilityState !== "visible") return;
@@ -247,7 +252,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         revalidationQueued = true;
         return;
       }
-      invalidateLiveProductsPublicationMarker(supabaseConfig);
       revalidation = (async () => {
         try {
           const result = await loadLiveProducts(supabaseConfig);
@@ -269,22 +273,29 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       })();
     };
 
+    const scheduleRevalidate = () => {
+      if (checkpointTimer !== null) window.clearTimeout(checkpointTimer);
+      checkpointTimer = window.setTimeout(() => {
+        checkpointTimer = null;
+        revalidate();
+      }, 250 + Math.floor(Math.random() * 750));
+    };
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") revalidate();
+      if (document.visibilityState === "visible") scheduleRevalidate();
     };
 
     // A browser back/forward-cache restore can emit `pageshow` without the
     // visibility sequence, so treat it as another cheap freshness checkpoint.
-    const handlePageShow = () => revalidate();
+    const handlePageShow = () => scheduleRevalidate();
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pageshow", handlePageShow);
-    const unsubscribe = subscribeToCataloguePublication(revalidate);
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pageshow", handlePageShow);
-      unsubscribe();
+      if (checkpointTimer !== null) window.clearTimeout(checkpointTimer);
     };
   }, [shouldLoadCatalogue]);
 

@@ -225,6 +225,11 @@ export default function DealAssessmentPage() {
 
   useEffect(() => {
     let cancelled = false;
+    if (catalogueProducts.length > 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
     loadLiveProducts(supabaseConfig)
       .then((rows) => {
         if (!cancelled) setProducts(rows);
@@ -235,18 +240,18 @@ export default function DealAssessmentPage() {
     return () => {
       cancelled = true;
     };
-  }, [retryTick]);
+  }, [catalogueProducts, retryTick]);
 
-  // Keep this route's local deal snapshot in sync when the global pull-to-
-  // refresh gesture runs on another page.
-  useEffect(() => {
-    return subscribeToCatalogueUpdates((result) => {
-      setProducts(result);
-      setLoadError(null);
-    });
-  }, []);
+  // This is an in-memory fan-out from SearchProvider, not another network
+  // request. It keeps a direct-link snapshot aligned with a refresh that
+  // completes while the detail page is open.
+  useEffect(() => subscribeToCatalogueUpdates((result) => {
+    setProducts(result);
+    setLoadError(null);
+  }), []);
 
-  const product = useMemo(() => products?.find((p) => p.id === productId) ?? null, [products, productId]);
+  const effectiveProducts = products ?? (catalogueProducts.length > 0 ? catalogueProducts : null);
+  const product = useMemo(() => effectiveProducts?.find((p) => p.id === productId) ?? null, [effectiveProducts, productId]);
   // The deal route fetches its own validated snapshot, but the tapped card's
   // product is already in the global catalogue. Use that name immediately so
   // the shared header never publishes a temporary "Deal" title while the
@@ -401,7 +406,7 @@ export default function DealAssessmentPage() {
   // catalogue download, and it catches both verdict changes and specials
   // that have rolled off since the catalogue snapshot was saved.
   useEffect(() => {
-    if (!products || !product || deal?.isOnSpecial === false || !deal?.sourceProductId || !deal.sourceStoreId) return;
+    if (!effectiveProducts || !product || deal?.isOnSpecial === false || !deal?.sourceProductId || !deal.sourceStoreId) return;
     const sourceProductId = deal.sourceProductId;
     const sourceStoreId = deal.sourceStoreId;
     const validationKey = `${sourceProductId}::${sourceStoreId}`;
@@ -412,7 +417,7 @@ export default function DealAssessmentPage() {
     validateCurrentDeal(supabaseConfig, sourceProductId, sourceStoreId)
       .then(({ row }) => {
         if (cancelled) return;
-        const nextProducts = applyTargetedDealToProducts(products, sourceProductId, sourceStoreId, row);
+        const nextProducts = applyTargetedDealToProducts(effectiveProducts, sourceProductId, sourceStoreId, row);
         if (row === null) {
           confirmedMissingDealRef.current = {
             routeKey: `${productId}::${dealStore}`,
@@ -434,14 +439,14 @@ export default function DealAssessmentPage() {
     return () => {
       cancelled = true;
     };
-  }, [products, product, deal, productId, dealStore]);
+  }, [effectiveProducts, product, deal, productId, dealStore]);
 
   // A stale deep link can miss because the product or its store deal rolled
   // off the live catalogue. Retry once through the shared cooldown-guarded
   // refresh before showing the final "no longer exists" state. The key guard
   // prevents an expired link from causing a refresh loop.
   useEffect(() => {
-    if (products === null || loadError || (product && deal)) return;
+    if (effectiveProducts === null || loadError || (product && deal)) return;
     const retryKey = `${productId}::${dealStore}`;
     if (staleRetryKeyRef.current === retryKey) return;
     staleRetryKeyRef.current = retryKey;
@@ -469,7 +474,7 @@ export default function DealAssessmentPage() {
     return () => {
       cancelled = true;
     };
-  }, [products, loadError, product, deal, productId, dealStore]);
+  }, [effectiveProducts, loadError, product, deal, productId, dealStore]);
 
   // Logs this view to `deal_checks` (2026-08-11, backs the ported "All
   // Checks"/"Deal Stats" screens -- see packages/shared/src/deal-checks.ts's
@@ -518,10 +523,10 @@ export default function DealAssessmentPage() {
   // Hold the incoming slide until this route's data is ready, so the page
   // appears as one complete surface rather than revealing half-loaded cards.
   useEffect(() => {
-    if (isEntryAnimationReady || (products === null && !loadError)) return;
+    if (isEntryAnimationReady || (effectiveProducts === null && !loadError)) return;
     const timer = window.setTimeout(() => setIsEntryAnimationReady(true), 0);
     return () => window.clearTimeout(timer);
-  }, [isEntryAnimationReady, products, loadError]);
+  }, [isEntryAnimationReady, effectiveProducts, loadError]);
 
   useEffect(() => {
     if (!showProductImage) return;
@@ -581,8 +586,8 @@ export default function DealAssessmentPage() {
   // left that ever changes this; passing the literal array inline instead
   // of keeping a never-updated state variable around.
   const cheaperAlternatives = useMemo(
-    () => (product && activeDeal && products ? findCheaperAlternatives(product, products, activeDeal.price, ["all"]) : []),
-    [activeDeal, product, products]
+    () => (product && activeDeal && effectiveProducts ? findCheaperAlternatives(product, effectiveProducts, activeDeal.price, ["all"]) : []),
+    [activeDeal, effectiveProducts, product]
   );
   // Summary insight tiles for the tabbed Price History Insights panel. Built
   // from the `dodgy_deals` view's price_history_90d_* columns (see data.ts) --
@@ -609,7 +614,7 @@ export default function DealAssessmentPage() {
     );
   }
 
-  if (products === null) {
+  if (effectiveProducts === null) {
     return <PageLoader loading />;
   }
 

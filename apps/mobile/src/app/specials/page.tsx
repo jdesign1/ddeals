@@ -1,24 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ScanBarcode } from "lucide-react";
 import {
-  loadLiveProducts,
   storeMatchesFilter,
   deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
-  describeFetchError,
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
-import { supabaseConfig } from "@/lib/config";
+import { useSearch } from "@/lib/search-context";
 import DealCard from "@/components/DealCard";
 import FilterPill from "@/components/FilterPill";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
-import { subscribeToCatalogueUpdates } from "@/lib/catalogue-refresh";
 import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
 
 /**
@@ -63,53 +60,8 @@ interface FlatDeal {
 const SPECIALS_PAGE_SIZE = 20;
 
 export default function SpecialsPage() {
-  const [products, setProducts] = useState<ProductCard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, loadingProducts: loading, error, retry } = useSearch();
   const [storeFilter, setStoreFilter] = useState("all");
-  // Bumped by the ErrorState's Try Again button to re-run the effect below --
-  // same plain-counter retry pattern as search-context.tsx's `retryTick`
-  // (2026-08-11, added alongside this for the same "no retry existed
-  // anywhere" gap).
-  const [retryTick, setRetryTick] = useState(0);
-  // Resets `loading`/`error` here (an event handler, not the effect body --
-  // setting state synchronously inside the effect itself trips this
-  // project's react-hooks/set-state-in-effect rule) before bumping
-  // `retryTick`, so the ErrorState/LoadingMascot swap the instant Try Again
-  // is tapped rather than waiting a frame for the effect to notice.
-  const retry = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    setRetryTick((t) => t + 1);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadLiveProducts(supabaseConfig)
-      .then((result) => {
-        if (!cancelled) setProducts(result);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(describeFetchError(err, "Failed to load specials"));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [retryTick]);
-
-  // SearchProvider owns the global refresh gesture, while this route owns a
-  // separate filtered view of the same products. Subscribe so a pull on any
-  // page updates Specials in place without starting another network request.
-  useEffect(() => {
-    return subscribeToCatalogueUpdates((result) => {
-      setProducts(result);
-      setError(null);
-      setLoading(false);
-    });
-  }, []);
 
   const flatDeals = useMemo<FlatDeal[]>(() => {
     const all: FlatDeal[] = [];

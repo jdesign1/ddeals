@@ -64,6 +64,8 @@ export interface CatalogueCacheMetadata {
   savedAt: number;
   /** Last catalogue publication timestamp observed when fetched. */
   sourceUpdatedAt?: number;
+  /** Last time the lightweight publication marker was checked. */
+  publicationCheckedAt?: number;
 }
 
 interface CatalogueCacheRecord extends CatalogueCacheMetadata {
@@ -135,7 +137,13 @@ export async function readCatalogueCacheMetadata(): Promise<CatalogueCacheMetada
       .filter((record): record is CatalogueCacheTimestampRecord => record != null && record.version === CATALOGUE_CACHE_VERSION)
       .filter((record) => Number.isFinite(record.savedAt))
       .sort((left, right) => right.savedAt - left.savedAt)[0];
-    return latest ? { savedAt: latest.savedAt, sourceUpdatedAt: latest.sourceUpdatedAt } : null;
+    return latest
+      ? {
+          savedAt: latest.savedAt,
+          sourceUpdatedAt: latest.sourceUpdatedAt,
+          publicationCheckedAt: latest.publicationCheckedAt,
+        }
+      : null;
   } catch {
     return null;
   }
@@ -162,6 +170,37 @@ export async function writeCatalogueCacheMetadata(savedAt = Date.now(), sourceUp
   }
 }
 
+/**
+ * Records a lightweight publication-marker check without rewriting the
+ * catalogue payload. This keeps warm clients from asking Supabase for the
+ * same marker on every route transition or visibility event.
+ */
+export async function writeCataloguePublicationCheck(
+  sourceUpdatedAt: number | null,
+  checkedAt = Date.now()
+): Promise<void> {
+  try {
+    const existing = await readCatalogueCacheRecord();
+    if (!existing || existing.version !== CATALOGUE_CACHE_VERSION) return;
+    const db = await openCatalogueCacheDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
+      tx.objectStore(CATALOGUE_CACHE_STORE).put({
+        ...existing,
+        publicationCheckedAt: checkedAt,
+        ...(typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt)
+          ? { sourceUpdatedAt }
+          : {}),
+      }, CATALOGUE_CACHE_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // Marker persistence is an optimization; a cache failure must not block loading.
+  }
+}
+
 /** Best-effort write — failures (quota, blocked storage) are swallowed, never surfaced. Caching is an optimization, not a requirement. */
 export async function writeCatalogueCache(products: ProductCard[], sourceUpdatedAt?: number | null): Promise<void> {
   try {
@@ -170,9 +209,11 @@ export async function writeCatalogueCache(products: ProductCard[], sourceUpdated
     const sourceMarker = typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt) ? sourceUpdatedAt : undefined;
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
+      const savedAt = Date.now();
       const record: CatalogueCacheRecord = {
         version: CATALOGUE_CACHE_VERSION,
-        savedAt: Date.now(),
+        savedAt,
+        publicationCheckedAt: savedAt,
         products,
         ...(sourceMarker === undefined ? {} : { sourceUpdatedAt: sourceMarker }),
       };
