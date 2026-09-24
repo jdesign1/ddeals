@@ -28,7 +28,13 @@ import DealFilterSummary from "@/components/DealFilterSummary";
 import {
   subscribeToCheckDealsHeaderVisibility,
 } from "@/lib/scroll-events";
-import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, getDefaultDealSort, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import {
+  CHECK_DEALS_SORT_OPTIONS,
+  getDealFilterForSort,
+  getDealSortScore,
+  getDefaultDealSort,
+  type CheckDealsSortBy,
+} from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
@@ -236,6 +242,12 @@ export default function HomePage() {
     setDealSortBy(getDefaultDealSort(filter));
   };
 
+  const handleDealSortChange = (sortBy: DealSortBy) => {
+    setDealSortBy(sortBy);
+    const linkedFilter = getDealFilterForSort(sortBy);
+    if (linkedFilter) setDealFilter(linkedFilter);
+  };
+
   return (
     <>
       {!isSearchActive && <LoadingMascot loading={loadingProducts} />}
@@ -409,7 +421,7 @@ export default function HomePage() {
             deals={filteredDeals}
             filter={dealFilter}
             sortBy={dealSortBy}
-            onSortByChange={setDealSortBy}
+            onSortByChange={handleDealSortChange}
             categoryFilter={dealCategoryFilter}
             onCategoryFilterChange={setDealCategoryFilter}
             availableCategories={availableCategories}

@@ -20,6 +20,13 @@ export function getDefaultDealSort(filter: DealFilter): CheckDealsSortBy {
   return "latest";
 }
 
+/** The verdict tab implied by the two verdict-specific sort choices. */
+export function getDealFilterForSort(sortBy: CheckDealsSortBy): DealFilter | null {
+  if (sortBy === "biggest-saver") return "real";
+  if (sortBy === "worst-dodgy") return "dodgy";
+  return null;
+}
+
 /** Returns a sortable score without rounding away small but real differences. */
 export function getDealSortScore(deal: CurrentDeal, sortBy: CheckDealsSortBy): number | null {
   const signedPriceChange = getSignedPriceChangePercentage(deal.price, deal.originalPrice);

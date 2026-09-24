@@ -24,7 +24,13 @@ import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
-import { CHECK_DEALS_SORT_OPTIONS, getDealSortScore, getDefaultDealSort, type CheckDealsSortBy } from "@/lib/deal-sorting";
+import {
+  CHECK_DEALS_SORT_OPTIONS,
+  getDealFilterForSort,
+  getDealSortScore,
+  getDefaultDealSort,
+  type CheckDealsSortBy,
+} from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -386,6 +392,12 @@ export default function FullScreenSearch() {
     setResultsSortBy(getDefaultDealSort(filter));
   };
 
+  const handleSortChange = (sortBy: CheckDealsSortBy, setSortBy: (value: CheckDealsSortBy) => void) => {
+    setSortBy(sortBy);
+    const linkedFilter = getDealFilterForSort(sortBy);
+    if (linkedFilter) setDealFilter(linkedFilter);
+  };
+
   const [categorySheetTarget, setCategorySheetTarget] = useState<"popular" | "results" | null>(null);
   const activeCategoryFilter = categorySheetTarget === "results" ? resultsCategoryFilter : popularCategoryFilter;
   const setActiveCategoryFilter = categorySheetTarget === "results" ? setResultsCategoryFilter : setPopularCategoryFilter;
@@ -406,13 +418,13 @@ export default function FullScreenSearch() {
     sortSheetTarget === "popular"
       ? {
           value: popularSortBy as string,
-          onChange: (v: string) => setPopularSortBy(v as PopularSortBy),
+          onChange: (v: string) => handleSortChange(v as PopularSortBy, setPopularSortBy),
           options: CHECK_DEALS_SORT_OPTIONS,
         }
       : sortSheetTarget === "results"
         ? {
             value: resultsSortBy as string,
-            onChange: (v: string) => setResultsSortBy(v as ResultsSortBy),
+            onChange: (v: string) => handleSortChange(v as ResultsSortBy, setResultsSortBy),
             options: CHECK_DEALS_SORT_OPTIONS,
           }
         : null;
