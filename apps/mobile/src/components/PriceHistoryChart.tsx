@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import type { AssessmentVerdict, PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 
@@ -92,12 +92,12 @@ function chartColorForStore(store: string): string {
   return "#78716c";
 }
 
-const VERDICT_PRESENTATION: Record<AssessmentVerdict, { color: string; label: string }> = {
-  "Real Saver": { color: "var(--color-verdict-real-saver)", label: "Real saver" },
-  "Dodgy Deal": { color: "var(--color-verdict-dodgy)", label: "Dodgy" },
-  "Fair Deal": { color: "var(--color-dodgy-600)", label: "Fair price" },
-  "Early read": { color: "var(--color-verdict-unknown)", label: "Needs more history" },
-  "Limited history": { color: "var(--color-verdict-unknown)", label: "Needs more history" },
+const VERDICT_FADE_COLORS: Record<AssessmentVerdict, string> = {
+  "Real Saver": "var(--color-verdict-real-saver)",
+  "Dodgy Deal": "var(--color-verdict-dodgy)",
+  "Fair Deal": "var(--color-dodgy-600)",
+  "Early read": "var(--color-verdict-unknown)",
+  "Limited history": "var(--color-verdict-unknown)",
 };
 
 function hasDrawableArea(coordinates: { x: number; y: number }[]): boolean {
@@ -122,6 +122,8 @@ export default function PriceHistoryChart({
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const chartRef = useRef<HTMLDivElement>(null);
+  const isChartInView = useInView(chartRef, { once: true, amount: 0.35 });
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
     <div className="flex justify-end">
@@ -176,7 +178,7 @@ export default function PriceHistoryChart({
     .map((series) => ({
       ...series,
       color: chartColorForStore(series.store),
-      verdictColor: VERDICT_PRESENTATION[series.verdict].color,
+      verdictColor: VERDICT_FADE_COLORS[series.verdict],
       points: buildChartPoints(series.points, series.currentPrice, series.currentIsSpecial, chartNow),
     }))
     .filter((series) => series.points.length > 0);
@@ -222,7 +224,7 @@ export default function PriceHistoryChart({
   return (
     <div className="space-y-3">
       {storeSelector}
-      <div className="relative h-[21rem] [perspective:1000px]">
+      <div ref={chartRef} className="relative h-[21rem] [perspective:1000px]">
         <motion.div
           className="relative h-full w-full"
           animate={{ rotateY: showHistoryList ? 180 : 0 }}
@@ -309,7 +311,7 @@ export default function PriceHistoryChart({
                   strokeWidth="3"
                   strokeLinecap="round"
                   initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
+                  animate={shouldReduceMotion || isChartInView ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
                   transition={{
                     duration: shouldReduceMotion ? 0 : 0.42,
                     delay: shouldReduceMotion ? 0 : index * 0.1,
@@ -330,7 +332,7 @@ export default function PriceHistoryChart({
                   stroke="var(--dd-chart-point-stroke)"
                   strokeWidth="2"
                   initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
-                  animate={{ r: 5, opacity: 1 }}
+                  animate={shouldReduceMotion || isChartInView ? { r: 5, opacity: 1 } : { r: 0, opacity: 0 }}
                   transition={{
                     duration: shouldReduceMotion ? 0 : 0.24,
                     delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
@@ -371,25 +373,6 @@ export default function PriceHistoryChart({
                   </div>
                 </>
               )}
-        </div>
-        <div
-          className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-semibold text-stone-600"
-          role="group"
-          aria-label="Verdict shading legend"
-        >
-          {[...new Set(coordinatesBySeries.map((series) => series.verdict))].map((seriesVerdict) => {
-            const { color, label } = VERDICT_PRESENTATION[seriesVerdict];
-            return (
-              <div key={seriesVerdict} className="flex items-center gap-1.5">
-                <span
-                  className="h-3 w-3 rounded-sm border border-stone-300"
-                  style={{ backgroundColor: color, opacity: 0.75 }}
-                  aria-hidden="true"
-                />
-                <span>{label}</span>
-              </div>
-            );
-          })}
         </div>
           </button>
           <button
