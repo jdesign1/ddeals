@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -259,6 +259,7 @@ export default function AppHeader({
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
+  const hasPresentedNewSpecialsThisMount = useRef(false);
   const [lastShownNewSpecialsDate, setLastShownNewSpecialsDate] = useState(
     () => readNewSpecialsPresentation().date
   );
@@ -290,8 +291,10 @@ export default function AppHeader({
     !hasPresentedNewSpecialsToday;
 
   useEffect(() => {
-    if (!shouldPresentNewSpecialsModal) return;
+    if (!shouldPresentNewSpecialsModal || hasPresentedNewSpecialsThisMount.current) return;
     const presentationTimer = window.setTimeout(() => {
+      if (hasPresentedNewSpecialsThisMount.current) return;
+      hasPresentedNewSpecialsThisMount.current = true;
       const date = getLocalDateKey();
       // Freeze the counts that caused this presentation before advancing the
       // last-shown publication marker below. `newSpecials` is derived from
