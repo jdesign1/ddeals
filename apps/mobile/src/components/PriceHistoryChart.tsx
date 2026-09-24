@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
-import { motion, useInView, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { AssessmentVerdict, PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 
@@ -121,9 +121,29 @@ export default function PriceHistoryChart({
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
+  const [chartElement, setChartElement] = useState<HTMLDivElement | null>(null);
+  const [isChartInView, setIsChartInView] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
-  const chartRef = useRef<HTMLDivElement>(null);
-  const isChartInView = useInView(chartRef, { once: true, amount: 0.35 });
+  const shouldShowChartAnimation = shouldReduceMotion || isChartInView || typeof IntersectionObserver === "undefined";
+  useEffect(() => {
+    if (!chartElement || isChartInView || shouldReduceMotion) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.25) {
+          setIsChartInView(true);
+          observer.disconnect();
+        }
+      },
+      {
+        root: document.querySelector<HTMLElement>(".mobile-scroll-surface"),
+        threshold: 0.25,
+      }
+    );
+    observer.observe(chartElement);
+    return () => observer.disconnect();
+  }, [chartElement, isChartInView, shouldReduceMotion]);
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
     <div className="flex justify-end">
@@ -224,7 +244,7 @@ export default function PriceHistoryChart({
   return (
     <div className="space-y-3">
       {storeSelector}
-      <div ref={chartRef} className="relative h-[21rem] [perspective:1000px]">
+      <div ref={setChartElement} className="relative h-[21rem] [perspective:1000px]">
         <motion.div
           className="relative h-full w-full"
           animate={{ rotateY: showHistoryList ? 180 : 0 }}
@@ -311,7 +331,7 @@ export default function PriceHistoryChart({
                   strokeWidth="3"
                   strokeLinecap="round"
                   initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
-                  animate={shouldReduceMotion || isChartInView ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
+                  animate={shouldShowChartAnimation ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
                   transition={{
                     duration: shouldReduceMotion ? 0 : 0.42,
                     delay: shouldReduceMotion ? 0 : index * 0.1,
@@ -332,7 +352,7 @@ export default function PriceHistoryChart({
                   stroke="var(--dd-chart-point-stroke)"
                   strokeWidth="2"
                   initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
-                  animate={shouldReduceMotion || isChartInView ? { r: 5, opacity: 1 } : { r: 0, opacity: 0 }}
+                  animate={shouldShowChartAnimation ? { r: 5, opacity: 1 } : { r: 0, opacity: 0 }}
                   transition={{
                     duration: shouldReduceMotion ? 0 : 0.24,
                     delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
