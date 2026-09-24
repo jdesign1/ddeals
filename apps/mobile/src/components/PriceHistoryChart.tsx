@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import type { PriceHistoryPoint } from "@dodgey-deals/shared";
+import type { AssessmentVerdict, PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 
 interface PriceHistoryChartProps {
@@ -15,6 +15,7 @@ interface PriceHistoryChartProps {
   storeOptions?: { value: string; label: string }[];
   selectedStore?: string;
   onStoreChange?: (store: string) => void;
+  verdict: AssessmentVerdict;
   historySeries?: PriceHistorySeries[];
   legacySingleStorePresentation?: boolean;
 }
@@ -30,6 +31,7 @@ export interface PriceHistorySeries {
   points: PriceHistoryPoint[];
   currentPrice: number;
   currentIsSpecial: boolean;
+  verdict: AssessmentVerdict;
 }
 
 const WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
@@ -90,6 +92,18 @@ function chartColorForStore(store: string): string {
   return "#78716c";
 }
 
+const VERDICT_PRESENTATION: Record<AssessmentVerdict, { color: string; label: string }> = {
+  "Real Saver": { color: "var(--color-verdict-real-saver)", label: "Real saver" },
+  "Dodgy Deal": { color: "var(--color-verdict-dodgy)", label: "Dodgy" },
+  "Fair Deal": { color: "var(--color-dodgy-600)", label: "Fair price" },
+  "Early read": { color: "var(--color-verdict-unknown)", label: "Needs more history" },
+  "Limited history": { color: "var(--color-verdict-unknown)", label: "Needs more history" },
+};
+
+function hasDrawableArea(coordinates: { x: number; y: number }[]): boolean {
+  return coordinates.length >= 2 && coordinates[0].x < coordinates[coordinates.length - 1].x;
+}
+
 export default function PriceHistoryChart({
   points,
   currentPrice,
@@ -101,6 +115,7 @@ export default function PriceHistoryChart({
   storeOptions = [],
   selectedStore = "",
   onStoreChange,
+  verdict,
   historySeries = [],
   legacySingleStorePresentation = false,
 }: PriceHistoryChartProps) {
@@ -156,11 +171,12 @@ export default function PriceHistoryChart({
   const showingAllStores = selectedStore === ALL_STORES_VALUE;
   const sourceSeries: PriceHistorySeries[] = showingAllStores
     ? historySeries
-    : [{ store: currentStore, points, currentPrice, currentIsSpecial }];
+    : [{ store: currentStore, points, currentPrice, currentIsSpecial, verdict }];
   const renderedSeries = sourceSeries
     .map((series) => ({
       ...series,
       color: chartColorForStore(series.store),
+      verdictColor: VERDICT_PRESENTATION[series.verdict].color,
       points: buildChartPoints(series.points, series.currentPrice, series.currentIsSpecial, chartNow),
     }))
     .filter((series) => series.points.length > 0);
@@ -234,7 +250,7 @@ export default function PriceHistoryChart({
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           className="block h-64 w-full"
           role="img"
-          aria-label="Price history over the last 90 days, with on-special periods highlighted"
+          aria-label="Price history over the last 90 days, with on-special periods highlighted and a verdict-coloured fade below each line"
         >
           {gridValues.map((value) => {
             const y = yFor(value);
@@ -246,6 +262,37 @@ export default function PriceHistoryChart({
                 </text>
               </g>
             );
+          })}
+
+          <defs>
+            {coordinatesBySeries.map((series, index) =>
+              !hasDrawableArea(series.coordinates) ? null : (
+                <linearGradient
+                  key={`verdict-fade-${index}`}
+                  id={`verdict-fade-${index}`}
+                  gradientUnits="userSpaceOnUse"
+                  x1="0"
+                  y1={PLOT_TOP}
+                  x2="0"
+                  y2={PLOT_BOTTOM}
+                >
+                  <stop offset="0%" stopColor={series.verdictColor} stopOpacity="0.18" />
+                  <stop offset="100%" stopColor={series.verdictColor} stopOpacity="0" />
+                </linearGradient>
+              )
+            )}
+          </defs>
+
+          {coordinatesBySeries.map((series, index) => {
+            if (!hasDrawableArea(series.coordinates)) return null;
+            const first = series.coordinates[0];
+            const last = series.coordinates[series.coordinates.length - 1];
+            const linePath = series.coordinates
+              .map(({ x, y }, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${x} ${y}`)
+              .join(" ");
+            const areaPath = `${linePath} L ${last.x} ${PLOT_BOTTOM} L ${first.x} ${PLOT_BOTTOM} Z`;
+
+            return <path key={`verdict-area-${index}`} d={areaPath} fill={`url(#verdict-fade-${index})`} />;
           })}
 
           {coordinatesBySeries.map((series) =>
@@ -312,16 +359,37 @@ export default function PriceHistoryChart({
                   <span>{series.store}</span>
                 </div>
               ))
-            : <>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-fair-600" />
-                  <span>On special</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-stone-400" />
-                  <span>Regular price</span>
-                </div>
-              </>}
+            : (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-fair-600" />
+                    <span>On special</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-stone-400" />
+                    <span>Regular price</span>
+                  </div>
+                </>
+              )}
+        </div>
+        <div
+          className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-semibold text-stone-600"
+          role="group"
+          aria-label="Verdict shading legend"
+        >
+          {[...new Set(coordinatesBySeries.map((series) => series.verdict))].map((seriesVerdict) => {
+            const { color, label } = VERDICT_PRESENTATION[seriesVerdict];
+            return (
+              <div key={seriesVerdict} className="flex items-center gap-1.5">
+                <span
+                  className="h-3 w-3 rounded-sm border border-stone-300"
+                  style={{ backgroundColor: color, opacity: 0.75 }}
+                  aria-hidden="true"
+                />
+                <span>{label}</span>
+              </div>
+            );
+          })}
         </div>
           </button>
           <button

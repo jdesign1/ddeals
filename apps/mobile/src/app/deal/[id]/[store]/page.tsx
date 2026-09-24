@@ -374,6 +374,7 @@ export default function DealAssessmentPage() {
           points: priceHistoryResults[key]?.points ?? [],
           currentPrice: candidate.price,
           currentIsSpecial: candidate.isOnSpecial !== false,
+          verdict: getAssessmentVerdict(candidate),
         };
       }),
     [historyStoreDeals, priceHistoryResults]
@@ -1346,6 +1347,7 @@ export default function DealAssessmentPage() {
                 storeOptions={historyStoreOptions}
                 selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
                 onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
+                verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
               />
             ) : (
               <>
