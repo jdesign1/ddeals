@@ -117,7 +117,7 @@ export default function AssessmentEvidenceCard({
         className="mt-3 flex min-h-12 w-full items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-left transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
       >
         <Info className="h-4 w-4 flex-shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
-        <span className="min-w-0 flex-1 text-[13px] font-semibold leading-5 text-stone-600">{evidenceSummary}</span>
+        <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-stone-600">{evidenceSummary}</span>
         <ChevronRight className="h-5 w-5 flex-shrink-0 text-stone-400" strokeWidth={2.25} aria-hidden="true" />
       </button>
 
