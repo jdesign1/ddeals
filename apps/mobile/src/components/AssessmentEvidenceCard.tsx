@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import AssessmentText from "@/components/AssessmentText";
@@ -37,6 +37,20 @@ function formatCount(value: number | null | undefined, singular: string, plural 
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
   const count = Math.round(value);
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function getPriceMovement(deal: CurrentDeal): { direction: "up" | "down"; amount: string } | null {
+  if (!Number.isFinite(deal.price) || !Number.isFinite(deal.originalPrice) || deal.originalPrice == null || deal.originalPrice <= 0) {
+    return null;
+  }
+
+  const difference = deal.price - deal.originalPrice;
+  if (Math.abs(difference) < 0.005) return null;
+
+  return {
+    direction: difference > 0 ? "up" : "down",
+    amount: `$${Math.abs(difference).toFixed(2)}`,
+  };
 }
 
 function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
@@ -82,6 +96,7 @@ export default function AssessmentEvidenceCard({
   const priceChanges = formatCount(deal.ninetyDayPriceChanges, "change");
   const hasEvidenceCounts = Boolean(days || checks || trackedDays || ninetyDayChecks || priceChanges);
   const verdictBadge = VERDICT_BADGE[verdict];
+  const priceMovement = getPriceMovement(deal);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -175,7 +190,27 @@ export default function AssessmentEvidenceCard({
                       </span>
                     </h4>
                     <p className="mt-3 whitespace-pre-line text-[15px] leading-6 text-stone-700">
-                      <AssessmentText text={assessmentCopy} />
+                      {assessmentCopy.split("\n").map((line, index) => (
+                        <Fragment key={`${line}-${index}`}>
+                          <span className="block">
+                            <AssessmentText text={line} />
+                          </span>
+                          {line.startsWith("Recent normal price:") && priceMovement && (
+                            <span
+                              className={`mt-1 flex items-center gap-1.5 text-sm font-bold ${
+                                priceMovement.direction === "up" ? "text-alert-700" : "text-fair-700"
+                              }`}
+                            >
+                              {priceMovement.direction === "up" ? (
+                                <ArrowUp className="h-4 w-4 flex-shrink-0" strokeWidth={3} aria-hidden="true" />
+                              ) : (
+                                <ArrowDown className="h-4 w-4 flex-shrink-0" strokeWidth={3} aria-hidden="true" />
+                              )}
+                              Price is {priceMovement.amount} {priceMovement.direction === "up" ? "higher" : "lower"} than the recent normal price
+                            </span>
+                          )}
+                        </Fragment>
+                      ))}
                     </p>
                     <p className="mt-4 border-t border-stone-100 pt-3 text-sm leading-5 text-stone-500">
                       More history makes the assessment more reliable.
