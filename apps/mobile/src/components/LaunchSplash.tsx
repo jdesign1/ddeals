@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { usePathname } from "next/navigation";
 import WinkMascot from "@/components/WinkMascot";
 
 // The native storyboard covers the first launch frame; give the WebView wink
@@ -21,6 +22,8 @@ export const LAUNCH_SPLASH_COMPLETE_EVENT = "dd-launch-splash-complete";
  * launches.
  */
 export default function LaunchSplash() {
+  const pathname = usePathname();
+  const launchPathnameRef = useRef<string | null>(pathname);
   const [visible, setVisible] = useState(() => {
     if (typeof window === "undefined") return true;
     try {
@@ -34,6 +37,23 @@ export default function LaunchSplash() {
   const splashStyle: LaunchSplashStyle = {
     "--launch-cycle-duration": `${SPLASH_DURATION_MS}ms`,
   };
+
+  useEffect(() => {
+    if (!visible || pathname === null) return;
+    if (launchPathnameRef.current === null) {
+      launchPathnameRef.current = pathname;
+      return;
+    }
+    if (pathname === launchPathnameRef.current) return;
+
+    // A product can be opened while the first-launch wink is still playing.
+    // Dismiss that startup-only layer as soon as the route changes so it
+    // cannot cover the destination's normal PageLoader (or flash back over
+    // the loaded deal page if sessionStorage is unavailable in a WebView).
+    setVisible(false);
+    setExiting(false);
+    setMinimumElapsed(false);
+  }, [pathname, visible]);
 
   useEffect(() => {
     if (!visible) return;
