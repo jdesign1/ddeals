@@ -1,5 +1,3 @@
-import { Eye, ListPlus, ShoppingCart, Timer } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { buildPriceTimingSignal, type PriceHistoryPoint, type PriceTimingAction, type PriceTimingSignal } from "@dodgey-deals/shared";
 
 export interface PriceTimingSeries {
@@ -9,11 +7,11 @@ export interface PriceTimingSeries {
   currentIsSpecial: boolean;
 }
 
-const ACTION_STYLE: Record<PriceTimingAction, { label: string; icon: LucideIcon; className: string }> = {
-  "buy-now": { label: "Buy now", icon: ShoppingCart, className: "bg-fair-50 text-fair-700" },
-  wait: { label: "Wait", icon: Timer, className: "bg-alert-50 text-alert-700" },
-  watch: { label: "Watch", icon: Eye, className: "bg-blue-50 text-blue-700" },
-  "add-to-list": { label: "Add to list", icon: ListPlus, className: "bg-stone-100 text-stone-700" },
+const ACTION_STYLE: Record<PriceTimingAction, { label: string; className: string }> = {
+  "buy-now": { label: "Good price now", className: "bg-fair-50 text-fair-700" },
+  wait: { label: "Higher than usual", className: "bg-alert-50 text-alert-700" },
+  watch: { label: "Typical price", className: "bg-blue-50 text-blue-700" },
+  "add-to-list": { label: "More history needed", className: "bg-stone-100 text-stone-700" },
 };
 
 function formatPrice(value: number | null): string {
@@ -37,21 +35,19 @@ function recommendationCopy(signal: PriceTimingSignal, currentIsSpecial: boolean
     case "watch":
       return "The current price sits in its usual range, so the history does not give a strong reason to buy or wait.";
     case "add-to-list":
-      return "There are not enough distinct recorded prices to tell whether it is likely to drop. Add it to a list and check back after more updates.";
+      return "There are not enough distinct recorded prices to tell whether it is likely to drop yet. More history will make the signal clearer.";
   }
 }
 
 function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore: boolean }) {
   const signal = buildPriceTimingSignal(series.points, series.currentPrice, series.currentIsSpecial);
   const action = ACTION_STYLE[signal.action];
-  const ActionIcon = action.icon;
 
   return (
     <div className="rounded-xl border border-stone-200/80 bg-white p-4">
       <div className="min-w-0">
         {showStore && <p className="dd-type-meta truncate text-stone-500">{series.store}</p>}
-        <span className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold ${action.className}`}>
-          <ActionIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+        <span className={`inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-sm font-bold ${action.className}`}>
           {action.label}
         </span>
       </div>
