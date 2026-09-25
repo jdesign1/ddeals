@@ -486,6 +486,11 @@ body {
   letter-spacing: -0.01em;
 }
 
+.dd-type-assessment-heading {
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+
 .dd-type-body {
   font-size: var(--dd-type-body-size);
   line-height: var(--dd-type-body-leading);

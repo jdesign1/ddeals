@@ -988,7 +988,7 @@ export default function DealAssessmentPage() {
           </div>
 
           <div>
-            <h4 className="dd-type-section mb-1 text-stone-900">
+            <h4 className="dd-type-section dd-type-assessment-heading mb-1 text-stone-900">
               <AssessmentText text={assessmentSummary.heading} />
             </h4>
             {evidenceSummary && (
