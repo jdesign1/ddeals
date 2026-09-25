@@ -549,7 +549,7 @@ export default function DealAssessmentPage() {
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
   const [priceHistoryViewTab, setPriceHistoryViewTab] = useState<"90-day-view" | "insights">("90-day-view");
-  const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("should-buy");
+  const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("price-tips");
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
@@ -1378,29 +1378,6 @@ export default function DealAssessmentPage() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={priceHistoryTab === "should-buy"}
-                onClick={() => setPriceHistoryTab("should-buy")}
-                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryTab === "should-buy" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <AnimatePresence initial={false}>
-                  {priceHistoryTab === "should-buy" && (
-                    <motion.span
-                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
-                      style={{ zIndex: -1 }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                </AnimatePresence>
-                Should you buy?
-              </button>
-              <button
-                type="button"
-                role="tab"
                 aria-selected={priceHistoryTab === "price-tips"}
                 onClick={() => setPriceHistoryTab("price-tips")}
                 className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
@@ -1420,6 +1397,29 @@ export default function DealAssessmentPage() {
                   )}
                 </AnimatePresence>
                 Price tips
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={priceHistoryTab === "should-buy"}
+                onClick={() => setPriceHistoryTab("should-buy")}
+                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                  priceHistoryTab === "should-buy" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <AnimatePresence initial={false}>
+                  {priceHistoryTab === "should-buy" && (
+                    <motion.span
+                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
+                      style={{ zIndex: -1 }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </AnimatePresence>
+                Should you buy?
               </button>
             </div>
             {priceHistoryTab === "should-buy" ? (
