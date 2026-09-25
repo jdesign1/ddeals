@@ -857,6 +857,30 @@ test("loadLiveProducts: a CDN outage serves warm cache without a Supabase fallba
   }
 });
 
+test("loadLiveProducts: a cold CDN outage does not query Supabase by default", async () => {
+  const config = {
+    ...fakeConfig("cdn-cold-outage"),
+    catalogueUrl: "https://cdn.example.com/catalogue/latest.json",
+    allowDirectCatalogueFallback: false,
+  };
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    calls.push(String(input));
+    throw new Error("cdn unavailable");
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      loadLiveProducts(config),
+      /Catalogue CDN unavailable; direct Supabase fallback is disabled/,
+    );
+    assert.deepEqual(calls, [config.catalogueUrl]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("loadLiveProducts: on a cache miss, the fetched result is written to IndexedDB for the next load", async () => {
   const { calls, restore } = installFetchStubWithOneRealRow();
   try {

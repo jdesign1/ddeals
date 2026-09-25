@@ -184,6 +184,8 @@ export interface SupabaseRestConfig {
   anonKey: string;
   /** Optional public JSON endpoint served through a CDN or Vercel CDN route. */
   catalogueUrl?: string;
+  /** Temporary migration escape hatch; keep disabled on the launch path. */
+  allowDirectCatalogueFallback?: boolean;
 }
 
 export const STORE_DISPLAY_FALLBACK: Record<string, string> = {
@@ -1257,8 +1259,12 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
       if (cached) return filterRecentlyVerifiedSpecials(cached);
     } catch {
       // A CDN outage must not turn into a direct full-feed request storm for
-      // warm clients. Cold clients retain the Supabase migration fallback.
+      // warm clients. Cold clients only retain the Supabase migration fallback
+      // when it has been explicitly enabled.
       if (cached) return filterRecentlyVerifiedSpecials(cached);
+      if (!config.allowDirectCatalogueFallback) {
+        throw new Error("Catalogue CDN unavailable; direct Supabase fallback is disabled");
+      }
     }
   }
 
