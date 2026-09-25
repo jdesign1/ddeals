@@ -1,4 +1,5 @@
 import Image from "next/image";
+import FaqAccordion from "./FaqAccordion";
 
 const APP_URL = "https://app.dodgydeal.co.nz";
 const BRAND_LOGO = "/logo.svg";
@@ -178,40 +179,7 @@ export default function Home() {
           <h2 id="faq-title">Frequently asked questions</h2>
           <p>Got a question? Here’s the lowdown on finding better supermarket specials.</p>
         </div>
-        <div className="faq-list">
-          <details className="faq-item">
-            <summary>What is Dodgy Deal?</summary>
-            <p>Dodgy Deal helps you figure out whether a supermarket special is a genuine saving—or just a “special” price that isn’t quite the bargain it’s made out to be.</p>
-          </details>
-          <details className="faq-item">
-            <summary>How does Dodgy Deal decide if a deal is genuine?</summary>
-            <p>It checks today’s price against the product’s recent price history, so you can see whether you’re getting a decent saving, a small discount, or a special that looks a bit dodgy.</p>
-          </details>
-          <details className="faq-item">
-            <summary>What do “Real Deal”, “Fair Deal”, and “Dodgy Deal” mean?</summary>
-            <p>A Real Deal looks like a worthwhile saving. A Fair Deal is a genuine discount, but not a huge one. A Dodgy Deal means the special may not be the saving it first appears to be.</p>
-          </details>
-          <details className="faq-item">
-            <summary>Which supermarkets does Dodgy Deal cover?</summary>
-            <p>Dodgy Deal compares products and prices from participating supermarkets across Aotearoa. What’s available can vary depending on the supermarket and the product.</p>
-          </details>
-          <details className="faq-item">
-            <summary>Can I compare prices between supermarkets?</summary>
-            <p>Yep. Search for a product to compare current prices and find cheaper options at other supermarkets—handy when you’re trying to make the grocery budget stretch a bit further.</p>
-          </details>
-          <details className="faq-item">
-            <summary>How much price history does the app show?</summary>
-            <p>The app uses up to 90 days of price history, giving you a better idea of how a product’s price has moved over time—not just what it costs today.</p>
-          </details>
-          <details className="faq-item">
-            <summary>What if there isn’t enough price history for a product?</summary>
-            <p>Sometimes Dodgy Deal will say it’s still checking rather than make a call. That simply means we need a bit more history before we can give you a useful, reliable verdict.</p>
-          </details>
-          <details className="faq-item">
-            <summary>Can Dodgy Deal tell me whether to buy now or wait?</summary>
-            <p>It gives you the price context and shopping tips to help decide whether today’s price is worth popping in the trolley—or whether it might pay to wait.</p>
-          </details>
-        </div>
+        <FaqAccordion />
       </section>
 
       <footer className="site-footer">

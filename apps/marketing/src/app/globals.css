@@ -62,12 +62,14 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .faq-intro { margin-bottom: 32px; }
 .faq-list { border-top: 1px solid var(--line); }
 .faq-item { border-bottom: 1px solid var(--line); }
-.faq-item summary { min-height: 72px; padding: 22px 44px 22px 0; position: relative; display: flex; align-items: center; cursor: pointer; list-style: none; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.02rem; font-weight: 700; line-height: 1.35; }
-.faq-item summary::-webkit-details-marker { display: none; }
-.faq-item summary::after { content: "+"; position: absolute; top: 50%; right: 2px; color: var(--fair); font-size: 1.65rem; font-weight: 400; line-height: 1; transform: translateY(-53%); transition: transform .18s ease-out; }
-.faq-item[open] summary::after { content: "−"; transform: translateY(-53%); }
-.faq-item summary:focus-visible { outline: 3px solid rgba(7, 155, 96, .28); outline-offset: 5px; border-radius: 4px; }
-.faq-item p { max-width: 700px; margin: -4px 0 24px; padding-right: 40px; color: var(--ink-soft); font-size: .92rem; line-height: 1.58; }
+.faq-question { margin: 0; }
+.faq-trigger { width: 100%; min-height: 72px; padding: 22px 44px 22px 0; position: relative; display: flex; align-items: center; justify-content: space-between; gap: 20px; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.02rem; font-weight: 700; line-height: 1.35; }
+.faq-trigger:focus-visible { outline: 3px solid rgba(7, 155, 96, .28); outline-offset: 5px; border-radius: 4px; }
+.faq-trigger-icon { position: absolute; top: 50%; right: 2px; color: var(--fair); font-size: 1.65rem; font-weight: 400; line-height: 1; transform: translateY(-53%); }
+.faq-answer { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .28s ease-out, opacity .2s ease-out; }
+.faq-answer--open { grid-template-rows: 1fr; opacity: 1; }
+.faq-answer__inner { min-height: 0; overflow: hidden; }
+.faq-answer p { max-width: 700px; margin: -4px 0 24px; padding-right: 40px; color: var(--ink-soft); font-size: .92rem; line-height: 1.58; }
 .site-footer { max-width: 1180px; margin: 0 auto; padding: 24px 32px 42px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); color: var(--ink-soft); }.site-footer .logo-lockup { color: var(--ink); font-size: 1rem; }.site-footer .logo-lockup img { width: 30px; height: 30px; }.footer-links { display: flex; gap: 20px; font-size: .78rem; }.footer-links a:hover { color: var(--fair); }
 
 @media (max-width: 900px) { .download-hero-inner { grid-template-columns: minmax(0, 1fr) minmax(350px, .85fr); gap: 12px; }.download-copy h1 { font-size: clamp(2.1rem, 4.2vw, 3rem); }.feature-grid { gap: 18px; }.feature-card h3 { font-size: 1.02rem; } }
@@ -77,7 +79,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
   .site-header { min-height: 76px; padding: 13px 20px; }.logo-lockup { gap: 9px; font-size: 1.1rem; }.logo-lockup img { width: 32px; height: 32px; }.header-nav { gap: 14px; }.header-link { font-size: .78rem; }
   .download-hero-inner { min-height: 0; padding: 38px 20px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 20px; }.download-copy { text-align: center; }.download-copy h1 { max-width: 520px; margin-left: auto; margin-right: auto; font-size: clamp(2.05rem, 8.5vw, 2.75rem); }.download-copy p { max-width: 34rem; margin-left: auto; margin-right: auto; font-size: .95rem; }.store-badge { margin: 0 auto; }.download-visual { min-height: 0; height: auto; }.hero-animation__stage { width: 100%; }
   .feature-section, .feature-section-secondary { padding: 62px 20px 26px; }.feature-section-secondary { padding-top: 70px; padding-bottom: 64px; }.section-intro { margin-bottom: 32px; }.section-intro h2 { font-size: clamp(1.65rem, 7vw, 2.05rem); }.section-intro p { max-width: 34rem; margin-inline: auto; font-size: .9rem; }.feature-grid { grid-template-columns: 1fr; gap: 40px; }.feature-image { max-width: 520px; margin: 0 auto; }.feature-image-graph img { transform: scale(1.18); }.feature-card h3 { margin-top: 17px; font-size: 1.02rem; }.feature-card p { max-width: 34rem; font-size: .9rem; }
-  .closing-cta { margin: 0 20px 52px; padding: 34px 20px 38px; border-radius: 22px; }.closing-cta h2 { font-size: clamp(1.6rem, 6.5vw, 2rem); }.closing-cta p { max-width: 34rem; font-size: .9rem; }.faq-section { margin-bottom: 64px; padding: 0 20px; }.faq-item summary { min-height: 68px; padding-top: 20px; padding-bottom: 20px; font-size: .96rem; }.faq-item p { padding-right: 24px; font-size: .88rem; }.site-footer { padding: 22px 20px 34px; gap: 18px; align-items: start; }.site-footer .logo-lockup { font-size: .9rem; }.footer-links { max-width: 170px; justify-content: flex-end; gap: 10px 12px; font-size: .7rem; }
+  .closing-cta { margin: 0 20px 52px; padding: 34px 20px 38px; border-radius: 22px; }.closing-cta h2 { font-size: clamp(1.6rem, 6.5vw, 2rem); }.closing-cta p { max-width: 34rem; font-size: .9rem; }.faq-section { margin-bottom: 64px; padding: 0 20px; }.faq-trigger { min-height: 68px; padding-top: 20px; padding-bottom: 20px; font-size: .96rem; }.faq-answer p { padding-right: 24px; font-size: .88rem; }.site-footer { padding: 22px 20px 34px; gap: 18px; align-items: start; }.site-footer .logo-lockup { font-size: .9rem; }.footer-links { max-width: 170px; justify-content: flex-end; gap: 10px 12px; font-size: .7rem; }
 }
 
 @media (max-width: 420px) { .header-nav { gap: 10px; }.header-link { font-size: .72rem; }.feature-image { aspect-ratio: 1.48; }.footer-links { flex-wrap: wrap; justify-content: flex-end; } }
@@ -97,7 +99,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 
 @media (prefers-reduced-motion: reduce) {
   .logo-mascot { animation: none; }
-  .feature-card, .feature-card h3, .feature-image img { transition: none; }
+  .feature-card, .feature-card h3, .feature-image img, .faq-answer { transition: none; }
   .hero-animation__stage { transition: none; }
   .hero-animation__mascot { animation: none; opacity: 1; transform: none; }
 }
