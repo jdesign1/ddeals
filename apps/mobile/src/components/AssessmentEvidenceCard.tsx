@@ -201,7 +201,7 @@ export default function AssessmentEvidenceCard({
                                 priceMovement.direction === "up" ? "text-alert-700" : "text-fair-700"
                               }`}
                             >
-                              Price is {priceMovement.amount} {priceMovement.direction === "up" ? "higher" : "lower"} than the recent normal price
+                              {priceMovement.amount} {priceMovement.direction === "up" ? "higher" : "lower"} than the recent normal price
                             </span>
                           )}
                         </Fragment>
