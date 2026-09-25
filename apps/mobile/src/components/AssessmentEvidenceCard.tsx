@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ArrowDown, ArrowUp, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import AssessmentText from "@/components/AssessmentText";
@@ -197,15 +197,10 @@ export default function AssessmentEvidenceCard({
                           </span>
                           {line.startsWith("Recent normal price:") && priceMovement && (
                             <span
-                              className={`mt-1 flex items-center gap-1.5 text-sm font-bold ${
+                              className={`mt-1 text-sm font-bold ${
                                 priceMovement.direction === "up" ? "text-alert-700" : "text-fair-700"
                               }`}
                             >
-                              {priceMovement.direction === "up" ? (
-                                <ArrowUp className="h-4 w-4 flex-shrink-0" strokeWidth={3} aria-hidden="true" />
-                              ) : (
-                                <ArrowDown className="h-4 w-4 flex-shrink-0" strokeWidth={3} aria-hidden="true" />
-                              )}
                               Price is {priceMovement.amount} {priceMovement.direction === "up" ? "higher" : "lower"} than the recent normal price
                             </span>
                           )}
