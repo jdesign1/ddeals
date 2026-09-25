@@ -60,7 +60,7 @@ function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
     <div className="relative isolate overflow-visible pt-10">
       <motion.div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-8 left-1/2 z-0 -translate-x-1/2"
+        className="pointer-events-none absolute -top-6 left-1/2 z-0 -translate-x-1/2"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 28, scale: 0.78 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={
