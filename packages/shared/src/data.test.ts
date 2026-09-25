@@ -35,6 +35,7 @@ import {
   type ProductCard,
   type SupabaseRestConfig,
 } from "./data.ts";
+import { createCatalogueArtifact } from "./catalogue-artifact.ts";
 import {
   readCatalogueCache,
   readCatalogueCacheMetadata,
@@ -800,6 +801,57 @@ test("loadLiveProducts: a warm IndexedDB cache hit checks the marker but skips t
     assert.deepEqual(result, cachedProducts);
     assert.equal(calls.length, 1, "expected one marker check and no full catalogue fetch");
     assert.ok(calls[0].includes("catalogue_publications"));
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: prefers the CDN artifact and does not query Supabase", async () => {
+  const products = [fakeProductCard("cdn-product")];
+  const config = { ...fakeConfig("cdn-artifact"), catalogueUrl: "https://cdn.example.com/catalogue/latest.json" };
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url !== config.catalogueUrl) throw new Error(`unexpected origin request: ${url}`);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => createCatalogueArtifact(products, Date.parse("2026-08-26T14:00:00Z")),
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(config);
+    assert.deepEqual(result, products);
+    assert.deepEqual(calls, [config.catalogueUrl]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: a CDN outage serves warm cache without a Supabase fallback storm", async () => {
+  const cachedProducts = [fakeProductCard("cdn-stale")];
+  const sourceUpdatedAt = Date.parse("2026-08-26T14:00:00Z");
+  await writeCatalogueCache(cachedProducts, sourceUpdatedAt);
+  await writeCataloguePublicationCheck(
+    sourceUpdatedAt,
+    Date.now() - CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS - 1,
+  );
+  const config = { ...fakeConfig("cdn-outage"), catalogueUrl: "https://cdn.example.com/catalogue/latest.json" };
+
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    calls.push(String(input));
+    throw new Error("cdn unavailable");
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(config);
+    assert.deepEqual(result, cachedProducts);
+    assert.deepEqual(calls, [config.catalogueUrl]);
   } finally {
     globalThis.fetch = original;
   }

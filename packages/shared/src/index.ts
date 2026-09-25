@@ -3,6 +3,7 @@ export * from "./supabase.ts";
 export * from "./data.ts";
 export * from "./lists.ts";
 export * from "./catalogue-cache.ts";
+export * from "./catalogue-artifact.ts";
 export * from "./deal-detail.ts";
 export * from "./deal-checks.ts";
 export * from "./error-messages.ts";
