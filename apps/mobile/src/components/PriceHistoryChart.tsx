@@ -272,7 +272,11 @@ export default function PriceHistoryChart({
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           className="block h-64 w-full"
           role="img"
-          aria-label="Price history over the last 90 days, with on-special periods highlighted and a verdict-coloured fade below each line"
+          aria-label={
+            showingAllStores
+              ? "Price history over the last 90 days, with each supermarket shown in its own colour and matching fade"
+              : "Price history over the last 90 days, with on-special periods highlighted and a verdict-coloured fade below the line"
+          }
         >
           {gridValues.map((value) => {
             const y = yFor(value);
@@ -290,16 +294,16 @@ export default function PriceHistoryChart({
             {coordinatesBySeries.map((series, index) =>
               !hasDrawableArea(series.coordinates) ? null : (
                 <linearGradient
-                  key={`verdict-fade-${index}`}
-                  id={`verdict-fade-${index}`}
+                  key={`series-fade-${index}`}
+                  id={`series-fade-${index}`}
                   gradientUnits="userSpaceOnUse"
                   x1="0"
                   y1={PLOT_TOP}
                   x2="0"
                   y2={PLOT_BOTTOM}
                 >
-                  <stop offset="0%" stopColor={series.verdictColor} stopOpacity="0.18" />
-                  <stop offset="100%" stopColor={series.verdictColor} stopOpacity="0" />
+                  <stop offset="0%" stopColor={showingAllStores ? series.color : series.verdictColor} stopOpacity="0.18" />
+                  <stop offset="100%" stopColor={showingAllStores ? series.color : series.verdictColor} stopOpacity="0" />
                 </linearGradient>
               )
             )}
@@ -314,7 +318,7 @@ export default function PriceHistoryChart({
               .join(" ");
             const areaPath = `${linePath} L ${last.x} ${PLOT_BOTTOM} L ${first.x} ${PLOT_BOTTOM} Z`;
 
-            return <path key={`verdict-area-${index}`} d={areaPath} fill={`url(#verdict-fade-${index})`} />;
+            return <path key={`series-area-${index}`} d={areaPath} fill={`url(#series-fade-${index})`} />;
           })}
 
           {coordinatesBySeries.map((series) =>
@@ -327,7 +331,7 @@ export default function PriceHistoryChart({
                   x2={next.x}
                   y1={coordinate.y}
                   y2={next.y}
-                  stroke={series.verdictColor}
+                  stroke={showingAllStores ? series.color : series.verdictColor}
                   strokeWidth="3"
                   strokeLinecap="round"
                   initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}

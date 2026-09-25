@@ -30,6 +30,13 @@ import {
   writeCatalogueCacheMetadata,
   writeCataloguePublicationCheck,
 } from "./catalogue-cache.ts";
+import {
+  createCatalogueArtifact,
+  parseCatalogueArtifact,
+  parseCatalogueVersion,
+  type CatalogueArtifact,
+  type CatalogueVersion,
+} from "./catalogue-artifact.ts";
 import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
 import { MATERIAL_OVER_NORMAL_THRESHOLD, REAL_SAVER_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
@@ -181,6 +188,12 @@ export interface ProductCard {
 export interface SupabaseRestConfig {
   url: string;
   anonKey: string;
+  /** Optional public JSON endpoint served through a CDN or Vercel CDN route. */
+  catalogueUrl?: string;
+  /** Small CDN-cached publication marker; the full catalogue is fetched only when it changes. */
+  catalogueVersionUrl?: string;
+  /** Temporary migration escape hatch; keep disabled on the launch path. */
+  allowDirectCatalogueFallback?: boolean;
 }
 
 export const STORE_DISPLAY_FALLBACK: Record<string, string> = {
@@ -909,6 +922,36 @@ function fetchLatestPublicationTimestampDeduped(config: SupabaseRestConfig): Pro
   return promise;
 }
 
+/** Server-side publisher helper for the small CDN-cached version endpoint. */
+export function fetchCataloguePublicationTimestamp(config: SupabaseRestConfig): Promise<number | null> {
+  return fetchLatestPublicationTimestampDeduped(config);
+}
+
+async function fetchCatalogueArtifact(
+  catalogueUrl: string,
+  cacheMode: "default" | "no-store" = "default"
+): Promise<CatalogueArtifact> {
+  const response = await fetch(catalogueUrl, { cache: cacheMode });
+  if (!response.ok) throw new Error(`Catalogue artifact -> HTTP ${response.status}`);
+  return parseCatalogueArtifact(await response.json());
+}
+
+async function fetchCatalogueVersion(
+  catalogueVersionUrl: string,
+  cacheMode: "default" | "no-store" = "default"
+): Promise<CatalogueVersion> {
+  const response = await fetch(catalogueVersionUrl, { cache: cacheMode });
+  if (!response.ok) throw new Error(`Catalogue version -> HTTP ${response.status}`);
+  return parseCatalogueVersion(await response.json());
+}
+
+/** Builds the public payload without using browser-only IndexedDB state. */
+export async function buildCatalogueArtifact(config: SupabaseRestConfig): Promise<CatalogueArtifact> {
+  const fresh = await loadLiveProductsUncached(config);
+  const sourceUpdatedAt = (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt;
+  return createCatalogueArtifact(filterRecentlyVerifiedSpecials(fresh.products), sourceUpdatedAt);
+}
+
 /**
  * An explicit publication invalidation means the marker cooldown must not
  * hide a newly published version. The timestamp also forces a fresh fetch if
@@ -1188,8 +1231,8 @@ function loadLiveProductsDeduped(
  * specifically about egress efficiency -- checks the persistent, cross-
  * session IndexedDB cache (`catalogue-cache.ts`, a direct port of
  * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
- * browser, within its 6-hour TTL) skips the full catalogue network fetch when
- * the cheap published-cache timestamp has not advanced --
+ * browser, within its 6-hour TTL) skips the full catalogue network fetch while
+ * the CDN version marker remains within its cooldown and unchanged --
  * `dodgy_deals` AND `buildMatchIndex()`'s canonical-product fetch, not just
  * one of them. Only on a miss does this fall through to the in-memory
  * dedup + real network fetch, then best-effort writes the result back to
@@ -1207,9 +1250,84 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
   const cacheKey = `${config.url}::${config.anonKey}`;
   const markerInvalidated = publicationMarkerInvalidations.has(cacheKey);
   let markerAdvanced = false;
-  if (cached) {
-    const metadata = await readCatalogueCacheMetadata();
+  const metadata = cached ? await readCatalogueCacheMetadata() : null;
+
+  if (config.catalogueUrl) {
     const markerCheckedAt = metadata?.publicationCheckedAt ?? 0;
+    if (
+      cached
+      && Date.now() - markerCheckedAt < CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS
+      && !markerInvalidated
+    ) {
+      return filterRecentlyVerifiedSpecials(cached);
+    }
+
+    try {
+      let expectedSourceUpdatedAt: number | null = null;
+      if (config.catalogueVersionUrl) {
+        try {
+          const version = await fetchCatalogueVersion(config.catalogueVersionUrl);
+          expectedSourceUpdatedAt = version.sourceUpdatedAt;
+          if (
+            cached
+            && version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)
+          ) {
+            await writeCataloguePublicationCheck(version.sourceUpdatedAt);
+            publicationMarkerInvalidations.delete(cacheKey);
+            return filterRecentlyVerifiedSpecials(cached);
+          }
+        } catch {
+          // A warm client can safely retain its last good copy when the tiny
+          // version endpoint is unavailable; do not turn this into a full
+          // catalogue request against Supabase.
+          if (cached) {
+            await writeCataloguePublicationCheck(null);
+            publicationMarkerInvalidations.delete(cacheKey);
+            return filterRecentlyVerifiedSpecials(cached);
+          }
+        }
+      }
+
+      const artifact = await fetchCatalogueArtifact(config.catalogueUrl);
+      if (
+        cached
+        && expectedSourceUpdatedAt !== null
+        && (artifact.sourceUpdatedAt === null || artifact.sourceUpdatedAt < expectedSourceUpdatedAt)
+      ) {
+        // The manifest and immutable/full-artifact caches can revalidate at
+        // slightly different times. Do not replace a good local copy with an
+        // artifact older than the version the manifest promised.
+        return filterRecentlyVerifiedSpecials(cached);
+      }
+      if (
+        cached
+        && artifact.sourceUpdatedAt !== null
+        && artifact.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)
+      ) {
+        await writeCataloguePublicationCheck(artifact.sourceUpdatedAt);
+        publicationMarkerInvalidations.delete(cacheKey);
+        return filterRecentlyVerifiedSpecials(cached);
+      }
+      if (artifact.products.length > 0) {
+        await writeCatalogueCache(artifact.products, artifact.sourceUpdatedAt);
+        publicationMarkerInvalidations.delete(cacheKey);
+        return filterRecentlyVerifiedSpecials(artifact.products);
+      }
+      if (cached) return filterRecentlyVerifiedSpecials(cached);
+    } catch {
+      // A CDN outage must not turn into a direct full-feed request storm for
+      // warm clients. Cold clients only retain the Supabase migration fallback
+      // when it has been explicitly enabled.
+      if (cached) return filterRecentlyVerifiedSpecials(cached);
+      if (!config.allowDirectCatalogueFallback) {
+        throw new Error("Catalogue CDN unavailable; direct Supabase fallback is disabled");
+      }
+    }
+  }
+
+  if (cached) {
+    const cachedMetadata = metadata ?? await readCatalogueCacheMetadata();
+    const markerCheckedAt = cachedMetadata?.publicationCheckedAt ?? 0;
     if (
       Date.now() - markerCheckedAt < CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS
       && !markerInvalidated
@@ -1235,7 +1353,7 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     // A legacy record without a marker is treated as older than any known
     // server marker, so deploying this contract cannot leave old browsers
     // pinned to stale data for the remainder of the six-hour display TTL.
-    if (latestSourceUpdatedAt !== null && latestSourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+    if (latestSourceUpdatedAt !== null && latestSourceUpdatedAt <= (cachedMetadata?.sourceUpdatedAt ?? 0)) {
       await writeCataloguePublicationCheck(latestSourceUpdatedAt);
       publicationMarkerInvalidations.delete(cacheKey);
       return filterRecentlyVerifiedSpecials(cached);
@@ -1309,12 +1427,51 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
       };
     }
 
-    const fresh = await loadLiveProductsDeduped(config, true);
-    const sourceUpdatedAt = fresh.products.length
-      ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
-      : fresh.sourceUpdatedAt;
+    let fresh: LiveProductsLoadResult;
+    if (config.catalogueUrl) {
+      const cached = await readCatalogueCache();
+      try {
+        let expectedSourceUpdatedAt: number | null = null;
+        if (config.catalogueVersionUrl && cached) {
+          try {
+            const version = await fetchCatalogueVersion(config.catalogueVersionUrl, "no-store");
+            expectedSourceUpdatedAt = version.sourceUpdatedAt;
+            const metadata = await readCatalogueCacheMetadata();
+            if (version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+              await writeCataloguePublicationCheck(version.sourceUpdatedAt);
+              publicationMarkerInvalidations.delete(cacheKey);
+              return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+            }
+          } catch {
+            return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+          }
+        }
+        const artifact = await fetchCatalogueArtifact(config.catalogueUrl, "no-store");
+        if (
+          cached
+          && expectedSourceUpdatedAt !== null
+          && (artifact.sourceUpdatedAt === null || artifact.sourceUpdatedAt < expectedSourceUpdatedAt)
+        ) {
+          return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+        }
+        fresh = { products: artifact.products, sourceUpdatedAt: artifact.sourceUpdatedAt };
+      } catch (error) {
+        if (cached) {
+          return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+        }
+        throw error;
+      }
+    } else {
+      fresh = await loadLiveProductsDeduped(config, true);
+    }
+    const sourceUpdatedAt = config.catalogueUrl
+      ? fresh.sourceUpdatedAt
+      : fresh.products.length
+        ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
+        : fresh.sourceUpdatedAt;
     if (fresh.products.length) await writeCatalogueCache(fresh.products, sourceUpdatedAt);
     else await writeCatalogueCacheMetadata(Date.now(), sourceUpdatedAt);
+    publicationMarkerInvalidations.delete(cacheKey);
     const refreshEntry = __liveProductsRefreshes.get(cacheKey);
     if (refreshEntry) {
       refreshEntry.lastSuccessfulRefreshAt = Date.now();

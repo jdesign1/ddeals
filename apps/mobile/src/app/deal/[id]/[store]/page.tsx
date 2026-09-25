@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertTriangle, ChevronDown, Clock3, Info, Share, ShieldCheck, X } from "lucide-react";
 import {
   loadLiveProducts,
@@ -50,6 +50,7 @@ import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
 import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
+import WinkMascot from "@/components/WinkMascot";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
 
 /**
@@ -181,6 +182,58 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
 
 function getEvidenceSummary(verdict: AssessmentVerdict): string | null {
   return isUncertainAssessment(verdict) ? "Needs more history" : "See the evidence";
+}
+
+function AssessmentBadge({
+  children,
+  className,
+  animationKey,
+}: {
+  children: ReactNode;
+  className?: string;
+  animationKey: string;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.h2
+      key={animationKey}
+      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.84 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0 }
+          : { delay: 0.16, type: "spring", stiffness: 420, damping: 18, mass: 0.7 }
+      }
+      style={{ transformOrigin: "center" }}
+      className={className}
+    >
+      {children}
+    </motion.h2>
+  );
+}
+
+function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <div className="relative isolate overflow-visible">
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-12 left-4 z-0"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 28, scale: 0.78 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { delay: 0.2, type: "spring", stiffness: 360, damping: 18, mass: 0.7 }
+        }
+      >
+        <WinkMascot className="wink-mascot--evidence" />
+      </motion.div>
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
 }
 
 const STORE_TEXT_COLOR: Record<string, string> = {
@@ -858,20 +911,19 @@ export default function DealAssessmentPage() {
           <h4 className="dd-type-control mb-1 font-display font-extrabold text-stone-900">
             <AssessmentText text={assessmentSummary.heading} />
           </h4>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-stone-600">
-            <AssessmentText text={assessmentSummary.body} />
-          </p>
           {crossStoreSpecialSummary && (
             <p className="mt-2 text-sm leading-relaxed text-stone-600">
               <AssessmentText text={crossStoreSpecialSummary} />
             </p>
           )}
           {evidenceSummary && (
-            <AssessmentEvidenceCard
-              deal={selectedDeal}
-              verdict={verdict}
-              evidenceSummary={evidenceSummary}
-            />
+            <EvidenceTableWithMascot>
+              <AssessmentEvidenceCard
+                deal={selectedDeal}
+                verdict={verdict}
+                evidenceSummary={evidenceSummary}
+              />
+            </EvidenceTableWithMascot>
           )}
         </div>
 
@@ -908,9 +960,12 @@ export default function DealAssessmentPage() {
       ) : (
         <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex items-center justify-between">
-            <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
+            <AssessmentBadge
+              animationKey={`assessment-${product.id}-${dealStore}-${verdict}`}
+              className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}
+            >
               {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
-            </h2>
+            </AssessmentBadge>
             <DealActions productId={product.id} productName={product.name} />
           </div>
 
@@ -952,15 +1007,14 @@ export default function DealAssessmentPage() {
             <h4 className="dd-type-section mb-1 text-stone-900">
               <AssessmentText text={assessmentSummary.heading} />
             </h4>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-stone-600">
-              <AssessmentText text={assessmentSummary.body} />
-            </p>
             {evidenceSummary && (
-              <AssessmentEvidenceCard
-                deal={selectedDeal}
-                verdict={verdict}
-                evidenceSummary={evidenceSummary}
-              />
+              <EvidenceTableWithMascot>
+                <AssessmentEvidenceCard
+                  deal={selectedDeal}
+                  verdict={verdict}
+                  evidenceSummary={evidenceSummary}
+                />
+              </EvidenceTableWithMascot>
             )}
           </div>
 
