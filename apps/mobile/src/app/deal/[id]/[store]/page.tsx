@@ -548,7 +548,7 @@ export default function DealAssessmentPage() {
   // screen either way), it just shows/hides one inline section, so a
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
-  const [priceHistoryTab, setPriceHistoryTab] = useState<"price-tips" | "90-day-view">("price-tips");
+  const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("should-buy");
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
@@ -1268,30 +1268,62 @@ export default function DealAssessmentPage() {
         )}
 
       <div className="space-y-3">
-        {/* Keep quick price tips separate from the detailed chart and timing
-            read. The first tab is the default for the fastest answer. */}
+        {/* The graph stays visible as the default 90-day view. The decision
+            tabs below it keep the practical recommendation separate from the
+            supporting price tips. */}
         <div className="space-y-4">
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
             <div>
-              {/* "Price History Insights" section title + subtitle moved
-                  IN HERE (2026-08-20, per Jay's ask) from a standalone
-                  heading above both cards -- now sits inside this first
-                  card specifically, not floating above the whole section. */}
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>
-              {/* Both tabs use sentence-sized explanatory copy. The chart is
-                  selected only in the 90-day view; price tips stay focused on
-                  the compact history tiles and the multi-store comparison. */}
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
-                {priceHistoryTab === "90-day-view"
-                  ? "See how the price has moved and get a cautious timing suggestion."
-                  : "Quick takeaways from the last 90 days of price history."}
+                See how the price has moved over the last 90 days.
               </p>
             </div>
+            <PriceHistoryChart
+              points={priceHistoryPoints}
+              currentPrice={historyDeal?.price ?? selectedDeal.price}
+              currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
+              currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
+              comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
+              loading={priceHistoryLoadingForSelection}
+              error={priceHistoryErrorForSelection}
+              historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
+              legacySingleStorePresentation={!isMultiStoreDeal}
+              storeOptions={historyStoreOptions}
+              selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
+              onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
+              verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
+            />
+          </div>
+          <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
             <div
               className="flex items-center gap-0.5 rounded-lg bg-stone-200 p-1 shadow-inner shadow-black/5"
               role="tablist"
               aria-label="Price history views"
             >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={priceHistoryTab === "should-buy"}
+                onClick={() => setPriceHistoryTab("should-buy")}
+                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                  priceHistoryTab === "should-buy" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <AnimatePresence initial={false}>
+                  {priceHistoryTab === "should-buy" && (
+                    <motion.span
+                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
+                      style={{ zIndex: -1 }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </AnimatePresence>
+                Should you buy?
+              </button>
               <button
                 type="button"
                 role="tab"
@@ -1315,46 +1347,11 @@ export default function DealAssessmentPage() {
                 </AnimatePresence>
                 Price tips
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={priceHistoryTab === "90-day-view"}
-                onClick={() => setPriceHistoryTab("90-day-view")}
-                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryTab === "90-day-view" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <AnimatePresence initial={false}>
-                  {priceHistoryTab === "90-day-view" && (
-                    <motion.span
-                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
-                      style={{ zIndex: -1 }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                </AnimatePresence>
-                90 day view
-              </button>
             </div>
-            {priceHistoryTab === "90-day-view" ? (
-              <PriceHistoryChart
-                points={priceHistoryPoints}
-                currentPrice={historyDeal?.price ?? selectedDeal.price}
-                currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
-                currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
-                comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
-                loading={priceHistoryLoadingForSelection}
-                error={priceHistoryErrorForSelection}
-                historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
-                legacySingleStorePresentation={!isMultiStoreDeal}
-                storeOptions={historyStoreOptions}
-                selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
-                onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
-                verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
-              />
+            {priceHistoryTab === "should-buy" ? (
+              !priceHistoryLoadingForSelection && !priceHistoryErrorForSelection ? (
+                <PriceTimingRecommendation series={priceTimingSeries} />
+              ) : null
             ) : (
               <>
                 <div className="space-y-3">
@@ -1384,9 +1381,6 @@ export default function DealAssessmentPage() {
                   </div>
                 )}
               </>
-            )}
-            {priceHistoryTab === "90-day-view" && !priceHistoryLoadingForSelection && !priceHistoryErrorForSelection && (
-              <PriceTimingRecommendation series={priceTimingSeries} />
             )}
           </div>
         </div>

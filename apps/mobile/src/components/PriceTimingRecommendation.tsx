@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Eye, ListPlus, ShoppingCart, Timer } from "lucide-react";
+import { Eye, ListPlus, ShoppingCart, Timer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { buildPriceTimingSignal, type PriceHistoryPoint, type PriceTimingAction, type PriceTimingSignal } from "@dodgey-deals/shared";
 
@@ -45,26 +45,19 @@ function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore
   const signal = buildPriceTimingSignal(series.points, series.currentPrice, series.currentIsSpecial);
   const action = ACTION_STYLE[signal.action];
   const ActionIcon = action.icon;
-  const MovementIcon = signal.direction === "up" ? ArrowUp : signal.direction === "down" ? ArrowDown : null;
 
   return (
     <div className="rounded-xl border border-stone-200/80 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          {showStore && <p className="dd-type-meta truncate text-stone-500">{series.store}</p>}
-          <p className="dd-type-control text-stone-900">Price timing</p>
-        </div>
+      <div className="min-w-0">
+        {showStore && <p className="dd-type-meta truncate text-stone-500">{series.store}</p>}
         <span className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold ${action.className}`}>
           <ActionIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
           {action.label}
         </span>
       </div>
-      <div className="mt-3 flex items-start gap-2 text-sm font-semibold text-stone-700">
-        {MovementIcon ? <MovementIcon className={`mt-0.5 h-4 w-4 flex-shrink-0 ${signal.direction === "up" ? "text-alert-600" : "text-fair-600"}`} strokeWidth={2.75} aria-hidden="true" /> : null}
-        <p>{movementCopy(signal)}</p>
-      </div>
+      <p className="mt-3 text-sm font-semibold text-stone-700">{movementCopy(signal)}</p>
       <p className="mt-2 text-sm leading-5 text-stone-600">{recommendationCopy(signal, series.currentIsSpecial)}</p>
-      <p className="mt-3 text-xs font-semibold text-stone-400">
+      <p className="mt-3 text-sm leading-5 font-normal text-stone-500">
         Based on {signal.observationCount} distinct recorded price{signal.observationCount === 1 ? "" : "s"}. History is a guide, not a guarantee.
       </p>
     </div>
@@ -76,20 +69,9 @@ export default function PriceTimingRecommendation({ series }: { series: PriceTim
 
   const showStore = series.length > 1;
   return (
-    <section className="space-y-3" aria-labelledby="price-timing-heading">
-      <div>
-        <h4 id="price-timing-heading" className="dd-type-section text-stone-900">
-          What should you do?
-        </h4>
-        <p className="mt-1 text-sm leading-5 text-stone-600">
-          A cautious read of the current price against the last 90 days.
-        </p>
-      </div>
-      <div className={showStore ? "space-y-2" : ""}>
-        {series.map((item) => (
-          <TimingRow key={item.store} series={item} showStore={showStore} />
-        ))}
-      </div>
-    </section>
+    <div className={showStore ? "space-y-2" : ""}>
+      {series.map((item) => (
+        <TimingRow key={item.store} series={item} showStore={showStore} />
+      ))}
   );
 }
