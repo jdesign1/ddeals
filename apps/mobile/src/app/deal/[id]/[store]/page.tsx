@@ -903,7 +903,12 @@ export default function DealAssessmentPage() {
             </p>
           )}
           {evidenceSummary && (
-            <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} />
+            <AssessmentEvidenceCard
+              deal={selectedDeal}
+              verdict={verdict}
+              evidenceSummary={evidenceSummary}
+              assessmentCopy={assessmentSummary.body}
+            />
           )}
         </div>
 
@@ -987,7 +992,12 @@ export default function DealAssessmentPage() {
               <AssessmentText text={assessmentSummary.heading} />
             </h4>
             {evidenceSummary && (
-              <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} />
+              <AssessmentEvidenceCard
+                deal={selectedDeal}
+                verdict={verdict}
+                evidenceSummary={evidenceSummary}
+                assessmentCopy={assessmentSummary.body}
+              />
             )}
           </div>
 

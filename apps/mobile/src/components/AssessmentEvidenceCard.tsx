@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertTriangle, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import AssessmentText from "@/components/AssessmentText";
 import WinkMascot from "@/components/WinkMascot";
 
 function getEvidenceDetails(deal: CurrentDeal) {
@@ -31,22 +32,6 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
   "Early read": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
 };
-
-function getConclusionText(verdict: AssessmentVerdict): string {
-  if (verdict === "Real Saver") {
-    return "This deal is marked as a Real Saver because the current price is meaningfully below the recent normal price.";
-  }
-  if (verdict === "Dodgy Deal") {
-    return "This deal is marked as a Dodgy Deal because the current price is not meaningfully below the recent normal price.";
-  }
-  if (verdict === "Fair Deal") {
-    return "This deal is marked as a Fair Deal because the price is close to the recent normal price rather than a standout saving.";
-  }
-  if (verdict === "Early read") {
-    return "There are some useful signals, but the history is still early. We need more recent checks before calling it a confirmed deal.";
-  }
-  return "There isn’t enough history yet to make a confident call, so we’ve kept the assessment cautious.";
-}
 
 function formatCount(value: number | null | undefined, singular: string, plural = `${singular}s`): string | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
@@ -81,10 +66,12 @@ export default function AssessmentEvidenceCard({
   deal,
   verdict,
   evidenceSummary,
+  assessmentCopy,
 }: {
   deal: CurrentDeal;
   verdict: AssessmentVerdict;
   evidenceSummary: string;
+  assessmentCopy: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
@@ -187,14 +174,13 @@ export default function AssessmentEvidenceCard({
                         {verdictBadge.label}
                       </span>
                     </h4>
-                    <p className="mt-3 text-[15px] leading-6 text-stone-700">
-                      {getConclusionText(verdict)}
+                    <p className="mt-3 whitespace-pre-line text-[15px] leading-6 text-stone-700">
+                      <AssessmentText text={assessmentCopy} />
+                    </p>
+                    <p className="mt-4 border-t border-stone-100 pt-3 text-sm leading-5 text-stone-500">
+                      More history makes the assessment more reliable.
                     </p>
                   </div>
-
-                  <p className="text-sm leading-5 text-stone-500">
-                    More history makes the assessment more reliable.
-                  </p>
                 </div>
               </motion.div>
             </>
