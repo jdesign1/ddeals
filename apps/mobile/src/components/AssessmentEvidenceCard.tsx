@@ -155,7 +155,7 @@ export default function AssessmentEvidenceCard({
                   </button>
                 </div>
 
-                <div className="space-y-4 overflow-y-auto px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-4">
+                <div className="space-y-4 overflow-y-auto px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-10">
                   {hasEvidenceCounts && (
                     <EvidenceTableWithMascot>
                       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
