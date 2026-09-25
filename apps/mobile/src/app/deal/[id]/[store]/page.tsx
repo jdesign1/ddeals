@@ -42,6 +42,7 @@ import { usePageHeader } from "@/lib/header-context";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import PriceHistoryChart, { ALL_STORES_VALUE } from "@/components/PriceHistoryChart";
+import PriceTimingRecommendation, { type PriceTimingSeries } from "@/components/PriceTimingRecommendation";
 import AssessmentText from "@/components/AssessmentText";
 import InsightCarousel from "@/components/InsightCarousel";
 import CheaperAlternativesSection from "@/components/CheaperAlternativesSection";
@@ -364,7 +365,7 @@ export default function DealAssessmentPage() {
   >({});
   const priceHistoryResult = priceHistoryKey ? priceHistoryResults[priceHistoryKey] : undefined;
   const priceHistoryLoading = priceHistoryKey != null && priceHistoryResult == null;
-  const priceHistoryPoints = priceHistoryResult?.points ?? [];
+  const priceHistoryPoints = useMemo(() => priceHistoryResult?.points ?? [], [priceHistoryResult]);
 
   const historyDealsToLoad = useMemo(
     () => (selectedHistoryStore === ALL_STORES_VALUE ? historyStoreDeals : historyDeal ? [historyDeal] : []),
@@ -547,7 +548,7 @@ export default function DealAssessmentPage() {
   // screen either way), it just shows/hides one inline section, so a
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
-  const [priceHistoryTab, setPriceHistoryTab] = useState<"insights" | "90-days">("90-days");
+  const [priceHistoryTab, setPriceHistoryTab] = useState<"price-tips" | "90-day-view">("price-tips");
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
@@ -628,6 +629,27 @@ export default function DealAssessmentPage() {
   // tab can still show its raw transition chart when that summary gate is not
   // met.
   const insights = useMemo(() => (activeDeal ? buildPriceHistoryInsights(activeDeal) : []), [activeDeal]);
+  const priceTimingSeries = useMemo<PriceTimingSeries[]>(
+    () =>
+      isAllHistorySelected
+        ? priceHistorySeries.map(({ store, points, currentPrice, currentIsSpecial }) => ({ store, points, currentPrice, currentIsSpecial }))
+        : [
+            {
+              store: effectiveHistoryStore,
+              points: priceHistoryPoints,
+              currentPrice: historyDeal?.price ?? activeDeal?.price ?? 0,
+              currentIsSpecial: historyDeal?.isOnSpecial ?? activeDeal?.isOnSpecial ?? false,
+            },
+          ],
+    [
+      effectiveHistoryStore,
+      historyDeal,
+      isAllHistorySelected,
+      priceHistoryPoints,
+      priceHistorySeries,
+      activeDeal,
+    ]
+  );
 
   if (loadError) {
     return (
@@ -1246,15 +1268,8 @@ export default function DealAssessmentPage() {
         )}
 
       <div className="space-y-3">
-        {/* Changed 2026-08-20 (per Jay's ask) from a swipeable InsightCarousel
-            (store-compare chart as slide 1, the insights grid as slide 2) to
-            two always-visible, stacked blocks -- both show at once now, no
-            swipe/dots. InsightCarousel.tsx itself was left in place but sat
-            unused for a day (flagged rather than deleted, in case another
-            screen wanted a swipeable card row later) -- that screen turned
-            up 2026-08-21, this same page's "Cheaper alternatives" section
-            (below), so the component is back in active use again just not
-            in this section. */}
+        {/* Keep quick price tips separate from the detailed chart and timing
+            read. The first tab is the default for the fastest answer. */}
         <div className="space-y-4">
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
             <div>
@@ -1262,65 +1277,14 @@ export default function DealAssessmentPage() {
                   IN HERE (2026-08-20, per Jay's ask) from a standalone
                   heading above both cards -- now sits inside this first
                   card specifically, not floating above the whole section. */}
-              <h4 className="dd-type-section text-stone-900">{isMultiStoreDeal ? "Price History" : "Price History Insights"}</h4>
-              {/* text-[13px] -> text-sm (14px) below, 2026-08-20, per Jay:
-                  "Increase all body texts on the deal assessment page to be
-                  14px for readability" -- scoped to actual sentence-level
-                  copy meant to be read (captions, explanatory paragraphs,
-                  status lines, this chart's own legend), matching sibling
-                  text that was already text-sm elsewhere on this page (e.g.
-                  the verdict explanation paragraphs just above this section).
-                  NOT applied to compact tag/label text (unit sizes, store
-                  short-codes, "Lowest price:"/brand-unit tags, the numeric
-                  badge counters) -- those are UI chrome by deliberate design
-                  (`tracking-wider` pill/tag styling matching the same
-                  convention `ProductListCard.tsx`/`ListItemProductCard.tsx`
-                  already use for their own tags), not body copy, and Jay's
-                  ask was specifically about reading text. Also not applied to
-                  button/link CTA labels ("View at X", "See cheaper options",
-                  "Go to X") -- already bold, short, and high-contrast, not a
-                  readability concern the same way paragraph copy is; flagged
-                  here rather than silently included or silently skipped. */}
-              {/* Simplified 2026-08-20 per Jay's ask ("too long for the user
-                  currently") -- was 3 separate sentences/paragraphs here
-                  (the "Lowest, highest, average..." summary, the "Compares
-                  the current price..." chart explainer, and a dynamic "X of
-                  Y supermarkets differ..." status line) totalling ~40 words.
-                  Cut to one line. The per-store colored delta badges on the
-                  chart itself (StoreCompareChart.tsx, always-visible even on
-                  touch, per that file's own header comment) plus the
-                  Cheaper/Pricier legend directly below already carry what
-                  the 3 old sentences were spelling out in prose -- this line
-                  now just orients the reader, doesn't restate the chart.
-                  Dynamic differing-count line dropped entirely rather than
-                  shortened -- same information (which stores differ, by how
-                  much) is already on the chart itself per-store, so a prose
-                  restatement of it added length without adding anything a
-                  user couldn't already see at a glance. Flagged as a real
-                  content decision, not just a wording trim, in case Jay
-                  wants that count back in some form. */}
-              {/* No longer gated on `insights.length > 0` (2026-08-21, per
-                  Jay: "some product items don't have the descriptive text
-                  ... it should be on all product items right?") -- this
-                  sentence describes TWO things: "each store's recent
-                  average" (the `StoreCompareChart` just below, which is
-                  ALWAYS rendered) and "its own last 90 days" (the
-                  `PriceHistoryInsightCard` grid further down, which IS
-                  genuinely conditional on real 90-day history existing --
-                  see `buildPriceHistoryInsights`'s own doc comment). Gating
-                  the whole sentence on the SECOND thing's availability was
-                  wrong -- any product below the 90-day sample floor
-                  (new-ish specials, thin history) still shows the chart
-                  with no explanation at all above it. Sentence text
-                  unchanged; it stays a fair, general orienting line even
-                  for a product where only the chart half of it applies
-                  today. */}
+              <h4 className="dd-type-section text-stone-900">90-day price history</h4>
+              {/* Both tabs use sentence-sized explanatory copy. The chart is
+                  selected only in the 90-day view; price tips stay focused on
+                  the compact history tiles and the multi-store comparison. */}
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
-                {priceHistoryTab === "90-days"
-                  ? isMultiStoreDeal
-                    ? "Shows price changes over the last 90 days."
-                    : "Shows price changes over the last 90 days, including special prices."
-                  : "This graph compares the current price at each supermarket with its recent average."}
+                {priceHistoryTab === "90-day-view"
+                  ? "See how the price has moved and get a cautious timing suggestion."
+                  : "Quick takeaways from the last 90 days of price history."}
               </p>
             </div>
             <div
@@ -1331,14 +1295,14 @@ export default function DealAssessmentPage() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={priceHistoryTab === "90-days"}
-                onClick={() => setPriceHistoryTab("90-days")}
+                aria-selected={priceHistoryTab === "price-tips"}
+                onClick={() => setPriceHistoryTab("price-tips")}
                 className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryTab === "90-days" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
+                  priceHistoryTab === "price-tips" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
                 <AnimatePresence initial={false}>
-                  {priceHistoryTab === "90-days" && (
+                  {priceHistoryTab === "price-tips" && (
                     <motion.span
                       className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
                       style={{ zIndex: -1 }}
@@ -1349,19 +1313,19 @@ export default function DealAssessmentPage() {
                     />
                   )}
                 </AnimatePresence>
-                90 days
+                Price tips
               </button>
               <button
                 type="button"
                 role="tab"
-                aria-selected={priceHistoryTab === "insights"}
-                onClick={() => setPriceHistoryTab("insights")}
+                aria-selected={priceHistoryTab === "90-day-view"}
+                onClick={() => setPriceHistoryTab("90-day-view")}
                 className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryTab === "insights" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
+                  priceHistoryTab === "90-day-view" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
                 <AnimatePresence initial={false}>
-                  {priceHistoryTab === "insights" && (
+                  {priceHistoryTab === "90-day-view" && (
                     <motion.span
                       className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
                       style={{ zIndex: -1 }}
@@ -1372,10 +1336,10 @@ export default function DealAssessmentPage() {
                     />
                   )}
                 </AnimatePresence>
-                Insights
+                90 day view
               </button>
             </div>
-            {priceHistoryTab === "90-days" ? (
+            {priceHistoryTab === "90-day-view" ? (
               <PriceHistoryChart
                 points={priceHistoryPoints}
                 currentPrice={historyDeal?.price ?? selectedDeal.price}
@@ -1393,34 +1357,38 @@ export default function DealAssessmentPage() {
               />
             ) : (
               <>
-            {/* `justify-end` -> `justify-center` (2026-08-21, per Jay:
-                "Centre the legend 'Recent average, Cheaper, Pricier' above
-                the graph") -- was right-aligned, no particular reason tied
-                to the chart below it (`StoreCompareChart` itself centers
-                its own per-store columns via `justify-around`), so centering
-                the legend directly above it reads as belonging to the chart
-                rather than just sitting in the card's corner. */}
-            <StoreCompareChart rows={barChartData} />
-              <div className="flex flex-wrap items-center justify-center gap-3">
-              <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
-                <span className="dd-chart-average-bar h-2 w-2 rounded-full" />
-                <span>Recent average</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-fair-700">
-                <span className="h-2 w-2 rounded-full bg-fair-600" />
-                <span>Cheaper</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-alert-700">
-                <span className="h-2 w-2 rounded-full bg-alert-600" />
-                <span>Pricier</span>
-              </div>
-            </div>
+                {isMultiStoreDeal && (
+                  <div className="space-y-3">
+                    <StoreCompareChart rows={barChartData} />
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
+                        <span className="dd-chart-average-bar h-2 w-2 rounded-full" />
+                        <span>Recent average</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-fair-700">
+                        <span className="h-2 w-2 rounded-full bg-fair-600" />
+                        <span>Cheaper</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-alert-700">
+                        <span className="h-2 w-2 rounded-full bg-alert-600" />
+                        <span>Pricier</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {insights.length > 0 ? (
+                  <PriceHistoryInsightCard insights={insights} verdict={verdict} />
+                ) : (
+                  <div className="rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
+                    <p className="text-sm leading-5 font-semibold text-stone-600">
+                      We need a little more history before price tips are reliable.
+                    </p>
+                  </div>
+                )}
               </>
             )}
-            {insights.length > 0 && (
-              <div className="border-t border-stone-100 pt-5">
-                <PriceHistoryInsightCard insights={insights} verdict={verdict} />
-              </div>
+            {priceHistoryTab === "90-day-view" && !priceHistoryLoadingForSelection && !priceHistoryErrorForSelection && (
+              <PriceTimingRecommendation series={priceTimingSeries} />
             )}
           </div>
         </div>

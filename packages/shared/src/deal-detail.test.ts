@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPriceHistoryInsights,
+  buildPriceTimingSignal,
   buildAssessmentSummaryCopy,
   findBestDodgyDeal,
   findDealForStore,
@@ -54,6 +55,45 @@ function fakeProduct(deals: CurrentDeal[]): ProductCard {
     description: "",
   };
 }
+
+function historyPoints(prices: number[]): { price: number; isSpecial: boolean; scrapedAt: string }[] {
+  return prices.map((price, index) => ({
+    price,
+    isSpecial: index > 0 && price < prices[index - 1],
+    scrapedAt: `2026-0${index + 1}-01T00:00:00Z`,
+  }));
+}
+
+test("buildPriceTimingSignal: recommends buying when the current special is near the 90-day low", () => {
+  const signal = buildPriceTimingSignal(historyPoints([10, 8, 9]), 8, true);
+
+  assert.equal(signal.action, "buy-now");
+  assert.equal(signal.direction, "down");
+  assert.equal(signal.priceChange, -1);
+  assert.equal(signal.low, 8);
+});
+
+test("buildPriceTimingSignal: recommends waiting when the current price is near the 90-day high", () => {
+  const signal = buildPriceTimingSignal(historyPoints([8, 9, 10]), 10, false);
+
+  assert.equal(signal.action, "wait");
+  assert.equal(signal.direction, "up");
+  assert.equal(signal.priceChange, 1);
+});
+
+test("buildPriceTimingSignal: watches mixed history instead of overstating a prediction", () => {
+  const signal = buildPriceTimingSignal(historyPoints([8, 10, 9]), 9, false);
+
+  assert.equal(signal.action, "watch");
+  assert.equal(signal.direction, "down");
+});
+
+test("buildPriceTimingSignal: adds to list when there are fewer than three distinct prices", () => {
+  const signal = buildPriceTimingSignal(historyPoints([8, 8]), 8, true);
+
+  assert.equal(signal.action, "add-to-list");
+  assert.equal(signal.observationCount, 1);
+});
 
 test("getStoreProductUrl: uses Woolworths NZ's live product search route", () => {
   assert.equal(

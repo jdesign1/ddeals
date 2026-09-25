@@ -36,7 +36,7 @@
  *    codebase (data.ts's own header comment).
  */
 
-import type { ProductCard, CurrentDeal } from "./data.ts";
+import type { ProductCard, CurrentDeal, PriceHistoryPoint } from "./data.ts";
 import { canonicalStoreKey, matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
 
 /** Real 5-store list for this app's live catalogue (see file header note). */
@@ -561,6 +561,114 @@ export interface PriceHistoryInsight {
   value: string;
   /** Optional smaller supporting line -- currently only "frequency" uses this. */
   detail?: string;
+}
+
+export type PriceTimingAction = "buy-now" | "wait" | "watch" | "add-to-list";
+export type PriceTimingDirection = "up" | "down" | "steady";
+
+export interface PriceTimingSignal {
+  action: PriceTimingAction;
+  direction: PriceTimingDirection;
+  currentPrice: number;
+  previousPrice: number | null;
+  priceChange: number | null;
+  priceChangePercentage: number | null;
+  low: number | null;
+  high: number | null;
+  average: number | null;
+  observationCount: number;
+}
+
+/**
+ * Turns the exact 90-day transition series into a cautious timing signal.
+ * This deliberately uses broad bands and requires three distinct prices
+ * before making a buy/wait call: price history can show where today's price
+ * sits in the observed range, but it cannot promise what a retailer will do
+ * next. Thin history therefore falls back to "add to list".
+ */
+export function buildPriceTimingSignal(
+  points: PriceHistoryPoint[],
+  currentPrice: number,
+  currentIsSpecial: boolean
+): PriceTimingSignal {
+  const validPoints = points
+    .filter(
+      (point) =>
+        Number.isFinite(point.price) &&
+        point.price > 0 &&
+        Number.isFinite(new Date(point.scrapedAt).getTime())
+    )
+    .sort((a, b) => new Date(a.scrapedAt).getTime() - new Date(b.scrapedAt).getTime());
+  const historicalPrices = validPoints.map((point) => point.price);
+  const distinctHistoricalPrices = historicalPrices.filter(
+    (price, index) => index === 0 || Math.abs(price - historicalPrices[index - 1]) >= 0.005
+  );
+  const validCurrentPrice = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : null;
+  const allPrices =
+    validCurrentPrice == null ||
+    (distinctHistoricalPrices.length > 0 && Math.abs(distinctHistoricalPrices[distinctHistoricalPrices.length - 1] - validCurrentPrice) < 0.005)
+      ? distinctHistoricalPrices
+      : [...distinctHistoricalPrices, validCurrentPrice];
+  const low = allPrices.length > 0 ? Math.min(...allPrices) : null;
+  const high = allPrices.length > 0 ? Math.max(...allPrices) : null;
+  const average = allPrices.length > 0 ? allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length : null;
+  const previousHistoricalPrice = distinctHistoricalPrices[distinctHistoricalPrices.length - 1] ?? null;
+  const previousPrice =
+    validCurrentPrice != null && previousHistoricalPrice != null && Math.abs(previousHistoricalPrice - validCurrentPrice) < 0.005
+      ? distinctHistoricalPrices[distinctHistoricalPrices.length - 2] ?? null
+      : previousHistoricalPrice;
+  const priceChange = validCurrentPrice != null && previousPrice != null ? validCurrentPrice - previousPrice : null;
+  const priceChangePercentage = priceChange != null && previousPrice > 0 ? (priceChange / previousPrice) * 100 : null;
+  const direction: PriceTimingDirection =
+    priceChange == null || Math.abs(priceChange) < Math.max(0.05, (validCurrentPrice ?? 0) * 0.01)
+      ? "steady"
+      : priceChange > 0
+        ? "up"
+        : "down";
+
+  if (validCurrentPrice == null || low == null || high == null || average == null) {
+    return {
+      action: "add-to-list",
+      direction,
+      currentPrice: currentPrice,
+      previousPrice,
+      priceChange,
+      priceChangePercentage,
+      low,
+      high,
+      average,
+      observationCount: new Set(allPrices.map((price) => price.toFixed(2))).size,
+    };
+  }
+
+  const range = high - low;
+  const positionInRange = range > 0 ? (validCurrentPrice - low) / range : 0.5;
+  const averageDifference = (validCurrentPrice - average) / average;
+  const enoughHistory = new Set(allPrices.map((price) => price.toFixed(2))).size >= 3 && validPoints.length >= 3;
+  const nearLow = range <= 0.05 ? validCurrentPrice <= low + 0.05 : positionInRange <= 0.18;
+  const nearHigh = range <= 0.05 ? validCurrentPrice >= high - 0.05 : positionInRange >= 0.82;
+
+  let action: PriceTimingAction = "watch";
+  if (!enoughHistory) {
+    action = "add-to-list";
+  } else if ((nearLow || averageDifference <= -0.05) && (currentIsSpecial || averageDifference <= -0.08)) {
+    action = "buy-now";
+  } else if (nearHigh || averageDifference >= 0.07) {
+    action = "wait";
+  }
+
+  return {
+    action,
+    direction,
+    currentPrice: validCurrentPrice,
+    previousPrice,
+    priceChange,
+    priceChangePercentage,
+    low,
+    high,
+    average,
+    observationCount: new Set(allPrices.map((price) => price.toFixed(2))).size,
+  };
 }
 
 /**
