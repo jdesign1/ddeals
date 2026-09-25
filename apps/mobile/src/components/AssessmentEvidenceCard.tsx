@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertTriangle, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import WinkMascot from "@/components/WinkMascot";
 
 function getEvidenceDetails(deal: CurrentDeal) {
   const days = Number.isFinite(deal.regularHistoryDays)
@@ -51,6 +52,29 @@ function formatCount(value: number | null | undefined, singular: string, plural 
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
   const count = Math.round(value);
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <div className="relative isolate overflow-visible">
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-12 left-4 z-0"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 28, scale: 0.78 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { delay: 0.2, type: "spring", stiffness: 360, damping: 18, mass: 0.7 }
+        }
+      >
+        <WinkMascot className="wink-mascot--evidence" />
+      </motion.div>
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
 }
 
 export default function AssessmentEvidenceCard({
@@ -132,30 +156,28 @@ export default function AssessmentEvidenceCard({
                 </div>
 
                 <div className="space-y-4 overflow-y-auto px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-4">
-                  <p className="text-[15px] leading-6 text-stone-700">
-                    We compare today&rsquo;s price with its recent normal price at this supermarket.
-                  </p>
-
                   {hasEvidenceCounts && (
-                    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                      <p className="text-center text-[15px] leading-5 font-bold text-stone-900">
-                        {trackedDays ? `Evidence from the last ${trackedDays}` : "Evidence from the available history"}
-                      </p>
-                      <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200/80 text-center">
-                        <div className="px-2 first:pl-0 last:pr-0">
-                          <p className="text-base font-extrabold text-stone-900">{ninetyDayChecks ?? formatCount(checks, "check") ?? "—"}</p>
-                          <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">checks</p>
-                        </div>
-                        <div className="px-2 first:pl-0 last:pr-0">
-                          <p className="text-base font-extrabold text-stone-900">{trackedDays ?? "—"}</p>
-                          <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">days tracked</p>
-                        </div>
-                        <div className="px-2 first:pl-0 last:pr-0">
-                          <p className="text-base font-extrabold text-stone-900">{priceChanges ?? "—"}</p>
-                          <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">price changes</p>
+                    <EvidenceTableWithMascot>
+                      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                        <p className="text-center text-[15px] leading-5 font-bold text-stone-900">
+                          {trackedDays ? `Evidence from the last ${trackedDays}` : "Evidence from the available history"}
+                        </p>
+                        <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200/80 text-center">
+                          <div className="px-2 first:pl-0 last:pr-0">
+                            <p className="text-base font-extrabold text-stone-900">{ninetyDayChecks ?? formatCount(checks, "check") ?? "—"}</p>
+                            <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">checks</p>
+                          </div>
+                          <div className="px-2 first:pl-0 last:pr-0">
+                            <p className="text-base font-extrabold text-stone-900">{trackedDays ?? "—"}</p>
+                            <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">days tracked</p>
+                          </div>
+                          <div className="px-2 first:pl-0 last:pr-0">
+                            <p className="text-base font-extrabold text-stone-900">{priceChanges ?? "—"}</p>
+                            <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">price changes</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </EvidenceTableWithMascot>
                   )}
 
                   <div className="rounded-2xl border border-stone-200 bg-white px-4 py-4">
