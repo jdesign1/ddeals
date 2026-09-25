@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -183,32 +183,36 @@ function getEvidenceSummary(verdict: AssessmentVerdict): string | null {
   return isUncertainAssessment(verdict) ? "Needs more history" : "See the evidence";
 }
 
-function AssessmentBadge({
-  children,
-  className,
+function AnimatedVerdictBadge({
+  badge,
   animationKey,
+  label = badge.label,
+  className = "",
 }: {
-  children: ReactNode;
-  className?: string;
+  badge: (typeof VERDICT_BADGE)[AssessmentVerdict];
   animationKey: string;
+  label?: string;
+  className?: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  const BadgeIcon = badge.icon;
 
   return (
-    <motion.h2
+    <motion.span
       key={animationKey}
       initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.84 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={
         prefersReducedMotion
           ? { duration: 0 }
-          : { delay: 0.16, type: "spring", stiffness: 420, damping: 18, mass: 0.7 }
+          : { delay: 0.34, type: "spring", stiffness: 420, damping: 18, mass: 0.7 }
       }
       style={{ transformOrigin: "center" }}
-      className={className}
+      className={`dd-badge ${badge.className} ${className}`.trim()}
     >
-      {children}
-    </motion.h2>
+      <BadgeIcon className="h-3.5 w-3.5" aria-hidden="true" />
+      {label}
+    </motion.span>
   );
 }
 
@@ -794,7 +798,11 @@ export default function DealAssessmentPage() {
                         <span className="truncate text-sm font-extrabold text-stone-800">{item.store}</span>
                       </span>
                       {showStoreBadge && (
-                        <span className={`dd-badge dd-badge-compact mt-1 w-fit ${storeBadge.className}`}>{storeBadge.label}</span>
+                        <AnimatedVerdictBadge
+                          badge={storeBadge}
+                          animationKey={`ranking-${product.id}-${item.store}-${storeVerdict}`}
+                          className="dd-badge-compact mt-1 w-fit"
+                        />
                       )}
                     </span>
                     <span className="flex-shrink-0 text-right">
@@ -874,10 +882,12 @@ export default function DealAssessmentPage() {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h3 className="text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
             {!uncertain && (
-              <span className={`dd-badge ${verdictBadge.className} w-fit`}>
-                <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                {verdict === "Dodgy Deal" ? "Dodgy" : verdictBadge.label}
-              </span>
+              <AnimatedVerdictBadge
+                badge={verdictBadge}
+                animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                label={verdict === "Dodgy Deal" ? "Dodgy" : verdictBadge.label}
+                className="w-fit"
+              />
             )}
           </div>
           <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
@@ -930,20 +940,19 @@ export default function DealAssessmentPage() {
       ) : (
         <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex items-center justify-between">
-            <AssessmentBadge
-              animationKey={`assessment-${product.id}-${dealStore}-${verdict}`}
-              className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}
-            >
+            <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
               {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
-            </AssessmentBadge>
+            </h2>
             <DealActions productId={product.id} productName={product.name} />
           </div>
 
           {!uncertain && (
-            <span className={`dd-badge ${verdictBadge.className} w-fit`}>
-              <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
-              {verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
-            </span>
+            <AnimatedVerdictBadge
+              badge={verdictBadge}
+              animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+              label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
+              className="w-fit"
+            />
           )}
 
           <div className="flex items-start gap-4">
