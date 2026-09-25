@@ -50,7 +50,6 @@ import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
 import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
-import WinkMascot from "@/components/WinkMascot";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
 
 /**
@@ -210,29 +209,6 @@ function AssessmentBadge({
     >
       {children}
     </motion.h2>
-  );
-}
-
-function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
-  const prefersReducedMotion = useReducedMotion();
-
-  return (
-    <div className="relative isolate overflow-visible">
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-12 left-4 z-0"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 28, scale: 0.78 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : { delay: 0.2, type: "spring", stiffness: 360, damping: 18, mass: 0.7 }
-        }
-      >
-        <WinkMascot className="wink-mascot--evidence" />
-      </motion.div>
-      <div className="relative z-10">{children}</div>
-    </div>
   );
 }
 
@@ -917,13 +893,7 @@ export default function DealAssessmentPage() {
             </p>
           )}
           {evidenceSummary && (
-            <EvidenceTableWithMascot>
-              <AssessmentEvidenceCard
-                deal={selectedDeal}
-                verdict={verdict}
-                evidenceSummary={evidenceSummary}
-              />
-            </EvidenceTableWithMascot>
+            <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} />
           )}
         </div>
 
@@ -1008,13 +978,7 @@ export default function DealAssessmentPage() {
               <AssessmentText text={assessmentSummary.heading} />
             </h4>
             {evidenceSummary && (
-              <EvidenceTableWithMascot>
-                <AssessmentEvidenceCard
-                  deal={selectedDeal}
-                  verdict={verdict}
-                  evidenceSummary={evidenceSummary}
-                />
-              </EvidenceTableWithMascot>
+              <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} />
             )}
           </div>
 
