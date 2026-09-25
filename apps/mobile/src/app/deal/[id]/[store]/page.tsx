@@ -1357,25 +1357,23 @@ export default function DealAssessmentPage() {
               />
             ) : (
               <>
-                {isMultiStoreDeal && (
-                  <div className="space-y-3">
-                    <StoreCompareChart rows={barChartData} />
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                      <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
-                        <span className="dd-chart-average-bar h-2 w-2 rounded-full" />
-                        <span>Recent average</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-fair-700">
-                        <span className="h-2 w-2 rounded-full bg-fair-600" />
-                        <span>Cheaper</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-alert-700">
-                        <span className="h-2 w-2 rounded-full bg-alert-600" />
-                        <span>Pricier</span>
-                      </div>
+                <div className="space-y-3">
+                  <StoreCompareChart rows={barChartData} />
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
+                      <span className="dd-chart-average-bar h-2 w-2 rounded-full" />
+                      <span>Recent average</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-fair-700">
+                      <span className="h-2 w-2 rounded-full bg-fair-600" />
+                      <span>Cheaper</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-alert-700">
+                      <span className="h-2 w-2 rounded-full bg-alert-600" />
+                      <span>Pricier</span>
                     </div>
                   </div>
-                )}
+                </div>
                 {insights.length > 0 ? (
                   <PriceHistoryInsightCard insights={insights} verdict={verdict} />
                 ) : (
