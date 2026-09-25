@@ -30,7 +30,13 @@ import {
   writeCatalogueCacheMetadata,
   writeCataloguePublicationCheck,
 } from "./catalogue-cache.ts";
-import { createCatalogueArtifact, parseCatalogueArtifact, type CatalogueArtifact } from "./catalogue-artifact.ts";
+import {
+  createCatalogueArtifact,
+  parseCatalogueArtifact,
+  parseCatalogueVersion,
+  type CatalogueArtifact,
+  type CatalogueVersion,
+} from "./catalogue-artifact.ts";
 import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
 import { MATERIAL_OVER_NORMAL_THRESHOLD, REAL_SAVER_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
 
@@ -184,6 +190,8 @@ export interface SupabaseRestConfig {
   anonKey: string;
   /** Optional public JSON endpoint served through a CDN or Vercel CDN route. */
   catalogueUrl?: string;
+  /** Small CDN-cached publication marker; the full catalogue is fetched only when it changes. */
+  catalogueVersionUrl?: string;
   /** Temporary migration escape hatch; keep disabled on the launch path. */
   allowDirectCatalogueFallback?: boolean;
 }
@@ -914,6 +922,11 @@ function fetchLatestPublicationTimestampDeduped(config: SupabaseRestConfig): Pro
   return promise;
 }
 
+/** Server-side publisher helper for the small CDN-cached version endpoint. */
+export function fetchCataloguePublicationTimestamp(config: SupabaseRestConfig): Promise<number | null> {
+  return fetchLatestPublicationTimestampDeduped(config);
+}
+
 async function fetchCatalogueArtifact(
   catalogueUrl: string,
   cacheMode: "default" | "no-store" = "default"
@@ -921,6 +934,15 @@ async function fetchCatalogueArtifact(
   const response = await fetch(catalogueUrl, { cache: cacheMode });
   if (!response.ok) throw new Error(`Catalogue artifact -> HTTP ${response.status}`);
   return parseCatalogueArtifact(await response.json());
+}
+
+async function fetchCatalogueVersion(
+  catalogueVersionUrl: string,
+  cacheMode: "default" | "no-store" = "default"
+): Promise<CatalogueVersion> {
+  const response = await fetch(catalogueVersionUrl, { cache: cacheMode });
+  if (!response.ok) throw new Error(`Catalogue version -> HTTP ${response.status}`);
+  return parseCatalogueVersion(await response.json());
 }
 
 /** Builds the public payload without using browser-only IndexedDB state. */
@@ -1209,8 +1231,8 @@ function loadLiveProductsDeduped(
  * specifically about egress efficiency -- checks the persistent, cross-
  * session IndexedDB cache (`catalogue-cache.ts`, a direct port of
  * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
- * browser, within its 6-hour TTL) skips the full catalogue network fetch when
- * the cheap published-cache timestamp has not advanced --
+ * browser, within its 6-hour TTL) skips the full catalogue network fetch while
+ * the CDN version marker remains within its cooldown and unchanged --
  * `dodgy_deals` AND `buildMatchIndex()`'s canonical-product fetch, not just
  * one of them. Only on a miss does this fall through to the in-memory
  * dedup + real network fetch, then best-effort writes the result back to
@@ -1241,7 +1263,42 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     }
 
     try {
+      let expectedSourceUpdatedAt: number | null = null;
+      if (config.catalogueVersionUrl) {
+        try {
+          const version = await fetchCatalogueVersion(config.catalogueVersionUrl);
+          expectedSourceUpdatedAt = version.sourceUpdatedAt;
+          if (
+            cached
+            && version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)
+          ) {
+            await writeCataloguePublicationCheck(version.sourceUpdatedAt);
+            publicationMarkerInvalidations.delete(cacheKey);
+            return filterRecentlyVerifiedSpecials(cached);
+          }
+        } catch {
+          // A warm client can safely retain its last good copy when the tiny
+          // version endpoint is unavailable; do not turn this into a full
+          // catalogue request against Supabase.
+          if (cached) {
+            await writeCataloguePublicationCheck(null);
+            publicationMarkerInvalidations.delete(cacheKey);
+            return filterRecentlyVerifiedSpecials(cached);
+          }
+        }
+      }
+
       const artifact = await fetchCatalogueArtifact(config.catalogueUrl);
+      if (
+        cached
+        && expectedSourceUpdatedAt !== null
+        && (artifact.sourceUpdatedAt === null || artifact.sourceUpdatedAt < expectedSourceUpdatedAt)
+      ) {
+        // The manifest and immutable/full-artifact caches can revalidate at
+        // slightly different times. Do not replace a good local copy with an
+        // artifact older than the version the manifest promised.
+        return filterRecentlyVerifiedSpecials(cached);
+      }
       if (
         cached
         && artifact.sourceUpdatedAt !== null
@@ -1372,11 +1429,33 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
 
     let fresh: LiveProductsLoadResult;
     if (config.catalogueUrl) {
+      const cached = await readCatalogueCache();
       try {
+        let expectedSourceUpdatedAt: number | null = null;
+        if (config.catalogueVersionUrl && cached) {
+          try {
+            const version = await fetchCatalogueVersion(config.catalogueVersionUrl, "no-store");
+            expectedSourceUpdatedAt = version.sourceUpdatedAt;
+            const metadata = await readCatalogueCacheMetadata();
+            if (version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+              await writeCataloguePublicationCheck(version.sourceUpdatedAt);
+              publicationMarkerInvalidations.delete(cacheKey);
+              return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+            }
+          } catch {
+            return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+          }
+        }
         const artifact = await fetchCatalogueArtifact(config.catalogueUrl, "no-store");
+        if (
+          cached
+          && expectedSourceUpdatedAt !== null
+          && (artifact.sourceUpdatedAt === null || artifact.sourceUpdatedAt < expectedSourceUpdatedAt)
+        ) {
+          return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+        }
         fresh = { products: artifact.products, sourceUpdatedAt: artifact.sourceUpdatedAt };
       } catch (error) {
-        const cached = await readCatalogueCache();
         if (cached) {
           return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
         }

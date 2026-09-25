@@ -14,5 +14,6 @@ export const supabaseConfig: SupabaseRestConfig = {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsY2F4bm9ya3FvcnJrZnhpZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MjU2MzMsImV4cCI6MjA5NTAwMTYzM30.5H3OGOtDD6fq8OpVlBe71HhOAd_mjEh8XnAMa2ykBnc",
   catalogueUrl: process.env.NEXT_PUBLIC_CATALOGUE_URL || "/api/catalogue/latest.json",
+  catalogueVersionUrl: process.env.NEXT_PUBLIC_CATALOGUE_VERSION_URL || "/api/catalogue/version.json",
   allowDirectCatalogueFallback: process.env.NEXT_PUBLIC_ALLOW_CATALOGUE_SUPABASE_FALLBACK === "true",
 };

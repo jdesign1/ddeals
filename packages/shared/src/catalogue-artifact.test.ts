@@ -2,8 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   CATALOGUE_ARTIFACT_SCHEMA_VERSION,
+  CATALOGUE_VERSION_SCHEMA_VERSION,
   createCatalogueArtifact,
+  createCatalogueVersion,
   parseCatalogueArtifact,
+  parseCatalogueVersion,
 } from "./catalogue-artifact.ts";
 import type { ProductCard } from "./data.ts";
 
@@ -38,5 +41,22 @@ test("catalogue artifact parser rejects incompatible or malformed public data", 
   assert.throws(
     () => parseCatalogueArtifact({ schemaVersion: 1, generatedAt: new Date().toISOString(), sourceUpdatedAt: null, products: [{}] }),
     /products are invalid/
+  );
+});
+
+test("catalogue version round-trips its publication marker without catalogue products", () => {
+  const version = createCatalogueVersion(1_757_000_000_000);
+  assert.equal(version.schemaVersion, CATALOGUE_VERSION_SCHEMA_VERSION);
+  assert.deepEqual(parseCatalogueVersion(JSON.parse(JSON.stringify(version))), version);
+});
+
+test("catalogue version parser rejects malformed public data", () => {
+  assert.throws(
+    () => parseCatalogueVersion({ schemaVersion: 2, sourceUpdatedAt: 1 }),
+    /schema is not supported/
+  );
+  assert.throws(
+    () => parseCatalogueVersion({ schemaVersion: 1, sourceUpdatedAt: "now" }),
+    /marker is invalid/
   );
 });
