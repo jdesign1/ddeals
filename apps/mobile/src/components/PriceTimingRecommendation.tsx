@@ -73,5 +73,6 @@ export default function PriceTimingRecommendation({ series }: { series: PriceTim
       {series.map((item) => (
         <TimingRow key={item.store} series={item} showStore={showStore} />
       ))}
+    </div>
   );
 }
