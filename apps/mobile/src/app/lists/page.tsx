@@ -413,7 +413,10 @@ export default function ListsPage() {
           <div className="flex flex-col gap-5 px-5">
             {groups.map((group) => (
               <section key={group.key} aria-labelledby={`watchlist-group-${group.key}`}>
-                <h2 id={`watchlist-group-${group.key}`} className="mb-2 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">{group.label} <span className="font-medium tracking-normal">· {group.items.length}</span></h2>
+                <h2 id={`watchlist-group-${group.key}`} className="mb-2 flex items-center justify-between gap-3 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
+                  <span className="min-w-0 truncate">{group.label}</span>
+                  <span className="shrink-0 normal-case tracking-normal text-stone-400">{group.items.length} {group.items.length === 1 ? "item" : "items"}</span>
+                </h2>
                 <div className="flex flex-col gap-2">
                   {group.items.map((entry) => {
                     const card = itemCards.get(entry.productId);
