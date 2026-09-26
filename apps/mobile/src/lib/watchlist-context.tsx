@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   addItemToList,
   createList,
@@ -312,6 +312,7 @@ function WatchlistSelectionBar() {
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
   const { selectedProductIds, isCommitting, error, confirmation, clearSelection, dismissSelectionBar, commitSelection } = useWatchlist();
+  const prefersReducedMotion = useReducedMotion() ?? false;
   const count = selectedProductIds.size;
   const navIsHidden = pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/support" || pathname === "/report-deal";
   const showBar = count > 0 || Boolean(confirmation) || Boolean(error);
@@ -342,7 +343,18 @@ function WatchlistSelectionBar() {
           <div className="rounded-2xl bg-ink-900 p-3 text-white shadow-2xl shadow-black/20">
             {confirmation ? (
               <div className="flex items-center justify-center gap-2 py-1 text-sm font-bold">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-fair-500 text-ink-900" aria-hidden="true">✓</span>
+                <motion.span
+                  key="watchlist-confirmation-check"
+                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.45 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: [0.45, 1.2, 0.94, 1] }}
+                  transition={prefersReducedMotion
+                    ? { duration: 0.1 }
+                    : { duration: 0.62, times: [0, 0.42, 0.7, 1], ease: [0.22, 1, 0.36, 1] }}
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-fair-500 text-ink-900"
+                  aria-hidden="true"
+                >
+                  ✓
+                </motion.span>
                 {confirmation}
               </div>
             ) : (

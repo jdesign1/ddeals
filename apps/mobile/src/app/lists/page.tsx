@@ -456,7 +456,12 @@ export default function ListsPage() {
     return () => scrollSurface.removeEventListener("scroll", handleWatchlistScroll);
   }, [isTopChromeCollapsed, shouldCollapseTopChrome]);
 
+  const expandAllWatchlistGroups = useCallback(() => {
+    setCollapsedGroupKeys([]);
+  }, []);
+
   const toggleSupermarket = useCallback((key: string) => {
+    expandAllWatchlistGroups();
     setSelectedSupermarkets((current) => {
       if (key === "all") return ["all"];
       if (current.includes("all")) return [key];
@@ -466,7 +471,29 @@ export default function ListsPage() {
       }
       return [...current, key];
     });
-  }, []);
+  }, [expandAllWatchlistGroups]);
+
+  const toggleCategory = useCallback((category: string) => {
+    expandAllWatchlistGroups();
+    setSelectedCategories((current) => current.includes(category) ? current.filter((value) => value !== category) : [...current, category]);
+  }, [expandAllWatchlistGroups]);
+
+  const clearCategories = useCallback(() => {
+    expandAllWatchlistGroups();
+    setSelectedCategories([]);
+  }, [expandAllWatchlistGroups]);
+
+  const clearAllFilters = useCallback(() => {
+    expandAllWatchlistGroups();
+    setSelectedCategories([]);
+    setSelectedSupermarkets(["all"]);
+  }, [expandAllWatchlistGroups]);
+
+  const selectSortMode = useCallback((value: string) => {
+    expandAllWatchlistGroups();
+    setSortMode(value as SortMode);
+    setIsSortSheetOpen(false);
+  }, [expandAllWatchlistGroups]);
 
   const shareList = useMemo<ListRow>(() => ({
     id: "watchlist-share",
@@ -592,9 +619,9 @@ export default function ListsPage() {
         supermarkets={supermarkets}
         selectedSupermarkets={selectedSupermarkets}
         onToggle={toggleSupermarket}
-        onToggleCategory={(category) => setSelectedCategories((current) => current.includes(category) ? current.filter((value) => value !== category) : [...current, category])}
-        onClearCategories={() => setSelectedCategories([])}
-        onClearAll={() => { setSelectedCategories([]); setSelectedSupermarkets(["all"]); }}
+        onToggleCategory={toggleCategory}
+        onClearCategories={clearCategories}
+        onClearAll={clearAllFilters}
         onClose={() => setIsFilterSheetOpen(false)}
       />
       <WatchlistOptionSheet
@@ -602,7 +629,7 @@ export default function ListsPage() {
         title="Sort Watchlist"
         selectedValue={sortMode}
         options={[{ value: "recent", label: "Date added" }, { value: "discount", label: "Largest discount" }]}
-        onSelect={(value) => { setSortMode(value as SortMode); setIsSortSheetOpen(false); }}
+        onSelect={selectSortMode}
         onClose={() => setIsSortSheetOpen(false)}
       />
     </main>
