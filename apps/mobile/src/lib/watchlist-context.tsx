@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import {
   addItemToList,
   createList,
@@ -9,6 +10,7 @@ import {
   fetchUserLists,
   invalidateListsPageCache,
   LIST_MEMBERSHIP_CHANGED_EVENT,
+  removeItemFromList,
   type ListRow,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
@@ -20,9 +22,11 @@ interface WatchlistContextValue {
   selectedProductIds: ReadonlySet<string>;
   loadingSavedItems: boolean;
   isCommitting: boolean;
+  removingProductIds: ReadonlySet<string>;
   error: string | null;
   confirmation: string | null;
   toggleProduct: (productId: string) => void;
+  removeProduct: (productId: string) => Promise<void>;
   clearSelection: () => void;
   commitSelection: () => Promise<void>;
   refreshSavedItems: () => Promise<void>;
@@ -48,6 +52,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [loadingSavedItems, setLoadingSavedItems] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
+  const [removingProductIds, setRemovingProductIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
 
@@ -101,6 +106,45 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
   }, [savedProductIds]);
 
+  const removeProduct = useCallback(async (productId: string) => {
+    if (!user) return;
+
+    setRemovingProductIds((current) => new Set(current).add(productId));
+    setError(null);
+    setConfirmation(null);
+
+    try {
+      const client = requireAccountsSupabaseClient();
+      const lists = await fetchUserLists(client);
+      const items = await fetchItemsForLists(client, lists.map((list) => list.id));
+      const matchingItems = items.filter((item) => item.product_id === productId);
+
+      await Promise.all(matchingItems.map((item) => removeItemFromList(client, item.list_id, productId)));
+      setSavedProductIds((current) => {
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+      setSelectedProductIds((current) => {
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+      invalidateListsPageCache(user.id);
+      window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "watchlist-card" } }));
+      setConfirmation("Removed from Watchlist");
+    } catch (removeError) {
+      setError(describeFetchError(removeError, "We couldn't remove that product."));
+      throw removeError;
+    } finally {
+      setRemovingProductIds((current) => {
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+    }
+  }, [user]);
+
   const clearSelection = useCallback(() => {
     if (!isCommitting) setSelectedProductIds(new Set());
   }, [isCommitting]);
@@ -149,9 +193,11 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     selectedProductIds,
     loadingSavedItems,
     isCommitting,
+    removingProductIds,
     error,
     confirmation,
     toggleProduct,
+    removeProduct,
     clearSelection,
     commitSelection,
     refreshSavedItems,
@@ -162,6 +208,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     error,
     isCommitting,
     loadingSavedItems,
+    removingProductIds,
+    removeProduct,
     refreshSavedItems,
     savedProductIds,
     selectedProductIds,
@@ -176,44 +224,56 @@ function WatchlistSelectionBar() {
   const { selectedProductIds, isCommitting, error, confirmation, clearSelection, commitSelection } = useWatchlist();
   const count = selectedProductIds.size;
   const navIsHidden = pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/support" || pathname === "/report-deal";
-
-  if (count === 0 && !confirmation && !error) return null;
+  const showBar = count > 0 || Boolean(confirmation) || Boolean(error);
 
   return (
-    <div className={`watchlist-selection-bar fixed inset-x-0 z-[58] mx-auto w-full max-w-[480px] px-4 ${navIsHidden ? "watchlist-selection-bar-no-nav" : ""}`} role="status" aria-live="polite">
-      <div className="rounded-2xl bg-ink-900 p-3 text-white shadow-2xl shadow-black/20">
-        {confirmation ? (
-          <div className="flex items-center justify-center gap-2 py-1 text-sm font-bold">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-fair-500 text-ink-900" aria-hidden="true">✓</span>
-            {confirmation}
+    <AnimatePresence initial={false}>
+      {showBar && (
+        <motion.div
+          key="watchlist-selection-bar"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          className={`watchlist-selection-bar fixed inset-x-0 z-[58] mx-auto w-full max-w-[480px] px-4 ${navIsHidden ? "watchlist-selection-bar-no-nav" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="rounded-2xl bg-ink-900 p-3 text-white shadow-2xl shadow-black/20">
+            {confirmation ? (
+              <div className="flex items-center justify-center gap-2 py-1 text-sm font-bold">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-fair-500 text-ink-900" aria-hidden="true">✓</span>
+                {confirmation}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold">{count} {count === 1 ? "product" : "products"} selected</p>
+                  {error && <p className="mt-0.5 text-xs text-red-200">{error}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void commitSelection()}
+                  disabled={isCommitting}
+                  className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-extrabold text-ink-900 transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+                >
+                  {isCommitting ? "Adding…" : "Add to Watchlist"}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  disabled={isCommitting}
+                  aria-label="Clear selected products"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+                >
+                  <span aria-hidden="true" className="text-xl leading-none">×</span>
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold">{count} {count === 1 ? "product" : "products"} selected</p>
-              {error && <p className="mt-0.5 text-xs text-red-200">{error}</p>}
-            </div>
-            <button
-              type="button"
-              onClick={() => void commitSelection()}
-              disabled={isCommitting}
-              className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-extrabold text-ink-900 transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-            >
-              {isCommitting ? "Adding…" : "Add to Watchlist"}
-            </button>
-            <button
-              type="button"
-              onClick={clearSelection}
-              disabled={isCommitting}
-              aria-label="Clear selected products"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
-            >
-              <span aria-hidden="true" className="text-xl leading-none">×</span>
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
