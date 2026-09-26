@@ -465,7 +465,7 @@ function WatchlistSummaryCard({
   const isEmpty = itemCount === 0;
 
   return (
-    <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4 shadow-sm" aria-labelledby="watchlist-intro-title">
+    <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div className="flex items-center justify-between gap-3">
         <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
         {!isEmpty && (
