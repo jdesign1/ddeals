@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, Filter, Share, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, ChevronDown, Filter, Share, SlidersHorizontal, Store, X } from "lucide-react";
 import {
   describeFetchError,
   invalidateListsPageCache,
@@ -43,6 +44,9 @@ interface WatchlistGroup {
   items: WatchlistItem[];
 }
 
+const LONG_WATCHLIST_THRESHOLD = 5;
+const WATCHLIST_SCROLL_DIRECTION_THRESHOLD = 8;
+
 function itemDiscount(item: WatchlistItem, itemCards: Map<string, ProductCardData>): number {
   return itemCards.get(item.productId)?.currentDeals[0]?.discountPercentage ?? 0;
 }
@@ -67,7 +71,17 @@ function displayCategory(category: string): string {
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
-  const { unreadListItemKeys, markListItemViewed } = useNotifications();
+  const router = useRouter();
+  const {
+    unreadListItemKeys,
+    markListItemViewed,
+    pushEnabled,
+    pushReady,
+    pushAvailableOnDevice,
+    pushPermissionState,
+    setPushEnabled,
+    openNotificationSettings,
+  } = useNotifications();
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [productMeta, setProductMeta] = useState<Map<string, ListItemProductMeta>>(new Map());
   const [itemCards, setItemCards] = useState<Map<string, ProductCardData>>(new Map());
@@ -77,8 +91,13 @@ export default function ListsPage() {
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [groupByStore, setGroupByStore] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All categories");
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isSupermarketSheetOpen, setIsSupermarketSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isTopChromeCollapsed, setIsTopChromeCollapsed] = useState(false);
+  const [isSettingUpNotifications, setIsSettingUpNotifications] = useState(false);
+  const watchlistScrollAnchorRef = useRef(0);
 
   const applyData = useCallback((data: Awaited<ReturnType<typeof loadListsPageData>>) => {
     setItemsByList(data.grouped);
@@ -153,6 +172,61 @@ export default function ListsPage() {
     }
     return [...byProduct.values()];
   }, [itemsByList]);
+
+  const newPriceItemCount = useMemo(
+    () => watchlistItems.reduce(
+      (count, item) => count + (item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`)) ? 1 : 0),
+      0,
+    ),
+    [unreadListItemKeys, watchlistItems],
+  );
+
+  const shouldCollapseTopChrome = watchlistItems.length > LONG_WATCHLIST_THRESHOLD;
+
+  const handleNotificationSetup = useCallback(async () => {
+    setIsSettingUpNotifications(true);
+    try {
+      if (pushAvailableOnDevice && pushPermissionState === "denied") {
+        await openNotificationSettings();
+      } else if (pushAvailableOnDevice && pushReady) {
+        await setPushEnabled(true);
+      } else {
+        router.push("/settings");
+      }
+    } finally {
+      setIsSettingUpNotifications(false);
+    }
+  }, [openNotificationSettings, pushAvailableOnDevice, pushPermissionState, pushReady, router, setPushEnabled]);
+
+  useEffect(() => {
+    if (!shouldCollapseTopChrome) return;
+    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
+    if (!scrollSurface) return;
+
+    watchlistScrollAnchorRef.current = scrollSurface.scrollTop;
+
+    const handleWatchlistScroll = () => {
+      const currentScrollTop = scrollSurface.scrollTop;
+
+      if (currentScrollTop <= 8) {
+        watchlistScrollAnchorRef.current = currentScrollTop;
+        if (isTopChromeCollapsed) setIsTopChromeCollapsed(false);
+        return;
+      }
+
+      const directionDelta = currentScrollTop - watchlistScrollAnchorRef.current;
+      if (directionDelta > WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
+        watchlistScrollAnchorRef.current = currentScrollTop;
+        if (!isTopChromeCollapsed) setIsTopChromeCollapsed(true);
+      } else if (directionDelta < -WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
+        watchlistScrollAnchorRef.current = currentScrollTop;
+        if (isTopChromeCollapsed) setIsTopChromeCollapsed(false);
+      }
+    };
+
+    scrollSurface.addEventListener("scroll", handleWatchlistScroll, { passive: true });
+    return () => scrollSurface.removeEventListener("scroll", handleWatchlistScroll);
+  }, [isTopChromeCollapsed, shouldCollapseTopChrome]);
 
   const categories = useMemo(() => {
     const values = new Set<string>();
@@ -238,36 +312,32 @@ export default function ListsPage() {
 
   return (
     <main className="flex min-h-full flex-col gap-4 pb-24">
-      <SearchBar variant="shadow" compact placeholder="Search for products to watch" sticky={false} backgroundClassName="page-paper-surface" />
-
-      <section className="mx-5 rounded-2xl bg-white px-4 py-4 shadow-sm" aria-labelledby="watchlist-intro-title">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
-            <p className="mt-1 text-[13px] leading-5 text-stone-500">Save products once. We&rsquo;ll keep an eye out for a better special price.</p>
-          </div>
-          <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+      <div className={`watchlist-top-chrome ${shouldCollapseTopChrome && isTopChromeCollapsed ? "watchlist-top-chrome-collapsed" : ""}`}>
+        <div className="flex flex-col gap-4">
+          <SearchBar variant="shadow" compact placeholder="Search for products to watch" sticky={false} backgroundClassName="page-paper-surface" />
+          <WatchlistSummaryCard
+            itemCount={watchlistItems.length}
+            newPriceItemCount={newPriceItemCount}
+            showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
+            notificationPermissionDenied={pushPermissionState === "denied"}
+            isSettingUpNotifications={isSettingUpNotifications}
+            onSetupNotifications={() => void handleNotificationSetup()}
+          />
         </div>
-        <div className="mt-4 flex items-center gap-2 text-[13px] font-bold text-stone-600">
-          <span>{watchlistItems.length} {watchlistItems.length === 1 ? "product" : "products"}</span>
-          {sortMode === "discount" && <span className="text-stone-400">· Largest discount first</span>}
-          {sortMode === "recent" && <span className="text-stone-400">· Newest first</span>}
-        </div>
-      </section>
-
-      <div className="flex items-center gap-2 px-5">
-        <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-3 text-[13px] font-bold text-stone-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Sort: {sortMode === "recent" ? "Date added" : "Discount"}<ChevronDown className="h-4 w-4" aria-hidden="true" /></button>
-        <button type="button" onClick={() => setGroupByStore((current) => !current)} disabled={watchlistItems.length === 0} aria-pressed={groupByStore} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${groupByStore ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-700"}`}><span aria-hidden="true">▦</span>Stores</button>
       </div>
 
-      {categories.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto px-5 pb-1" aria-label="Filter Watchlist by category">
-          {categories.map((category) => {
-            const selected = selectedCategory === category;
-            return <button key={category} type="button" aria-pressed={selected} onClick={() => setSelectedCategory(category)} className={`shrink-0 rounded-full border px-3 py-2 text-[12px] font-bold transition-colors ${selected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-600"}`}><Filter className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />{category === "All categories" ? category : displayCategory(category)}</button>;
-          })}
-        </div>
-      )}
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,0.8fr)_2.5rem] gap-2 px-5">
+        <button type="button" onClick={() => setIsCategorySheetOpen(true)} disabled={watchlistItems.length === 0 || categories.length <= 1} aria-label={`Filter by category${selectedCategory === "All categories" ? "" : `, ${displayCategory(selectedCategory)}`}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategory !== "All categories" ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-700"}`}><Filter className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">Category</span><ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /></button>
+        <button type="button" onClick={() => setIsSupermarketSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Supermarket grouping, ${groupByStore ? "grouped by supermarket" : "all items"}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${groupByStore ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-700"}`}><Store className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">Supermarket</span><ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /></button>
+        <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-2 text-[12px] font-bold text-stone-700 shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"><SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">Sort</span><ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /></button>
+        <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+      </div>
+
+      <div className="px-5 text-[13px] font-bold text-stone-600" aria-live="polite">
+        Watching {watchlistItems.length} {watchlistItems.length === 1 ? "item" : "items"}
+        {sortMode === "discount" && <span className="font-medium text-stone-400"> · Largest discount first</span>}
+        {sortMode === "recent" && <span className="font-medium text-stone-400"> · Newest first</span>}
+      </div>
 
       {error && <ErrorState message="Something went wrong with your Watchlist." detail={error} onRetry={() => void reload()} />}
 
@@ -315,8 +385,81 @@ export default function ListsPage() {
       </div>
 
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
-      <SortSheet open={isSortSheetOpen} sortMode={sortMode} onSelect={(next) => { setSortMode(next); setIsSortSheetOpen(false); }} onClose={() => setIsSortSheetOpen(false)} />
+      <WatchlistOptionSheet
+        open={isCategorySheetOpen}
+        title="Filter by category"
+        selectedValue={selectedCategory}
+        options={categories.map((category) => ({ value: category, label: category === "All categories" ? category : displayCategory(category) }))}
+        onSelect={(value) => { setSelectedCategory(value); setIsCategorySheetOpen(false); }}
+        onClose={() => setIsCategorySheetOpen(false)}
+      />
+      <WatchlistOptionSheet
+        open={isSupermarketSheetOpen}
+        title="Supermarket view"
+        selectedValue={groupByStore ? "grouped" : "all"}
+        options={[{ value: "grouped", label: "Group by supermarket" }, { value: "all", label: "Show all items" }]}
+        onSelect={(value) => { setGroupByStore(value === "grouped"); setIsSupermarketSheetOpen(false); }}
+        onClose={() => setIsSupermarketSheetOpen(false)}
+      />
+      <WatchlistOptionSheet
+        open={isSortSheetOpen}
+        title="Sort Watchlist"
+        selectedValue={sortMode}
+        options={[{ value: "recent", label: "Date added" }, { value: "discount", label: "Largest discount" }]}
+        onSelect={(value) => { setSortMode(value as SortMode); setIsSortSheetOpen(false); }}
+        onClose={() => setIsSortSheetOpen(false)}
+      />
     </main>
+  );
+}
+
+function WatchlistSummaryCard({
+  itemCount,
+  newPriceItemCount,
+  showNotificationSetup,
+  notificationPermissionDenied,
+  isSettingUpNotifications,
+  onSetupNotifications,
+}: {
+  itemCount: number;
+  newPriceItemCount: number;
+  showNotificationSetup: boolean;
+  notificationPermissionDenied: boolean;
+  isSettingUpNotifications: boolean;
+  onSetupNotifications: () => void;
+}) {
+  const hasNewPrices = newPriceItemCount > 0;
+  const isEmpty = itemCount === 0;
+
+  return (
+    <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4 shadow-sm" aria-labelledby="watchlist-intro-title">
+      <div className="flex items-start justify-between gap-3">
+        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
+        {!isEmpty && (
+          <div className={`flex shrink-0 items-center gap-2 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
+            <span className={`h-2.5 w-2.5 rounded-full ${hasNewPrices ? "bg-fair-600" : "bg-stone-300"}`} aria-hidden="true" />
+            {hasNewPrices ? `${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices` : "No new prices yet"}
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-[13px] leading-5 text-stone-600">
+        {isEmpty
+          ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
+          : hasNewPrices
+            ? "New prices are ready to review. Check the highlighted items below."
+            : "We’ll keep an eye out for a better special price and let you know when your items improve."}
+      </p>
+      {showNotificationSetup && (
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+          <p className="text-[12px] leading-4 text-stone-500">
+            {notificationPermissionDenied ? "Notifications are off. Turn them on to get price alerts." : "Get an alert when prices change."}
+          </p>
+          <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
+            {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -324,16 +467,30 @@ function FallbackWatchlistRow({ label, onRemove }: { label: string; onRemove: ()
   return <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/80 bg-white px-3 py-3 grayscale opacity-60"><span className="min-w-0 text-sm font-semibold text-stone-700">{label}<span className="mt-0.5 block text-xs font-medium text-stone-500">Currently unavailable</span></span><button type="button" onClick={onRemove} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-stone-600 hover:bg-stone-100">Remove</button></div>;
 }
 
-function SortSheet({ open, sortMode, onSelect, onClose }: { open: boolean; sortMode: SortMode; onSelect: (mode: SortMode) => void; onClose: () => void }) {
+function WatchlistOptionSheet({
+  open,
+  title,
+  selectedValue,
+  options,
+  onSelect,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  selectedValue: string;
+  options: Array<{ value: string; label: string }>;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}) {
   return (
     <BottomSheetPortal open={open}>
       <AnimatePresence>
         {open && <>
-          <motion.button type="button" aria-label="Close sort options" onClick={onClose} className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
-          <motion.section role="dialog" aria-modal="true" aria-labelledby="watchlist-sort-title" className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto w-full max-w-[480px] rounded-t-3xl shadow-2xl" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 220 }}>
-            <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4"><h3 id="watchlist-sort-title" className="dd-type-sheet-title text-stone-900">Sort Watchlist</h3><button type="button" aria-label="Close" onClick={onClose} className="rounded-full px-2 text-2xl text-stone-500">×</button></div>
-            <div className="flex flex-col gap-2 px-5 py-4 pb-safe-sm">
-              {([["recent", "Date added"], ["discount", "Largest discount"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={sortMode === value} onClick={() => onSelect(value)} className={`flex min-h-12 items-center justify-between rounded-xl px-4 text-left text-sm font-bold ${sortMode === value ? "bg-ink-900 text-white" : "bg-stone-50 text-stone-700"}`}><span>{label}</span>{sortMode === value && <span aria-hidden="true">✓</span>}</button>)}
+          <motion.button type="button" aria-label={`Close ${title}`} onClick={onClose} className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+          <motion.section role="dialog" aria-modal="true" aria-labelledby="watchlist-option-sheet-title" className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex max-h-[72dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 220 }}>
+            <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4"><h3 id="watchlist-option-sheet-title" className="dd-type-sheet-title text-stone-900">{title}</h3><button type="button" aria-label="Close" onClick={onClose} className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100"><X className="h-4 w-4" aria-hidden="true" /></button></div>
+            <div className="flex flex-col gap-2 overflow-y-auto px-5 py-4 pb-safe-sm">
+              {options.map(({ value, label }) => <button key={value} type="button" aria-pressed={selectedValue === value} onClick={() => onSelect(value)} className={`flex min-h-12 items-center justify-between rounded-xl px-4 text-left text-sm font-bold transition-colors ${selectedValue === value ? "bg-ink-900 text-white" : "bg-stone-50 text-stone-700 hover:bg-stone-100"}`}><span>{label}</span>{selectedValue === value && <Check className="h-4 w-4" aria-hidden="true" />}</button>)}
             </div>
           </motion.section>
         </>}
