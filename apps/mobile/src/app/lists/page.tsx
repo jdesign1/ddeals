@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Share, X } from "lucide-react";
+import { Check, ChevronDown, Share, X } from "lucide-react";
 import {
   CATEGORY_SECTIONS,
   canonicalStoreKey,
@@ -32,7 +32,7 @@ import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import UnreadListItem from "@/components/UnreadListItem";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, Reorder, useDragControls, useReducedMotion } from "motion/react";
 
 type SortMode = "recent" | "discount";
 
@@ -92,6 +92,133 @@ function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<st
   });
 }
 
+function WatchlistGroupSection({
+  group,
+  itemCards,
+  productMeta,
+  selectedSupermarkets,
+  unreadListItemKeys,
+  markListItemViewed,
+  removeProduct,
+  reload,
+  isCollapsed,
+  onToggleCollapsed,
+}: {
+  group: WatchlistGroup;
+  itemCards: Map<string, ProductCardData>;
+  productMeta: Map<string, ListItemProductMeta>;
+  selectedSupermarkets: string[];
+  unreadListItemKeys: ReadonlySet<string>;
+  markListItemViewed: (listId: string, listItemId: string) => Promise<void>;
+  removeProduct: (productId: string) => Promise<void>;
+  reload: (showLoading?: boolean) => Promise<void>;
+  isCollapsed: boolean;
+  onToggleCollapsed: () => void;
+}) {
+  const dragControls = useDragControls();
+  const prefersReducedMotion = useReducedMotion() ?? false;
+  const longPressTimerRef = useRef<number | null>(null);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearLongPress, [clearLongPress]);
+
+  const handleDragHandlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    clearLongPress();
+    longPressTimerRef.current = window.setTimeout(() => {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
+      dragControls.start(event.nativeEvent);
+    }, 320);
+  }, [clearLongPress, dragControls]);
+
+  const handleDragHandlePointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    clearLongPress();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }, [clearLongPress]);
+
+  return (
+    <Reorder.Item
+      value={group.key}
+      drag="y"
+      dragControls={dragControls}
+      dragListener={false}
+      layout="position"
+      whileDrag={prefersReducedMotion ? { zIndex: 10 } : { scale: 1.01, zIndex: 10 }}
+      className="flex flex-col"
+    >
+      <section aria-labelledby={`watchlist-group-${group.key}`}>
+        <div className="mb-2 flex items-center gap-3">
+          <h2 id={`watchlist-group-${group.key}`} className="min-w-0 flex-1 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
+            <span
+              className="block min-w-0 cursor-grab select-none touch-none truncate active:cursor-grabbing"
+              onContextMenu={(event) => event.preventDefault()}
+              onPointerDown={handleDragHandlePointerDown}
+              onPointerUp={handleDragHandlePointerUp}
+              onPointerCancel={handleDragHandlePointerUp}
+            >
+              {group.label}
+            </span>
+          </h2>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="normal-case tracking-normal text-[12px] font-bold text-stone-400">
+              {group.items.length} {group.items.length === 1 ? "item" : "items"}
+            </span>
+            <button
+              type="button"
+              aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label} items`}
+              aria-expanded={!isCollapsed}
+              onClick={onToggleCollapsed}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <AnimatePresence initial={false}>
+          {!isCollapsed && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.22, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-col gap-2">
+                {group.items.map((entry) => {
+                  const card = itemCards.get(entry.productId);
+                  const meta = productMeta.get(entry.productId);
+                  const deal = card ? itemDeal(entry, itemCards, selectedSupermarkets) : undefined;
+                  const sourceItem = entry.sourceItems[0];
+                  const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
+                  const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
+                  return (
+                    <div key={entry.productId} data-watchlist-product-id={entry.productId}>
+                      <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
+                        {card ? (
+                          <ListItemProductCard product={card} deal={deal ?? card.currentDeals[0]!} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
+                        ) : (
+                          <FallbackWatchlistRow label={meta?.name ?? "Product"} onRemove={() => void removeProduct(entry.productId)} />
+                        )}
+                      </UnreadListItem>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+    </Reorder.Item>
+  );
+}
+
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
   const router = useRouter();
@@ -114,6 +241,8 @@ export default function ListsPage() {
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSupermarkets, setSelectedSupermarkets] = useState<string[]>(["all"]);
+  const [groupOrder, setGroupOrder] = useState<string[]>([]);
+  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<string[]>([]);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isSupermarketSheetOpen, setIsSupermarketSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
@@ -301,6 +430,13 @@ export default function ListsPage() {
       .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Price unavailable" : STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key, items }));
   }, [filteredItems, itemCards, selectedSupermarkets]);
 
+  const orderedGroups = useMemo(() => {
+    const groupsByKey = new Map(groups.map((group) => [group.key, group]));
+    const rememberedKeys = groupOrder.filter((key) => groupsByKey.has(key));
+    const newKeys = groups.map((group) => group.key).filter((key) => !groupOrder.includes(key));
+    return [...rememberedKeys, ...newKeys].map((key) => groupsByKey.get(key)!);
+  }, [groupOrder, groups]);
+
   const toggleSupermarket = useCallback((key: string) => {
     setSelectedSupermarkets((current) => {
       if (key === "all") return ["all"];
@@ -410,37 +546,23 @@ export default function ListsPage() {
           <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match this category.</p>
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && (
-          <div className="flex flex-col gap-5 px-5">
-            {groups.map((group) => (
-              <section key={group.key} aria-labelledby={`watchlist-group-${group.key}`}>
-                <h2 id={`watchlist-group-${group.key}`} className="mb-2 flex items-center justify-between gap-3 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
-                  <span className="min-w-0 truncate">{group.label}</span>
-                  <span className="shrink-0 normal-case tracking-normal text-stone-400">{group.items.length} {group.items.length === 1 ? "item" : "items"}</span>
-                </h2>
-                <div className="flex flex-col gap-2">
-                  {group.items.map((entry) => {
-                    const card = itemCards.get(entry.productId);
-                    const meta = productMeta.get(entry.productId);
-                    const deal = card ? itemDeal(entry, itemCards, selectedSupermarkets) : undefined;
-                    const sourceItem = entry.sourceItems[0];
-                    const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
-                    const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
-                    return (
-                      <div key={entry.productId} data-watchlist-product-id={entry.productId}>
-                        <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
-                          {card ? (
-                            <ListItemProductCard product={card} deal={deal ?? card.currentDeals[0]!} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
-                          ) : (
-                            <FallbackWatchlistRow label={meta?.name ?? "Product"} onRemove={() => void removeProduct(entry.productId)} />
-                          )}
-                        </UnreadListItem>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+          <Reorder.Group axis="y" values={orderedGroups.map((group) => group.key)} onReorder={setGroupOrder} className="flex flex-col gap-5 px-5">
+            {orderedGroups.map((group) => (
+              <WatchlistGroupSection
+                key={group.key}
+                group={group}
+                itemCards={itemCards}
+                productMeta={productMeta}
+                selectedSupermarkets={selectedSupermarkets}
+                unreadListItemKeys={unreadListItemKeys}
+                markListItemViewed={markListItemViewed}
+                removeProduct={removeProduct}
+                reload={reload}
+                isCollapsed={collapsedGroupKeys.includes(group.key)}
+                onToggleCollapsed={() => setCollapsedGroupKeys((current) => current.includes(group.key) ? current.filter((key) => key !== group.key) : [...current, group.key])}
+              />
             ))}
-          </div>
+          </Reorder.Group>
         )}
       </div>
 
