@@ -345,11 +345,11 @@ function WatchlistSelectionBar() {
               <div className="flex items-center justify-center gap-2 py-1 text-sm font-bold">
                 <motion.span
                   key="watchlist-confirmation-check"
-                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.45 }}
-                  animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: [0.45, 1.2, 0.94, 1] }}
+                  initial={prefersReducedMotion ? false : { scale: 0 }}
+                  animate={{ scale: prefersReducedMotion ? 1 : [0, 1, 1.2, 1] }}
                   transition={prefersReducedMotion
-                    ? { duration: 0.1 }
-                    : { duration: 0.62, times: [0, 0.42, 0.7, 1], ease: [0.22, 1, 0.36, 1] }}
+                    ? { duration: 0 }
+                    : { duration: 0.62, times: [0, 0.52, 0.76, 1], ease: [0.22, 1, 0.36, 1] }}
                   className="flex h-6 w-6 items-center justify-center rounded-full bg-fair-500 text-ink-900"
                   aria-hidden="true"
                 >
