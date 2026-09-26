@@ -8,7 +8,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
 import { normalizeStoreKey, type ProductCard } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
-import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
@@ -193,12 +192,6 @@ const ROUTE_TITLES: Record<string, string> = {
   "/report-deal": "Report an incorrect deal",
 };
 
-function greetingName(user: Parameters<typeof getAccountDisplayName>[0], profileName?: string | null): string {
-  const source = getAccountDisplayName(user, { full_name: profileName });
-  const first = source.split(/[\s@]/)[0];
-  return first || "there";
-}
-
 function summarizeNewSpecials(products: ProductCard[], since: number | null): NewSpecialsSummary {
   const summary: NewSpecialsSummary = {
     byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 },
@@ -344,7 +337,11 @@ export default function AppHeader({
       ? "Dodgy Deal"
       : ROUTE_TITLES[pathname] || "Dodgy Deal";
 
-  const avatarInitial = user ? greetingName(user, profile?.full_name).charAt(0).toUpperCase() : null;
+  // Wait for the profile record before rendering the signed-in initial. The
+  // account fallback name starts with "D", which briefly flashed during app
+  // launch while the real profile name was still being fetched.
+  const profileFullName = profile?.full_name?.trim();
+  const avatarInitial = user && profileFullName ? profileFullName.charAt(0).toUpperCase() : null;
 
   // Mascot mark hidden on the three routes that set a header override --
   // all asked for individually, same day (2026-08-14): the deal-assessment
@@ -497,7 +494,7 @@ export default function AppHeader({
 
         {pathname !== "/settings" && (
           <div aria-hidden={refreshStatus !== null} className="relative flex flex-shrink-0 items-center gap-3">
-          {loading ? null : user ? (
+          {loading ? null : user && avatarInitial ? (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}
               id="global-header-profile-btn"
@@ -506,6 +503,8 @@ export default function AppHeader({
             >
               {avatarInitial}
             </button>
+          ) : user ? (
+            <span aria-hidden="true" className="h-8 w-8 rounded-full border border-stone-200 bg-stone-100" />
           ) : (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}
