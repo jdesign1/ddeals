@@ -220,9 +220,6 @@ export default function ListsPage() {
       if (directionDelta > WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
         watchlistScrollAnchorRef.current = currentScrollTop;
         if (!isTopChromeCollapsed) setIsTopChromeCollapsed(true);
-      } else if (directionDelta < -WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
-        watchlistScrollAnchorRef.current = currentScrollTop;
-        if (isTopChromeCollapsed) setIsTopChromeCollapsed(false);
       }
     };
 

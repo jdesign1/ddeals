@@ -111,7 +111,7 @@
 .watchlist-filter-bar {
   position: -webkit-sticky;
   position: sticky;
-  top: 0;
+  top: 4rem;
   z-index: 50;
   align-self: stretch;
   isolation: isolate;
