@@ -11,6 +11,7 @@ import { SearchProvider } from "@/lib/search-context";
 import { CardLayoutProvider } from "@/lib/card-layout-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
+import { WatchlistProvider } from "@/lib/watchlist-context";
 import "./globals.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
@@ -74,6 +75,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">
         <AuthProvider>
           <NotificationsProvider>
+          <WatchlistProvider>
           <ThemeProvider>
             <HeaderOverrideProvider>
             {/* SearchProvider (lib/search-context.tsx, 2026-08-09) -- global
@@ -158,6 +160,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </CardLayoutProvider>
             </HeaderOverrideProvider>
           </ThemeProvider>
+          </WatchlistProvider>
           </NotificationsProvider>
         </AuthProvider>
       </body>

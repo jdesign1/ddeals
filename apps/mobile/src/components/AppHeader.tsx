@@ -178,7 +178,7 @@ const ROUTE_TITLES: Record<string, string> = {
   // List"/"S1 -- My Lists" describing the feature by name are unaffected
   // and deliberately left as-is (see BottomNav.tsx before touching its
   // own tab label for the same reason -- Jay didn't ask for that one).
-  "/lists": "Lists",
+  "/lists": "Watchlist",
   "/specials": "Specials",
   // "Deal stats" (2026-08-11), matching BottomNav.tsx's own label change
   // for this same route -- was "Me". Keeps the sticky top bar and the

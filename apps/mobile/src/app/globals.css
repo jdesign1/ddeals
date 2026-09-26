@@ -1212,6 +1212,23 @@ html[data-theme="dark"] .theme-loader-surface {
      home-indicator inset remains below it without an extra floating gap. */
   bottom: env(safe-area-inset-bottom);
 }
+.watchlist-selection-bar {
+  bottom: calc(5.75rem + env(safe-area-inset-bottom));
+}
+.watchlist-selection-bar-no-nav {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 481px) {
+  .watchlist-selection-bar {
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  .watchlist-selection-bar-no-nav {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+.watchlist-selection-bar button {
+  -webkit-tap-highlight-color: transparent;
+}
 .app-bottom-nav-backdrop {
   position: fixed;
   inset-inline: 0;
