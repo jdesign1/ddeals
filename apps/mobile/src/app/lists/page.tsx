@@ -49,9 +49,6 @@ interface WatchlistGroup {
   items: WatchlistItem[];
 }
 
-const LONG_WATCHLIST_THRESHOLD = 4;
-const WATCHLIST_SCROLL_DIRECTION_THRESHOLD = 8;
-
 function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
   const deals = itemCards.get(item.productId)?.currentDeals ?? [];
   if (selectedSupermarkets.includes("all")) return deals[0];
@@ -270,9 +267,7 @@ export default function ListsPage() {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-  const [isTopChromeCollapsed, setIsTopChromeCollapsed] = useState(false);
   const [isSettingUpNotifications, setIsSettingUpNotifications] = useState(false);
-  const watchlistScrollAnchorRef = useRef(0);
 
   const applyData = useCallback((data: Awaited<ReturnType<typeof loadListsPageData>>) => {
     setItemsByList(data.grouped);
@@ -431,40 +426,6 @@ export default function ListsPage() {
     return [...rememberedKeys, ...newKeys].map((key) => groupsByKey.get(key)!);
   }, [groupOrder, groups]);
 
-  const hasExpandedWatchlistGroup = orderedGroups.some((group) => group.items.length > 0 && !collapsedGroupKeys.includes(group.key));
-  const shouldCollapseTopChrome = filteredItems.length > LONG_WATCHLIST_THRESHOLD && hasExpandedWatchlistGroup;
-
-  // Keep a previously hidden header visible immediately when the list stops
-  // being long enough to collapse, such as when every section is collapsed.
-  if (!shouldCollapseTopChrome && isTopChromeCollapsed) setIsTopChromeCollapsed(false);
-
-  useEffect(() => {
-    if (!shouldCollapseTopChrome) return;
-    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
-    if (!scrollSurface) return;
-
-    watchlistScrollAnchorRef.current = scrollSurface.scrollTop;
-
-    const handleWatchlistScroll = () => {
-      const currentScrollTop = scrollSurface.scrollTop;
-
-      if (currentScrollTop <= 8) {
-        watchlistScrollAnchorRef.current = currentScrollTop;
-        if (isTopChromeCollapsed) setIsTopChromeCollapsed(false);
-        return;
-      }
-
-      const directionDelta = currentScrollTop - watchlistScrollAnchorRef.current;
-      if (directionDelta > WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
-        watchlistScrollAnchorRef.current = currentScrollTop;
-        if (!isTopChromeCollapsed) setIsTopChromeCollapsed(true);
-      }
-    };
-
-    scrollSurface.addEventListener("scroll", handleWatchlistScroll, { passive: true });
-    return () => scrollSurface.removeEventListener("scroll", handleWatchlistScroll);
-  }, [isTopChromeCollapsed, shouldCollapseTopChrome]);
-
   const expandAllWatchlistGroups = useCallback(() => {
     setCollapsedGroupKeys([]);
   }, []);
@@ -555,7 +516,7 @@ export default function ListsPage() {
 
   return (
     <main className="flex min-h-full flex-col gap-4 pb-24">
-      <div className={`watchlist-top-chrome ${shouldCollapseTopChrome && isTopChromeCollapsed ? "watchlist-top-chrome-collapsed" : ""}`}>
+      <div className="watchlist-top-chrome">
         <div className="flex flex-col gap-4">
           <SearchBar variant="shadow" compact placeholder="Search for products to watch" sticky={false} backgroundClassName="page-paper-surface" />
           <WatchlistSummaryCard

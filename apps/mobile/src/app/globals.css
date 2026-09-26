@@ -89,23 +89,10 @@
   transition: padding-bottom 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Long Watchlists keep their search and status card available as a compact
-   sticky chrome layer. On a downward scroll the layer slides away to give the
-   filters and product rows more room; an upward scroll brings it back. Keeping
-   the layout slot mounted prevents iOS momentum scrolling from re-anchoring
-   the list while the chrome animates. */
+/* Search and status content scrolls naturally with the Watchlist. The filter
+   row below is the persistent navigation surface once it reaches the top. */
 .watchlist-top-chrome {
-  position: sticky;
-  top: 0;
-  z-index: 40;
   background: var(--color-paper, #faf8f4);
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 320ms ease-in-out;
-}
-
-.watchlist-top-chrome-collapsed {
-  transform: translateY(-100%);
-  opacity: 0;
-  pointer-events: none;
 }
 
 .watchlist-filter-bar {
@@ -117,12 +104,6 @@
   isolation: isolate;
   padding: 0.5rem 0;
   background: var(--color-paper, #faf8f4);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .watchlist-top-chrome {
-    transition: none;
-  }
 }
 
 /* Google Material Symbols used by the bottom navigation. The glyph's FILL
