@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import type { CheaperAlternative } from "@dodgey-deals/shared";
 import { getStoreProductUrl, findDealForStore } from "@dodgey-deals/shared";
 import { getStoreLogoMeta } from "@/lib/store-meta";
@@ -99,10 +99,11 @@ export default function CheaperAlternativesSection({
                           href={findDealForStore(alternativeProduct.currentDeals, store)?.productUrl || getStoreProductUrl(store, alternativeProduct.name)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
+                          className="mt-auto flex w-full items-center justify-center gap-2 rounded-full border-2 border-stone-300 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
                         >
                           <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>{meta.short}</span>
                           Go to {store}
+                          <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
                         </a>
                       </div>
                     </div>

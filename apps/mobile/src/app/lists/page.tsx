@@ -54,15 +54,36 @@ const WATCHLIST_SCROLL_DIRECTION_THRESHOLD = 8;
 
 function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
   const deals = itemCards.get(item.productId)?.currentDeals ?? [];
-  return deals.find((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets)) ?? deals[0];
+  if (selectedSupermarkets.includes("all")) return deals[0];
+  for (const supermarket of selectedSupermarkets) {
+    const preferredDeal = deals.find((deal) => matchesAnySelectedStore(deal.store, [supermarket]));
+    if (preferredDeal) return preferredDeal;
+  }
+  return deals[0];
 }
 
 function itemDiscount(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]): number {
   return itemDeal(item, itemCards, selectedSupermarkets)?.discountPercentage ?? 0;
 }
 
+function supermarketPriority(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]): number {
+  if (selectedSupermarkets.includes("all")) return 0;
+  const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+  const priority = selectedSupermarkets.findIndex((supermarket) => deals.some((deal) => matchesAnySelectedStore(deal.store, [supermarket])));
+  return priority === -1 ? selectedSupermarkets.length : priority;
+}
+
+function supermarketGroupPriority(key: string, selectedSupermarkets: string[]): number {
+  if (key === "price-unavailable") return Number.MAX_SAFE_INTEGER;
+  if (selectedSupermarkets.includes("all")) return 0;
+  const priority = selectedSupermarkets.indexOf(key);
+  return priority === -1 ? selectedSupermarkets.length : priority;
+}
+
 function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
   return [...items].sort((a, b) => {
+    const supermarketDifference = supermarketPriority(a, itemCards, selectedSupermarkets) - supermarketPriority(b, itemCards, selectedSupermarkets);
+    if (supermarketDifference !== 0) return supermarketDifference;
     if (sortMode === "discount") {
       const discountDifference = itemDiscount(b, itemCards, selectedSupermarkets) - itemDiscount(a, itemCards, selectedSupermarkets);
       if (discountDifference !== 0) return discountDifference;
@@ -241,9 +262,7 @@ export default function ListsPage() {
       watchlistItems.filter((item) => {
         const category = groupCategory(productMeta.get(item.productId)?.category);
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
-        const deals = itemCards.get(item.productId)?.currentDeals ?? [];
-        const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
-        return matchesCategory && matchesSupermarket;
+        return matchesCategory;
       }),
       sortMode,
       itemCards,
@@ -274,7 +293,11 @@ export default function ListsPage() {
       grouped.set(key, existing);
     }
     return [...grouped.entries()]
-      .sort(([keyA], [keyB]) => (keyA === "price-unavailable" ? 1 : keyB === "price-unavailable" ? -1 : keyA.localeCompare(keyB)))
+      .sort(([keyA], [keyB]) => {
+        const priorityA = supermarketGroupPriority(keyA, selectedSupermarkets);
+        const priorityB = supermarketGroupPriority(keyB, selectedSupermarkets);
+        return priorityA !== priorityB ? priorityA - priorityB : keyA.localeCompare(keyB);
+      })
       .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Price unavailable" : STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key, items }));
   }, [filteredItems, itemCards, selectedSupermarkets]);
 
@@ -358,14 +381,14 @@ export default function ListsPage() {
       <div className="watchlist-filter-bar">
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,0.8fr)_2.5rem] gap-2 px-5">
           <button type="button" onClick={() => setIsCategorySheetOpen(true)} disabled={watchlistItems.length === 0 || categories.length <= 1} aria-label={`Filter by category${selectedCategories.length > 0 ? `, ${selectedCategories.join(", ")}` : ""}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Category</span></button>
-          <button type="button" onClick={() => setIsSupermarketSheetOpen(true)} disabled={watchlistItems.length === 0 || supermarkets.length === 0} aria-label={`Filter by supermarket${selectedSupermarkets.includes("all") ? "" : `, ${selectedSupermarkets.length} selected`}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedSupermarkets.includes("all") ? "bg-white text-stone-600 hover:bg-stone-50" : "bg-stone-900 text-white"}`}><span>Supermarket</span></button>
+          <button type="button" onClick={() => setIsSupermarketSheetOpen(true)} disabled={watchlistItems.length === 0 || supermarkets.length === 0} aria-label={`Prioritise by supermarket${selectedSupermarkets.includes("all") ? "" : `, ${selectedSupermarkets.length} selected`}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedSupermarkets.includes("all") ? "bg-white text-stone-600 hover:bg-stone-50" : "bg-stone-900 text-white"}`}><span>Supermarket</span></button>
           <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
           <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
         </div>
       </div>
 
       <div className="px-5 text-[13px] font-bold text-stone-600" aria-live="polite">
-        {selectedCategories.length > 0 || !selectedSupermarkets.includes("all")
+        {selectedCategories.length > 0
           ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`
           : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`}
         {sortMode === "discount" && <span className="font-medium text-stone-400"> · Largest discount first</span>}
@@ -602,7 +625,7 @@ function WatchlistSupermarketSheet({
               </button>
               <div className="divide-y divide-stone-100">
                 {supermarkets.map(([key, label]) => {
-                  const selected = allSelected || selectedSupermarkets.includes(key);
+                  const selected = selectedSupermarkets.includes(key);
                   return (
                     <button key={key} type="button" role="checkbox" aria-checked={selected} onClick={() => onToggle(key)} className="flex min-h-14 w-full items-center gap-3 text-left text-sm font-semibold text-stone-700">
                       <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${selected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-300 bg-white"}`}>{selected && <Check className="h-3.5 w-3.5" />}</span>

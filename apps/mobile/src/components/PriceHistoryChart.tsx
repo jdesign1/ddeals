@@ -318,7 +318,19 @@ export default function PriceHistoryChart({
               .join(" ");
             const areaPath = `${linePath} L ${last.x} ${PLOT_BOTTOM} L ${first.x} ${PLOT_BOTTOM} Z`;
 
-            return <path key={`series-area-${index}`} d={areaPath} fill={`url(#series-fade-${index})`} />;
+            return (
+              <motion.path
+                key={`series-area-${index}`}
+                d={areaPath}
+                fill={`url(#series-fade-${index})`}
+                initial={shouldReduceMotion ? false : { opacity: 0 }}
+                animate={shouldShowChartAnimation ? { opacity: 1 } : { opacity: 0 }}
+                transition={{
+                  duration: shouldReduceMotion ? 0 : 0.42,
+                  ease: "easeOut",
+                }}
+              />
+            );
           })}
 
           {coordinatesBySeries.map((series) =>

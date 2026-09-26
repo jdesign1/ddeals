@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ChevronDown, Clock3, Info, Share, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, Clock3, ExternalLink, Info, Share, ShieldCheck, X } from "lucide-react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -956,9 +956,10 @@ export default function DealAssessmentPage() {
             }
             target="_blank"
             rel="noopener noreferrer"
-            className={`block w-full rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
+            className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
           >
             View at {selectedDeal.store}
+            <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
           </a>
         )}
 
@@ -1029,9 +1030,10 @@ export default function DealAssessmentPage() {
               href={findDealForStore(product.currentDeals, lowestCurrentPriceItem.store)?.productUrl || getStoreProductUrl(lowestCurrentPriceItem.store, product.name)}
               target="_blank"
               rel="noopener noreferrer"
-              className={`block w-full rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
+              className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
             >
-              Lowest price at {lowestCurrentPriceItem.store}
+              View at {lowestCurrentPriceItem.store}
+              <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
             </a>
           )}
           <CheaperAlternativesSection
@@ -1249,12 +1251,13 @@ export default function DealAssessmentPage() {
                                 href={findDealForStore(altProd.currentDeals, altStore)?.productUrl || getStoreProductUrl(altStore, altProd.name)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
+                                className="mt-auto flex w-full items-center justify-center gap-2 rounded-full border-2 border-stone-300 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
                               >
                                 <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>
                                   {meta.short}
                                 </span>
                                 Go to {altStore}
+                                <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
                               </a>
                             </div>
                           </div>
