@@ -534,7 +534,7 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="flex items-center justify-start gap-2 px-5">
+        <div className="flex items-center justify-start gap-3 px-5">
           <button type="button" onClick={() => setIsFilterSheetOpen(true)} disabled={watchlistItems.length === 0 || (categories.length <= 1 && supermarkets.length === 0)} aria-label={`Filter Watchlist${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? ", filters active" : ""}`} className={`inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-3 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Filter</span></button>
           <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 bg-white px-3 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
           <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
@@ -737,10 +737,7 @@ function WatchlistFilterSheet({
               </section>
 
               <section aria-labelledby="watchlist-filter-supermarkets-title" className="space-y-3 border-t border-stone-100 pt-5">
-                <div>
-                  <h4 id="watchlist-filter-supermarkets-title" className="dd-type-sheet-title text-stone-900">Supermarkets</h4>
-                  <p className="mt-1 text-[12px] leading-4 text-stone-500">Selected supermarkets appear first; all Watchlist items stay visible.</p>
-                </div>
+                <h4 id="watchlist-filter-supermarkets-title" className="dd-type-sheet-title text-stone-900">Supermarkets</h4>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" aria-pressed={allSupermarketsSelected} onClick={() => onToggle("all")} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${allSupermarketsSelected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All supermarkets</button>
                   {supermarkets.map(([key, label]) => {
