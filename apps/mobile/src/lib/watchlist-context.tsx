@@ -132,7 +132,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       });
       invalidateListsPageCache(user.id);
       window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "watchlist-card" } }));
-      setConfirmation("Removed from Watchlist");
+      setConfirmation("1 item removed from Watchlist");
     } catch (removeError) {
       setError(describeFetchError(removeError, "We couldn't remove that product."));
       throw removeError;
@@ -178,9 +178,9 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         setSelectedProductIds(() => new Set(failedIds.length ? failedIds : []));
         invalidateListsPageCache(user.id);
         window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
-        setConfirmation(`${addedIds.length} ${addedIds.length === 1 ? "product" : "products"} added to Watchlist`);
+        setConfirmation(`${addedIds.length} ${addedIds.length === 1 ? "item" : "items"} added to Watchlist`);
       }
-      if (failedIds.length) setError("Some products couldn't be added. Please try again.");
+      if (failedIds.length) setError("Some items couldn't be added. Please try again.");
     } catch (commitError) {
       setError(describeFetchError(commitError, "We couldn't update your Watchlist."));
     } finally {
@@ -248,7 +248,7 @@ function WatchlistSelectionBar() {
             ) : (
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">{count} {count === 1 ? "product" : "products"} selected</p>
+                  <p className="text-sm font-bold">{count} {count === 1 ? "item" : "items"} selected</p>
                   {error && <p className="mt-0.5 text-xs text-red-200">{error}</p>}
                 </div>
                 <button
@@ -263,7 +263,7 @@ function WatchlistSelectionBar() {
                   type="button"
                   onClick={clearSelection}
                   disabled={isCommitting}
-                  aria-label="Clear selected products"
+                  aria-label="Clear selected items"
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
                 >
                   <span aria-hidden="true" className="text-xl leading-none">×</span>

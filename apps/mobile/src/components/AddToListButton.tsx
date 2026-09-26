@@ -55,7 +55,7 @@ export default function AddToListButton({
             event.preventDefault();
             event.stopPropagation();
             if (!user) {
-              openAuthSheet("Log in to save products to your Watchlist.");
+              openAuthSheet("Log in to save items to your Watchlist.");
               return;
             }
             if (isSaved) {
@@ -123,7 +123,10 @@ function RemoveFromWatchlistSheet({
               aria-label="Close remove from Watchlist confirmation"
               disabled={isRemoving}
               className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
-              onClick={onClose}
+              onClick={(event) => {
+                event.stopPropagation();
+                onClose();
+              }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -134,6 +137,8 @@ function RemoveFromWatchlistSheet({
               aria-labelledby="remove-watchlist-title"
               aria-describedby="remove-watchlist-description"
               className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[38vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
