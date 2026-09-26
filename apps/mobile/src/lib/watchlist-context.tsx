@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -28,6 +28,7 @@ interface WatchlistContextValue {
   toggleProduct: (productId: string) => void;
   removeProduct: (productId: string) => Promise<void>;
   clearSelection: () => void;
+  dismissSelectionBar: () => void;
   commitSelection: () => Promise<void>;
   refreshSavedItems: () => Promise<void>;
 }
@@ -149,6 +150,12 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     if (!isCommitting) setSelectedProductIds(new Set());
   }, [isCommitting]);
 
+  const dismissSelectionBar = useCallback(() => {
+    setSelectedProductIds(new Set());
+    setConfirmation(null);
+    setError(null);
+  }, []);
+
   const commitSelection = useCallback(async () => {
     if (!user || isCommitting || selectedProductIds.size === 0) return;
 
@@ -199,6 +206,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     toggleProduct,
     removeProduct,
     clearSelection,
+    dismissSelectionBar,
     commitSelection,
     refreshSavedItems,
   }), [
@@ -210,6 +218,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     loadingSavedItems,
     removingProductIds,
     removeProduct,
+    dismissSelectionBar,
     refreshSavedItems,
     savedProductIds,
     selectedProductIds,
@@ -221,10 +230,17 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
 function WatchlistSelectionBar() {
   const pathname = usePathname();
-  const { selectedProductIds, isCommitting, error, confirmation, clearSelection, commitSelection } = useWatchlist();
+  const previousPathname = useRef(pathname);
+  const { selectedProductIds, isCommitting, error, confirmation, clearSelection, dismissSelectionBar, commitSelection } = useWatchlist();
   const count = selectedProductIds.size;
   const navIsHidden = pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/support" || pathname === "/report-deal";
   const showBar = count > 0 || Boolean(confirmation) || Boolean(error);
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    dismissSelectionBar();
+  }, [dismissSelectionBar, pathname]);
 
   return (
     <AnimatePresence initial={false}>
@@ -233,7 +249,11 @@ function WatchlistSelectionBar() {
           key="watchlist-selection-bar"
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 24 }}
+          exit={{
+            opacity: 0,
+            y: 24,
+            transition: { duration: 0.24, ease: [0.4, 0, 1, 1] },
+          }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className={`watchlist-selection-bar fixed inset-x-0 z-[58] mx-auto w-full max-w-[480px] px-4 ${navIsHidden ? "watchlist-selection-bar-no-nav" : ""}`}
           role="status"
@@ -255,9 +275,10 @@ function WatchlistSelectionBar() {
                   type="button"
                   onClick={() => void commitSelection()}
                   disabled={isCommitting}
+                  aria-busy={isCommitting}
                   className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-extrabold text-ink-900 transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
                 >
-                  {isCommitting ? "Adding…" : "Add to Watchlist"}
+                  Add to Watchlist
                 </button>
                 <button
                   type="button"
