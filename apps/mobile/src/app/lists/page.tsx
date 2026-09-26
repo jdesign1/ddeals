@@ -134,7 +134,7 @@ function WatchlistGroupSection({
     clearLongPress();
     longPressTimerRef.current = window.setTimeout(() => {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
-      dragControls.start(event.nativeEvent);
+      dragControls.start(event);
     }, 320);
   }, [clearLongPress, dragControls]);
 
@@ -153,19 +153,15 @@ function WatchlistGroupSection({
       whileDrag={prefersReducedMotion ? { zIndex: 10 } : { scale: 1.01, zIndex: 10 }}
       className="flex flex-col"
     >
-      <section aria-labelledby={`watchlist-group-${group.key}`}>
-        <div className="mb-2 flex items-center gap-3">
-          <h2 id={`watchlist-group-${group.key}`} className="min-w-0 flex-1 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
-            <span
-              className="block min-w-0 cursor-grab select-none touch-none truncate active:cursor-grabbing"
-              onContextMenu={(event) => event.preventDefault()}
-              onPointerDown={handleDragHandlePointerDown}
-              onPointerUp={handleDragHandlePointerUp}
-              onPointerCancel={handleDragHandlePointerUp}
-            >
-              {group.label}
-            </span>
-          </h2>
+      <section className="rounded-2xl border border-stone-200 bg-white p-3" aria-labelledby={`watchlist-group-${group.key}`}>
+        <div
+          className="mb-2 flex cursor-grab select-none items-center gap-3 touch-none active:cursor-grabbing"
+          onContextMenu={(event) => event.preventDefault()}
+          onPointerDown={handleDragHandlePointerDown}
+          onPointerUp={handleDragHandlePointerUp}
+          onPointerCancel={handleDragHandlePointerUp}
+        >
+          <h2 id={`watchlist-group-${group.key}`} className="min-w-0 flex-1 truncate text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">{group.label}</h2>
           <div className="flex shrink-0 items-center gap-2">
             <span className="normal-case tracking-normal text-[12px] font-bold text-stone-400">
               {group.items.length} {group.items.length === 1 ? "item" : "items"}
@@ -175,6 +171,7 @@ function WatchlistGroupSection({
               aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label} items`}
               aria-expanded={!isCollapsed}
               onClick={onToggleCollapsed}
+              onPointerDown={(event) => event.stopPropagation()}
               className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800"
             >
               <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} aria-hidden="true" />
