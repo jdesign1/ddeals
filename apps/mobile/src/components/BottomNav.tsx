@@ -217,7 +217,7 @@ const TABS: {
   // the real full-screen search overlay is still only reachable via Home's
   // own inline search bar / AppHeader's global icon, per that comment).
   { href: "/", label: "Check deals", icon: "search" },
-  { href: "/lists", label: "Lists", icon: "list_alt_add" },
+  { href: "/lists", label: "Watchlist", icon: "list_alt_add" },
   { href: "/history", label: "All Checks", icon: "search_check_2" },
   { href: "/me", label: "Deal stats", icon: "leaderboard" },
 ];
@@ -250,7 +250,7 @@ export default function BottomNav() {
               key={href}
               href={href}
               aria-current={isActive ? "page" : undefined}
-              aria-label={hasUnreadUpdates ? `${label}, new list updates` : undefined}
+              aria-label={hasUnreadUpdates ? `${label}, new price updates` : undefined}
               onClick={() => {
                 if (isSearchActive) closeSearch();
               }}

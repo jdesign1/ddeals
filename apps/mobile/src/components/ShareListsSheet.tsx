@@ -33,7 +33,7 @@ function buildShareText(
     year: "numeric",
   }).format(new Date());
 
-  return [`Dodgy Deal shopping lists\nShared ${sharedDate}`, ...sections].join("\n\n");
+  return [`Dodgy Deal Watchlist\nShared ${sharedDate}`, ...sections].join("\n\n");
 }
 
 function isShareCancellation(error: unknown): boolean {
@@ -91,7 +91,7 @@ export default function ShareListsSheet({
     setError(null);
     try {
       await navigator.share({
-        title: selectedLists.length === 1 ? selectedLists[0].name : "Dodgy Deal shopping lists",
+        title: selectedLists.length === 1 ? selectedLists[0].name : "Dodgy Deal Watchlist",
         text: buildShareText(selectedLists, itemsByList, productMeta, lowestPriceByProduct),
       });
       close();
@@ -111,7 +111,7 @@ export default function ShareListsSheet({
           <>
             <motion.button
               type="button"
-              aria-label="Close share lists"
+              aria-label="Close Watchlist sharing"
               className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
               onClick={close}
               initial={{ opacity: 0 }}
@@ -130,8 +130,8 @@ export default function ShareListsSheet({
             >
               <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4">
                 <div>
-                  <h3 id="share-lists-title" className="dd-type-sheet-title text-stone-900">Share lists</h3>
-                  <p className="mt-1 dd-type-secondary text-stone-500">Choose one or more lists to share.</p>
+                  <h3 id="share-lists-title" className="dd-type-sheet-title text-stone-900">Share Watchlist</h3>
+                  <p className="mt-1 dd-type-secondary text-stone-500">Share your saved products and current lowest prices.</p>
                 </div>
                 <button
                   type="button"
@@ -174,7 +174,7 @@ export default function ShareListsSheet({
                     );
                   })
                 ) : (
-                  <p className="py-8 text-center dd-type-secondary text-stone-500">No lists available to share.</p>
+                  <p className="py-8 text-center dd-type-secondary text-stone-500">No Watchlist products available to share.</p>
                 )}
               </div>
 
