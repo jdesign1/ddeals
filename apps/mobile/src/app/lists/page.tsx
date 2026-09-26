@@ -49,7 +49,7 @@ interface WatchlistGroup {
   items: WatchlistItem[];
 }
 
-const LONG_WATCHLIST_THRESHOLD = 5;
+const LONG_WATCHLIST_THRESHOLD = 4;
 const WATCHLIST_SCROLL_DIRECTION_THRESHOLD = 8;
 
 function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
@@ -146,6 +146,28 @@ function WatchlistGroupSection({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }, [clearLongPress]);
 
+  const onSpecialItems = group.items.filter((entry) => itemDeal(entry, itemCards, selectedSupermarkets)?.isOnSpecial === true);
+  const notOnSpecialItems = group.items.filter((entry) => itemDeal(entry, itemCards, selectedSupermarkets)?.isOnSpecial !== true);
+  const renderItem = (entry: WatchlistItem) => {
+    const card = itemCards.get(entry.productId);
+    const meta = productMeta.get(entry.productId);
+    const deal = card ? itemDeal(entry, itemCards, selectedSupermarkets) : undefined;
+    const sourceItem = entry.sourceItems[0];
+    const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
+    const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
+    return (
+      <div key={entry.productId} data-watchlist-product-id={entry.productId}>
+        <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
+          {card && deal ? (
+            <ListItemProductCard product={card} deal={deal} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
+          ) : (
+            <FallbackWatchlistRow label={meta?.name ?? "Product"} onRemove={() => void removeProduct(entry.productId)} />
+          )}
+        </UnreadListItem>
+      </div>
+    );
+  };
+
   return (
     <Reorder.Item
       value={group.key}
@@ -186,11 +208,12 @@ function WatchlistGroupSection({
             </span>
             <button
               type="button"
-              aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label} items`}
+              aria-label={group.items.length === 0 ? `${group.label} has no items` : `${isCollapsed ? "Expand" : "Collapse"} ${group.label} items`}
               aria-expanded={!isCollapsed}
               onClick={onToggleCollapsed}
               onPointerDown={(event) => event.stopPropagation()}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800"
+              disabled={group.items.length === 0}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:cursor-default disabled:opacity-50"
             >
               {isCollapsed ? <Plus className="h-4 w-4" aria-hidden="true" /> : <Minus className="h-4 w-4" aria-hidden="true" />}
             </button>
@@ -206,25 +229,11 @@ function WatchlistGroupSection({
               className="overflow-hidden"
             >
               <div className="flex flex-col gap-2">
-                {group.items.map((entry) => {
-                  const card = itemCards.get(entry.productId);
-                  const meta = productMeta.get(entry.productId);
-                  const deal = card ? itemDeal(entry, itemCards, selectedSupermarkets) : undefined;
-                  const sourceItem = entry.sourceItems[0];
-                  const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
-                  const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
-                  return (
-                    <div key={entry.productId} data-watchlist-product-id={entry.productId}>
-                      <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
-                        {card ? (
-                          <ListItemProductCard product={card} deal={deal ?? card.currentDeals[0]!} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
-                        ) : (
-                          <FallbackWatchlistRow label={meta?.name ?? "Product"} onRemove={() => void removeProduct(entry.productId)} />
-                        )}
-                      </UnreadListItem>
-                    </div>
-                  );
-                })}
+                {onSpecialItems.map(renderItem)}
+                {notOnSpecialItems.length > 0 && group.key !== "price-unavailable" && (
+                  <h3 className="px-1 pt-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-stone-400">Not on special</h3>
+                )}
+                {notOnSpecialItems.map(renderItem)}
               </div>
             </motion.div>
           )}
@@ -397,7 +406,7 @@ export default function ListsPage() {
   }, [itemCards, watchlistItems]);
 
   const groups = useMemo<WatchlistGroup[]>(() => {
-    const grouped = new Map<string, WatchlistItem[]>();
+    const grouped = new Map<string, WatchlistItem[]>(supermarkets.map(([key]) => [key, []]));
     for (const item of filteredItems) {
       const deal = itemDeal(item, itemCards, selectedSupermarkets);
       const store = deal?.store ?? "Price unavailable";
@@ -412,8 +421,8 @@ export default function ListsPage() {
         const priorityB = supermarketGroupPriority(keyB, selectedSupermarkets);
         return priorityA !== priorityB ? priorityA - priorityB : keyA.localeCompare(keyB);
       })
-      .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Price unavailable" : STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key, items }));
-  }, [filteredItems, itemCards, selectedSupermarkets]);
+      .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Not on special" : STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key, items }));
+  }, [filteredItems, itemCards, selectedSupermarkets, supermarkets]);
 
   const orderedGroups = useMemo(() => {
     const groupsByKey = new Map(groups.map((group) => [group.key, group]));
@@ -422,7 +431,7 @@ export default function ListsPage() {
     return [...rememberedKeys, ...newKeys].map((key) => groupsByKey.get(key)!);
   }, [groupOrder, groups]);
 
-  const hasExpandedWatchlistGroup = orderedGroups.some((group) => !collapsedGroupKeys.includes(group.key));
+  const hasExpandedWatchlistGroup = orderedGroups.some((group) => group.items.length > 0 && !collapsedGroupKeys.includes(group.key));
   const shouldCollapseTopChrome = filteredItems.length > LONG_WATCHLIST_THRESHOLD && hasExpandedWatchlistGroup;
 
   // Keep a previously hidden header visible immediately when the list stops
@@ -564,7 +573,7 @@ export default function ListsPage() {
         <div className="flex items-center justify-start gap-3 px-5">
           <button type="button" onClick={() => setIsFilterSheetOpen(true)} disabled={watchlistItems.length === 0 || (categories.length <= 1 && supermarkets.length === 0)} aria-label={`Filter Watchlist${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? ", filters active" : ""}`} className={`inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-stone-300 px-3 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Filter</span></button>
           <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-stone-300 bg-white px-3 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
-          <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+          <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
         </div>
       </div>
 
@@ -603,8 +612,11 @@ export default function ListsPage() {
                 markListItemViewed={markListItemViewed}
                 removeProduct={removeProduct}
                 reload={reload}
-                isCollapsed={collapsedGroupKeys.includes(group.key)}
-                onToggleCollapsed={() => setCollapsedGroupKeys((current) => current.includes(group.key) ? current.filter((key) => key !== group.key) : [...current, group.key])}
+                isCollapsed={group.items.length === 0 || collapsedGroupKeys.includes(group.key)}
+                onToggleCollapsed={() => {
+                  if (group.items.length === 0) return;
+                  setCollapsedGroupKeys((current) => current.includes(group.key) ? current.filter((key) => key !== group.key) : [...current, group.key]);
+                }}
               />
             ))}
           </Reorder.Group>
