@@ -109,9 +109,12 @@
 }
 
 .watchlist-filter-bar {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 50;
+  align-self: stretch;
+  isolation: isolate;
   padding: 0.5rem 0;
   background: var(--color-paper, #faf8f4);
   box-shadow: 0 1px 0 rgba(41, 37, 36, 0.08);
