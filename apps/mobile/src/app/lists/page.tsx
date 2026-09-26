@@ -32,7 +32,8 @@ import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import UnreadListItem from "@/components/UnreadListItem";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import { AnimatePresence, motion } from "motion/react";
+import WinkMascot from "@/components/WinkMascot";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 type SortMode = "recent" | "discount";
 
@@ -461,38 +462,54 @@ function WatchlistSummaryCard({
   isSettingUpNotifications: boolean;
   onSetupNotifications: () => void;
 }) {
+  const prefersReducedMotion = useReducedMotion();
   const hasNewPrices = newPriceItemCount > 0;
   const isEmpty = itemCount === 0;
 
   return (
-    <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
-      <div className="flex items-center justify-between gap-3">
-        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
-        {!isEmpty && (
-          <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
-            <span className={`h-2.5 w-2.5 rounded-full ${hasNewPrices ? "bg-fair-600" : "bg-stone-300"}`} aria-hidden="true" />
-            {hasNewPrices ? `${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices` : "No new prices yet"}
+    <div className="relative isolate mx-5 overflow-visible pt-10">
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-6 left-1/2 z-0 -translate-x-1/2"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 28, scale: 0.78 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { delay: 0.2, type: "spring", stiffness: 360, damping: 18, mass: 0.7 }
+        }
+      >
+        <WinkMascot className="wink-mascot--evidence" />
+      </motion.div>
+      <section className="relative z-10 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
+        <div className="flex items-center justify-between gap-3">
+          <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
+          {!isEmpty && (
+            <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
+              <span className={`h-2.5 w-2.5 rounded-full ${hasNewPrices ? "bg-fair-600" : "bg-stone-300"}`} aria-hidden="true" />
+              {hasNewPrices ? `${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices` : "No new prices yet"}
+            </div>
+          )}
+        </div>
+        <p className="mt-2 text-[13px] leading-5 text-stone-600">
+          {isEmpty
+            ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
+            : hasNewPrices
+              ? "New prices are ready to review. Check the highlighted items below."
+              : "We’ll keep an eye out for a better special price and let you know when your items improve."}
+        </p>
+        {showNotificationSetup && (
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+            <p className="text-[12px] leading-4 text-stone-500">
+              {notificationPermissionDenied ? "Notifications are off. Turn them on to get price alerts." : "Get an alert when prices change."}
+            </p>
+            <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
+              {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
+            </button>
           </div>
         )}
-      </div>
-      <p className="mt-2 text-[13px] leading-5 text-stone-600">
-        {isEmpty
-          ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
-          : hasNewPrices
-            ? "New prices are ready to review. Check the highlighted items below."
-            : "We’ll keep an eye out for a better special price and let you know when your items improve."}
-      </p>
-      {showNotificationSetup && (
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
-          <p className="text-[12px] leading-4 text-stone-500">
-            {notificationPermissionDenied ? "Notifications are off. Turn them on to get price alerts." : "Get an alert when prices change."}
-          </p>
-          <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
-            {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
-          </button>
-        </div>
-      )}
-    </section>
+      </section>
+    </div>
   );
 }
 
