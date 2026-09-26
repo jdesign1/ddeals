@@ -118,6 +118,7 @@ function WatchlistGroupSection({
   const dragControls = useDragControls();
   const prefersReducedMotion = useReducedMotion() ?? false;
   const longPressTimerRef = useRef<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const clearLongPress = useCallback(() => {
     if (longPressTimerRef.current !== null) {
@@ -133,6 +134,7 @@ function WatchlistGroupSection({
     event.currentTarget.setPointerCapture(event.pointerId);
     clearLongPress();
     longPressTimerRef.current = window.setTimeout(() => {
+      setIsDragging(true);
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
       dragControls.start(event);
     }, 320);
@@ -140,6 +142,7 @@ function WatchlistGroupSection({
 
   const handleDragHandlePointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     clearLongPress();
+    setIsDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }, [clearLongPress]);
 
@@ -150,12 +153,27 @@ function WatchlistGroupSection({
       dragControls={dragControls}
       dragListener={false}
       layout="position"
+      onDragStart={() => setIsDragging(true)}
+      onDragEnd={() => setIsDragging(false)}
       whileDrag={prefersReducedMotion ? { zIndex: 10 } : { scale: 1.01, zIndex: 10 }}
       className="flex flex-col"
     >
-      <section className="rounded-2xl border border-stone-200 bg-white p-3" aria-labelledby={`watchlist-group-${group.key}`}>
+      <motion.section
+        animate={{
+          borderColor: isDragging ? "var(--color-fair-600)" : "rgb(231 229 228)",
+          rotate: isDragging && !prefersReducedMotion ? [-0.6, 0.6] : 0,
+        }}
+        transition={{
+          borderColor: prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeInOut" },
+          rotate: isDragging && !prefersReducedMotion
+            ? { duration: 0.18, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }
+            : { duration: prefersReducedMotion ? 0 : 0.12, ease: "easeOut" },
+        }}
+        className="rounded-2xl border border-stone-200 bg-white p-3"
+        aria-labelledby={`watchlist-group-${group.key}`}
+      >
         <div
-          className="mb-2 flex cursor-grab select-none items-center gap-3 touch-none active:cursor-grabbing"
+          className={`${isCollapsed ? "mb-0" : "mb-3"} flex min-h-8 cursor-grab select-none items-center gap-3 touch-none active:cursor-grabbing`}
           onContextMenu={(event) => event.preventDefault()}
           onPointerDown={handleDragHandlePointerDown}
           onPointerUp={handleDragHandlePointerUp}
@@ -211,7 +229,7 @@ function WatchlistGroupSection({
             </motion.div>
           )}
         </AnimatePresence>
-      </section>
+      </motion.section>
     </Reorder.Item>
   );
 }
@@ -330,8 +348,6 @@ export default function ListsPage() {
     [unreadListItemKeys, watchlistItems],
   );
 
-  const shouldCollapseTopChrome = watchlistItems.length > LONG_WATCHLIST_THRESHOLD;
-
   const handleNotificationSetup = useCallback(async () => {
     setIsSettingUpNotifications(true);
     try {
@@ -346,33 +362,6 @@ export default function ListsPage() {
       setIsSettingUpNotifications(false);
     }
   }, [openNotificationSettings, pushAvailableOnDevice, pushPermissionState, pushReady, router, setPushEnabled]);
-
-  useEffect(() => {
-    if (!shouldCollapseTopChrome) return;
-    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
-    if (!scrollSurface) return;
-
-    watchlistScrollAnchorRef.current = scrollSurface.scrollTop;
-
-    const handleWatchlistScroll = () => {
-      const currentScrollTop = scrollSurface.scrollTop;
-
-      if (currentScrollTop <= 8) {
-        watchlistScrollAnchorRef.current = currentScrollTop;
-        if (isTopChromeCollapsed) setIsTopChromeCollapsed(false);
-        return;
-      }
-
-      const directionDelta = currentScrollTop - watchlistScrollAnchorRef.current;
-      if (directionDelta > WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
-        watchlistScrollAnchorRef.current = currentScrollTop;
-        if (!isTopChromeCollapsed) setIsTopChromeCollapsed(true);
-      }
-    };
-
-    scrollSurface.addEventListener("scroll", handleWatchlistScroll, { passive: true });
-    return () => scrollSurface.removeEventListener("scroll", handleWatchlistScroll);
-  }, [isTopChromeCollapsed, shouldCollapseTopChrome]);
 
   const categories = useMemo(() => {
     const values = new Set<string>();
@@ -433,6 +422,40 @@ export default function ListsPage() {
     const newKeys = groups.map((group) => group.key).filter((key) => !groupOrder.includes(key));
     return [...rememberedKeys, ...newKeys].map((key) => groupsByKey.get(key)!);
   }, [groupOrder, groups]);
+
+  const hasExpandedWatchlistGroup = orderedGroups.some((group) => !collapsedGroupKeys.includes(group.key));
+  const shouldCollapseTopChrome = filteredItems.length > LONG_WATCHLIST_THRESHOLD && hasExpandedWatchlistGroup;
+
+  // Keep a previously hidden header visible immediately when the list stops
+  // being long enough to collapse, such as when every section is collapsed.
+  if (!shouldCollapseTopChrome && isTopChromeCollapsed) setIsTopChromeCollapsed(false);
+
+  useEffect(() => {
+    if (!shouldCollapseTopChrome) return;
+    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
+    if (!scrollSurface) return;
+
+    watchlistScrollAnchorRef.current = scrollSurface.scrollTop;
+
+    const handleWatchlistScroll = () => {
+      const currentScrollTop = scrollSurface.scrollTop;
+
+      if (currentScrollTop <= 8) {
+        watchlistScrollAnchorRef.current = currentScrollTop;
+        if (isTopChromeCollapsed) setIsTopChromeCollapsed(false);
+        return;
+      }
+
+      const directionDelta = currentScrollTop - watchlistScrollAnchorRef.current;
+      if (directionDelta > WATCHLIST_SCROLL_DIRECTION_THRESHOLD) {
+        watchlistScrollAnchorRef.current = currentScrollTop;
+        if (!isTopChromeCollapsed) setIsTopChromeCollapsed(true);
+      }
+    };
+
+    scrollSurface.addEventListener("scroll", handleWatchlistScroll, { passive: true });
+    return () => scrollSurface.removeEventListener("scroll", handleWatchlistScroll);
+  }, [isTopChromeCollapsed, shouldCollapseTopChrome]);
 
   const toggleSupermarket = useCallback((key: string) => {
     setSelectedSupermarkets((current) => {
