@@ -11,3 +11,4 @@ export * from "./search-synonyms.ts";
 export * from "./product-search.ts";
 export * from "./specials-freshness.ts";
 export * from "./price-change-stats.ts";
+export * from "./watchlist-price-alert.ts";

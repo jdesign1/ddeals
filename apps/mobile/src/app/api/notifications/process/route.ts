@@ -1,4 +1,4 @@
-import { createSupabaseClient } from "@dodgey-deals/shared";
+import { createSupabaseClient, detectWatchlistPriceAlert } from "@dodgey-deals/shared";
 import { accountsConfig } from "@/lib/accounts-config";
 import { supabaseConfig } from "@/lib/config";
 import { isApnsConfigured, sendApnsAlert } from "@/lib/apns";
@@ -220,18 +220,13 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
       let eventType: AlertEventRow["event_type"] | null = null;
       const currentPrice = Number(price.price);
 
-      if (previous && previousIsFresh && isVerifiedSpecial && linkedSpecial?.verdict !== "DODGY") {
-        if (!previous.last_is_special && currentPrice < Number(previous.last_price)) {
-          const absoluteDrop = Number(previous.last_price) - currentPrice;
-          const percentageDrop = Number(previous.last_price) > 0 ? absoluteDrop / Number(previous.last_price) : 0;
-          if (absoluteDrop >= 0.25 && percentageDrop >= 0.05) eventType = "returned_to_special";
-        } else if (previous.last_is_special) {
-          const referencePrice = Number(previous.last_notified_price ?? previous.last_price);
-          const absoluteDrop = referencePrice - currentPrice;
-          const percentageDrop = referencePrice > 0 ? absoluteDrop / referencePrice : 0;
-          if (absoluteDrop >= 0.25 && percentageDrop >= 0.05) eventType = "better_special_price";
-        }
-      }
+      eventType = detectWatchlistPriceAlert({
+        previous,
+        previousIsFresh: Boolean(previousIsFresh),
+        currentPrice,
+        isVerifiedSpecial,
+        verdict: linkedSpecial?.verdict,
+      });
 
       const list = listById.get(item.list_id);
       if (eventType && linkedSpecial && list) {
@@ -346,9 +341,13 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
         if (!list || !devices.length || !events.length) continue;
         const copy = buildAlertCopy(events, list);
         const payload = {
-          // List updates are intentionally quiet; the bottom-nav/item badges
-          // remain the in-app signal when the app is already open.
-          aps: { alert: { title: copy.title, body: copy.body }, "thread-id": list.id },
+          // The system alert is audible when the app is backgrounded; the
+          // bottom-nav/item badges remain the in-app signal when it is open.
+          aps: {
+            alert: { title: copy.title, body: copy.body },
+            sound: "default",
+            "thread-id": list.id,
+          },
           listId: list.id,
           productId: copy.productId,
         };

@@ -14,8 +14,10 @@ import {
   type ListRow,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
+import { useNotifications } from "@/lib/notifications-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { describeFetchError } from "@dodgey-deals/shared";
+import WatchlistNotificationSheet from "@/components/WatchlistNotificationSheet";
 
 interface WatchlistContextValue {
   savedProductIds: ReadonlySet<string>;
@@ -49,6 +51,15 @@ function isWatchlist(list: ListRow): boolean {
  */
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const {
+    pushEnabled,
+    pushReady,
+    pushAvailableOnDevice,
+    pushPermissionState,
+    notificationError,
+    setPushEnabled,
+    openNotificationSettings,
+  } = useNotifications();
   const [savedProductIds, setSavedProductIds] = useState<Set<string>>(new Set());
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [loadingSavedItems, setLoadingSavedItems] = useState(false);
@@ -56,6 +67,35 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [removingProductIds, setRemovingProductIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [notificationPromptPending, setNotificationPromptPending] = useState(false);
+  const [isNotificationPromptOpen, setIsNotificationPromptOpen] = useState(false);
+  const [notificationPromptItemCount, setNotificationPromptItemCount] = useState(1);
+  const [notificationPromptUserId, setNotificationPromptUserId] = useState<string | null>(null);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+
+  const notificationPromptStorageKey = user ? `dodgey-deals:watchlist-notification-prompted:${user.id}` : null;
+
+  useEffect(() => {
+    if (!notificationPromptPending || !user || pushEnabled || !pushAvailableOnDevice || !pushReady) return;
+    try {
+      if (notificationPromptStorageKey && window.localStorage.getItem(notificationPromptStorageKey) === "1") {
+        return;
+      }
+    } catch {
+      // Private browsing/storage restrictions should not block the prompt.
+    }
+
+    const timer = window.setTimeout(() => {
+      try {
+        if (notificationPromptStorageKey) window.localStorage.setItem(notificationPromptStorageKey, "1");
+      } catch {
+        // The prompt can still be shown when local storage is unavailable.
+      }
+      setNotificationPromptPending(false);
+      setIsNotificationPromptOpen(true);
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [notificationPromptPending, notificationPromptStorageKey, pushAvailableOnDevice, pushEnabled, pushReady, user]);
 
   const refreshSavedItems = useCallback(async () => {
     if (!user) {
@@ -186,6 +226,11 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         invalidateListsPageCache(user.id);
         window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
         setConfirmation(`${addedIds.length} ${addedIds.length === 1 ? "item" : "items"} added to Watchlist`);
+        if (!pushEnabled) {
+          setNotificationPromptItemCount(addedIds.length);
+          setNotificationPromptUserId(user.id);
+          setNotificationPromptPending(true);
+        }
       }
       if (failedIds.length) setError("Some items couldn't be added. Please try again.");
     } catch (commitError) {
@@ -193,7 +238,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsCommitting(false);
     }
-  }, [isCommitting, savedProductIds, selectedProductIds, user]);
+  }, [isCommitting, pushEnabled, savedProductIds, selectedProductIds, user]);
 
   const value = useMemo<WatchlistContextValue>(() => ({
     savedProductIds,
@@ -225,7 +270,42 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     toggleProduct,
   ]);
 
-  return <WatchlistContext.Provider value={value}>{children}<WatchlistSelectionBar /></WatchlistContext.Provider>;
+  const handleEnableNotifications = async () => {
+    setIsSavingNotifications(true);
+    try {
+      const enabled = await setPushEnabled(true);
+      if (enabled) setIsNotificationPromptOpen(false);
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  };
+
+  const handleOpenNotificationSettings = async () => {
+    setIsSavingNotifications(true);
+    try {
+      await openNotificationSettings();
+      setIsNotificationPromptOpen(false);
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  };
+
+  return (
+    <WatchlistContext.Provider value={value}>
+      {children}
+      <WatchlistSelectionBar />
+      <WatchlistNotificationSheet
+        open={Boolean(user && !pushEnabled && isNotificationPromptOpen && notificationPromptUserId === user.id)}
+        itemCount={notificationPromptItemCount}
+        permissionState={pushPermissionState}
+        isSaving={isSavingNotifications}
+        error={notificationError}
+        onClose={() => setIsNotificationPromptOpen(false)}
+        onEnable={() => void handleEnableNotifications()}
+        onOpenSettings={() => void handleOpenNotificationSettings()}
+      />
+    </WatchlistContext.Provider>
+  );
 }
 
 function WatchlistSelectionBar() {
