@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Share, X } from "lucide-react";
+import { Check, Minus, Plus, Share, X } from "lucide-react";
 import {
   CATEGORY_SECTIONS,
   canonicalStoreKey,
@@ -192,7 +192,7 @@ function WatchlistGroupSection({
               onPointerDown={(event) => event.stopPropagation()}
               className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800"
             >
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} aria-hidden="true" />
+              {isCollapsed ? <Plus className="h-4 w-4" aria-hidden="true" /> : <Minus className="h-4 w-4" aria-hidden="true" />}
             </button>
           </div>
         </div>
@@ -258,8 +258,7 @@ export default function ListsPage() {
   const [selectedSupermarkets, setSelectedSupermarkets] = useState<string[]>(["all"]);
   const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<string[]>([]);
-  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
-  const [isSupermarketSheetOpen, setIsSupermarketSheetOpen] = useState(false);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isTopChromeCollapsed, setIsTopChromeCollapsed] = useState(false);
@@ -535,10 +534,9 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,0.8fr)_2.5rem] gap-2 px-5">
-          <button type="button" onClick={() => setIsCategorySheetOpen(true)} disabled={watchlistItems.length === 0 || categories.length <= 1} aria-label={`Filter by category${selectedCategories.length > 0 ? `, ${selectedCategories.join(", ")}` : ""}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Category</span></button>
-          <button type="button" onClick={() => setIsSupermarketSheetOpen(true)} disabled={watchlistItems.length === 0 || supermarkets.length === 0} aria-label={`Prioritise by supermarket${selectedSupermarkets.includes("all") ? "" : `, ${selectedSupermarkets.length} selected`}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedSupermarkets.includes("all") ? "bg-white text-stone-600 hover:bg-stone-50" : "bg-stone-900 text-white"}`}><span>Supermarket</span></button>
-          <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
+        <div className="flex items-center justify-start gap-2 px-5">
+          <button type="button" onClick={() => setIsFilterSheetOpen(true)} disabled={watchlistItems.length === 0 || (categories.length <= 1 && supermarkets.length === 0)} aria-label={`Filter Watchlist${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? ", filters active" : ""}`} className={`inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 px-3 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Filter</span></button>
+          <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-stone-300 bg-white px-3 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
           <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
         </div>
       </div>
@@ -587,20 +585,17 @@ export default function ListsPage() {
       </div>
 
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
-      <WatchlistCategorySheet
-        open={isCategorySheetOpen}
+      <WatchlistFilterSheet
+        open={isFilterSheetOpen}
         availableCategories={categories}
         selectedCategories={selectedCategories}
-        onToggle={(category) => setSelectedCategories((current) => current.includes(category) ? current.filter((value) => value !== category) : [...current, category])}
-        onClear={() => setSelectedCategories([])}
-        onClose={() => setIsCategorySheetOpen(false)}
-      />
-      <WatchlistSupermarketSheet
-        open={isSupermarketSheetOpen}
         supermarkets={supermarkets}
         selectedSupermarkets={selectedSupermarkets}
         onToggle={toggleSupermarket}
-        onClose={() => setIsSupermarketSheetOpen(false)}
+        onToggleCategory={(category) => setSelectedCategories((current) => current.includes(category) ? current.filter((value) => value !== category) : [...current, category])}
+        onClearCategories={() => setSelectedCategories([])}
+        onClearAll={() => { setSelectedCategories([]); setSelectedSupermarkets(["all"]); }}
+        onClose={() => setIsFilterSheetOpen(false)}
       />
       <WatchlistOptionSheet
         open={isSortSheetOpen}
@@ -668,23 +663,33 @@ function FallbackWatchlistRow({ label, onRemove }: { label: string; onRemove: ()
   return <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/80 bg-white px-3 py-3 grayscale opacity-60"><span className="min-w-0 text-sm font-semibold text-stone-700">{label}<span className="mt-0.5 block text-xs font-medium text-stone-500">Currently unavailable</span></span><button type="button" onClick={onRemove} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-stone-600 hover:bg-stone-100">Remove</button></div>;
 }
 
-function WatchlistCategorySheet({
+function WatchlistFilterSheet({
   open,
   availableCategories,
   selectedCategories,
+  supermarkets,
+  selectedSupermarkets,
+  onToggleCategory,
   onToggle,
-  onClear,
+  onClearCategories,
+  onClearAll,
   onClose,
 }: {
   open: boolean;
   availableCategories: string[];
   selectedCategories: string[];
-  onToggle: (category: string) => void;
-  onClear: () => void;
+  supermarkets: Array<[string, string]>;
+  selectedSupermarkets: string[];
+  onToggleCategory: (category: string) => void;
+  onToggle: (key: string) => void;
+  onClearCategories: () => void;
+  onClearAll: () => void;
   onClose: () => void;
 }) {
   const curatedCategories = new Set(CATEGORY_SECTIONS.flatMap((section) => section.categories));
   const otherCategories = availableCategories.filter((category) => !curatedCategories.has(category));
+  const allSupermarketsSelected = selectedSupermarkets.includes("all");
+  const hasActiveFilters = selectedCategories.length > 0 || !allSupermarketsSelected;
 
   return (
     <BottomSheetPortal open={open}>
@@ -693,92 +698,57 @@ function WatchlistCategorySheet({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40" />
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 220 }} className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl">
             <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-              <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>
+              <h3 className="dd-type-sheet-title text-stone-900">Filter</h3>
               <div className="flex items-center gap-1">
-                {selectedCategories.length > 0 && <button type="button" onClick={onClear} className="px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline">Clear all</button>}
+                {hasActiveFilters && <button type="button" onClick={onClearAll} className="px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline">Clear all</button>}
                 <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100"><X className="h-4 w-4" aria-hidden="true" /></button>
               </div>
             </div>
-            <div className="space-y-6 overflow-y-auto px-5 py-4">
-              <button type="button" onClick={onClear} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selectedCategories.length === 0 ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All categories</button>
-              {CATEGORY_SECTIONS.map((section) => {
-                const sectionCategories = section.categories.filter((category) => availableCategories.includes(category));
-                if (sectionCategories.length === 0) return null;
-                return (
-                  <div key={section.title} className="space-y-2">
-                    <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">{section.title}</h4>
+            <div className="space-y-7 overflow-y-auto px-5 py-4">
+              <section aria-labelledby="watchlist-filter-categories-title" className="space-y-4">
+                <h4 id="watchlist-filter-categories-title" className="dd-type-sheet-title text-stone-900">Categories</h4>
+                <button type="button" aria-pressed={selectedCategories.length === 0} onClick={onClearCategories} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selectedCategories.length === 0 ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All categories</button>
+                {CATEGORY_SECTIONS.map((section) => {
+                  const sectionCategories = section.categories.filter((category) => availableCategories.includes(category));
+                  if (sectionCategories.length === 0) return null;
+                  return (
+                    <div key={section.title} className="space-y-2">
+                      <h5 className="dd-type-meta dd-type-meta-strong text-stone-500">{section.title}</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {sectionCategories.map((category) => {
+                          const selected = selectedCategories.includes(category);
+                          return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggleCategory(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                {otherCategories.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="dd-type-meta dd-type-meta-strong text-stone-500">Other</h5>
                     <div className="flex flex-wrap gap-2">
-                      {sectionCategories.map((category) => {
+                      {otherCategories.map((category) => {
                         const selected = selectedCategories.includes(category);
-                        return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggle(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
+                        return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggleCategory(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
                       })}
                     </div>
                   </div>
-                );
-              })}
-              {otherCategories.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">Other</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {otherCategories.map((category) => {
-                      const selected = selectedCategories.includes(category);
-                      return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggle(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
-                    })}
-                  </div>
+                )}
+              </section>
+
+              <section aria-labelledby="watchlist-filter-supermarkets-title" className="space-y-3 border-t border-stone-100 pt-5">
+                <div>
+                  <h4 id="watchlist-filter-supermarkets-title" className="dd-type-sheet-title text-stone-900">Supermarkets</h4>
+                  <p className="mt-1 text-[12px] leading-4 text-stone-500">Selected supermarkets appear first; all Watchlist items stay visible.</p>
                 </div>
-              )}
-            </div>
-            <div className="dd-sheet-cta-footer shrink-0 border-t border-stone-100 px-5 pt-3">
-              <button type="button" onClick={onClose} className="dd-sheet-cta w-full rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600">Done</button>
-            </div>
-          </motion.div>
-        </>}
-      </AnimatePresence>
-    </BottomSheetPortal>
-  );
-}
-
-function WatchlistSupermarketSheet({
-  open,
-  supermarkets,
-  selectedSupermarkets,
-  onToggle,
-  onClose,
-}: {
-  open: boolean;
-  supermarkets: Array<[string, string]>;
-  selectedSupermarkets: string[];
-  onToggle: (key: string) => void;
-  onClose: () => void;
-}) {
-  const allSelected = selectedSupermarkets.includes("all");
-
-  return (
-    <BottomSheetPortal open={open}>
-      <AnimatePresence>
-        {open && <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40" />
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 220 }} className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[72dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl">
-            <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-              <h3 className="dd-type-sheet-title text-stone-900">Supermarkets</h3>
-              <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100"><X className="h-4 w-4" aria-hidden="true" /></button>
-            </div>
-            <div className="overflow-y-auto px-5 py-3 pb-safe-sm">
-              <button type="button" role="checkbox" aria-checked={allSelected} onClick={() => onToggle("all")} className="flex min-h-14 w-full items-center gap-3 border-b border-stone-100 text-left text-sm font-bold text-stone-800">
-                <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${allSelected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-300 bg-white"}`}>{allSelected && <Check className="h-3.5 w-3.5" />}</span>
-                <span>All supermarkets</span>
-              </button>
-              <div className="divide-y divide-stone-100">
-                {supermarkets.map(([key, label]) => {
-                  const selected = selectedSupermarkets.includes(key);
-                  return (
-                    <button key={key} type="button" role="checkbox" aria-checked={selected} onClick={() => onToggle(key)} className="flex min-h-14 w-full items-center gap-3 text-left text-sm font-semibold text-stone-700">
-                      <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${selected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-300 bg-white"}`}>{selected && <Check className="h-3.5 w-3.5" />}</span>
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" aria-pressed={allSupermarketsSelected} onClick={() => onToggle("all")} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${allSupermarketsSelected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All supermarkets</button>
+                  {supermarkets.map(([key, label]) => {
+                    const selected = selectedSupermarkets.includes(key);
+                    return <button key={key} type="button" aria-pressed={selected} onClick={() => onToggle(key)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{label}</button>;
+                  })}
+                </div>
+              </section>
             </div>
             <div className="dd-sheet-cta-footer shrink-0 border-t border-stone-100 px-5 pt-3">
               <button type="button" onClick={onClose} className="dd-sheet-cta w-full rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600">Done</button>
