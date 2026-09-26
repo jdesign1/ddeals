@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 const SUCCESS_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
-  "Cache-Control": "public, max-age=30",
-  "CDN-Cache-Control": "public, s-maxage=30, stale-while-revalidate=3600",
-  "Vercel-CDN-Cache-Control": "public, s-maxage=30, stale-while-revalidate=3600",
+  "Cache-Control": "public, max-age=60",
+  "CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=3600",
+  "Vercel-CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=3600",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD",
   "Access-Control-Allow-Headers": "If-None-Match",
