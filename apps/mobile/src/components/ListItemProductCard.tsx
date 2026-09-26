@@ -9,6 +9,7 @@ import { getStoreLogoMeta } from "@/lib/store-meta";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
+import PriceChangeBadge from "@/components/PriceChangeBadge";
 
 /**
  * Compact product row for a list's own item list on `apps/mobile/src/app/
@@ -310,6 +311,7 @@ export default function ListItemProductCard({
           <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h4>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
             <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
               {storeMeta.short}
             </span>
