@@ -2,13 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Filter, Share, SlidersHorizontal, Store, X } from "lucide-react";
+import { Check, Share, X } from "lucide-react";
 import {
+  CATEGORY_SECTIONS,
+  canonicalStoreKey,
   describeFetchError,
+  groupCategory,
   invalidateListsPageCache,
   loadListsPageData,
   LIST_MEMBERSHIP_CHANGED_EVENT,
+  matchesAnySelectedStore,
   removeItemFromList,
+  STORE_DISPLAY_FALLBACK,
   type ListItemLowestPrice,
   type ListItemProductMeta,
   type ListItemRow,
@@ -47,26 +52,23 @@ interface WatchlistGroup {
 const LONG_WATCHLIST_THRESHOLD = 5;
 const WATCHLIST_SCROLL_DIRECTION_THRESHOLD = 8;
 
-function itemDiscount(item: WatchlistItem, itemCards: Map<string, ProductCardData>): number {
-  return itemCards.get(item.productId)?.currentDeals[0]?.discountPercentage ?? 0;
+function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
+  const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+  return deals.find((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets)) ?? deals[0];
 }
 
-function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>) {
+function itemDiscount(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]): number {
+  return itemDeal(item, itemCards, selectedSupermarkets)?.discountPercentage ?? 0;
+}
+
+function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
   return [...items].sort((a, b) => {
     if (sortMode === "discount") {
-      const discountDifference = itemDiscount(b, itemCards) - itemDiscount(a, itemCards);
+      const discountDifference = itemDiscount(b, itemCards, selectedSupermarkets) - itemDiscount(a, itemCards, selectedSupermarkets);
       if (discountDifference !== 0) return discountDifference;
     }
     return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
   });
-}
-
-function displayCategory(category: string): string {
-  return category
-    .split(/[_-]+/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
 }
 
 export default function ListsPage() {
@@ -89,8 +91,8 @@ export default function ListsPage() {
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("recent");
-  const [groupByStore, setGroupByStore] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState("All categories");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedSupermarkets, setSelectedSupermarkets] = useState<string[]>(["all"]);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isSupermarketSheetOpen, setIsSupermarketSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
@@ -231,35 +233,65 @@ export default function ListsPage() {
   const categories = useMemo(() => {
     const values = new Set<string>();
     for (const item of watchlistItems) {
-      const category = productMeta.get(item.productId)?.category;
+      const category = groupCategory(productMeta.get(item.productId)?.category);
       if (category) values.add(category);
     }
-    return ["All categories", ...[...values].sort((a, b) => displayCategory(a).localeCompare(displayCategory(b)))];
+    return [...values].sort((a, b) => a.localeCompare(b));
   }, [productMeta, watchlistItems]);
 
   const filteredItems = useMemo(
     () => sortItems(
-      watchlistItems.filter((item) => selectedCategory === "All categories" || productMeta.get(item.productId)?.category === selectedCategory),
+      watchlistItems.filter((item) => {
+        const category = groupCategory(productMeta.get(item.productId)?.category);
+        const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
+        const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+        const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
+        return matchesCategory && matchesSupermarket;
+      }),
       sortMode,
       itemCards,
+      selectedSupermarkets,
     ),
-    [itemCards, productMeta, selectedCategory, sortMode, watchlistItems],
+    [itemCards, productMeta, selectedCategories, selectedSupermarkets, sortMode, watchlistItems],
   );
 
+  const supermarkets = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const item of watchlistItems) {
+      for (const deal of itemCards.get(item.productId)?.currentDeals ?? []) {
+        const key = canonicalStoreKey(deal.store);
+        if (key && !labels.has(key)) labels.set(key, STORE_DISPLAY_FALLBACK[key] ?? deal.store);
+      }
+    }
+    return [...labels.entries()].sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB));
+  }, [itemCards, watchlistItems]);
+
   const groups = useMemo<WatchlistGroup[]>(() => {
-    if (!groupByStore) return [{ key: "all", label: "All saved products", items: filteredItems }];
     const grouped = new Map<string, WatchlistItem[]>();
     for (const item of filteredItems) {
-      const store = itemCards.get(item.productId)?.currentDeals[0]?.store ?? "Price unavailable";
-      const key = store === "Price unavailable" ? "price-unavailable" : store.toLowerCase();
+      const deal = itemDeal(item, itemCards, selectedSupermarkets);
+      const store = deal?.store ?? "Price unavailable";
+      const key = deal ? canonicalStoreKey(store) : "price-unavailable";
       const existing = grouped.get(key) ?? [];
       existing.push(item);
       grouped.set(key, existing);
     }
     return [...grouped.entries()]
       .sort(([keyA], [keyB]) => (keyA === "price-unavailable" ? 1 : keyB === "price-unavailable" ? -1 : keyA.localeCompare(keyB)))
-      .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Price unavailable" : itemCards.get(items[0].productId)?.currentDeals[0]?.store ?? key, items }));
-  }, [filteredItems, groupByStore, itemCards]);
+      .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Price unavailable" : STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key, items }));
+  }, [filteredItems, itemCards, selectedSupermarkets]);
+
+  const toggleSupermarket = useCallback((key: string) => {
+    setSelectedSupermarkets((current) => {
+      if (key === "all") return ["all"];
+      if (current.includes("all")) return [key];
+      if (current.includes(key)) {
+        const next = current.filter((value) => value !== key);
+        return next.length > 0 ? next : ["all"];
+      }
+      return [...current, key];
+    });
+  }, []);
 
   const shareList = useMemo<ListRow>(() => ({
     id: "watchlist-share",
@@ -326,15 +358,19 @@ export default function ListsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,0.8fr)_2.5rem] gap-2 px-5">
-        <button type="button" onClick={() => setIsCategorySheetOpen(true)} disabled={watchlistItems.length === 0 || categories.length <= 1} aria-label={`Filter by category${selectedCategory === "All categories" ? "" : `, ${displayCategory(selectedCategory)}`}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategory !== "All categories" ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-700"}`}><Filter className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">Category</span><ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /></button>
-        <button type="button" onClick={() => setIsSupermarketSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Supermarket grouping, ${groupByStore ? "grouped by supermarket" : "all items"}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${groupByStore ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-700"}`}><Store className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">Supermarket</span><ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /></button>
-        <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-2 text-[12px] font-bold text-stone-700 shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"><SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">Sort</span><ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /></button>
-        <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+      <div className="watchlist-filter-bar">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,0.8fr)_2.5rem] gap-2 px-5">
+          <button type="button" onClick={() => setIsCategorySheetOpen(true)} disabled={watchlistItems.length === 0 || categories.length <= 1} aria-label={`Filter by category${selectedCategories.length > 0 ? `, ${selectedCategories.join(", ")}` : ""}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border px-2 text-[12px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-700"}`}><span className="truncate">{selectedCategories.length > 0 ? `Category (${selectedCategories.length})` : "Category"}</span></button>
+          <button type="button" onClick={() => setIsSupermarketSheetOpen(true)} disabled={watchlistItems.length === 0 || supermarkets.length === 0} aria-label={`Filter by supermarket${selectedSupermarkets.includes("all") ? "" : `, ${selectedSupermarkets.length} selected`}`} className={`inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border px-2 text-[12px] font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedSupermarkets.includes("all") ? "border-stone-200 bg-white text-stone-700" : "border-ink-900 bg-ink-900 text-white"}`}><span className="truncate">{selectedSupermarkets.includes("all") ? "Supermarket" : `Supermarket (${selectedSupermarkets.length})`}</span></button>
+          <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border border-stone-200 bg-white px-2 text-[12px] font-bold text-stone-700 shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"><span className="truncate">Sort</span></button>
+          <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+        </div>
       </div>
 
       <div className="px-5 text-[13px] font-bold text-stone-600" aria-live="polite">
-        Watching {watchlistItems.length} {watchlistItems.length === 1 ? "item" : "items"}
+        {selectedCategories.length > 0 || !selectedSupermarkets.includes("all")
+          ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`
+          : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`}
         {sortMode === "discount" && <span className="font-medium text-stone-400"> · Largest discount first</span>}
         {sortMode === "recent" && <span className="font-medium text-stone-400"> · Newest first</span>}
       </div>
@@ -357,11 +393,12 @@ export default function ListsPage() {
           <div className="flex flex-col gap-5 px-5">
             {groups.map((group) => (
               <section key={group.key} aria-labelledby={`watchlist-group-${group.key}`}>
-                {groupByStore && <h2 id={`watchlist-group-${group.key}`} className="mb-2 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">{group.label} <span className="font-medium tracking-normal">· {group.items.length}</span></h2>}
+                <h2 id={`watchlist-group-${group.key}`} className="mb-2 text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">{group.label} <span className="font-medium tracking-normal">· {group.items.length}</span></h2>
                 <div className="flex flex-col gap-2">
                   {group.items.map((entry) => {
                     const card = itemCards.get(entry.productId);
                     const meta = productMeta.get(entry.productId);
+                    const deal = card ? itemDeal(entry, itemCards, selectedSupermarkets) : undefined;
                     const sourceItem = entry.sourceItems[0];
                     const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
                     const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
@@ -369,7 +406,7 @@ export default function ListsPage() {
                       <div key={entry.productId} data-watchlist-product-id={entry.productId}>
                         <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
                           {card ? (
-                            <ListItemProductCard product={card} deal={card.currentDeals[0]} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
+                            <ListItemProductCard product={card} deal={deal ?? card.currentDeals[0]!} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
                           ) : (
                             <FallbackWatchlistRow label={meta?.name ?? "Product"} onRemove={() => void removeProduct(entry.productId)} />
                           )}
@@ -385,20 +422,19 @@ export default function ListsPage() {
       </div>
 
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
-      <WatchlistOptionSheet
+      <WatchlistCategorySheet
         open={isCategorySheetOpen}
-        title="Filter by category"
-        selectedValue={selectedCategory}
-        options={categories.map((category) => ({ value: category, label: category === "All categories" ? category : displayCategory(category) }))}
-        onSelect={(value) => { setSelectedCategory(value); setIsCategorySheetOpen(false); }}
+        availableCategories={categories}
+        selectedCategories={selectedCategories}
+        onToggle={(category) => setSelectedCategories((current) => current.includes(category) ? current.filter((value) => value !== category) : [...current, category])}
+        onClear={() => setSelectedCategories([])}
         onClose={() => setIsCategorySheetOpen(false)}
       />
-      <WatchlistOptionSheet
+      <WatchlistSupermarketSheet
         open={isSupermarketSheetOpen}
-        title="Supermarket view"
-        selectedValue={groupByStore ? "grouped" : "all"}
-        options={[{ value: "grouped", label: "Group by supermarket" }, { value: "all", label: "Show all items" }]}
-        onSelect={(value) => { setGroupByStore(value === "grouped"); setIsSupermarketSheetOpen(false); }}
+        supermarkets={supermarkets}
+        selectedSupermarkets={selectedSupermarkets}
+        onToggle={toggleSupermarket}
         onClose={() => setIsSupermarketSheetOpen(false)}
       />
       <WatchlistOptionSheet
@@ -433,10 +469,10 @@ function WatchlistSummaryCard({
 
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4 shadow-sm" aria-labelledby="watchlist-intro-title">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
         {!isEmpty && (
-          <div className={`flex shrink-0 items-center gap-2 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
+          <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
             <span className={`h-2.5 w-2.5 rounded-full ${hasNewPrices ? "bg-fair-600" : "bg-stone-300"}`} aria-hidden="true" />
             {hasNewPrices ? `${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices` : "No new prices yet"}
           </div>
@@ -465,6 +501,128 @@ function WatchlistSummaryCard({
 
 function FallbackWatchlistRow({ label, onRemove }: { label: string; onRemove: () => void }) {
   return <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/80 bg-white px-3 py-3 grayscale opacity-60"><span className="min-w-0 text-sm font-semibold text-stone-700">{label}<span className="mt-0.5 block text-xs font-medium text-stone-500">Currently unavailable</span></span><button type="button" onClick={onRemove} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-stone-600 hover:bg-stone-100">Remove</button></div>;
+}
+
+function WatchlistCategorySheet({
+  open,
+  availableCategories,
+  selectedCategories,
+  onToggle,
+  onClear,
+  onClose,
+}: {
+  open: boolean;
+  availableCategories: string[];
+  selectedCategories: string[];
+  onToggle: (category: string) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const curatedCategories = new Set(CATEGORY_SECTIONS.flatMap((section) => section.categories));
+  const otherCategories = availableCategories.filter((category) => !curatedCategories.has(category));
+
+  return (
+    <BottomSheetPortal open={open}>
+      <AnimatePresence>
+        {open && <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40" />
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 220 }} className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl">
+            <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
+              <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>
+              <div className="flex items-center gap-1">
+                {selectedCategories.length > 0 && <button type="button" onClick={onClear} className="px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline">Clear all</button>}
+                <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100"><X className="h-4 w-4" aria-hidden="true" /></button>
+              </div>
+            </div>
+            <div className="space-y-6 overflow-y-auto px-5 py-4">
+              <button type="button" onClick={onClear} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selectedCategories.length === 0 ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All categories</button>
+              {CATEGORY_SECTIONS.map((section) => {
+                const sectionCategories = section.categories.filter((category) => availableCategories.includes(category));
+                if (sectionCategories.length === 0) return null;
+                return (
+                  <div key={section.title} className="space-y-2">
+                    <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">{section.title}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {sectionCategories.map((category) => {
+                        const selected = selectedCategories.includes(category);
+                        return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggle(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {otherCategories.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">Other</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {otherCategories.map((category) => {
+                      const selected = selectedCategories.includes(category);
+                      return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggle(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="dd-sheet-cta-footer shrink-0 border-t border-stone-100 px-5 pt-3">
+              <button type="button" onClick={onClose} className="dd-sheet-cta w-full rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600">Done</button>
+            </div>
+          </motion.div>
+        </>}
+      </AnimatePresence>
+    </BottomSheetPortal>
+  );
+}
+
+function WatchlistSupermarketSheet({
+  open,
+  supermarkets,
+  selectedSupermarkets,
+  onToggle,
+  onClose,
+}: {
+  open: boolean;
+  supermarkets: Array<[string, string]>;
+  selectedSupermarkets: string[];
+  onToggle: (key: string) => void;
+  onClose: () => void;
+}) {
+  const allSelected = selectedSupermarkets.includes("all");
+
+  return (
+    <BottomSheetPortal open={open}>
+      <AnimatePresence>
+        {open && <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40" />
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 220 }} className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[72dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl">
+            <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
+              <h3 className="dd-type-sheet-title text-stone-900">Supermarkets</h3>
+              <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100"><X className="h-4 w-4" aria-hidden="true" /></button>
+            </div>
+            <div className="overflow-y-auto px-5 py-3 pb-safe-sm">
+              <button type="button" role="checkbox" aria-checked={allSelected} onClick={() => onToggle("all")} className="flex min-h-14 w-full items-center gap-3 border-b border-stone-100 text-left text-sm font-bold text-stone-800">
+                <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${allSelected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-300 bg-white"}`}>{allSelected && <Check className="h-3.5 w-3.5" />}</span>
+                <span>All supermarkets</span>
+              </button>
+              <div className="divide-y divide-stone-100">
+                {supermarkets.map(([key, label]) => {
+                  const selected = allSelected || selectedSupermarkets.includes(key);
+                  return (
+                    <button key={key} type="button" role="checkbox" aria-checked={selected} onClick={() => onToggle(key)} className="flex min-h-14 w-full items-center gap-3 text-left text-sm font-semibold text-stone-700">
+                      <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${selected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-300 bg-white"}`}>{selected && <Check className="h-3.5 w-3.5" />}</span>
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="dd-sheet-cta-footer shrink-0 border-t border-stone-100 px-5 pt-3">
+              <button type="button" onClick={onClose} className="dd-sheet-cta w-full rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600">Done</button>
+            </div>
+          </motion.div>
+        </>}
+      </AnimatePresence>
+    </BottomSheetPortal>
+  );
 }
 
 function WatchlistOptionSheet({
