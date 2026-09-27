@@ -177,7 +177,7 @@ export default function ProductListCard({
         isCompactLayout
           ? "dd-compact-product-card flex min-h-20 items-stretch gap-3 p-2"
           : isSnapshotLayout
-            ? "dd-snapshot-card w-[36%] min-w-[132px] max-w-[170px] shrink-0 snap-start flex flex-col rounded-[1.5rem]"
+            ? "dd-snapshot-card w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start flex flex-col rounded-[1.5rem]"
             : isGridLayout
             ? "flex flex-col"
             : "flex"
@@ -208,7 +208,7 @@ export default function ProductListCard({
             alt={product.name}
             width={112}
             height={112}
-            sizes={useGridCard ? "(max-width: 480px) 36vw, 170px" : "144px"}
+            sizes={useGridCard ? "(max-width: 480px) 40vw, 180px" : "144px"}
             loading={imageLoading}
             fetchPriority={imageLoading === "eager" ? "high" : "auto"}
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${useGridCard ? "scale-[0.95]" : ""}`}
@@ -242,23 +242,25 @@ export default function ProductListCard({
             bottom-right verdict badge has its own clear area. The main
             retailer is followed inline by any other supermarkets carrying
             the same product on special. */}
-        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start pr-10" : "mb-1.5"}`}>
-          <span className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
-            {storeMeta.short}
-          </span>
-          {alsoSpecialStores.map((store) => {
-            const meta = getStoreLogoMeta(store);
-            return (
-              <span
-                key={store}
-                title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
-              >
-                {meta.short}
-              </span>
-            );
-          })}
-        </div>
+        {!isSnapshotLayout && (
+          <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start pr-10" : "mb-1.5"}`}>
+            <span className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
+              {storeMeta.short}
+            </span>
+            {alsoSpecialStores.map((store) => {
+              const meta = getStoreLogoMeta(store);
+              return (
+                <span
+                  key={store}
+                  title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
+                  className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
+                >
+                  {meta.short}
+                </span>
+              );
+            })}
+          </div>
+        )}
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same
@@ -285,11 +287,6 @@ export default function ProductListCard({
             />
           ) : (
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
-          )}
-          {snapshot && (
-            <span className={`dd-type-badge ml-auto rounded-md px-1.5 py-1 ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
-              {snapshot.kind === "savings" ? "Save" : "Inflated by"} ${snapshot.amount.toFixed(2)}
-            </span>
           )}
           {isCompactLayout && showPriceChangeBadge && (
             <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
@@ -319,7 +316,10 @@ export default function ProductListCard({
       </div>
 
       {snapshot ? (
-        <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-end gap-2">
+        <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-end gap-1">
+          <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] font-bold ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
+            {snapshot.kind === "savings" ? "Save" : "Inflated by"} ${snapshot.amount.toFixed(2)}
+          </span>
           <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Real" : "Dodgy"}
           </span>
