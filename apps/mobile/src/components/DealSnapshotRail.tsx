@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
 import {
   compareDealSnapshotEntries,
   getDealSnapshotAmount,
@@ -24,6 +25,7 @@ export default function DealSnapshotRail({
   onCategoriesChange,
   availableCategories,
   categoryCounts,
+  refreshKey,
 }: {
   kind: DealSnapshotKind;
   deals: FlatDeal[];
@@ -31,6 +33,7 @@ export default function DealSnapshotRail({
   onCategoriesChange: (categories: string[]) => void;
   availableCategories: string[];
   categoryCounts: Map<string, number>;
+  refreshKey: string;
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
@@ -50,9 +53,26 @@ export default function DealSnapshotRail({
   }, [deals, kind, selectedCategories]);
 
   const railRef = useRef<HTMLDivElement>(null);
+  const hasMountedRef = useRef(false);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const selectedCategoryKey = selectedCategories.join("|");
+
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
     if (railRef.current) railRef.current.scrollLeft = 0;
-  }, [selectedCategories]);
+    setIsRefreshing(true);
+    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    refreshTimeoutRef.current = setTimeout(() => setIsRefreshing(false), 360);
+
+    return () => {
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    };
+  }, [refreshKey, selectedCategoryKey]);
 
   return (
     <section className={`flex flex-col gap-3 px-5 py-5 ${isSavings ? "bg-fair-50" : "bg-alert-50"}`} aria-labelledby={`${kind}-snapshot-title`}>
@@ -81,11 +101,14 @@ export default function DealSnapshotRail({
           <p className="dd-type-secondary text-stone-600">{emptyMessage}</p>
         </div>
       ) : (
-        <div
+        <motion.div
           ref={railRef}
           className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
           role="region"
           aria-label={`${title} ranked products`}
+          initial={false}
+          animate={isRefreshing ? { opacity: [1, 0.72, 1] } : { opacity: 1 }}
+          transition={{ duration: 0.36, ease: "easeOut" }}
         >
           {rankedDeals.map(({ product, deal }, index) => {
             const amount = getDealSnapshotAmount(deal, kind);
@@ -107,8 +130,11 @@ export default function DealSnapshotRail({
               />
             );
           })}
-        </div>
+        </motion.div>
       )}
+      <span className="sr-only" aria-live="polite">
+        {isRefreshing ? `${title} updated` : ""}
+      </span>
     </section>
   );
 }

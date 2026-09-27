@@ -495,6 +495,7 @@ export default function HomePage() {
                 onCategoriesChange={setTopSavingsCategories}
                 availableCategories={topSavingsAvailableCategories}
                 categoryCounts={topSavingsCategoryCounts}
+                refreshKey={selectedStores.join(",")}
               />
               <DealSnapshotRail
                 kind="dodgy"
@@ -503,6 +504,7 @@ export default function HomePage() {
                 onCategoriesChange={setWorstDodgyCategories}
                 availableCategories={worstDodgyAvailableCategories}
                 categoryCounts={worstDodgyCategoryCounts}
+                refreshKey={selectedStores.join(",")}
               />
             </>
           )}
