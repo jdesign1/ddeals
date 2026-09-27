@@ -137,6 +137,18 @@ function alsoSpecialStores(product: ProductCard, shownStore: string): string[] {
   return [...seen];
 }
 
+const persistedSnapshotCategories = new Map<DealSnapshotKind, string[]>();
+
+function readSnapshotCategories(kind: DealSnapshotKind): string[] {
+  return [...(persistedSnapshotCategories.get(kind) ?? [])];
+}
+
+function persistSnapshotCategories(kind: DealSnapshotKind, categories: string[]): string[] {
+  const nextCategories = [...categories];
+  persistedSnapshotCategories.set(kind, nextCategories);
+  return nextCategories;
+}
+
 /** The home deal rail keeps the same lightweight sort controls across all
  * three deal assessment filters. */
 function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
@@ -202,8 +214,14 @@ export default function HomePage() {
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
-  const [topSavingsCategories, setTopSavingsCategories] = useState<string[]>([]);
-  const [worstDodgyCategories, setWorstDodgyCategories] = useState<string[]>([]);
+  const [topSavingsCategories, setTopSavingsCategoriesState] = useState<string[]>(() => readSnapshotCategories("savings"));
+  const [worstDodgyCategories, setWorstDodgyCategoriesState] = useState<string[]>(() => readSnapshotCategories("dodgy"));
+  const setTopSavingsCategories = (categories: string[]) => {
+    setTopSavingsCategoriesState(persistSnapshotCategories("savings", categories));
+  };
+  const setWorstDodgyCategories = (categories: string[]) => {
+    setWorstDodgyCategoriesState(persistSnapshotCategories("dodgy", categories));
+  };
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
 
