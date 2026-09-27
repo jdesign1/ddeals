@@ -469,10 +469,6 @@ export default function HomePage() {
               language app-wide instead of border outlines. */}
           {dealFilter === "all" && (
             <>
-              <section className="px-5 pt-2 text-center" aria-labelledby="deal-snapshot-heading">
-                <h2 id="deal-snapshot-heading" className="dd-type-section text-stone-900">Deal snapshot</h2>
-                <p className="dd-type-body mt-1 text-stone-600">Quickly see the current best and worst deals</p>
-              </section>
               <DealSnapshotRail
                 kind="savings"
                 deals={topSavingsDeals}
