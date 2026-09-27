@@ -198,7 +198,9 @@ export default function ProductListCard({
           isCompactLayout
             ? "-my-2 -ml-2 w-20 self-stretch rounded-l-xl bg-paper p-1.5"
           : useGridCard
-              ? "aspect-[5/2.75] w-full bg-stone-50 p-3"
+              ? isSnapshotLayout
+                ? "aspect-[4/3] w-full bg-stone-50 p-3"
+                : "aspect-[5/2.75] w-full bg-stone-50 p-3"
               : "min-h-[112px] w-36 self-stretch bg-stone-50 p-2.5"
         }`}
       >
