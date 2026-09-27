@@ -319,8 +319,8 @@ export default function ProductListCard({
 
       {snapshot ? (
         <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-end gap-1">
-          <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] font-bold ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
-            {snapshot.kind === "savings" ? "Save" : "Inflated by"} ${snapshot.amount.toFixed(2)}
+          <span className={`shrink-0 select-none whitespace-nowrap rounded-md p-1 dd-type-badge ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
+            {snapshot.kind === "savings" ? "Save" : "Increased"} ${snapshot.amount.toFixed(2)}
           </span>
           <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Real" : "Dodgy"}
