@@ -531,19 +531,20 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="flex items-center justify-start gap-3 px-5">
-          <button type="button" onClick={() => setIsFilterSheetOpen(true)} disabled={watchlistItems.length === 0 || (categories.length <= 1 && supermarkets.length === 0)} aria-label={`Filter Watchlist${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? ", filters active" : ""}`} className={`inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-stone-300 px-3 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Filter</span></button>
-          <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-stone-300 bg-white px-3 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
-          <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+        <div className="flex items-center gap-3 px-5">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <button type="button" onClick={() => setIsFilterSheetOpen(true)} disabled={watchlistItems.length === 0 || (categories.length <= 1 && supermarkets.length === 0)} aria-label={`Filter Watchlist${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? ", filters active" : ""}`} className={`inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-stone-300 px-3 py-1.5 dd-type-control shadow-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedCategories.length > 0 || !selectedSupermarkets.includes("all") ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}><span>Filter</span></button>
+            <button type="button" onClick={() => setIsSortSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label={`Sort Watchlist, ${sortMode === "recent" ? "date added" : "largest discount"}`} className="inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-stone-300 bg-white px-3 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><span>Sort</span></button>
+            <button type="button" onClick={() => setIsShareSheetOpen(true)} disabled={watchlistItems.length === 0} aria-label="Share Watchlist" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><Share className="h-5 w-5" aria-hidden="true" /></button>
+          </div>
+          <span className="shrink-0 text-right text-[12px] font-medium text-stone-400">{sortMode === "discount" ? "Largest discount first" : "Newest first"}</span>
         </div>
       </div>
 
-      <div className="px-5 text-[13px] font-bold text-stone-600" aria-live="polite">
+      <div className="sr-only" aria-live="polite">
         {selectedCategories.length > 0
           ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`
           : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`}
-        {sortMode === "discount" && <span className="font-medium text-stone-400"> · Largest discount first</span>}
-        {sortMode === "recent" && <span className="font-medium text-stone-400"> · Newest first</span>}
       </div>
 
       {error && <ErrorState message="Something went wrong with your Watchlist." detail={error} onRetry={() => void reload()} />}
@@ -630,7 +631,7 @@ function WatchlistSummaryCard({
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div className="flex items-center justify-between gap-3">
-        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist</h1>
+        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Watching {itemCount} {itemCount === 1 ? "item" : "items"}</h1>
         {!isEmpty && (
           <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
             <span className={`h-2.5 w-2.5 rounded-full ${hasNewPrices ? "bg-fair-600" : "bg-stone-300"}`} aria-hidden="true" />
@@ -704,7 +705,7 @@ function WatchlistFilterSheet({
                 <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100"><X className="h-4 w-4" aria-hidden="true" /></button>
               </div>
             </div>
-            <div className="space-y-7 overflow-y-auto px-5 py-4">
+            <div className="space-y-6 overflow-y-auto px-5 pb-4 pt-2">
               <section aria-labelledby="watchlist-filter-categories-title" className="space-y-4">
                 <h4 id="watchlist-filter-categories-title" className="dd-type-sheet-title text-stone-900">Categories</h4>
                 <button type="button" aria-pressed={selectedCategories.length === 0} onClick={onClearCategories} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selectedCategories.length === 0 ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All categories</button>
@@ -736,7 +737,7 @@ function WatchlistFilterSheet({
                 )}
               </section>
 
-              <section aria-labelledby="watchlist-filter-supermarkets-title" className="space-y-3 border-t border-stone-100 pt-5">
+              <section aria-labelledby="watchlist-filter-supermarkets-title" className="space-y-2 border-t border-stone-100 pt-4">
                 <h4 id="watchlist-filter-supermarkets-title" className="dd-type-sheet-title text-stone-900">Supermarkets</h4>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" aria-pressed={allSupermarketsSelected} onClick={() => onToggle("all")} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${allSupermarketsSelected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All supermarkets</button>
