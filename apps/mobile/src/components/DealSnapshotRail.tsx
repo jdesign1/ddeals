@@ -33,7 +33,7 @@ export default function DealSnapshotRail({
   categoryCounts: Map<string, number>;
 }) {
   const isSavings = kind === "savings";
-  const title = isSavings ? "Top Savings Specials" : "Worst Dodgy Specials";
+  const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
   const description = isSavings ? "Biggest savings" : "Biggest price hikes";
   const emptyMessage = isSavings
     ? "No verified savings match this category yet."
