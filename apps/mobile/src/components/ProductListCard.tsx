@@ -318,7 +318,7 @@ export default function ProductListCard({
       </div>
 
       {snapshot ? (
-        <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-end gap-1">
+        <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-start gap-1">
           <span className={`shrink-0 select-none whitespace-nowrap rounded-md p-1 dd-type-badge ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
             {snapshot.kind === "savings" ? "Save" : "Increased"} ${snapshot.amount.toFixed(2)}
           </span>

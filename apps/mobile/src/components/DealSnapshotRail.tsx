@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   compareDealSnapshotEntries,
   getDealSnapshotAmount,
@@ -49,6 +49,11 @@ export default function DealSnapshotRail({
       .slice(0, 20);
   }, [deals, kind, selectedCategories]);
 
+  const railRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (railRef.current) railRef.current.scrollLeft = 0;
+  }, [selectedCategories]);
+
   return (
     <section className={`flex flex-col gap-3 px-5 py-5 ${isSavings ? "bg-fair-50" : "bg-alert-50"}`} aria-labelledby={`${kind}-snapshot-title`}>
       <div className="flex items-start justify-between gap-3">
@@ -76,7 +81,8 @@ export default function DealSnapshotRail({
         </div>
       ) : (
         <div
-          className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
+          ref={railRef}
+          className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
           role="region"
           aria-label={`${title} ranked products`}
         >
