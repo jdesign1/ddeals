@@ -34,7 +34,6 @@ export default function DealSnapshotRail({
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savings Specials" : "Worst Dodgy Specials";
-  const description = isSavings ? "Biggest savings" : "Biggest price hikes";
   const emptyMessage = isSavings
     ? "No verified savings match this category yet."
     : "No inflated-price Dodgy specials match this category yet.";
@@ -55,14 +54,8 @@ export default function DealSnapshotRail({
   }, [selectedCategories]);
 
   return (
-    <section className={`flex flex-col gap-3 px-5 py-5 ${isSavings ? "bg-fair-50" : "bg-alert-50"}`} aria-labelledby={`${kind}-snapshot-title`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id={`${kind}-snapshot-title`} className={`dd-type-section ${isSavings ? "text-fair-800" : "text-alert-700"}`}>
-            {title}
-          </h2>
-          <p className="dd-type-secondary mt-1 max-w-[18rem] text-stone-600">{description}</p>
-        </div>
+    <section className={`flex flex-col gap-3 px-5 py-5 ${isSavings ? "bg-fair-50" : "bg-alert-50"}`} aria-label={title}>
+      <div className="flex items-start justify-end gap-3">
         <CategoryPicker
           label="Category"
           ariaLabel={`Filter ${title.toLowerCase()} by category`}
