@@ -364,6 +364,7 @@ export default function HomePage() {
             <DealFilterTabs
               value={dealFilter}
               onChange={handleDealFilterChange}
+              allLabel="Top Deals"
             />
             <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
               <StorePill
@@ -487,17 +488,19 @@ export default function HomePage() {
               />
             </>
           )}
-          <TrendingSection
-            deals={filteredDeals}
-            filter={dealFilter}
-            sortBy={dealSortBy}
-            onSortByChange={handleDealSortChange}
-            categoryFilter={dealCategoryFilter}
-            onCategoryFilterChange={setDealCategoryFilter}
-            availableCategories={availableCategories}
-            categoryCounts={categoryCounts}
-            revealPersistenceKey={`check-deals:${selectedStores.join(",")}:${dealFilter}:${dealSortBy}:${dealCategoryFilter.join(",")}`}
-          />
+          {dealFilter !== "all" && (
+            <TrendingSection
+              deals={filteredDeals}
+              filter={dealFilter}
+              sortBy={dealSortBy}
+              onSortByChange={handleDealSortChange}
+              categoryFilter={dealCategoryFilter}
+              onCategoryFilterChange={setDealCategoryFilter}
+              availableCategories={availableCategories}
+              categoryCounts={categoryCounts}
+              revealPersistenceKey={`check-deals:${selectedStores.join(",")}:${dealFilter}:${dealSortBy}:${dealCategoryFilter.join(",")}`}
+            />
+          )}
         </>
       )}
       </motion.main>

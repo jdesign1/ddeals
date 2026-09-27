@@ -13,11 +13,13 @@ export default function DealFilterTabs({
   value,
   onChange,
   buttonIdPrefix,
+  allLabel,
   backgroundClassName = "bg-white ring-1 ring-stone-200",
 }: {
   value: DealFilter;
   onChange: (value: DealFilter) => void;
   buttonIdPrefix?: string;
+  allLabel?: string;
   backgroundClassName?: string;
 }) {
   const activeFillId = `${buttonIdPrefix ?? "deal-filter"}-active-fill`;
@@ -53,7 +55,7 @@ export default function DealFilterTabs({
                 />
               )}
             </AnimatePresence>
-            {tab.label}
+            {tab.id === "all" ? allLabel ?? tab.label : tab.label}
           </button>
         );
       })}
