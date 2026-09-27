@@ -72,6 +72,48 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .faq-answer p { max-width: 700px; margin: -4px 0 24px; padding-right: 40px; color: var(--ink-soft); font-size: .92rem; line-height: 1.58; }
 .site-footer { max-width: 1180px; margin: 0 auto; padding: 24px 32px 42px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); color: var(--ink-soft); }.site-footer .logo-lockup { color: var(--ink); font-size: 1rem; }.site-footer .logo-lockup img { width: 30px; height: 30px; }.footer-links { display: flex; gap: 20px; font-size: .78rem; }.footer-links a:hover { color: var(--fair); }
 
+/* Legal pages use the same brand system, with a calmer reading measure and a
+   more editorial rhythm suited to long-form policy copy. */
+.legal-page { min-height: 100vh; overflow: visible; background: var(--white); }
+.legal-hero { background: var(--hero-sand); border-bottom: 1px solid var(--line); }
+.legal-hero-inner { max-width: 860px; margin: 0 auto; padding: 76px 32px 68px; }
+.legal-eyebrow { margin: 0 0 18px; color: var(--fair-dark); font-size: .76rem; font-weight: 800; letter-spacing: .13em; line-height: 1.2; text-transform: uppercase; }
+.legal-hero h1 { max-width: 760px; margin: 0 0 20px; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: clamp(2.65rem, 5vw, 4.4rem); font-weight: 700; letter-spacing: -.035em; line-height: 1.02; }
+.legal-lede { max-width: 760px; margin: 0; color: var(--ink-soft); font-size: 1.13rem; line-height: 1.68; }
+.legal-updated { margin: 28px 0 0; color: #716d66; font-size: .8rem; font-weight: 700; letter-spacing: .02em; }
+.legal-layout { max-width: 1180px; margin: 0 auto; padding: 68px 32px 96px; display: grid; grid-template-columns: 210px minmax(0, 780px); justify-content: center; gap: clamp(40px, 7vw, 90px); }
+.legal-index { align-self: start; position: sticky; top: 24px; padding: 3px 0 0 20px; border-left: 2px solid var(--line); }
+.legal-index-title { margin: 0 0 16px; color: var(--ink); font-size: .74rem; font-weight: 800; letter-spacing: .11em; line-height: 1.2; text-transform: uppercase; }
+.legal-index ol { margin: 0; padding: 0; list-style: none; }
+.legal-index li + li { margin-top: 10px; }
+.legal-index a { color: var(--ink-soft); font-size: .78rem; line-height: 1.35; }
+.legal-index a:hover { color: var(--fair-dark); }
+.legal-index a:focus-visible, .legal-copy a:focus-visible, .legal-related a:focus-visible, .site-footer a:focus-visible, .site-header a:focus-visible { outline: 3px solid rgba(7, 155, 96, .3); outline-offset: 4px; border-radius: 3px; }
+.legal-document { min-width: 0; }
+.legal-notice { margin: 0 0 62px; padding: 21px 24px 23px; border: 1px solid #eed4a2; border-radius: 15px; background: #fff8e9; color: #5f4a25; }
+.legal-notice p { max-width: none; margin: 0; font-size: .91rem; line-height: 1.65; }
+.legal-notice-label { margin-bottom: 6px !important; color: #7d5c20; font-size: .71rem !important; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.legal-section { scroll-margin-top: 28px; padding: 0 0 48px; border-bottom: 1px solid var(--line); }
+.legal-section + .legal-section { padding-top: 48px; }
+.legal-section h2, .legal-related h2 { margin: 0 0 18px; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.25rem; font-weight: 800; letter-spacing: -.018em; line-height: 1.25; }
+.legal-copy { color: var(--ink-soft); font-size: .98rem; line-height: 1.78; }
+.legal-copy p { max-width: 70ch; margin: 0; }
+.legal-copy p + p { margin-top: 18px; }
+.legal-copy strong { color: var(--ink); font-weight: 800; }
+.legal-copy a, .legal-related a { color: var(--fair-dark); font-weight: 800; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.legal-bullets { max-width: 70ch; margin: 15px 0 18px; padding-left: 1.35rem; }
+.legal-bullets li { padding-left: .3rem; }
+.legal-bullets li + li { margin-top: 8px; }
+.legal-contact-card { max-width: 70ch; margin: 18px 0; padding: 18px 20px; border-radius: 12px; background: var(--paper); }
+.legal-contact-row { display: flex; justify-content: space-between; gap: 28px; padding: 7px 0; font-size: .92rem; line-height: 1.5; }
+.legal-contact-row + .legal-contact-row { border-top: 1px solid var(--line); }
+.legal-contact-row dt { color: var(--ink); font-weight: 800; }
+.legal-contact-row dd { margin: 0; text-align: right; }
+.legal-related { margin-top: 48px; padding: 24px; border: 1px solid var(--line); border-radius: 15px; background: var(--paper); }
+.legal-related h2 { margin-bottom: 10px; font-size: 1rem; }
+.legal-related a { font-size: .9rem; }
+.legal-page .site-footer { margin-top: 0; }
+
 @media (max-width: 900px) { .download-hero-inner { grid-template-columns: minmax(0, 1fr) minmax(350px, .85fr); gap: 12px; }.download-copy h1 { font-size: clamp(2.1rem, 4.2vw, 3rem); }.feature-grid { gap: 18px; }.feature-card h3 { font-size: 1.02rem; } }
 
 @media (max-width: 720px) {
@@ -80,6 +122,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
   .download-hero-inner { min-height: 0; padding: 38px 20px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 20px; }.download-copy { text-align: center; }.download-copy h1 { max-width: 520px; margin-left: auto; margin-right: auto; font-size: clamp(2.05rem, 8.5vw, 2.75rem); }.download-copy p { max-width: 34rem; margin-left: auto; margin-right: auto; font-size: .95rem; }.store-badge { margin: 0 auto; }.download-visual { min-height: 0; height: auto; }.hero-animation__stage { width: 100%; /* The artwork reserves left-side space for the desktop headline; center the visible phone/mascot composition on mobile. */ transform: translateX(-15%); }
   .feature-section, .feature-section-secondary { padding: 62px 20px 26px; }.feature-section-secondary { padding-top: 70px; padding-bottom: 64px; }.section-intro { margin-bottom: 32px; }.section-intro h2 { font-size: clamp(1.65rem, 7vw, 2.05rem); }.section-intro p { max-width: 34rem; margin-inline: auto; font-size: .9rem; }.feature-grid { grid-template-columns: 1fr; gap: 40px; }.feature-image { max-width: 520px; margin: 0 auto; }.feature-image-graph img { transform: scale(1.18); }.feature-card h3 { margin-top: 17px; font-size: 1.02rem; }.feature-card p { max-width: 34rem; font-size: .9rem; }
   .closing-cta { margin: 0 20px 52px; padding: 34px 20px 38px; border-radius: 22px; }.closing-cta h2 { font-size: clamp(1.6rem, 6.5vw, 2rem); }.closing-cta p { max-width: 34rem; font-size: .9rem; }.faq-section { margin-bottom: 64px; padding: 0 20px; }.faq-trigger { min-height: 68px; padding-top: 20px; padding-bottom: 20px; font-size: .96rem; }.faq-answer p { padding-right: 24px; font-size: .88rem; }.site-footer { padding: 22px 20px 34px; gap: 18px; align-items: start; }.site-footer .logo-lockup { font-size: .9rem; }.footer-links { max-width: 170px; justify-content: flex-end; gap: 10px 12px; font-size: .7rem; }
+  .legal-hero-inner { padding: 52px 20px 48px; }.legal-hero h1 { font-size: clamp(2.35rem, 11vw, 3.2rem); }.legal-lede { font-size: 1rem; line-height: 1.62; }.legal-layout { display: block; padding: 42px 20px 64px; }.legal-index { position: static; margin-bottom: 42px; padding: 18px 20px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }.legal-index ol { columns: 2; column-gap: 24px; }.legal-index li { break-inside: avoid; }.legal-index li + li { margin-top: 9px; }.legal-notice { margin-bottom: 46px; padding: 18px 19px 20px; }.legal-section { padding-bottom: 38px; }.legal-section + .legal-section { padding-top: 38px; }.legal-copy { font-size: .95rem; line-height: 1.72; }.legal-contact-row { display: block; }.legal-contact-row dd { margin-top: 2px; text-align: left; }.legal-related { margin-top: 38px; }
 }
 
 @media (max-width: 420px) { .header-nav { gap: 10px; }.header-link { font-size: .72rem; }.feature-image { aspect-ratio: 1.48; }.footer-links { flex-wrap: wrap; justify-content: flex-end; } }
