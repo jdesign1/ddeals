@@ -1,8 +1,6 @@
 import Image from "next/image";
 import FaqAccordion from "./FaqAccordion";
-
-const APP_URL = "https://app.dodgydeal.co.nz";
-const BRAND_LOGO = "/logo.svg";
+import { Logo, SiteFooter, SiteHeader } from "./MarketingChrome";
 
 const firstFeatures = [
   {
@@ -47,15 +45,6 @@ const secondFeatures = [
     imageClassName: "feature-image-graph",
   },
 ];
-
-function Logo({ animated = false }: { animated?: boolean }) {
-  return (
-    <span className="logo-lockup">
-      <Image src={BRAND_LOGO} alt="" width={38} height={38} priority unoptimized className={animated ? "logo-mascot" : undefined} />
-      <span>Dodgy deal</span>
-    </span>
-  );
-}
 
 function StoreBadge() {
   return (
@@ -127,13 +116,7 @@ function FeatureCard({ title, body, image, imageAlt, imageClassName }: { title: 
 export default function Home() {
   return (
     <main id="top">
-      <header className="site-header">
-        <a href="#top" aria-label="Dodgy deal home"><Logo animated /></a>
-        <nav className="header-nav" aria-label="Primary navigation">
-          <a className="header-link" href="#how-it-works">How does it work</a>
-          <a className="header-link" href="#faq">FAQs</a>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <section className="download-hero" aria-labelledby="hero-title">
         <div className="download-hero-inner">
@@ -182,10 +165,7 @@ export default function Home() {
         <FaqAccordion />
       </section>
 
-      <footer className="site-footer">
-        <Logo />
-        <div className="footer-links"><a href="mailto:hello@dodgydeal.co.nz">Contact</a><a href={`${APP_URL}/privacy`}>Privacy</a><a href={`${APP_URL}/terms`}>Terms</a></div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
