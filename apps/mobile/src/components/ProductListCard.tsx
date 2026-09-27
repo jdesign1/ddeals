@@ -218,7 +218,7 @@ export default function ProductListCard({
         </div>
         {snapshot && (
           <span
-            className="absolute left-0 top-0 h-14 w-14 bg-ink-600 font-display text-lg font-black text-white [clip-path:polygon(0_0,100%_0,0_100%)]"
+            className="absolute left-0 top-0 h-14 w-14 bg-ink-600 font-display text-base font-black text-white [clip-path:polygon(0_0,100%_0,0_100%)]"
             aria-label={`Rank ${snapshot.rank}`}
           >
             <span className="absolute left-1/3 top-1/3 -translate-x-1/2 -translate-y-1/2">{snapshot.rank}</span>
@@ -320,7 +320,7 @@ export default function ProductListCard({
       {snapshot ? (
         <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-start gap-1">
           <span className={`shrink-0 select-none whitespace-nowrap rounded-md p-1 dd-type-badge ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
-            {snapshot.kind === "savings" ? "Save" : "Raised"} ${snapshot.amount.toFixed(2)}
+            {snapshot.kind === "savings" ? "Save" : "Risen"} ${snapshot.amount.toFixed(2)}
           </span>
           <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Real" : "Dodgy"}

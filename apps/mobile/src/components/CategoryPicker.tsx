@@ -15,6 +15,7 @@ export default function CategoryPicker({
   emptyMessage = "No deals in this category right now.",
   ariaLabel = "Filter by category",
   withoutShadow = false,
+  singleCategoryLabel,
 }: {
   selectedCategories: string[];
   onChange: (categories: string[]) => void;
@@ -24,13 +25,14 @@ export default function CategoryPicker({
   emptyMessage?: string;
   ariaLabel?: string;
   withoutShadow?: boolean;
+  singleCategoryLabel?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedLabel =
     selectedCategories.length === 0
       ? label
       : selectedCategories.length === 1
-        ? selectedCategories[0]
+        ? singleCategoryLabel ?? selectedCategories[0]
         : `${selectedCategories.length} categories`;
 
   const toggleCategory = (category: string) => {

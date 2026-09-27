@@ -72,6 +72,7 @@ export default function DealSnapshotRail({
           categoryCounts={categoryCounts}
           emptyMessage={emptyMessage}
           withoutShadow
+          singleCategoryLabel="1 category"
         />
       </div>
 
