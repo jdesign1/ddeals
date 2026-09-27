@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, type PointerEvent } from "react";
-import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
+import type {
+  DealConfidenceLabel,
+  DealSnapshotKind,
+  ProductCard as ProductCardData,
+  CurrentDeal,
+} from "@dodgey-deals/shared";
 import { STORE_DISPLAY_FALLBACK, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
@@ -71,6 +76,13 @@ export interface ProductListCardProps {
   onNavigate?: () => void;
   /** Parent controls the small per-view cap so a scrape wave does not mark every card. */
   showNewBadge?: boolean;
+  /** Snapshot rails use a ranked, fixed-width card and dollar-first callout. */
+  snapshot?: {
+    rank: number;
+    kind: DealSnapshotKind;
+    amount: number;
+    confidenceLabel: DealConfidenceLabel;
+  };
 }
 
 export default function ProductListCard({
@@ -81,17 +93,20 @@ export default function ProductListCard({
   alsoSpecialStores = [],
   onNavigate,
   showNewBadge = false,
+  snapshot,
 }: ProductListCardProps) {
   const router = useRouter();
   const isDodgy = deal.dealType === "Dodgy Deal";
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
   const hideCardBadges = hasMixedStoreVerdicts(product);
-  const showPriceChangeBadge = !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
+  const isSnapshotLayout = snapshot != null;
+  const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
-  const specialPriceRange = getSpecialPriceRange(product);
+  const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
   const storeMeta = getStoreLogoMeta(deal.store);
   const { isGridLayout, isCompactLayout } = useCardLayout();
+  const useGridCard = isSnapshotLayout || isGridLayout;
   const storeBadgePadding = isCompactLayout ? "px-1.5 py-0.5" : "p-1";
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
@@ -159,11 +174,13 @@ export default function ProductListCard({
       // verdict badge below still carries the deal status explicitly.
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
-      style={{ touchAction: "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+      style={{ touchAction: isSnapshotLayout ? "pan-x pan-y" : "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
       className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border border-stone-200/80 bg-white ${
         isCompactLayout
           ? "dd-compact-product-card flex min-h-20 items-stretch gap-3 p-2"
-          : isGridLayout
+          : isSnapshotLayout
+            ? "dd-snapshot-card w-[78vw] max-w-[280px] shrink-0 snap-start flex flex-col"
+            : isGridLayout
             ? "flex flex-col"
             : "flex"
       }`}
@@ -171,7 +188,7 @@ export default function ProductListCard({
       <AddToListButton
         productId={product.id}
         productName={product.name}
-        containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : undefined}
+        containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : isSnapshotLayout ? "absolute right-3 top-3 z-10" : undefined}
       />
 
       {/* Single layout keeps the horizontal image-and-text card currently
@@ -182,7 +199,7 @@ export default function ProductListCard({
         className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden ${
           isCompactLayout
             ? "-my-2 -ml-2 w-20 self-stretch rounded-l-xl bg-paper p-1.5"
-            : isGridLayout
+          : useGridCard
               ? "aspect-[5/2.75] w-full bg-stone-50 p-3"
               : "min-h-[112px] w-36 self-stretch bg-stone-50 p-2.5"
         }`}
@@ -193,12 +210,20 @@ export default function ProductListCard({
             alt={product.name}
             width={112}
             height={112}
-            sizes={isGridLayout ? "(max-width: 480px) 45vw, 256px" : "144px"}
+            sizes={useGridCard ? "(max-width: 480px) 78vw, 280px" : "144px"}
             loading={imageLoading}
             fetchPriority={imageLoading === "eager" ? "high" : "auto"}
-            className={`product-image-content h-full w-full object-contain mix-blend-multiply ${isGridLayout ? "scale-[0.95]" : ""}`}
+            className={`product-image-content h-full w-full object-contain mix-blend-multiply ${useGridCard ? "scale-[0.95]" : ""}`}
           />
         </div>
+        {snapshot && (
+          <span
+            className="absolute left-0 top-0 flex h-10 w-10 items-start justify-start rounded-br-2xl bg-ink-600 px-2 pt-1 font-display text-lg font-black text-white"
+            aria-label={`Rank ${snapshot.rank}`}
+          >
+            {snapshot.rank}
+          </span>
+        )}
         {showNewBadge && isNewSpecial(deal) && (
           <span className="new-special-ribbon" aria-label="New special">
             <span aria-hidden="true">NEW</span>
@@ -209,7 +234,7 @@ export default function ProductListCard({
         className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
           isCompactLayout
             ? "px-2 py-2"
-            : isGridLayout
+            : useGridCard
               ? "px-3 pb-9 pt-3"
               : "pb-9 pl-4 pr-9 pt-4"
         }`}
@@ -263,6 +288,11 @@ export default function ProductListCard({
           ) : (
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
           )}
+          {snapshot && (
+            <span className={`dd-type-badge ml-auto rounded-md px-1.5 py-1 ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
+              {snapshot.kind === "savings" ? "Save" : "Inflated by"} ${snapshot.amount.toFixed(2)}
+            </span>
+          )}
           {isCompactLayout && showPriceChangeBadge && (
             <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
           )}
@@ -287,11 +317,22 @@ export default function ProductListCard({
             </span>
           </div>
         )}
+        {snapshot && (
+          <span className={`dd-type-meta mt-1 ${snapshot.confidenceLabel === "High confidence" ? "text-fair-700" : "text-stone-500"}`}>
+            {snapshot.confidenceLabel}
+          </span>
+        )}
         </div>
       </div>
 
-      {!hideCardBadges && !isCompactLayout && (
-        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${isGridLayout ? "left-3 right-3" : "left-40 right-3"}`}>
+      {snapshot ? (
+        <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-end gap-2">
+          <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
+            {snapshot.kind === "savings" ? "Real" : "Dodgy"}
+          </span>
+        </div>
+      ) : !hideCardBadges && !isCompactLayout && (
+        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
           {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
           {isDodgy && (
             <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">

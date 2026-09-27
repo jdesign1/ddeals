@@ -1,5 +1,5 @@
 import type { CurrentDeal } from "@dodgey-deals/shared";
-import { getSignedPriceChangePercentage } from "@/lib/price-change";
+import { getDealConfidenceScore, getDealSnapshotAmount } from "@dodgey-deals/shared";
 import type { DealFilter } from "@/lib/deal-filters";
 
 export type CheckDealsSortBy = "price-asc" | "latest" | "biggest-saver" | "worst-dodgy";
@@ -27,15 +27,19 @@ export function getDealFilterForSort(sortBy: CheckDealsSortBy): DealFilter | nul
   return null;
 }
 
-/** Returns a sortable score without rounding away small but real differences. */
+/**
+ * Returns a sortable score for the existing sort sheet. Dollar amount is the
+ * primary signal; confidence is scaled beneath it so it only breaks ties (or
+ * near-ties) instead of allowing a weak, larger-looking percentage to win.
+ */
 export function getDealSortScore(deal: CurrentDeal, sortBy: CheckDealsSortBy): number | null {
-  const signedPriceChange = getSignedPriceChangePercentage(deal.price, deal.originalPrice);
-  if (signedPriceChange == null) return null;
-
-  if (sortBy === "biggest-saver") return Math.max(0, signedPriceChange);
+  if (sortBy === "biggest-saver") {
+    const savings = getDealSnapshotAmount(deal, "savings");
+    return savings == null ? null : savings * 1_000 + getDealConfidenceScore(deal);
+  }
   if (sortBy === "worst-dodgy") {
-    const dodgyPriority = deal.dealType === "Dodgy Deal" ? 1_000 : 0;
-    return dodgyPriority + Math.max(0, -signedPriceChange);
+    const inflation = getDealSnapshotAmount(deal, "dodgy");
+    return inflation == null ? null : inflation * 1_000 + getDealConfidenceScore(deal);
   }
   return null;
 }

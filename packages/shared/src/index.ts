@@ -12,3 +12,4 @@ export * from "./product-search.ts";
 export * from "./specials-freshness.ts";
 export * from "./price-change-stats.ts";
 export * from "./subscriptions.ts";
+export * from "./deal-ranking.ts";
