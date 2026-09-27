@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, X } from "lucide-react";
@@ -9,7 +9,9 @@ import {
   deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
   groupCategory,
-  CATEGORY_SECTIONS,
+  compareDealSnapshotEntries,
+  isEligibleForDealSnapshot,
+  type DealSnapshotKind,
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
@@ -18,6 +20,8 @@ import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import ProductListCard from "@/components/ProductListCard";
+import CategoryPicker from "@/components/CategoryPicker";
+import DealSnapshotRail from "@/components/DealSnapshotRail";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
@@ -148,6 +152,30 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
   return sorted;
 }
 
+function buildSnapshotDeals(products: ProductCard[], selectedStores: string[], kind: DealSnapshotKind): FlatDeal[] {
+  const snapshotDeals: FlatDeal[] = [];
+  for (const product of products) {
+    const qualifying = product.currentDeals.filter(
+      (deal) => matchesAnySelectedStore(deal.store, selectedStores) && isEligibleForDealSnapshot(deal, kind)
+    );
+    if (!qualifying.length) continue;
+    const best = qualifying.reduce((currentBest, candidate) =>
+      compareDealSnapshotEntries({ deal: candidate }, { deal: currentBest }, kind) < 0 ? candidate : currentBest
+    );
+    snapshotDeals.push({ product, deal: best });
+  }
+  return snapshotDeals;
+}
+
+function getSnapshotCategoryCounts(deals: FlatDeal[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const { product } of deals) {
+    const category = groupCategory(product.category);
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+  return counts;
+}
+
 const TRENDING_PAGE_SIZE = 12;
 
 export default function HomePage() {
@@ -174,6 +202,8 @@ export default function HomePage() {
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
+  const [topSavingsCategories, setTopSavingsCategories] = useState<string[]>([]);
+  const [worstDodgyCategories, setWorstDodgyCategories] = useState<string[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
 
@@ -228,6 +258,25 @@ export default function HomePage() {
     () => [...new Set(dealsAllCategories.map(({ product }) => groupCategory(product.category)))],
     [dealsAllCategories]
   );
+
+  const topSavingsDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "savings"),
+    [products, selectedStores]
+  );
+  const worstDodgyDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "dodgy"),
+    [products, selectedStores]
+  );
+  const topSavingsAvailableCategories = useMemo(
+    () => [...new Set(topSavingsDeals.map(({ product }) => groupCategory(product.category)))],
+    [topSavingsDeals]
+  );
+  const worstDodgyAvailableCategories = useMemo(
+    () => [...new Set(worstDodgyDeals.map(({ product }) => groupCategory(product.category)))],
+    [worstDodgyDeals]
+  );
+  const topSavingsCategoryCounts = useMemo(() => getSnapshotCategoryCounts(topSavingsDeals), [topSavingsDeals]);
+  const worstDodgyCategoryCounts = useMemo(() => getSnapshotCategoryCounts(worstDodgyDeals), [worstDodgyDeals]);
 
   const filteredDeals = useMemo<FlatDeal[]>(() => {
     if (dealCategoryFilter.length === 0) return dealsAllCategories;
@@ -418,6 +467,30 @@ export default function HomePage() {
               below, and `FullScreenSearch.tsx`'s Categories/Sort triggers +
               category chips -- one consistent "flat, shadow-grounded"
               language app-wide instead of border outlines. */}
+          {dealFilter === "all" && (
+            <>
+              <section className="px-5 pt-2 text-center" aria-labelledby="deal-snapshot-heading">
+                <h2 id="deal-snapshot-heading" className="dd-type-section text-stone-900">Deal snapshot</h2>
+                <p className="dd-type-body mt-1 text-stone-600">Quickly see the current best and worst deals</p>
+              </section>
+              <DealSnapshotRail
+                kind="savings"
+                deals={topSavingsDeals}
+                selectedCategories={topSavingsCategories}
+                onCategoriesChange={setTopSavingsCategories}
+                availableCategories={topSavingsAvailableCategories}
+                categoryCounts={topSavingsCategoryCounts}
+              />
+              <DealSnapshotRail
+                kind="dodgy"
+                deals={worstDodgyDeals}
+                selectedCategories={worstDodgyCategories}
+                onCategoriesChange={setWorstDodgyCategories}
+                availableCategories={worstDodgyAvailableCategories}
+                categoryCounts={worstDodgyCategoryCounts}
+              />
+            </>
+          )}
           <TrendingSection
             deals={filteredDeals}
             filter={dealFilter}
@@ -625,22 +698,6 @@ function TrendingSection({
     [sorted]
   );
 
-  // Categories filter sheet, added 2026-08-21 per Jay: "Add the categories
-  // sort button (existing from the full search screen) to the trending
-  // tab." Local open/close state + toggle helper mirror
-  // FullScreenSearch.tsx's own `categorySheetTarget`/`activeCategoryFilter`/
-  // `toggleActiveCategory` pattern; the sheet markup below is copied from
-  // that file's Categories sheet class-for-class (same bottom-sheet shape
-  // every sheet in this app uses), with `categoryDodgyCounts`/"dodgy deals"
-  // generalized to this rail's own `categoryCounts`/"trending deals" wording
-  // since Trending isn't the dodgy/popular-tab context that copy came from.
-  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
-  const toggleCategory = (cat: string) => {
-    onCategoryFilterChange(
-      categoryFilter.includes(cat) ? categoryFilter.filter((c) => c !== cat) : [...categoryFilter, cat]
-    );
-  };
-
   return (
     <section className="flex flex-col gap-4 px-5">
       <DealFilterSummary filter={filter} />
@@ -653,14 +710,13 @@ function TrendingSection({
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsCategorySheetOpen(true)}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
-              >
-                <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
-                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
+              <CategoryPicker
+                selectedCategories={categoryFilter}
+                onChange={onCategoryFilterChange}
+                availableCategories={availableCategories}
+                categoryCounts={categoryCounts}
+                emptyMessage={sectionCopy.categoryEmpty}
+              />
               <SortDropdown value={sortBy} onChange={onSortByChange} options={TRENDING_SORT_OPTIONS} />
             </div>
           </div>
@@ -698,107 +754,6 @@ function TrendingSection({
           )}
         </>
       )}
-      <BottomSheetPortal open={isCategorySheetOpen}>
-        <AnimatePresence>
-          {isCategorySheetOpen && (
-            <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCategorySheetOpen(false)}
-              className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
-            >
-              <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-                <h3 className="dd-type-sheet-title text-stone-900">Categories</h3>
-                <div className="flex items-center gap-1">
-                  {categoryFilter.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => onCategoryFilterChange([])}
-                      className="cursor-pointer px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setIsCategorySheetOpen(false)}
-                    aria-label="Close"
-                    className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-6 overflow-y-auto px-5 py-4">
-                <button
-                  type="button"
-                  onClick={() => onCategoryFilterChange([])}
-                  className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
-                    categoryFilter.length === 0
-                      ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
-                      : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
-                  }`}
-                >
-                  All categories
-                </button>
-                {CATEGORY_SECTIONS.map((section) => {
-                  const sectionCats = section.categories.filter((c) => availableCategories.includes(c));
-                  if (!sectionCats.length) return null;
-                  return (
-                    <div key={section.title} className="space-y-2">
-                      <h4 className="dd-type-meta dd-type-meta-strong text-stone-500">{section.title}</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {sectionCats.map((cat) => {
-                          const isSelected = categoryFilter.includes(cat);
-                          const hasDealResults = (categoryCounts.get(cat) ?? 0) > 0;
-                          return (
-                            <button
-                              key={cat}
-                              type="button"
-                              disabled={!hasDealResults}
-                              aria-disabled={!hasDealResults}
-                              title={hasDealResults ? undefined : sectionCopy.categoryEmpty}
-                              onClick={() => toggleCategory(cat)}
-                              className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
-                                !hasDealResults
-                                  ? "dd-category-sheet-pill-disabled cursor-not-allowed bg-stone-50 text-stone-300"
-                                  : isSelected
-                                    ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
-                                    : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
-                              }`}
-                            >
-                              {cat}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 px-5 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCategorySheetOpen(false)}
-                  className="dd-sheet-cta w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
-                >
-                  Done
-                </button>
-              </div>
-            </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </BottomSheetPortal>
     </section>
   );
 }
