@@ -77,7 +77,7 @@ export default function DealSnapshotRail({
         </div>
       ) : (
         <div
-          className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
+          className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2"
           role="region"
           aria-label={`${title} ranked products`}
         >
