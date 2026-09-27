@@ -14,6 +14,7 @@ export default function CategoryPicker({
   label = "Categories",
   emptyMessage = "No deals in this category right now.",
   ariaLabel = "Filter by category",
+  withoutShadow = false,
 }: {
   selectedCategories: string[];
   onChange: (categories: string[]) => void;
@@ -22,6 +23,7 @@ export default function CategoryPicker({
   label?: string;
   emptyMessage?: string;
   ariaLabel?: string;
+  withoutShadow?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedLabel =
@@ -47,7 +49,7 @@ export default function CategoryPicker({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
-        className="inline-flex min-w-[7.5rem] cursor-pointer items-center justify-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-700 shadow-sm transition-colors hover:bg-stone-50"
+        className={`inline-flex min-w-[7.5rem] cursor-pointer items-center justify-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-700 transition-colors hover:bg-stone-50 ${withoutShadow ? "" : "shadow-sm"}`}
       >
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

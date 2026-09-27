@@ -34,9 +34,7 @@ export default function DealSnapshotRail({
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savings Specials" : "Worst Dodgy Specials";
-  const description = isSavings
-    ? "The biggest verified dollar savings right now."
-    : "The largest inflated price gaps found in current specials.";
+  const description = isSavings ? "Biggest savings" : "Biggest price hikes";
   const emptyMessage = isSavings
     ? "No verified savings match this category yet."
     : "No inflated-price Dodgy specials match this category yet.";
@@ -68,6 +66,7 @@ export default function DealSnapshotRail({
           availableCategories={availableCategories}
           categoryCounts={categoryCounts}
           emptyMessage={emptyMessage}
+          withoutShadow
         />
       </div>
 
