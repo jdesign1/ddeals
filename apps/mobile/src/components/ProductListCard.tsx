@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useRef, type PointerEvent } from "react";
 import type {
-  DealConfidenceLabel,
   DealSnapshotKind,
   ProductCard as ProductCardData,
   CurrentDeal,
@@ -81,7 +80,6 @@ export interface ProductListCardProps {
     rank: number;
     kind: DealSnapshotKind;
     amount: number;
-    confidenceLabel: DealConfidenceLabel;
   };
 }
 
@@ -179,7 +177,7 @@ export default function ProductListCard({
         isCompactLayout
           ? "dd-compact-product-card flex min-h-20 items-stretch gap-3 p-2"
           : isSnapshotLayout
-            ? "dd-snapshot-card w-[78vw] max-w-[280px] shrink-0 snap-start flex flex-col"
+            ? "dd-snapshot-card w-[36%] min-w-[132px] max-w-[170px] shrink-0 snap-start flex flex-col rounded-[1.5rem]"
             : isGridLayout
             ? "flex flex-col"
             : "flex"
@@ -210,7 +208,7 @@ export default function ProductListCard({
             alt={product.name}
             width={112}
             height={112}
-            sizes={useGridCard ? "(max-width: 480px) 78vw, 280px" : "144px"}
+            sizes={useGridCard ? "(max-width: 480px) 36vw, 170px" : "144px"}
             loading={imageLoading}
             fetchPriority={imageLoading === "eager" ? "high" : "auto"}
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${useGridCard ? "scale-[0.95]" : ""}`}
@@ -218,10 +216,10 @@ export default function ProductListCard({
         </div>
         {snapshot && (
           <span
-            className="absolute left-0 top-0 flex h-10 w-10 items-start justify-start rounded-br-2xl bg-ink-600 px-2 pt-1 font-display text-lg font-black text-white"
+            className="absolute left-0 top-0 h-14 w-14 bg-ink-600 font-display text-lg font-black text-white [clip-path:polygon(0_0,100%_0,0_100%)]"
             aria-label={`Rank ${snapshot.rank}`}
           >
-            {snapshot.rank}
+            <span className="absolute left-1/3 top-1/3 -translate-x-1/2 -translate-y-1/2">{snapshot.rank}</span>
           </span>
         )}
         {showNewBadge && isNewSpecial(deal) && (
@@ -316,11 +314,6 @@ export default function ProductListCard({
                   : `${storeLinePrefix} ${storeLabel}.`}
             </span>
           </div>
-        )}
-        {snapshot && (
-          <span className={`dd-type-meta mt-1 ${snapshot.confidenceLabel === "High confidence" ? "text-fair-700" : "text-stone-500"}`}>
-            {snapshot.confidenceLabel}
-          </span>
         )}
         </div>
       </div>

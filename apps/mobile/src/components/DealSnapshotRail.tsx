@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import {
   compareDealSnapshotEntries,
-  getDealConfidenceLabel,
   getDealSnapshotAmount,
   groupCategory,
   type CurrentDeal,
@@ -78,7 +77,7 @@ export default function DealSnapshotRail({
         </div>
       ) : (
         <div
-          className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2"
+          className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
           role="region"
           aria-label={`${title} ranked products`}
         >
@@ -98,7 +97,6 @@ export default function DealSnapshotRail({
                   rank: index + 1,
                   kind,
                   amount,
-                  confidenceLabel: getDealConfidenceLabel(deal),
                 }}
               />
             );
