@@ -346,6 +346,7 @@ const CATEGORY_GROUPS: { label: string; match: RegExp }[] = [
   { label: "Fruit & veg", match: /fruit|veg/i },
   { label: "Meat & seafood", match: /meat|seafood|poultry|fish/i },
   { label: "Fridge, deli & eggs", match: /fridge|deli|eggs/i },
+  { label: "Dairy", match: /dairy/i },
   { label: "Bakery", match: /bakery/i },
   { label: "Frozen & chilled", match: /frozen|chilled/i },
   { label: "Beer & wine", match: /beer|wine|cider/i },
@@ -472,7 +473,7 @@ function cheaperAlternativeRelevance(target: ProductCard, candidate: ProductCard
  * section for it, same as the original `FullScreenSearch.tsx` version).
  */
 export const CATEGORY_SECTIONS: { title: string; categories: string[] }[] = [
-  { title: "Fresh", categories: ["Fruit & veg", "Meat & seafood", "Fridge, deli & eggs", "Bakery", "Frozen & chilled"] },
+  { title: "Fresh", categories: ["Fruit & veg", "Meat & seafood", "Fridge, deli & eggs", "Dairy", "Bakery", "Frozen & chilled"] },
   { title: "Grocery & drinks", categories: ["Pantry & grocery", "Drinks", "Beer & wine", "Snacks & treats"] },
   { title: "Household & care", categories: ["Health & household", "Baby & toddler", "Pet"] },
 ];

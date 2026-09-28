@@ -5,7 +5,9 @@ import { motion } from "motion/react";
 import {
   compareDealSnapshotEntries,
   getDealSnapshotAmount,
+  getSearchSynonymRule,
   groupCategory,
+  productMatchesSynonymRule,
   type CurrentDeal,
   type ProductCard,
   type DealSnapshotKind,
@@ -16,6 +18,13 @@ import ProductListCard from "@/components/ProductListCard";
 interface FlatDeal {
   product: ProductCard;
   deal: CurrentDeal;
+}
+
+const dairyRule = getSearchSynonymRule("dairy");
+
+function snapshotCategory(product: Pick<ProductCard, "name" | "brand" | "category">): string {
+  const isDairy = dairyRule ? productMatchesSynonymRule(dairyRule, product) : false;
+  return isDairy ? "Dairy" : groupCategory(product.category);
 }
 
 export default function DealSnapshotRail({
@@ -45,7 +54,7 @@ export default function DealSnapshotRail({
   const rankedDeals = useMemo(() => {
     const filtered = selectedCategories.length === 0
       ? deals
-      : deals.filter(({ product }) => selectedCategories.includes(groupCategory(product.category)));
+      : deals.filter(({ product }) => selectedCategories.includes(snapshotCategory(product)));
 
     return [...filtered]
       .sort((a, b) => compareDealSnapshotEntries(a, b, kind) || a.product.name.localeCompare(b.product.name))

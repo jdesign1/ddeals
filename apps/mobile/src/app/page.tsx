@@ -9,6 +9,8 @@ import {
   deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
   groupCategory,
+  getSearchSynonymRule,
+  productMatchesSynonymRule,
   compareDealSnapshotEntries,
   isEligibleForDealSnapshot,
   type DealSnapshotKind,
@@ -32,6 +34,13 @@ import DealFilterSummary from "@/components/DealFilterSummary";
 import {
   subscribeToCheckDealsHeaderVisibility,
 } from "@/lib/scroll-events";
+
+const dairyRule = getSearchSynonymRule("dairy");
+
+function checkDealsCategory(product: Pick<ProductCard, "name" | "brand" | "category">): string {
+  const isDairy = dairyRule ? productMatchesSynonymRule(dairyRule, product) : false;
+  return isDairy ? "Dairy" : groupCategory(product.category);
+}
 import {
   CHECK_DEALS_SORT_OPTIONS,
   getDealFilterForSort,
@@ -182,7 +191,7 @@ function buildSnapshotDeals(products: ProductCard[], selectedStores: string[], k
 function getSnapshotCategoryCounts(deals: FlatDeal[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const { product } of deals) {
-    const category = groupCategory(product.category);
+    const category = checkDealsCategory(product);
     counts.set(category, (counts.get(category) ?? 0) + 1);
   }
   return counts;
@@ -266,14 +275,14 @@ export default function HomePage() {
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const { product } of dealsAllCategories) {
-      const cat = groupCategory(product.category);
+      const cat = checkDealsCategory(product);
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return counts;
   }, [dealsAllCategories]);
 
   const availableCategories = useMemo(
-    () => [...new Set(dealsAllCategories.map(({ product }) => groupCategory(product.category)))],
+    () => [...new Set(dealsAllCategories.map(({ product }) => checkDealsCategory(product)))],
     [dealsAllCategories]
   );
 
@@ -286,11 +295,11 @@ export default function HomePage() {
     [products, selectedStores]
   );
   const topSavingsAvailableCategories = useMemo(
-    () => [...new Set(topSavingsDeals.map(({ product }) => groupCategory(product.category)))],
+    () => [...new Set(topSavingsDeals.map(({ product }) => checkDealsCategory(product)))],
     [topSavingsDeals]
   );
   const worstDodgyAvailableCategories = useMemo(
-    () => [...new Set(worstDodgyDeals.map(({ product }) => groupCategory(product.category)))],
+    () => [...new Set(worstDodgyDeals.map(({ product }) => checkDealsCategory(product)))],
     [worstDodgyDeals]
   );
   const topSavingsCategoryCounts = useMemo(() => getSnapshotCategoryCounts(topSavingsDeals), [topSavingsDeals]);
@@ -298,7 +307,7 @@ export default function HomePage() {
 
   const filteredDeals = useMemo<FlatDeal[]>(() => {
     if (dealCategoryFilter.length === 0) return dealsAllCategories;
-    return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category)));
+    return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(checkDealsCategory(product)));
   }, [dealsAllCategories, dealCategoryFilter]);
 
   const dealFilterTintClass =

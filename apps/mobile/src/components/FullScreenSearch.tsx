@@ -12,6 +12,8 @@ import {
   deriveAvailableStoreKeys,
   groupCategory,
   CATEGORY_SECTIONS,
+  getSearchSynonymRule,
+  productMatchesSynonymRule,
   productMatchesSearch,
   getProductSearchRelevance,
 } from "@dodgey-deals/shared";
@@ -36,6 +38,13 @@ import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfinit
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
 import { compareLatestSpecials, getNewSpecialKeys, isNewSpecial } from "@/lib/special-freshness";
+
+const dairyRule = getSearchSynonymRule("dairy");
+
+function searchCategory(product: Pick<ProductCardData, "name" | "brand" | "category">): string {
+  const isDairy = dairyRule ? productMatchesSynonymRule(dairyRule, product) : false;
+  return isDairy ? "Dairy" : groupCategory(product.category);
+}
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -456,7 +465,7 @@ export default function FullScreenSearch() {
   );
 
   const homeCategories = useMemo(
-    () => [...new Set(products.map((p) => groupCategory(p.category)).filter(Boolean))].sort(),
+    () => [...new Set(products.map(searchCategory).filter(Boolean))].sort(),
     [products]
   );
 
@@ -468,7 +477,7 @@ export default function FullScreenSearch() {
   const categoryDealCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
-      const cat = groupCategory(product.category);
+      const cat = searchCategory(product);
       if (!cat) continue;
       const hasMatchingDeal = product.currentDeals.some(
         (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)
@@ -510,7 +519,7 @@ export default function FullScreenSearch() {
 
   const sortedPopularSpecials = useMemo(() => {
     const filtered = popularSpecials.filter(({ product }) => {
-      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category))) {
+      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(searchCategory(product))) {
         return false;
       }
       return true;
@@ -560,7 +569,7 @@ export default function FullScreenSearch() {
     const matched = textMatched.filter((p) => {
       const matchingDeals = applicableDealsFor(p, selectedStores, dealFilter);
       if (matchingDeals.length === 0) return false;
-      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category))) return false;
+      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(searchCategory(p))) return false;
       return true;
     });
 
@@ -657,7 +666,7 @@ export default function FullScreenSearch() {
         onClick={onOpenCategorySheet}
         className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
-        <span>{categoryFilter.length === 0 ? "Categories" : `Categories (${categoryFilter.length})`}</span>
+        <span>{categoryFilter.length === 0 ? "Category" : `Category (${categoryFilter.length})`}</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
       <button

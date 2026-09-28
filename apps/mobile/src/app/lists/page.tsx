@@ -8,10 +8,12 @@ import {
   canonicalStoreKey,
   describeFetchError,
   groupCategory,
+  getSearchSynonymRule,
   invalidateListsPageCache,
   loadListsPageData,
   LIST_MEMBERSHIP_CHANGED_EVENT,
   matchesAnySelectedStore,
+  productMatchesSynonymRule,
   removeItemFromList,
   STORE_DISPLAY_FALLBACK,
   type ListItemLowestPrice,
@@ -47,6 +49,14 @@ interface WatchlistGroup {
   key: string;
   label: string;
   items: WatchlistItem[];
+}
+
+const dairyRule = getSearchSynonymRule("dairy");
+
+function watchlistCategory(product: Pick<ListItemProductMeta, "name" | "brand" | "category"> | undefined): string {
+  if (!product) return "";
+  const isDairy = dairyRule ? productMatchesSynonymRule(dairyRule, product) : false;
+  return isDairy ? "Dairy" : groupCategory(product.category);
 }
 
 function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
@@ -369,7 +379,7 @@ export default function ListsPage() {
   const categories = useMemo(() => {
     const values = new Set<string>();
     for (const item of watchlistItems) {
-      const category = groupCategory(productMeta.get(item.productId)?.category);
+      const category = watchlistCategory(productMeta.get(item.productId));
       if (category) values.add(category);
     }
     return [...values].sort((a, b) => a.localeCompare(b));
@@ -378,7 +388,7 @@ export default function ListsPage() {
   const filteredItems = useMemo(
     () => sortItems(
       watchlistItems.filter((item) => {
-        const category = groupCategory(productMeta.get(item.productId)?.category);
+        const category = watchlistCategory(productMeta.get(item.productId));
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
         return matchesCategory;
       }),

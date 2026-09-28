@@ -214,3 +214,13 @@ export function productMatchesSynonymRule(rule: SearchSynonymRule, product: Syno
   }
   return false;
 }
+
+/**
+ * Category-filter helper for the shopper-facing Dairy pill. The catalogue
+ * commonly stores milk, cheese, yoghurt, and butter below a Fridge bucket,
+ * so this uses the same guarded matcher as a natural-language "dairy" search
+ * rather than relying on a literal top-level category label.
+ */
+export function isDairyProduct(product: SynonymMatchableProduct): boolean {
+  return productMatchesSynonymRule(SEARCH_SYNONYMS.dairy, product);
+}
