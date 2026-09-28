@@ -312,6 +312,9 @@ export default function HomePage() {
 
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
+  const keepTopDealsToolbarVisible = dealFilter === "all";
+  const toolbarVisible = keepTopDealsToolbarVisible || isToolbarVisible;
+  const toolbarHeaderHidden = !keepTopDealsToolbarVisible && isCheckDealsHeaderHidden;
 
   const handleDealFilterChange = (filter: DealFilter) => {
     setDealFilter(filter);
@@ -373,12 +376,12 @@ export default function HomePage() {
         <div
           className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
             dealFilterTintClass || "bg-stone-100"
-          } ${isToolbarVisible ? "pt-4" : "pt-0"} ${isToolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
-            isCheckDealsHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
+          } ${toolbarVisible ? "pt-4" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+            toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
           }`}
           style={{
             top: "var(--check-deals-chrome-height, 128px)",
-            gridTemplateRows: isToolbarVisible ? "1fr" : "0fr",
+            gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
           }}
         >
           {/* Keep the tabs equidistant from the search bar and supermarket
@@ -387,7 +390,7 @@ export default function HomePage() {
               measurements inside the same sticky toolbar avoids the iOS
               scroll/reveal transition treating a parent margin differently
               from the toolbar's own spacing. */}
-          <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${isToolbarVisible ? "pb-2" : "pb-0"}`}>
+          <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
             <DealFilterTabs
               value={dealFilter}
               onChange={handleDealFilterChange}

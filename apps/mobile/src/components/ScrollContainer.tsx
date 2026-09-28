@@ -80,6 +80,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       : feedback === "throttled"
         ? "up-to-date"
         : null;
+  const keepTopDealsChromeVisible = pathname === "/" && dealFilter === "all";
 
   // The outer scroll surface stays mounted while App Router swaps page
   // content. Keep the page-specific positions that should survive that swap
@@ -197,7 +198,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     setIsHeaderHidden(false);
     publishCheckDealsHeaderVisibility(false);
     publishCheckDealsScrollPosition(lastScrollTopRef.current);
-  }, [pathname]);
+  }, [dealFilter, pathname]);
 
   // Collapsing the sticky header/search/toolbar changes the layout above the
   // current viewport and can make the browser emit a compensating scroll
@@ -222,6 +223,14 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     publishCheckDealsScrollPosition(currentScrollTop);
 
     if (pathname !== "/") return;
+
+    // Top Deals keeps the full Check Deals chrome available while browsing.
+    // Other deal tabs retain the direction-aware collapse behavior.
+    if (keepTopDealsChromeVisible) {
+      headerScrollAnchorRef.current = currentScrollTop;
+      if (headerHiddenRef.current) setHeaderHidden(false);
+      return;
+    }
 
     // Do not interpret iOS's bottom rubber-band events as a new scroll
     // direction. Without this, the alternating scrollTop values emitted at
