@@ -562,10 +562,10 @@ export default function ListsPage() {
       <div className={`relative ${loadingWatchlist ? "min-h-[160px]" : ""}`}>
         <div className="pointer-events-none absolute inset-0 z-10"><LoadingMascot loading={loadingWatchlist} /></div>
         {!loadingWatchlist && !error && watchlistItems.length === 0 && (
-          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-stone-300 bg-white px-5 py-12 text-center">
+          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white px-5 py-12 text-center">
             <MascotImage src="/lists-login.webp" darkSrc="/lists-login-dark.webp" alt="" width={288} height={306} sizes="128px" unoptimized className="mascot-wave mb-2 h-auto w-full max-w-[8rem]" />
-            <h2 className="font-display text-lg font-extrabold text-stone-900">Nothing saved yet</h2>
-            <p className="max-w-xs text-sm leading-5 text-stone-500">Tap the plus icon on any product, select everything you want, then add it all at once.</p>
+            <h2 className="font-display text-lg font-extrabold text-stone-900">Your Watchlist is empty</h2>
+            <p className="max-w-xs text-sm leading-5 text-stone-500">Tap the plus icon on any item to add it to your Watchlist. We&rsquo;ll alert you when it goes on special again at a better price.</p>
           </div>
         )}
         {!loadingWatchlist && !error && watchlistItems.length > 0 && filteredItems.length === 0 && (
