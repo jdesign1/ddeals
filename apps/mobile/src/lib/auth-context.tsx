@@ -269,7 +269,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       completeProfile: async (details) => {
         if (!client) return { error: configurationError(), profile: null };
-        if (!user) return { error: "Please verify your sign-in before completing your account.", profile: null };
+        // OTP verification updates Supabase's session before React receives the
+        // auth-state event. Read the current user as a fallback so the signup
+        // details can be saved immediately after verification instead of
+        // forcing the user through the same form a second time.
+        if (!user) {
+          const { data, error } = await client.auth.getUser();
+          if (error || !data.user) {
+            return {
+              error: error?.message ?? "Please verify your sign-in before completing your account.",
+              profile: null,
+            };
+          }
+        }
         const { data, error } = await client.rpc("complete_onboarding", {
           p_full_name: details.full_name.trim(),
           p_date_of_birth: details.date_of_birth,

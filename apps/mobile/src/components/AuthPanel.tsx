@@ -140,7 +140,22 @@ export default function AuthPanel({
         return;
       }
       if (mode === "signup") {
-        setView("profile");
+        const profileValidationError = validateProfile(details);
+        if (profileValidationError) {
+          setError(profileValidationError);
+          setView("profile");
+          return;
+        }
+
+        const profileResult = await completeProfile(details);
+        if (profileResult.error) {
+          setError("We couldn't save your account details. Please check them and try again.");
+          setView("profile");
+          return;
+        }
+
+        if (profileResult.profile?.onboarding_complete) onSuccess();
+        else setView("profile");
       } else if (result.profile?.onboarding_complete) {
         onSuccess();
       } else {
