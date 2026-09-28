@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import MascotImage from "@/components/MascotImage";
@@ -47,18 +47,21 @@ const TOUR_STEPS: TourStep[] = [
     target: '[data-onboarding="deal-summary"]',
     title: "Deal assessment",
     body: "This page brings together the current price, product details, and supermarket comparison so you can see the full picture.",
+    position: "bottom",
   },
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-verdict"]',
     title: "Read the verdict",
     body: "The verdict tells you whether the special is Dodgy, Fair, or a Real Saver. Scroll down for the evidence and price history behind it.",
+    position: "bottom",
   },
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-save"]',
     title: "Save something useful",
     body: "Use the plus button to save this product to your Watchlist. You can then keep an eye out for a better price.",
+    position: "bottom",
   },
   {
     href: "/lists",
@@ -80,11 +83,6 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-function getTargetRect(selector: string): DOMRect | null {
-  const target = document.querySelector<HTMLElement>(selector);
-  return target ? target.getBoundingClientRect() : null;
-}
-
 export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -92,22 +90,25 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [dealHref, setDealHref] = useState<string | null>(null);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const didAutoScrollRef = useRef(false);
   const step = TOUR_STEPS[stepIndex];
   const isLastStep = stepIndex === TOUR_STEPS.length - 1;
   const activeHref = step.href === DEAL_ROUTE ? dealHref : step.href;
+  const isDealPath = pathname.startsWith("/deal/");
 
   useEffect(() => {
     if (step.href === DEAL_ROUTE) {
-      if (dealHref && pathname !== dealHref) router.push(dealHref);
+      if (dealHref && !isDealPath) router.push(dealHref);
       return;
     }
     if (pathname !== step.href) router.push(step.href);
-  }, [dealHref, pathname, router, step.href]);
+  }, [dealHref, isDealPath, pathname, router, step.href]);
 
-  // The first product card is the bridge into the real assessment route. Read
-  // its href from the rendered card instead of inventing a product ID in the tour.
+  // Resolve the first deal while the tour is still on Check Deals. This keeps
+  // steps 4–6 deterministic: the route is already known before the user taps
+  // Next, rather than depending on a second query during the transition.
   useEffect(() => {
-    if (step.href !== DEAL_ROUTE || dealHref) return;
+    if (pathname !== "/" || dealHref) return;
 
     let attempts = 0;
     let retryTimer = 0;
@@ -116,17 +117,20 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       const href = card?.dataset.onboardingDealHref;
       if (href) {
         setDealHref(href);
-        router.push(href);
         window.clearInterval(retryTimer);
         return;
       }
       attempts += 1;
-      if (attempts >= 40) window.clearInterval(retryTimer);
+      if (attempts >= 80) window.clearInterval(retryTimer);
     };
     retryTimer = window.setInterval(findDeal, 80);
     findDeal();
     return () => window.clearInterval(retryTimer);
-  }, [dealHref, router, step.href]);
+  }, [dealHref, pathname]);
+
+  useEffect(() => {
+    if (dealHref) router.prefetch(dealHref);
+  }, [dealHref, router]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -140,20 +144,36 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     let cancelled = false;
     let attempts = 0;
     let retryTimer = 0;
+    let settleTimer = 0;
+    let isAutoScrolling = false;
+    didAutoScrollRef.current = false;
     const resetTimer = window.setTimeout(() => setTargetRect(null), 0);
 
-    if (!step.target || !activeHref || pathname !== activeHref) {
+    const routeReady = step.href === DEAL_ROUTE ? isDealPath : pathname === activeHref;
+    if (!step.target || !activeHref || !routeReady) {
       return () => {
         window.clearTimeout(resetTimer);
       };
     }
 
     const measure = () => {
-      if (cancelled) return;
-      const nextRect = getTargetRect(step.target);
-      if (nextRect && nextRect.width > 0 && nextRect.height > 0) setTargetRect(nextRect);
+      if (cancelled || isAutoScrolling) return;
+      const target = document.querySelector<HTMLElement>(step.target);
+      const nextRect = target?.getBoundingClientRect() ?? null;
       attempts += 1;
-      if ((nextRect && nextRect.width > 0 && nextRect.height > 0) || attempts >= 40) window.clearInterval(retryTimer);
+      if ((nextRect && nextRect.width > 0 && nextRect.height > 0) || attempts >= 80) window.clearInterval(retryTimer);
+
+      if (target && stepIndex === 2 && !didAutoScrollRef.current) {
+        didAutoScrollRef.current = true;
+        isAutoScrolling = true;
+        target.scrollIntoView({ block: "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
+        settleTimer = window.setTimeout(() => {
+          isAutoScrolling = false;
+          measure();
+        }, prefersReducedMotion ? 40 : 360);
+        return;
+      }
+      if (nextRect && nextRect.width > 0 && nextRect.height > 0) setTargetRect(nextRect);
     };
 
     retryTimer = window.setInterval(measure, 80);
@@ -164,12 +184,13 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     return () => {
       cancelled = true;
       window.clearInterval(retryTimer);
+      window.clearTimeout(settleTimer);
       window.clearTimeout(initialTimer);
       window.clearTimeout(resetTimer);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [activeHref, pathname, step.target, stepIndex]);
+  }, [activeHref, isDealPath, pathname, prefersReducedMotion, step.href, step.target, stepIndex]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -226,24 +247,39 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Dodgy Deal app tour">
       <div className={`absolute inset-0 pointer-events-auto ${hasTarget ? "" : "bg-stone-950/62"}`} aria-hidden="true" />
 
-      <motion.div
-        className="pointer-events-none absolute border-2 border-white"
-        animate={spotlightStyle}
-        transition={{ duration: prefersReducedMotion ? 0.12 : 0.34, ease: [0.22, 1, 0.36, 1] }}
-        style={{ boxShadow: hasTarget ? "0 0 0 9999px rgba(28, 25, 23, 0.62)" : "none" }}
-        aria-hidden="true"
-      />
+      <AnimatePresence initial={false}>
+        {hasTarget && (
+          <motion.div
+            key={`spotlight-${stepIndex}`}
+            className="pointer-events-none absolute border-2 border-white"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
+            style={{ ...spotlightStyle, boxShadow: "0 0 0 9999px rgba(28, 25, 23, 0.62)" }}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
 
       {hasTarget && !prefersReducedMotion && (
         <motion.div
           key={`pulse-${stepIndex}`}
           className="pointer-events-none absolute border-2 border-white"
-          initial={spotlightStyle}
+          initial={{ opacity: 0, scale: 0.97 }}
           animate={{
-            ...spotlightStyle,
-            boxShadow: ["0 0 0 0 rgba(255,255,255,0)", "0 0 0 7px rgba(255,255,255,.48)", "0 0 0 0 rgba(255,255,255,0)"],
+            opacity: [0, 1, 0, 1, 0],
+            scale: [0.97, 1, 0.97, 1, 0.97],
+            boxShadow: [
+              "0 0 0 0 rgba(255,255,255,0)",
+              "0 0 0 7px rgba(255,255,255,.42)",
+              "0 0 0 0 rgba(255,255,255,0)",
+              "0 0 0 7px rgba(255,255,255,.42)",
+              "0 0 0 0 rgba(255,255,255,0)",
+            ],
           }}
-          transition={{ duration: 0.72, repeat: 1, ease: "easeOut" }}
+          transition={{ duration: 1.25, times: [0, 0.18, 0.5, 0.68, 1], ease: "easeInOut" }}
+          style={spotlightStyle}
           aria-hidden="true"
         />
       )}
@@ -253,12 +289,25 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           key={stepIndex}
           className="absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white p-5 shadow-2xl"
           style={cardStyle}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: prefersReducedMotion ? 0.12 : 0.22, ease: "easeOut" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0.1 : 0.2, ease: "easeOut" }}
           aria-live="polite"
         >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="dd-type-meta dd-type-meta-strong text-stone-500">
+              {stepIndex + 1} of {TOUR_STEPS.length}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              aria-label="Skip app tour"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
           <div className="mb-4 flex items-center gap-3">
             <MascotImage
               src="/auth-wave.webp"
@@ -266,24 +315,11 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               alt={step.welcome ? "Dodgy Deal mascot waving" : "Dodgy Deal mascot"}
               width={192}
               height={222}
-              sizes={step.welcome ? "80px" : "40px"}
+              sizes={step.welcome ? "80px" : "48px"}
               unoptimized
-              className={`mascot-wave flex-shrink-0 object-contain ${step.welcome ? "h-20 w-20" : "h-10 w-9"}`}
+              className={`mascot-wave flex-shrink-0 object-contain ${step.welcome ? "h-20 w-20" : "h-12 w-11"}`}
             />
-            <div className="min-w-0 flex-1">
-              <span className="dd-type-meta dd-type-meta-strong text-stone-500">
-                {stepIndex + 1} of {TOUR_STEPS.length}
-              </span>
-              <h2 className="mt-1 font-display text-xl font-extrabold text-ink-900">{step.title}</h2>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="-mr-2 -mt-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-              aria-label="Skip app tour"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
+            <h2 className="min-w-0 flex-1 font-display text-xl font-extrabold text-ink-900">{step.title}</h2>
           </div>
           <p className="mb-5 dd-type-body text-stone-600">{step.body}</p>
           <div className="flex items-center justify-between gap-3">
