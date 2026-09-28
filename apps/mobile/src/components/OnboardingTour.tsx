@@ -163,7 +163,14 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       attempts += 1;
       if ((nextRect && nextRect.width > 0 && nextRect.height > 0) || attempts >= 80) window.clearInterval(retryTimer);
 
-      if (target && stepIndex === 2 && !didAutoScrollRef.current) {
+      const hasLayout = Boolean(nextRect && nextRect.width > 0 && nextRect.height > 0);
+      const needsAssessmentScroll =
+        step.href === DEAL_ROUTE &&
+        hasLayout &&
+        (nextRect!.top < 96 || nextRect!.bottom > window.innerHeight - 96);
+      const shouldAutoScroll = stepIndex === 2 || needsAssessmentScroll;
+
+      if (target && shouldAutoScroll && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
         isAutoScrolling = true;
         target.scrollIntoView({ block: "start", behavior: prefersReducedMotion ? "auto" : "smooth" });
@@ -271,21 +278,15 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           className="pointer-events-none absolute border-2 border-white"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{
-            opacity: [0, 1, 0, 1, 0, 1, 0, 1, 0],
-            scale: [0.97, 1, 0.97, 1, 0.97, 1, 0.97, 1, 0.97],
+            opacity: [0, 1, 0],
+            scale: [0.97, 1, 0.97],
             boxShadow: [
-              "0 0 0 0 rgba(255,255,255,0)",
-              "0 0 0 7px rgba(255,255,255,.42)",
-              "0 0 0 0 rgba(255,255,255,0)",
-              "0 0 0 7px rgba(255,255,255,.42)",
-              "0 0 0 0 rgba(255,255,255,0)",
-              "0 0 0 7px rgba(255,255,255,.42)",
               "0 0 0 0 rgba(255,255,255,0)",
               "0 0 0 7px rgba(255,255,255,.42)",
               "0 0 0 0 rgba(255,255,255,0)",
             ],
           }}
-          transition={{ duration: 2, times: [0, 0.12, 0.25, 0.37, 0.5, 0.62, 0.75, 0.87, 1], ease: "easeInOut" }}
+          transition={{ duration: 0.55, repeat: 3, repeatType: "loop", ease: "easeInOut" }}
           style={spotlightStyle}
           aria-hidden="true"
         />
