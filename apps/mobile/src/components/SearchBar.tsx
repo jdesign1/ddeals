@@ -218,6 +218,7 @@ export default function SearchBar({
               would just be the next drift waiting to be caught. */}
           <form
             onSubmit={(e) => e.preventDefault()}
+            data-onboarding="search-bar"
             className={`dd-search-control ${variant === "shadow" && !bordered ? "dd-search-control-borderless" : ""} flex items-center rounded-full border bg-white pl-5 pr-3 transition-colors focus-within:border-stone-900 ${
               compact ? "py-2" : "py-2.5"
             } ${

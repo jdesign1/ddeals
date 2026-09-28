@@ -1000,6 +1000,10 @@ html[data-theme="dark"] .theme-loader-surface {
   .animate-deal-stats-mascot {
     animation: none;
   }
+
+  .mascot-wave {
+    animation: none;
+  }
 }
 
 .animate-mascot-header-blink {

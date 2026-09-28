@@ -175,6 +175,9 @@ export default function ProductListCard({
       role="button"
       tabIndex={0}
       data-onboarding={dataOnboarding}
+      data-onboarding-deal-href={
+        dataOnboarding === "deal-card" ? `/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}` : undefined
+      }
       // Product item cards use a subtle outline rather than elevation. The
       // verdict badge below still carries the deal status explicitly.
       // Product cards remain tappable, but vertical swipes must stay with the

@@ -116,7 +116,7 @@ function joinStoreNames(stores: string[]): string {
   return `${stores.slice(0, -1).join(", ")}, and ${stores[stores.length - 1]}`;
 }
 
-function DealActions({ productId, productName }: { productId: string; productName: string }) {
+function DealActions({ productId, productName, dataOnboarding }: { productId: string; productName: string; dataOnboarding?: string }) {
   return (
     <div className="flex items-center gap-3">
       <button
@@ -136,6 +136,7 @@ function DealActions({ productId, productName }: { productId: string; productNam
       <AddToListButton
         productId={productId}
         productName={productName}
+        dataOnboarding={dataOnboarding}
         containerClassName="relative"
         buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
         iconClassName="h-5 w-5"
@@ -763,9 +764,9 @@ export default function DealAssessmentPage() {
           <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
             Deal assessment
           </h2>
-          <DealActions productId={product.id} productName={product.name} />
+          <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
         </div>
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4" data-onboarding="deal-summary">
           <button
             type="button"
             onClick={() => setShowProductImage(true)}
@@ -901,7 +902,7 @@ export default function DealAssessmentPage() {
             to fit inside a bottom sheet, no spare room for a second badge
             line without its own layout pass; flagged here as a possible
             follow-up rather than assumed in scope for either ask. */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3" data-onboarding="deal-verdict">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h3 className="text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
             {!uncertain && (
@@ -968,11 +969,11 @@ export default function DealAssessmentPage() {
         </>
       ) : (
         <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-onboarding="deal-verdict">
             <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
               {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
             </h2>
-            <DealActions productId={product.id} productName={product.name} />
+            <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
           </div>
 
           {!uncertain && (
@@ -984,7 +985,7 @@ export default function DealAssessmentPage() {
             />
           )}
 
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4" data-onboarding="deal-summary">
             <button
               type="button"
               onClick={() => setShowProductImage(true)}
