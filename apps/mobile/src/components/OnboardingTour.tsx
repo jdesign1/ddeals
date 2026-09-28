@@ -15,7 +15,7 @@ type TourStep = {
   target: string;
   title: string;
   body: string;
-  position?: "bottom";
+  position?: "bottom" | "middle";
   welcome?: boolean;
 };
 
@@ -40,28 +40,28 @@ const TOUR_STEPS: TourStep[] = [
     target: '[data-onboarding="deal-card"]',
     title: "Check a deal",
     body: "Tap an item to see whether the special is Dodgy, Fair, or a Real Saver based on price history.",
-    position: "bottom",
+    position: "middle",
   },
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-summary"]',
     title: "Deal assessment",
     body: "This page brings together the current price, product details, and supermarket comparison so you can see the full picture.",
-    position: "bottom",
+    position: "middle",
   },
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-verdict"]',
     title: "Read the verdict",
     body: "The verdict tells you whether the special is Dodgy, Fair, or a Real Saver. Scroll down for the evidence and price history behind it.",
-    position: "bottom",
+    position: "middle",
   },
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-save"]',
     title: "Save something useful",
     body: "Use the plus button to save this product to your Watchlist. You can then keep an eye out for a better price.",
-    position: "bottom",
+    position: "middle",
   },
   {
     href: "/lists",
@@ -166,7 +166,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       if (target && stepIndex === 2 && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
         isAutoScrolling = true;
-        target.scrollIntoView({ block: "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
+        target.scrollIntoView({ block: "start", behavior: prefersReducedMotion ? "auto" : "smooth" });
         settleTimer = window.setTimeout(() => {
           isAutoScrolling = false;
           measure();
@@ -227,6 +227,9 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
     if (step.welcome) return { top: "50%", transform: "translateY(-50%)" };
     if (step.position === "bottom") return { top: Math.max(16, viewportHeight - 268) };
+    if (step.position === "middle") {
+      return { top: Math.max(96, Math.min(viewportHeight - 300, viewportHeight * 0.42)) };
+    }
 
     const targetTop = targetRect?.top ?? viewportHeight * 0.4;
     const targetBottom = targetRect?.bottom ?? targetTop;
@@ -268,9 +271,13 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           className="pointer-events-none absolute border-2 border-white"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{
-            opacity: [0, 1, 0, 1, 0],
-            scale: [0.97, 1, 0.97, 1, 0.97],
+            opacity: [0, 1, 0, 1, 0, 1, 0, 1, 0],
+            scale: [0.97, 1, 0.97, 1, 0.97, 1, 0.97, 1, 0.97],
             boxShadow: [
+              "0 0 0 0 rgba(255,255,255,0)",
+              "0 0 0 7px rgba(255,255,255,.42)",
+              "0 0 0 0 rgba(255,255,255,0)",
+              "0 0 0 7px rgba(255,255,255,.42)",
               "0 0 0 0 rgba(255,255,255,0)",
               "0 0 0 7px rgba(255,255,255,.42)",
               "0 0 0 0 rgba(255,255,255,0)",
@@ -278,7 +285,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               "0 0 0 0 rgba(255,255,255,0)",
             ],
           }}
-          transition={{ duration: 1.25, times: [0, 0.18, 0.5, 0.68, 1], ease: "easeInOut" }}
+          transition={{ duration: 2, times: [0, 0.12, 0.25, 0.37, 0.5, 0.62, 0.75, 0.87, 1], ease: "easeInOut" }}
           style={spotlightStyle}
           aria-hidden="true"
         />

@@ -69,6 +69,10 @@ export default function DealSnapshotRail({
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const selectedCategoryKey = selectedCategories.join("|");
+  const firstRenderableIndex = useMemo(
+    () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
+    [kind, rankedDeals],
+  );
 
   // The initial All-supermarkets result establishes the compact belt height.
   // Keeping that measured height when a single supermarket is selected stops
@@ -145,6 +149,10 @@ export default function DealSnapshotRail({
                 imageLoading={index < 2 ? "eager" : "lazy"}
                 storeLinePrefix={null}
                 alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                // The first rendered tile in each top specials belt is a
+                // reliable bridge into the assessment walkthrough. The
+                // savings belt renders first, with dodgy as a fallback.
+                dataOnboarding={index === firstRenderableIndex ? "deal-card" : undefined}
                 snapshotCardHeight={snapshotCardHeight ?? undefined}
                 snapshot={{
                   rank: index + 1,
