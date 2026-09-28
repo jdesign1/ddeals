@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 
@@ -30,6 +31,20 @@ const AuthSheet = dynamic(() => import("@/components/AuthSheet"), {
   ssr: false,
   loading: OverlayChunkFallback,
 });
+const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
+  ssr: false,
+  loading: OverlayChunkFallback,
+});
+
+const ONBOARDING_TOUR_SEEN_PREFIX = "dd-onboarding-tour-seen:";
+
+function hasSeenOnboardingTour(userId: string): boolean {
+  try {
+    return window.localStorage.getItem(`${ONBOARDING_TOUR_SEEN_PREFIX}${userId}`) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Mounted once in layout.tsx (2026-08-09, alongside the new
@@ -55,7 +70,45 @@ const AuthSheet = dynamic(() => import("@/components/AuthSheet"), {
  */
 export default function GlobalOverlays() {
   const { isActive, hasOpenedSearch, isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearch();
-  const { isAuthSheetOpen, hasOpenedAuthSheet, authSheetPrompt, closeAuthSheet } = useAuth();
+  const {
+    user,
+    isAuthSheetOpen,
+    hasOpenedAuthSheet,
+    authSheetPrompt,
+    closeAuthSheet,
+    onboardingTourRequest,
+    dismissOnboardingTour,
+  } = useAuth();
+  const [isPreviewTourOpen, setIsPreviewTourOpen] = useState(
+    () =>
+      process.env.NODE_ENV !== "production" &&
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("preview") === "onboarding"
+  );
+
+  useEffect(() => {
+    if (user && onboardingTourRequest === "new" && hasSeenOnboardingTour(user.id)) {
+      dismissOnboardingTour();
+    }
+  }, [dismissOnboardingTour, onboardingTourRequest, user]);
+
+  const isOnboardingTourOpen =
+    isPreviewTourOpen ||
+    (!!user &&
+      !!onboardingTourRequest &&
+      (onboardingTourRequest === "replay" || !hasSeenOnboardingTour(user.id)));
+
+  const closeOnboardingTour = () => {
+    if (user) {
+      try {
+        window.localStorage.setItem(`${ONBOARDING_TOUR_SEEN_PREFIX}${user.id}`, "1");
+      } catch {
+        // Keep the dismissal effective in memory when local storage is unavailable.
+      }
+    }
+    setIsPreviewTourOpen(false);
+    dismissOnboardingTour();
+  };
 
   return (
     <>
@@ -73,6 +126,7 @@ export default function GlobalOverlays() {
       {(hasOpenedAuthSheet || isAuthSheetOpen) && (
         <AuthSheet isOpen={isAuthSheetOpen} prompt={authSheetPrompt} onClose={closeAuthSheet} />
       )}
+      {isOnboardingTourOpen && <OnboardingTour onClose={closeOnboardingTour} />}
     </>
   );
 }

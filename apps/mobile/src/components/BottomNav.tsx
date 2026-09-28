@@ -249,6 +249,15 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
+              data-onboarding={
+                href === "/"
+                  ? "check-deals-tab"
+                  : href === "/lists"
+                    ? "watchlist-tab"
+                    : href === "/history"
+                      ? "history-tab"
+                      : "stats-tab"
+              }
               aria-current={isActive ? "page" : undefined}
               aria-label={hasUnreadUpdates ? `${label}, new price updates` : undefined}
               onClick={() => {

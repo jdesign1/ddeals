@@ -38,8 +38,11 @@ interface AuthContextValue {
   /** True after the auth sheet has been opened once this session. */
   hasOpenedAuthSheet: boolean;
   authSheetPrompt: string | undefined;
+  onboardingTourRequest: "new" | "replay" | null;
   openAuthSheet: (prompt?: string) => void;
   closeAuthSheet: () => void;
+  requestOnboardingTour: () => void;
+  dismissOnboardingTour: () => void;
   requestOtp: (email: string, shouldCreateUser: boolean) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   signInWithProvider: (provider: AuthProviderName) => Promise<{ error: string | null }>;
@@ -88,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthSheetOpen, setIsAuthSheetOpen] = useState(false);
   const [hasOpenedAuthSheet, setHasOpenedAuthSheet] = useState(false);
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
+  const [onboardingTourRequest, setOnboardingTourRequest] = useState<"new" | "replay" | null>(null);
   const pendingProviderProfileRef = useRef(false);
   const profileRecoveryInFlightRef = useRef(false);
 
@@ -107,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setProfileError(null);
         setProfileLoading(false);
+        setOnboardingTourRequest(null);
         return;
       }
       setProfileLoading(true);
@@ -197,12 +202,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthSheetOpen,
       hasOpenedAuthSheet,
       authSheetPrompt,
+      onboardingTourRequest,
       openAuthSheet: (prompt) => {
         setHasOpenedAuthSheet(true);
         setAuthSheetPrompt(prompt);
         setIsAuthSheetOpen(true);
       },
       closeAuthSheet: () => setIsAuthSheetOpen(false),
+      requestOnboardingTour: () => setOnboardingTourRequest("replay"),
+      dismissOnboardingTour: () => setOnboardingTourRequest(null),
       requestOtp: async (email, shouldCreateUser) => {
         if (!client) return { error: configurationError() };
         const { error } = await client.auth.signInWithOtp({
@@ -290,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) return { error: error.message, profile: null };
         const nextProfile = data as AccountProfile;
         setProfile(nextProfile);
+        setOnboardingTourRequest("new");
         return { error: null, profile: nextProfile };
       },
       updateProfileName: async (name) => {
@@ -348,7 +357,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error?.message ?? null };
       },
     }),
-    [client, user, session, profile, loading, profileLoading, profileError, isAuthSheetOpen, hasOpenedAuthSheet, authSheetPrompt]
+    [
+      client,
+      user,
+      session,
+      profile,
+      loading,
+      profileLoading,
+      profileError,
+      isAuthSheetOpen,
+      hasOpenedAuthSheet,
+      authSheetPrompt,
+      onboardingTourRequest,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

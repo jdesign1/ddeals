@@ -244,7 +244,7 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { user, profile, loading, isAnonymousSession, openAuthSheet } = useAuth();
+  const { user, profile, loading, isAnonymousSession, openAuthSheet, requestOnboardingTour } = useAuth();
   const { override } = useHeaderOverride();
   const { products, loadingProducts, openSearchForFilter } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -650,6 +650,24 @@ export default function AppHeader({
                 </span>
                 How Dodgy Deal works
               </Link>
+              {user && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    requestOnboardingTour();
+                  }}
+                  className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
+                >
+                  <span
+                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
+                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                    aria-hidden="true"
+                  >
+                    play_circle
+                  </span>
+                  Replay app tour
+                </button>
+              )}
               <Link
                 href="/settings"
                 onClick={() => setIsMenuOpen(false)}

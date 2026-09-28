@@ -763,6 +763,7 @@ function TrendingSection({
                     imageLoading={index < 2 ? "eager" : "lazy"}
                     showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
                     alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                    dataOnboarding={index === 0 ? "deal-card" : undefined}
                   />
                 ))}
               </div>

@@ -20,12 +20,14 @@ export default function AddToListButton({
   containerClassName = "absolute right-2 top-2 z-10",
   buttonClassName = "flex h-7 w-7 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900 shadow",
   iconClassName = "h-4 w-4",
+  dataOnboarding,
 }: {
   productId: string;
   productName?: string;
   containerClassName?: string;
   buttonClassName?: string;
   iconClassName?: string;
+  dataOnboarding?: string;
 }) {
   const { user, openAuthSheet } = useAuth();
   const { savedProductIds, selectedProductIds, toggleProduct, removeProduct, removingProductIds, loadingSavedItems } = useWatchlist();
@@ -51,6 +53,7 @@ export default function AddToListButton({
       <div className={containerClassName}>
         <button
           type="button"
+          data-onboarding={dataOnboarding}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();

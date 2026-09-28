@@ -83,6 +83,8 @@ export interface ProductListCardProps {
   };
   /** Height measured from the All-supermarkets snapshot belt baseline. */
   snapshotCardHeight?: number;
+  /** Optional onboarding anchor for the first useful card/action in a view. */
+  dataOnboarding?: string;
 }
 
 export default function ProductListCard({
@@ -95,6 +97,7 @@ export default function ProductListCard({
   showNewBadge = false,
   snapshot,
   snapshotCardHeight,
+  dataOnboarding,
 }: ProductListCardProps) {
   const router = useRouter();
   const isDodgy = deal.dealType === "Dodgy Deal";
@@ -171,6 +174,7 @@ export default function ProductListCard({
       }}
       role="button"
       tabIndex={0}
+      data-onboarding={dataOnboarding}
       // Product item cards use a subtle outline rather than elevation. The
       // verdict badge below still carries the deal status explicitly.
       // Product cards remain tappable, but vertical swipes must stay with the
@@ -195,6 +199,7 @@ export default function ProductListCard({
       <AddToListButton
         productId={product.id}
         productName={product.name}
+        dataOnboarding={dataOnboarding === "deal-card" ? "save-product" : undefined}
         containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : isSnapshotLayout ? "absolute right-3 top-3 z-10" : undefined}
       />
 

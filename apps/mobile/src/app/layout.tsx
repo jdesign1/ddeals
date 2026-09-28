@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Manrope } from "next/font/google";
+import Script from "next/script";
 import BottomNav from "@/components/BottomNav";
 import GlobalOverlays from "@/components/GlobalOverlays";
 import LaunchSplash from "@/components/LaunchSplash";
@@ -62,17 +63,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${inter.variable} ${manrope.variable} h-full bg-stone-100 antialiased`}
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";}})();`,
-          }}
-        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,search,search_check_2,settings,warning,workspace_premium&display=block"
         />
       </head>
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">
+        <Script
+          id="theme-initialization"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";}})();`,
+          }}
+        />
         <AuthProvider>
           <NotificationsProvider>
           <WatchlistProvider>
