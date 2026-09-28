@@ -201,7 +201,7 @@ export default function HistoryPage() {
       {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>` call
           sites for the full "why" (same change, same reasoning, all 3
           branches of this page). */}
-      <header className="flex flex-col gap-4 px-5 pt-6">
+      <header className="flex flex-col gap-4 px-5 pt-2">
         <div className="dd-search-control flex items-center rounded-full border border-stone-300 bg-white py-2 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
           <Search className="mr-3 h-5 w-5 flex-shrink-0 text-stone-400" aria-hidden="true" />
           <input

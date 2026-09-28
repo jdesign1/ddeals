@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   compareDealSnapshotEntries,
@@ -34,6 +34,7 @@ export default function DealSnapshotRail({
   onCategoriesChange,
   availableCategories,
   categoryCounts,
+  isAllStoresSelected,
   refreshKey,
 }: {
   kind: DealSnapshotKind;
@@ -42,6 +43,7 @@ export default function DealSnapshotRail({
   onCategoriesChange: (categories: string[]) => void;
   availableCategories: string[];
   categoryCounts: Map<string, number>;
+  isAllStoresSelected: boolean;
   refreshKey: string;
 }) {
   const isSavings = kind === "savings";
@@ -62,10 +64,22 @@ export default function DealSnapshotRail({
   }, [deals, kind, selectedCategories]);
 
   const railRef = useRef<HTMLDivElement>(null);
+  const [snapshotCardHeight, setSnapshotCardHeight] = useState<number | null>(null);
   const hasMountedRef = useRef(false);
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const selectedCategoryKey = selectedCategories.join("|");
+
+  // The initial All-supermarkets result establishes the compact belt height.
+  // Keeping that measured height when a single supermarket is selected stops
+  // a different product mix from making the whole belt jump vertically.
+  useLayoutEffect(() => {
+    if (!isAllStoresSelected || snapshotCardHeight !== null || rankedDeals.length === 0) return;
+    const firstCard = railRef.current?.querySelector<HTMLElement>("[data-snapshot-card]");
+    if (!firstCard) return;
+    const measuredHeight = Math.ceil(firstCard.getBoundingClientRect().height);
+    if (measuredHeight > 0) setSnapshotCardHeight(measuredHeight);
+  }, [isAllStoresSelected, rankedDeals.length, snapshotCardHeight]);
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -131,6 +145,7 @@ export default function DealSnapshotRail({
                 imageLoading={index < 2 ? "eager" : "lazy"}
                 storeLinePrefix={null}
                 alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                snapshotCardHeight={snapshotCardHeight ?? undefined}
                 snapshot={{
                   rank: index + 1,
                   kind,

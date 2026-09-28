@@ -81,6 +81,8 @@ export interface ProductListCardProps {
     kind: DealSnapshotKind;
     amount: number;
   };
+  /** Height measured from the All-supermarkets snapshot belt baseline. */
+  snapshotCardHeight?: number;
 }
 
 export default function ProductListCard({
@@ -92,6 +94,7 @@ export default function ProductListCard({
   onNavigate,
   showNewBadge = false,
   snapshot,
+  snapshotCardHeight,
 }: ProductListCardProps) {
   const router = useRouter();
   const isDodgy = deal.dealType === "Dodgy Deal";
@@ -172,7 +175,13 @@ export default function ProductListCard({
       // verdict badge below still carries the deal status explicitly.
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
-      style={{ touchAction: isSnapshotLayout ? "pan-x pan-y" : "pan-y", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+      data-snapshot-card={isSnapshotLayout ? true : undefined}
+      style={{
+        ...(isSnapshotLayout && snapshotCardHeight ? { height: snapshotCardHeight } : {}),
+        touchAction: isSnapshotLayout ? "pan-x pan-y" : "pan-y",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
+      }}
       className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border border-stone-200/80 bg-white ${
         isCompactLayout
           ? "dd-compact-product-card flex min-h-20 items-stretch gap-3 p-2"
