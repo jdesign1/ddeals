@@ -76,7 +76,7 @@ export default function DealSnapshotRail({
     if (railRef.current) railRef.current.scrollLeft = 0;
     setIsRefreshing(true);
     if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
-    refreshTimeoutRef.current = setTimeout(() => setIsRefreshing(false), 360);
+    refreshTimeoutRef.current = setTimeout(() => setIsRefreshing(false), 500);
 
     return () => {
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
@@ -117,7 +117,7 @@ export default function DealSnapshotRail({
           aria-label={`${title} ranked products`}
           initial={false}
           animate={isRefreshing ? { opacity: [1, 0.72, 1] } : { opacity: 1 }}
-          transition={{ duration: 0.36, ease: "easeOut" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
         >
           {rankedDeals.map(({ product, deal }, index) => {
             const amount = getDealSnapshotAmount(deal, kind);
