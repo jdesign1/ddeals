@@ -456,7 +456,7 @@ export default function FullScreenSearch() {
   );
 
   const homeCategories = useMemo(
-    () => [...new Set(products.map((p) => groupCategory(p.category)).filter(Boolean))].sort(),
+    () => [...new Set(products.map((p) => groupCategory(p.category, p.name)).filter(Boolean))].sort(),
     [products]
   );
 
@@ -468,7 +468,7 @@ export default function FullScreenSearch() {
   const categoryDealCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
-      const cat = groupCategory(product.category);
+      const cat = groupCategory(product.category, product.name);
       if (!cat) continue;
       const hasMatchingDeal = product.currentDeals.some(
         (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)
@@ -510,7 +510,7 @@ export default function FullScreenSearch() {
 
   const sortedPopularSpecials = useMemo(() => {
     const filtered = popularSpecials.filter(({ product }) => {
-      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category))) {
+      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category, product.name))) {
         return false;
       }
       return true;
@@ -560,7 +560,7 @@ export default function FullScreenSearch() {
     const matched = textMatched.filter((p) => {
       const matchingDeals = applicableDealsFor(p, selectedStores, dealFilter);
       if (matchingDeals.length === 0) return false;
-      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category))) return false;
+      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category, p.name))) return false;
       return true;
     });
 

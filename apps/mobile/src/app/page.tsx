@@ -170,7 +170,7 @@ function buildSnapshotDeals(products: ProductCard[], selectedStores: string[], k
 function getSnapshotCategoryCounts(deals: FlatDeal[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const { product } of deals) {
-    const category = groupCategory(product.category);
+    const category = groupCategory(product.category, product.name);
     counts.set(category, (counts.get(category) ?? 0) + 1);
   }
   return counts;
@@ -248,14 +248,14 @@ export default function HomePage() {
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const { product } of dealsAllCategories) {
-      const cat = groupCategory(product.category);
+      const cat = groupCategory(product.category, product.name);
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return counts;
   }, [dealsAllCategories]);
 
   const availableCategories = useMemo(
-    () => [...new Set(dealsAllCategories.map(({ product }) => groupCategory(product.category)))],
+    () => [...new Set(dealsAllCategories.map(({ product }) => groupCategory(product.category, product.name)))],
     [dealsAllCategories]
   );
 
@@ -268,11 +268,11 @@ export default function HomePage() {
     [products, selectedStores]
   );
   const topSavingsAvailableCategories = useMemo(
-    () => [...new Set(topSavingsDeals.map(({ product }) => groupCategory(product.category)))],
+    () => [...new Set(topSavingsDeals.map(({ product }) => groupCategory(product.category, product.name)))],
     [topSavingsDeals]
   );
   const worstDodgyAvailableCategories = useMemo(
-    () => [...new Set(worstDodgyDeals.map(({ product }) => groupCategory(product.category)))],
+    () => [...new Set(worstDodgyDeals.map(({ product }) => groupCategory(product.category, product.name)))],
     [worstDodgyDeals]
   );
   const topSavingsCategoryCounts = useMemo(() => getSnapshotCategoryCounts(topSavingsDeals), [topSavingsDeals]);
@@ -280,7 +280,7 @@ export default function HomePage() {
 
   const filteredDeals = useMemo<FlatDeal[]>(() => {
     if (dealCategoryFilter.length === 0) return dealsAllCategories;
-    return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category)));
+    return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category, product.name)));
   }, [dealsAllCategories, dealCategoryFilter]);
 
   const dealFilterTintClass =

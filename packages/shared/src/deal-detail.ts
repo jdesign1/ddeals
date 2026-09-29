@@ -343,22 +343,94 @@ export const tokenizeForFuzzy = (s: string | null | undefined): string[] =>
     .filter(Boolean);
 
 const CATEGORY_GROUPS: { label: string; match: RegExp }[] = [
-  { label: "Fruit & veg", match: /fruit|veg/i },
-  { label: "Meat & seafood", match: /meat|seafood|poultry|fish/i },
-  { label: "Fridge, deli & eggs", match: /fridge|deli|eggs/i },
+  { label: "Fruit & Veg", match: /fruit|veg/i },
+  { label: "Meat & Poultry", match: /meat|poultry/i },
+  { label: "Fish & Seafood", match: /fish|seafood/i },
   { label: "Bakery", match: /bakery/i },
-  { label: "Frozen & chilled", match: /frozen|chilled/i },
-  { label: "Beer & wine", match: /beer|wine|cider/i },
-  { label: "Drinks", match: /drink/i },
-  { label: "Snacks & treats", match: /snack|treat/i },
-  { label: "Pantry & grocery", match: /pantry|grocery/i },
-  { label: "Health & household", match: /health|body|household|clean/i },
-  { label: "Baby & toddler", match: /baby|toddler|child|school/i },
-  { label: "Pet", match: /\bpet/i },
+  { label: "Frozen", match: /frozen/i },
+  { label: "Dairy & Eggs", match: /dairy|egg|milk|cheese|yoghurt|yogurt|butter|cream|custard/i },
+  { label: "Fridge & Deli", match: /fridge|deli|chilled/i },
+  { label: "Pantry", match: /pantry|grocery|snack|treat/i },
+  { label: "Beer & Wine", match: /beer|wine|cider/i },
+  { label: "Drinks", match: /drink|beverage/i },
+  { label: "Health & Body", match: /health|body/i },
+  { label: "Household & Cleaning", match: /household|clean/i },
+  { label: "Baby & Child", match: /baby|toddler|child|school/i },
+  { label: "Pets", match: /\bpet/i },
 ];
 
-export function groupCategory(rawCategory: string | null | undefined): string {
+const FISH_PRODUCT_TERMS = /\b(?:fish|seafood|salmon|tuna|prawn(?:s)?|shrimp|mussel(?:s)?|oyster(?:s)?|sardine(?:s)?|anchov(?:y|ies)|hoki|snapper|gurnard|trout|crab|squid|octopus|clam(?:s)?)\b/i;
+const MEAT_PRODUCT_TERMS = /\b(?:meat|poultry|beef|pork|lamb|chicken|turkey|duck|venison|sausage(?:s)?|salami|ham|bacon|steak|mince|ribs?|burger(?:s)?|hotdogs?)\b/i;
+const HOUSEHOLD_PRODUCT_TERMS = /\b(?:dish(?:es)?|laundry|detergent|bleach|cleaner|cleaning|disinfect(?:ant)?|surface|fabric softener|softener|toilet|rubbish|bin liner|sponge|paper towel|washing powder)\b/i;
+const FROZEN_PRODUCT_TERMS = /\b(?:frozen|wedge(?:s)?|chips|fries|ice cream|pizza|burrito|dessert)\b/i;
+const HEALTH_PRODUCT_TERMS = /\b(?:conditioner|shampoo|bodywash|body wash|handwash|hand wash|toothbrush|toothpaste|cold|flu|vitamin|deodorant|soap|skincare|skin care)\b/i;
+const DAIRY_PRODUCT_TERMS = /\b(?:dairy|egg(?:s)?|milk|cheese|yoghurt|yogurt|butter|cream|custard|sour cream|cottage cheese)\b/i;
+
+/**
+ * Resolve mixed retailer taxonomy labels without letting a broad department
+ * swallow a more specific shopper category. The live Woolworths feed uses
+ * paths such as `Meat, Poultry & Seafood > Seafood > Fish Fillets`; the
+ * top-level label alone is not enough to distinguish fish from meat.
+ */
+export function groupCategory(rawCategory: string | null | undefined, productName?: string | null): string {
+  const raw = (rawCategory || "").trim();
   const top = (rawCategory || "").split(">")[0].trim();
+  const categoryText = raw.toLowerCase();
+  const productText = productName || "";
+
+  // Some Foodstuffs rows and older Woolworths rows use a combined protein
+  // department. Prefer its child path, then the product name, before falling
+  // back to meat as the safer default for an unresolved mixed row.
+  const mixedProteinDepartment = /meat/i.test(top) && /(?:fish|seafood)/i.test(top);
+  if (mixedProteinDepartment) {
+    const childPath = raw.split(">").slice(1).join(" ");
+    if (FISH_PRODUCT_TERMS.test(childPath) || (FISH_PRODUCT_TERMS.test(productText) && !MEAT_PRODUCT_TERMS.test(productText))) {
+      return "Fish & Seafood";
+    }
+    return "Meat & Poultry";
+  }
+
+  // A small number of live rows combine health and cleaning in their top
+  // label. Use the product name only for the cleaning side of that split;
+  // body care, dental care and medicine remain Health & Body.
+  if (/^cleaning,\s*health\s*&\s*body$/i.test(top)) {
+    return HOUSEHOLD_PRODUCT_TERMS.test(productText) ? "Household & Cleaning" : "Health & Body";
+  }
+
+  // Fridge/Deli and Dairy/Eggs are separate shopper categories even though
+  // some retailer feeds publish them under the combined `Fridge, Deli & Eggs`
+  // department. Use child-path and product evidence to split that family;
+  // unresolved rows stay in Fridge & Deli rather than being guessed as dairy.
+  if (/fridge.*deli|deli.*eggs|fridge.*eggs/i.test(top)) {
+    const childPath = raw.split(">").slice(1).join(" ");
+    return DAIRY_PRODUCT_TERMS.test(childPath) || DAIRY_PRODUCT_TERMS.test(productText)
+      ? "Dairy & Eggs"
+      : "Fridge & Deli";
+  }
+
+  // Seasonal/meal departments are not part of the approved top-level list.
+  // Resolve their useful child paths or product names into the closest
+  // shopper-facing category rather than leaking an "Other" chip into sheets.
+  if (/^dinner$/i.test(top)) {
+    if (FISH_PRODUCT_TERMS.test(productText) && !MEAT_PRODUCT_TERMS.test(productText)) return "Fish & Seafood";
+    if (MEAT_PRODUCT_TERMS.test(productText) && !FISH_PRODUCT_TERMS.test(productText)) return "Meat & Poultry";
+    if (/frozen|dessert/i.test(categoryText)) return "Frozen";
+    return "Pantry";
+  }
+  if (/^christmas$/i.test(top)) {
+    return /beer|wine|cider/i.test(categoryText) ? "Beer & Wine" : "Pantry";
+  }
+
+  // A couple of legacy rows have no category at all. Keep the fallback
+  // conservative and limited to high-signal product terms so missing source
+  // metadata does not create a broad or misleading category assignment.
+  if (!top) {
+    if (FISH_PRODUCT_TERMS.test(productText) && !MEAT_PRODUCT_TERMS.test(productText)) return "Fish & Seafood";
+    if (MEAT_PRODUCT_TERMS.test(productText) && !FISH_PRODUCT_TERMS.test(productText)) return "Meat & Poultry";
+    if (FROZEN_PRODUCT_TERMS.test(productText)) return "Frozen";
+    if (HEALTH_PRODUCT_TERMS.test(productText)) return "Health & Body";
+  }
+
   const group = CATEGORY_GROUPS.find((g) => g.match.test(top));
   return group ? group.label : top || "Other";
 }
@@ -427,7 +499,7 @@ function productTypeKey(product: ProductCard): string | null {
  * relationship is required before price can make a product visible.
  */
 function cheaperAlternativeRelevance(target: ProductCard, candidate: ProductCard): number {
-  const sameGroup = groupCategory(target.category) === groupCategory(candidate.category);
+  const sameGroup = groupCategory(target.category, target.name) === groupCategory(candidate.category, candidate.name);
   if (!sameGroup) return 0;
 
   const targetCategory = normaliseCategory(target.category);
@@ -472,9 +544,9 @@ function cheaperAlternativeRelevance(target: ProductCard, candidate: ProductCard
  * section for it, same as the original `FullScreenSearch.tsx` version).
  */
 export const CATEGORY_SECTIONS: { title: string; categories: string[] }[] = [
-  { title: "Fresh", categories: ["Fruit & veg", "Meat & seafood", "Fridge, deli & eggs", "Bakery", "Frozen & chilled"] },
-  { title: "Grocery & drinks", categories: ["Pantry & grocery", "Drinks", "Beer & wine", "Snacks & treats"] },
-  { title: "Household & care", categories: ["Health & household", "Baby & toddler", "Pet"] },
+  { title: "Fresh", categories: ["Fruit & Veg", "Meat & Poultry", "Fish & Seafood", "Fridge & Deli", "Dairy & Eggs", "Bakery", "Frozen"] },
+  { title: "Grocery & drinks", categories: ["Pantry", "Beer & Wine", "Drinks"] },
+  { title: "Health & home", categories: ["Health & Body", "Household & Cleaning", "Baby & Child", "Pets"] },
 ];
 
 export interface CheaperAlternative {
@@ -501,7 +573,7 @@ export function findCheaperAlternatives(
   storesList: string[] = DEAL_DETAIL_STORES_LIST
 ): CheaperAlternative[] {
   const categoryPool = allProducts.filter(
-    (p) => p.id !== product.id && groupCategory(p.category) === groupCategory(product.category)
+    (p) => p.id !== product.id && groupCategory(p.category, p.name) === groupCategory(product.category, product.name)
   );
 
   const allOptions = categoryPool.flatMap((p) =>

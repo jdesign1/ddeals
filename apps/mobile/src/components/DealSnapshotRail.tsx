@@ -44,7 +44,7 @@ export default function DealSnapshotRail({
   const rankedDeals = useMemo(() => {
     const filtered = selectedCategories.length === 0
       ? deals
-      : deals.filter(({ product }) => selectedCategories.includes(groupCategory(product.category)));
+      : deals.filter(({ product }) => selectedCategories.includes(groupCategory(product.category, product.name)));
 
     return [...filtered]
       .sort((a, b) => compareDealSnapshotEntries(a, b, kind) || a.product.name.localeCompare(b.product.name))
