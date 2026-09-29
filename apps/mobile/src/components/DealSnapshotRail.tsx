@@ -143,7 +143,13 @@ export default function DealSnapshotRail({
                 // The first rendered tile in each top specials belt is a
                 // reliable bridge into the assessment walkthrough. The
                 // savings belt renders first, with dodgy as a fallback.
-                dataOnboarding={index === firstRenderableIndex ? "deal-card" : undefined}
+                dataOnboarding={
+                  index === firstRenderableIndex
+                    ? isSavings
+                      ? "top-savings-deal-card"
+                      : "dodgy-deal-card"
+                    : undefined
+                }
                 snapshotCardHeight={snapshotCardHeight ?? undefined}
                 snapshot={{
                   rank: index + 1,

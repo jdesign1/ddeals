@@ -38,7 +38,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     href: "/",
-    target: '[data-onboarding="deal-card"]',
+    target: '[data-onboarding="top-savings-deal-card"], [data-onboarding="dodgy-deal-card"]',
     title: "Check a deal",
     body: "Tap an item to see whether the special is Dodgy, Fair, or a Real Saver based on price history.",
     position: "middle",
@@ -115,7 +115,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     let attempts = 0;
     let retryTimer = 0;
     const findDeal = () => {
-      const card = document.querySelector<HTMLElement>('[data-onboarding="deal-card"]');
+      const card = document.querySelector<HTMLElement>('[data-onboarding="top-savings-deal-card"], [data-onboarding="dodgy-deal-card"]');
       const href = card?.dataset.onboardingDealHref;
       if (href) {
         setDealHref(href);
@@ -166,7 +166,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       if ((nextRect && nextRect.width > 0 && nextRect.height > 0) || attempts >= 80) window.clearInterval(retryTimer);
 
       const hasLayout = Boolean(nextRect && nextRect.width > 0 && nextRect.height > 0);
-      const shouldAutoScroll = hasLayout && (stepIndex === 2 || step.href === DEAL_ROUTE);
+      const shouldAutoScroll = hasLayout && stepIndex === 2;
 
       if (target && shouldAutoScroll && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
@@ -235,7 +235,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
     if (step.welcome) return { top: "54%", transform: "translateY(-50%)" };
     if (step.position === "middle") {
-      return { top: Math.max(96, Math.min(viewportHeight - 300, viewportHeight * 0.5)) };
+      return { top: Math.max(96, Math.min(viewportHeight - 276, viewportHeight * 0.56)) };
     }
 
     const targetTop = targetRect?.top ?? viewportHeight * 0.4;
@@ -303,14 +303,11 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           transition={{ duration: prefersReducedMotion ? 0.1 : 0.2, ease: "easeOut" }}
           aria-live="polite"
         >
-          <div className="relative mb-3 flex min-h-10 items-center justify-center">
-            <span className="dd-type-meta dd-type-meta-strong text-center text-stone-500">
-              {stepIndex + 1} of {TOUR_STEPS.length}
-            </span>
+          <div className="relative mb-2 flex h-8 items-center justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-0 top-0 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              className="absolute right-0 top-0 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
               aria-label="Skip app tour"
             >
               <X className="h-5 w-5" aria-hidden="true" />
