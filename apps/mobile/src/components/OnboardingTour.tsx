@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import MascotImage from "@/components/MascotImage";
@@ -15,7 +15,7 @@ type TourStep = {
   target: string;
   title: string;
   body: string;
-  position?: "top" | "bottom" | "middle";
+  position?: "top" | "bottom" | "middle" | "lower";
   welcome?: boolean;
   showScrim?: boolean;
 };
@@ -48,7 +48,7 @@ const TOUR_STEPS: TourStep[] = [
     target: "",
     title: "Deal assessment",
     body: "This page brings together the current price, product details, and supermarket comparison so you can see the full picture.",
-    position: "middle",
+    position: "lower",
     showScrim: false,
   },
   {
@@ -92,7 +92,11 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [dealHref, setDealHref] = useState<string | null>(null);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
   const didAutoScrollRef = useRef(false);
+  const closeTimerRef = useRef<number | null>(null);
+  const stepTransitionTimerRef = useRef<number | null>(null);
+  const isStepTransitioningRef = useRef(false);
   const step = TOUR_STEPS[stepIndex];
   const isLastStep = stepIndex === TOUR_STEPS.length - 1;
   const activeHref = step.href === DEAL_ROUTE ? dealHref : step.href;
@@ -139,6 +143,8 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+      if (stepTransitionTimerRef.current) window.clearTimeout(stepTransitionTimerRef.current);
     };
   }, []);
 
@@ -171,7 +177,9 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       if (target && shouldAutoScroll && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
         isAutoScrolling = true;
-        target.scrollIntoView({ block: stepIndex === 2 ? "center" : "start", behavior: prefersReducedMotion ? "auto" : "smooth" });
+        // Keep the card comfortably below the explanatory card at the top,
+        // while reserving a little space above the iOS safe-area controls.
+        target.scrollIntoView({ block: "end", behavior: prefersReducedMotion ? "auto" : "smooth" });
         settleTimer = window.setTimeout(() => {
           isAutoScrolling = false;
           measure();
@@ -197,23 +205,6 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     };
   }, [activeHref, isDealPath, pathname, prefersReducedMotion, step.href, step.target, stepIndex]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-      if (event.key === "ArrowLeft" && stepIndex > 0) setStepIndex((index) => index - 1);
-      if (event.key === "ArrowRight") {
-        if (isLastStep) {
-          if (pathname !== "/") router.push("/");
-          onClose();
-        } else {
-          setStepIndex((index) => index + 1);
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLastStep, onClose, pathname, router, stepIndex]);
-
   const hasTarget = Boolean(targetRect && targetRect.width > 0 && targetRect.height > 0);
   const spotlightStyle = useMemo(() => {
     if (!targetRect || targetRect.width === 0 || targetRect.height === 0) {
@@ -238,6 +229,9 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     if (step.position === "middle") {
       return { top: Math.max(96, Math.min(viewportHeight - 276, viewportHeight * 0.56)) };
     }
+    if (step.position === "lower") {
+      return { top: Math.max(112, Math.min(viewportHeight - 250, viewportHeight * 0.62)) };
+    }
 
     const targetTop = targetRect?.top ?? viewportHeight * 0.4;
     const targetBottom = targetRect?.bottom ?? targetTop;
@@ -245,14 +239,53 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     return { top: Math.max(16, top) };
   }, [step.position, step.welcome, targetRect]);
 
-  const goNext = () => {
-    if (isLastStep) {
+  const closeTour = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimerRef.current = window.setTimeout(onClose, prefersReducedMotion ? 80 : 280);
+  }, [isClosing, onClose, prefersReducedMotion]);
+
+  const finishTour = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
       if (pathname !== "/") router.push("/");
       onClose();
+    }, prefersReducedMotion ? 80 : 280);
+  }, [isClosing, onClose, pathname, prefersReducedMotion, router]);
+
+  const changeStep = useCallback((nextStep: number) => {
+    if (isClosing || isStepTransitioningRef.current) return;
+    isStepTransitioningRef.current = true;
+    setStepIndex(nextStep);
+    stepTransitionTimerRef.current = window.setTimeout(() => {
+      isStepTransitioningRef.current = false;
+    }, prefersReducedMotion ? 100 : 500);
+  }, [isClosing, prefersReducedMotion]);
+
+  const goNext = useCallback(() => {
+    if (isLastStep) {
+      finishTour();
     } else {
-      setStepIndex((index) => index + 1);
+      changeStep(stepIndex + 1);
     }
-  };
+  }, [changeStep, finishTour, isLastStep, stepIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeTour();
+      if (event.key === "ArrowLeft" && stepIndex > 0) changeStep(stepIndex - 1);
+      if (event.key === "ArrowRight") {
+        if (isLastStep) {
+          finishTour();
+        } else {
+          changeStep(stepIndex + 1);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [changeStep, closeTour, finishTour, isLastStep, stepIndex]);
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Dodgy Deal app tour">
@@ -294,6 +327,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       )}
 
       <AnimatePresence mode="wait" initial={false}>
+        {!isClosing && (
         <motion.section
           key={stepIndex}
           className="absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white p-5 shadow-2xl"
@@ -301,14 +335,14 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: prefersReducedMotion ? 0.1 : 0.2, ease: "easeOut" }}
+          transition={{ duration: prefersReducedMotion ? 0.08 : 0.24, ease: "easeInOut" }}
           aria-live="polite"
         >
-          <div className="relative mb-0 flex h-7 items-center justify-end">
+          <div className="relative mb-0 flex h-6 items-center justify-end">
             <button
               type="button"
-              onClick={onClose}
-              className="absolute right-0 top-0 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              onClick={closeTour}
+              className="absolute right-0 top-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
               aria-label="Skip app tour"
             >
               <X className="h-5 w-5" aria-hidden="true" />
@@ -335,7 +369,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={closeTour}
               className="dd-type-control text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
             >
               Skip tour
@@ -344,7 +378,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               {stepIndex > 0 && (
                 <button
                   type="button"
-                  onClick={() => setStepIndex((index) => index - 1)}
+                  onClick={() => changeStep(stepIndex - 1)}
                   className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-300 text-stone-700 transition-colors hover:bg-stone-50"
                   aria-label="Previous tour step"
                 >
@@ -358,6 +392,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
             </div>
           </div>
         </motion.section>
+        )}
       </AnimatePresence>
     </div>
   );

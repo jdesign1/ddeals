@@ -189,6 +189,9 @@ export default function ProductListCard({
       data-snapshot-card={isSnapshotLayout ? true : undefined}
       style={{
         ...(isSnapshotLayout && snapshotCardHeight ? { height: snapshotCardHeight } : {}),
+        // The tour aligns its "Check a deal" target to this bottom margin so
+        // the highlighted tile stays clear of the bottom safe area.
+        ...(isTourDealCard ? { scrollMarginBottom: 112 } : {}),
         touchAction: isSnapshotLayout ? "pan-x pan-y" : "pan-y",
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
