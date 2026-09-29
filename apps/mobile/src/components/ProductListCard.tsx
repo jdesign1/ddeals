@@ -105,6 +105,10 @@ export default function ProductListCard({
   const isFairDeal = deal.dealType === "Fair Price";
   const hideCardBadges = hasMixedStoreVerdicts(product);
   const isSnapshotLayout = snapshot != null;
+  const isTourDealCard =
+    dataOnboarding === "deal-card" ||
+    dataOnboarding === "top-savings-deal-card" ||
+    dataOnboarding === "dodgy-deal-card";
   const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
@@ -176,7 +180,7 @@ export default function ProductListCard({
       tabIndex={0}
       data-onboarding={dataOnboarding}
       data-onboarding-deal-href={
-        dataOnboarding === "deal-card" ? `/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}` : undefined
+        isTourDealCard ? `/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}` : undefined
       }
       // Product item cards use a subtle outline rather than elevation. The
       // verdict badge below still carries the deal status explicitly.
@@ -202,7 +206,7 @@ export default function ProductListCard({
       <AddToListButton
         productId={product.id}
         productName={product.name}
-        dataOnboarding={dataOnboarding === "deal-card" ? "save-product" : undefined}
+        dataOnboarding={isTourDealCard ? "save-product" : undefined}
         containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : isSnapshotLayout ? "absolute right-3 top-3 z-10" : undefined}
       />
 

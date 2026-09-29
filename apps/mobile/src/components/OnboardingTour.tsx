@@ -15,7 +15,7 @@ type TourStep = {
   target: string;
   title: string;
   body: string;
-  position?: "bottom" | "middle";
+  position?: "top" | "bottom" | "middle";
   welcome?: boolean;
   showScrim?: boolean;
 };
@@ -41,7 +41,7 @@ const TOUR_STEPS: TourStep[] = [
     target: '[data-onboarding="top-savings-deal-card"], [data-onboarding="dodgy-deal-card"]',
     title: "Check a deal",
     body: "Tap an item to see whether the special is Dodgy, Fair, or a Real Saver based on price history.",
-    position: "middle",
+    position: "top",
   },
   {
     href: DEAL_ROUTE,
@@ -171,7 +171,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       if (target && shouldAutoScroll && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
         isAutoScrolling = true;
-        target.scrollIntoView({ block: "start", behavior: prefersReducedMotion ? "auto" : "smooth" });
+        target.scrollIntoView({ block: stepIndex === 2 ? "center" : "start", behavior: prefersReducedMotion ? "auto" : "smooth" });
         settleTimer = window.setTimeout(() => {
           isAutoScrolling = false;
           measure();
@@ -234,6 +234,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const cardStyle = useMemo(() => {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
     if (step.welcome) return { top: "54%", transform: "translateY(-50%)" };
+    if (step.position === "top") return { top: 16 };
     if (step.position === "middle") {
       return { top: Math.max(96, Math.min(viewportHeight - 276, viewportHeight * 0.56)) };
     }
