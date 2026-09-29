@@ -17,6 +17,7 @@ type TourStep = {
   body: string;
   position?: "bottom" | "middle";
   welcome?: boolean;
+  showScrim?: boolean;
 };
 
 const DEAL_ROUTE = "__deal__";
@@ -44,10 +45,11 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     href: DEAL_ROUTE,
-    target: '[data-onboarding="deal-summary"]',
+    target: "",
     title: "Deal assessment",
     body: "This page brings together the current price, product details, and supermarket comparison so you can see the full picture.",
     position: "middle",
+    showScrim: false,
   },
   {
     href: DEAL_ROUTE,
@@ -164,11 +166,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       if ((nextRect && nextRect.width > 0 && nextRect.height > 0) || attempts >= 80) window.clearInterval(retryTimer);
 
       const hasLayout = Boolean(nextRect && nextRect.width > 0 && nextRect.height > 0);
-      const needsAssessmentScroll =
-        step.href === DEAL_ROUTE &&
-        hasLayout &&
-        (nextRect!.top < 96 || nextRect!.bottom > window.innerHeight - 96);
-      const shouldAutoScroll = stepIndex === 2 || needsAssessmentScroll;
+      const shouldAutoScroll = hasLayout && (stepIndex === 2 || step.href === DEAL_ROUTE);
 
       if (target && shouldAutoScroll && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
@@ -177,7 +175,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
         settleTimer = window.setTimeout(() => {
           isAutoScrolling = false;
           measure();
-        }, prefersReducedMotion ? 40 : 360);
+        }, prefersReducedMotion ? 40 : 420);
         return;
       }
       if (nextRect && nextRect.width > 0 && nextRect.height > 0) setTargetRect(nextRect);
@@ -221,21 +219,23 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     if (!targetRect || targetRect.width === 0 || targetRect.height === 0) {
       return { top: -100, left: -100, width: 0, height: 0, borderRadius: 18 };
     }
+    const viewportWidth = typeof window === "undefined" ? 480 : window.innerWidth;
+    const cardWidth = Math.min(448, viewportWidth - 32);
+    const cardLeft = Math.max(16, (viewportWidth - cardWidth) / 2);
     return {
       top: Math.max(8, targetRect.top - 8),
-      left: Math.max(8, targetRect.left - 8),
-      width: targetRect.width + 16,
+      left: stepIndex === 1 ? cardLeft : Math.max(8, targetRect.left - 8),
+      width: stepIndex === 1 ? cardWidth : targetRect.width + 16,
       height: targetRect.height + 16,
       borderRadius: 18,
     };
-  }, [targetRect]);
+  }, [stepIndex, targetRect]);
 
   const cardStyle = useMemo(() => {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
-    if (step.welcome) return { top: "50%", transform: "translateY(-50%)" };
-    if (step.position === "bottom") return { top: Math.max(16, viewportHeight - 268) };
+    if (step.welcome) return { top: "54%", transform: "translateY(-50%)" };
     if (step.position === "middle") {
-      return { top: Math.max(96, Math.min(viewportHeight - 300, viewportHeight * 0.42)) };
+      return { top: Math.max(96, Math.min(viewportHeight - 300, viewportHeight * 0.5)) };
     }
 
     const targetTop = targetRect?.top ?? viewportHeight * 0.4;
@@ -255,7 +255,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Dodgy Deal app tour">
-      <div className={`absolute inset-0 pointer-events-auto ${hasTarget ? "" : "bg-stone-950/62"}`} aria-hidden="true" />
+      <div className={`absolute inset-0 pointer-events-auto ${step.showScrim === false ? "" : hasTarget ? "" : "bg-stone-950/62"}`} aria-hidden="true" />
 
       <AnimatePresence initial={false}>
         {hasTarget && (
@@ -303,33 +303,37 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           transition={{ duration: prefersReducedMotion ? 0.1 : 0.2, ease: "easeOut" }}
           aria-live="polite"
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="dd-type-meta dd-type-meta-strong text-stone-500">
+          <div className="relative mb-3 flex min-h-10 items-center justify-center">
+            <span className="dd-type-meta dd-type-meta-strong text-center text-stone-500">
               {stepIndex + 1} of {TOUR_STEPS.length}
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              className="absolute right-0 top-0 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
               aria-label="Skip app tour"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
-          <div className="mb-4 flex items-center gap-3">
-            <MascotImage
-              src="/auth-wave.webp"
-              darkSrc="/auth-wave-dark.webp"
-              alt={step.welcome ? "Dodgy Deal mascot waving" : "Dodgy Deal mascot"}
-              width={192}
-              height={222}
-              sizes={step.welcome ? "80px" : "48px"}
-              unoptimized
-              className={`mascot-wave flex-shrink-0 object-contain ${step.welcome ? "h-20 w-20" : "h-12 w-11"}`}
-            />
-            <h2 className="min-w-0 flex-1 font-display text-xl font-extrabold text-ink-900">{step.title}</h2>
+          {step.welcome && (
+            <div className="mb-2 flex justify-center">
+              <MascotImage
+                src="/auth-wave.webp"
+                darkSrc="/auth-wave-dark.webp"
+                alt="Dodgy Deal mascot waving"
+                width={192}
+                height={222}
+                sizes="80px"
+                unoptimized
+                className="mascot-wave h-20 w-20 object-contain"
+              />
+            </div>
+          )}
+          <div className="mb-4 space-y-2 text-center">
+            <h2 className="whitespace-nowrap font-display text-xl font-extrabold text-ink-900">{step.title}</h2>
+            <p className="dd-type-body text-left text-stone-600">{step.body}</p>
           </div>
-          <p className="mb-5 dd-type-body text-stone-600">{step.body}</p>
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"

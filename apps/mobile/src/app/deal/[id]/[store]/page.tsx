@@ -902,8 +902,8 @@ export default function DealAssessmentPage() {
             to fit inside a bottom sheet, no spare room for a second badge
             line without its own layout pass; flagged here as a possible
             follow-up rather than assumed in scope for either ask. */}
-        <div className="flex items-center justify-between gap-3" data-onboarding="deal-verdict">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2" data-onboarding="deal-verdict">
             <h3 className="text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
             {!uncertain && (
               <AnimatedVerdictBadge
@@ -969,21 +969,22 @@ export default function DealAssessmentPage() {
         </>
       ) : (
         <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className="flex items-center justify-between" data-onboarding="deal-verdict">
-            <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
-              {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
-            </h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1" data-onboarding="deal-verdict">
+              <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
+                {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
+              </h2>
+              {!uncertain && (
+                <AnimatedVerdictBadge
+                  badge={verdictBadge}
+                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                  label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
+                  className="mt-2 w-fit"
+                />
+              )}
+            </div>
             <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
           </div>
-
-          {!uncertain && (
-            <AnimatedVerdictBadge
-              badge={verdictBadge}
-              animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-              label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
-              className="w-fit"
-            />
-          )}
 
           <div className="flex items-start gap-4" data-onboarding="deal-summary">
             <button
