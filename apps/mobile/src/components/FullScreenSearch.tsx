@@ -12,8 +12,6 @@ import {
   deriveAvailableStoreKeys,
   groupCategory,
   CATEGORY_SECTIONS,
-  getSearchSynonymRule,
-  productMatchesSynonymRule,
   productMatchesSearch,
   getProductSearchRelevance,
 } from "@dodgey-deals/shared";
@@ -38,13 +36,6 @@ import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfinit
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
 import { compareLatestSpecials, getNewSpecialKeys, isNewSpecial } from "@/lib/special-freshness";
-
-const dairyRule = getSearchSynonymRule("dairy");
-
-function searchCategory(product: Pick<ProductCardData, "name" | "brand" | "category">): string {
-  const isDairy = dairyRule ? productMatchesSynonymRule(dairyRule, product) : false;
-  return isDairy ? "Dairy" : groupCategory(product.category);
-}
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -465,7 +456,7 @@ export default function FullScreenSearch() {
   );
 
   const homeCategories = useMemo(
-    () => [...new Set(products.map(searchCategory).filter(Boolean))].sort(),
+    () => [...new Set(products.map((p) => groupCategory(p.category, p.name)).filter(Boolean))].sort(),
     [products]
   );
 
@@ -477,7 +468,7 @@ export default function FullScreenSearch() {
   const categoryDealCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
-      const cat = searchCategory(product);
+      const cat = groupCategory(product.category, product.name);
       if (!cat) continue;
       const hasMatchingDeal = product.currentDeals.some(
         (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)
@@ -519,7 +510,7 @@ export default function FullScreenSearch() {
 
   const sortedPopularSpecials = useMemo(() => {
     const filtered = popularSpecials.filter(({ product }) => {
-      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(searchCategory(product))) {
+      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category, product.name))) {
         return false;
       }
       return true;
@@ -569,7 +560,7 @@ export default function FullScreenSearch() {
     const matched = textMatched.filter((p) => {
       const matchingDeals = applicableDealsFor(p, selectedStores, dealFilter);
       if (matchingDeals.length === 0) return false;
-      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(searchCategory(p))) return false;
+      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category, p.name))) return false;
       return true;
     });
 
