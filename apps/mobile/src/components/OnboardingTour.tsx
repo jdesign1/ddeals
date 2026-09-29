@@ -291,6 +291,8 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
 
   const usesBelowCardScrim = step.scrim === "below-card";
   const showBaseScrim = usesBelowCardScrim || !hasTarget;
+  const scrimOpacity = showBaseScrim ? (usesBelowCardScrim ? 1 : 0.62) : 0;
+  const shouldSnapCheckDealScrim = stepIndex === 2 && !hasTarget;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -310,27 +312,21 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Dodgy Deal app tour">
-      <AnimatePresence initial={false}>
-        {showBaseScrim && (
-          <motion.div
-            key={`scrim-${stepIndex}`}
-            className="pointer-events-auto absolute inset-x-0 bottom-0 bg-stone-950"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: usesBelowCardScrim ? 1 : 0.62 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
-            style={
-              usesBelowCardScrim
-                ? {
-                    top: cardStyle.top,
-                    background: "linear-gradient(to bottom, rgba(28, 25, 23, 0) 0%, rgba(28, 25, 23, 0.62) 18%, rgba(28, 25, 23, 0.62) 100%)",
-                  }
-                : { top: 0 }
-            }
-            aria-hidden="true"
-          />
-        )}
-      </AnimatePresence>
+      <motion.div
+        className="pointer-events-auto absolute inset-x-0 bottom-0 bg-stone-950"
+        initial={false}
+        animate={{ opacity: scrimOpacity }}
+        transition={{ duration: shouldSnapCheckDealScrim ? 0 : prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
+        style={
+          usesBelowCardScrim
+            ? {
+                top: cardStyle.top,
+                background: "linear-gradient(to bottom, rgba(28, 25, 23, 0) 0%, rgba(28, 25, 23, 0.62) 46%, rgba(28, 25, 23, 0.62) 100%)",
+              }
+            : { top: 0 }
+        }
+        aria-hidden="true"
+      />
 
       <AnimatePresence mode="wait" initial={false}>
         {hasTarget && (
@@ -417,7 +413,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               </button>
             </div>
           )}
-          <p className={`mb-3 dd-type-body text-left text-stone-600 ${step.welcome ? "mt-1" : "mt-2"}`}>{step.body}</p>
+          <p className="mb-3 mt-3 dd-type-body text-left text-stone-600">{step.body}</p>
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
