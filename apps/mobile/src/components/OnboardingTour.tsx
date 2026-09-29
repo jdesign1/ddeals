@@ -17,7 +17,7 @@ type TourStep = {
   body: string;
   position?: "top" | "bottom" | "middle" | "lower";
   welcome?: boolean;
-  showScrim?: boolean;
+  scrim?: "below-card";
 };
 
 const DEAL_ROUTE = "__deal__";
@@ -49,7 +49,7 @@ const TOUR_STEPS: TourStep[] = [
     title: "Deal assessment",
     body: "This page brings together the current price, product details, and supermarket comparison so you can see the full picture.",
     position: "lower",
-    showScrim: false,
+    scrim: "below-card",
   },
   {
     href: DEAL_ROUTE,
@@ -92,6 +92,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [dealHref, setDealHref] = useState<string | null>(null);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [targetStepIndex, setTargetStepIndex] = useState<number | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const didAutoScrollRef = useRef(false);
   const closeTimerRef = useRef<number | null>(null);
@@ -155,13 +156,10 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     let settleTimer = 0;
     let isAutoScrolling = false;
     didAutoScrollRef.current = false;
-    const resetTimer = window.setTimeout(() => setTargetRect(null), 0);
 
     const routeReady = step.href === DEAL_ROUTE ? isDealPath : pathname === activeHref;
     if (!step.target || !activeHref || !routeReady) {
-      return () => {
-        window.clearTimeout(resetTimer);
-      };
+      return;
     }
 
     const measure = () => {
@@ -186,7 +184,21 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
         }, prefersReducedMotion ? 40 : 420);
         return;
       }
-      if (nextRect && nextRect.width > 0 && nextRect.height > 0) setTargetRect(nextRect);
+      if (nextRect && nextRect.width > 0 && nextRect.height > 0) {
+        setTargetRect((currentRect) => {
+          if (
+            currentRect &&
+            currentRect.top === nextRect.top &&
+            currentRect.left === nextRect.left &&
+            currentRect.width === nextRect.width &&
+            currentRect.height === nextRect.height
+          ) {
+            return currentRect;
+          }
+          return nextRect;
+        });
+        setTargetStepIndex((currentStepIndex) => currentStepIndex === stepIndex ? currentStepIndex : stepIndex);
+      }
     };
 
     retryTimer = window.setInterval(measure, 80);
@@ -199,13 +211,18 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       window.clearInterval(retryTimer);
       window.clearTimeout(settleTimer);
       window.clearTimeout(initialTimer);
-      window.clearTimeout(resetTimer);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
   }, [activeHref, isDealPath, pathname, prefersReducedMotion, step.href, step.target, stepIndex]);
 
-  const hasTarget = Boolean(targetRect && targetRect.width > 0 && targetRect.height > 0);
+  const hasTarget = Boolean(
+    step.target &&
+    targetStepIndex === stepIndex &&
+    targetRect &&
+    targetRect.width > 0 &&
+    targetRect.height > 0,
+  );
   const spotlightStyle = useMemo(() => {
     if (!targetRect || targetRect.width === 0 || targetRect.height === 0) {
       return { top: -100, left: -100, width: 0, height: 0, borderRadius: 18 };
@@ -213,10 +230,11 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     const viewportWidth = typeof window === "undefined" ? 480 : window.innerWidth;
     const cardWidth = Math.min(448, viewportWidth - 32);
     const cardLeft = Math.max(16, (viewportWidth - cardWidth) / 2);
+    const verdictCardLeftOffset = stepIndex === 4 ? 12 : 0;
     return {
       top: Math.max(8, targetRect.top - 8),
-      left: stepIndex === 1 ? cardLeft : Math.max(8, targetRect.left - 8),
-      width: stepIndex === 1 ? cardWidth : targetRect.width + 16,
+      left: stepIndex === 1 ? cardLeft : Math.max(8, targetRect.left - 8 - verdictCardLeftOffset),
+      width: stepIndex === 1 ? cardWidth : targetRect.width + 16 + verdictCardLeftOffset,
       height: targetRect.height + 16,
       borderRadius: 18,
     };
@@ -271,6 +289,9 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     }
   }, [changeStep, finishTour, isLastStep, stepIndex]);
 
+  const usesBelowCardScrim = step.scrim === "below-card";
+  const showBaseScrim = usesBelowCardScrim || !hasTarget;
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeTour();
@@ -289,9 +310,22 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Dodgy Deal app tour">
-      <div className={`absolute inset-0 pointer-events-auto ${step.showScrim === false ? "" : hasTarget ? "" : "bg-stone-950/62"}`} aria-hidden="true" />
-
       <AnimatePresence initial={false}>
+        {showBaseScrim && (
+          <motion.div
+            key={`scrim-${stepIndex}`}
+            className="pointer-events-auto absolute inset-x-0 bottom-0 bg-stone-950"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.62 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
+            style={usesBelowCardScrim ? { top: cardStyle.top } : { top: 0 }}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait" initial={false}>
         {hasTarget && (
           <motion.div
             key={`spotlight-${stepIndex}`}
@@ -330,7 +364,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
         {!isClosing && (
         <motion.section
           key={stepIndex}
-          className="absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white p-5 shadow-2xl"
+          className="absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white px-5 py-4 shadow-2xl"
           style={cardStyle}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -338,16 +372,6 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           transition={{ duration: prefersReducedMotion ? 0.08 : 0.24, ease: "easeInOut" }}
           aria-live="polite"
         >
-          <div className="relative mb-0 flex h-6 items-center justify-end">
-            <button
-              type="button"
-              onClick={closeTour}
-              className="absolute right-0 top-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-              aria-label="Skip app tour"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
           {step.welcome && (
             <div className="mb-0 flex justify-center">
               <MascotImage
@@ -362,10 +386,18 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               />
             </div>
           )}
-          <div className="mb-4 space-y-2 text-center">
-            <h2 className="whitespace-nowrap font-display text-xl font-extrabold text-ink-900">{step.title}</h2>
-            <p className="dd-type-body text-left text-stone-600">{step.body}</p>
+          <div className="flex min-h-6 items-center justify-between gap-3">
+            <h2 className="whitespace-nowrap font-display text-xl font-extrabold leading-tight text-ink-900">{step.title}</h2>
+            <button
+              type="button"
+              onClick={closeTour}
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              aria-label="Skip app tour"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
+          <p className="mb-3 mt-1 dd-type-body text-left text-stone-600">{step.body}</p>
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
