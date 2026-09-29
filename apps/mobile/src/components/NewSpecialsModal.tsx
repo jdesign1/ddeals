@@ -6,24 +6,13 @@ import { useState } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
-
-export interface NewSpecialsSummary {
-  byStore: {
-    woolworths: number;
-    newworld: number;
-    paknsave: number;
-    foursquare: number;
-  };
-  realDeals: number;
-  dodgyDeals: number;
-  total: number;
-}
+import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 interface NewSpecialsModalProps {
   open: boolean;
   summary: NewSpecialsSummary;
   onClose: () => void;
-  onSelectFilter: (filter: Extract<DealFilter, "real" | "dodgy">) => void;
+  onSelectFilter: (filter: DealFilter, dealKeys: string[]) => void;
 }
 
 export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter }: NewSpecialsModalProps) {
@@ -33,15 +22,24 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const [isClosing, setIsClosing] = useState(false);
   const hasNewSpecials = summary.total > 0;
   const hasRatedSpecials = summary.realDeals > 0 || summary.dodgyDeals > 0;
+  const storeSummary = [
+    { count: summary.byStore.woolworths, store: "Woolworths" },
+    { count: summary.byStore.newworld, store: "New World" },
+    { count: summary.byStore.paknsave, store: "PAK'nSAVE" },
+    { count: summary.byStore.foursquare, store: "Four Square" },
+  ]
+    .filter(({ count }) => count > 0)
+    .map(({ count, store }) => `${count} at ${store}`)
+    .join(", ");
 
   const handleClose = () => {
     setIsClosing(true);
     onClose();
   };
 
-  const handleSelectFilter = (filter: Extract<DealFilter, "real" | "dodgy">) => {
+  const handleSelectFilter = (filter: DealFilter, dealKeys: string[]) => {
     setIsClosing(true);
-    onSelectFilter(filter);
+    onSelectFilter(filter, dealKeys);
   };
 
   return (
@@ -100,51 +98,62 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                   {!hasNewSpecials
                     ? "You’re all caught up"
-                    : hasRatedSpecials
-                      ? "We’ve spotted some new specials"
-                      : "Fresh specials are here"}
+                    : "New deals since your last visit"}
                 </h2>
                 {!hasNewSpecials ? (
                   <p className="mt-3 text-sm leading-6 text-stone-600">
                     There aren&rsquo;t any new specials to show right now. We&rsquo;ll let you know when fresh deals land.
                   </p>
-                ) : !hasRatedSpecials ? (
-                  <p className="mt-3 text-sm leading-6 text-stone-600">
-                    We found fresh specials, but none have a confirmed Real Saver or Dodgy rating yet.
-                  </p>
                 ) : (
                   <>
                     <p className="mt-3 text-sm leading-6 text-stone-600">
-                      <strong className="font-extrabold text-stone-900">{summary.byStore.woolworths}</strong>{" "}at Woolworths,{" "}
-                      <strong className="font-extrabold text-stone-900">{summary.byStore.newworld}</strong>{" "}at New World,{" "}
-                      <strong className="font-extrabold text-stone-900">{summary.byStore.paknsave}</strong>{" "}at PAK&apos;nSAVE, and{" "}
-                      <strong className="font-extrabold text-stone-900">{summary.byStore.foursquare}</strong>{" "}at Four Square.
+                      {storeSummary ? `New specials at ${storeSummary}.` : `${summary.total} new specials are ready to check.`}
                     </p>
-                    <p className="mt-3 text-sm font-semibold text-stone-700">Start checking the deals below.</p>
+                    <p className="mt-3 text-sm leading-6 text-stone-600">
+                      {summary.newlyStarted > 0 && `${summary.newlyStarted} newly started special${summary.newlyStarted === 1 ? "" : "s"}`}
+                      {summary.newlyStarted > 0 && summary.priceDrops > 0 && " and "}
+                      {summary.priceDrops > 0 && `${summary.priceDrops} price drop${summary.priceDrops === 1 ? "" : "s"}`}
+                      {" since your last visit."}
+                    </p>
                   </>
                 )}
               </div>
 
-              {hasRatedSpecials ? (
+              {hasNewSpecials && (
                 <div className="mt-6 flex flex-col gap-3">
                   <button
                     type="button"
-                    onClick={() => handleSelectFilter("real")}
-                    className="dd-btn dd-btn-outline new-specials-real-button min-h-14 w-full cursor-pointer"
+                    onClick={() => handleSelectFilter("all", summary.allDealKeys)}
+                    className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
                   >
-                    <span>{summary.realDeals} Real deals</span>
+                    <span>View {summary.total} new special{summary.total === 1 ? "" : "s"}</span>
                     <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectFilter("dodgy")}
-                    className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-14 w-full cursor-pointer"
-                  >
-                    <span>{summary.dodgyDeals} Dodgy deals</span>
-                    <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-                  </button>
+                  {hasRatedSpecials && (
+                    <div className={`grid gap-3 ${summary.realDeals > 0 && summary.dodgyDeals > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
+                      {summary.realDeals > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectFilter("real", summary.realDealKeys)}
+                          className="dd-btn dd-btn-outline new-specials-real-button min-h-12 w-full cursor-pointer"
+                        >
+                          <span>{summary.realDeals} Real deals</span>
+                        </button>
+                      )}
+                      {summary.dodgyDeals > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
+                          className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-12 w-full cursor-pointer"
+                        >
+                          <span>{summary.dodgyDeals} Dodgy deals</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ) : (
+              )}
+              {!hasNewSpecials && (
                 <button
                   type="button"
                   onClick={handleClose}

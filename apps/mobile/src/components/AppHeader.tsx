@@ -1,43 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
-import { normalizeStoreKey, type ProductCard } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import NewSpecialsModal, { type NewSpecialsSummary } from "@/components/NewSpecialsModal";
-import { matchesDealFilter } from "@/lib/deal-filters";
+import NewSpecialsModal from "@/components/NewSpecialsModal";
+import {
+  createNewSpecialsSnapshot,
+  readNewSpecialsSnapshot,
+  summarizeNewSpecials,
+  writeNewSpecialsSnapshot,
+  type NewSpecialsSummary,
+} from "@/lib/new-specials";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
-const NEW_SPECIALS_LAST_SHOWN_DATE_KEY = "dd-new-specials-last-shown-date";
-const NEW_SPECIALS_LAST_SHOWN_PUBLICATION_KEY = "dd-new-specials-last-shown-publication";
-
-function getLocalDateKey(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
-function readNewSpecialsPresentation(): { date: string | null; publication: number | null } {
-  if (typeof window === "undefined") return { date: null, publication: null };
-  try {
-    const publication = Number(window.localStorage.getItem(NEW_SPECIALS_LAST_SHOWN_PUBLICATION_KEY));
-    return {
-      date: window.localStorage.getItem(NEW_SPECIALS_LAST_SHOWN_DATE_KEY),
-      publication: Number.isFinite(publication) && publication > 0 ? publication : null,
-    };
-  } catch {
-    return { date: null, publication: null };
-  }
-}
 
 /**
  * Shared global top nav bar — ported from Prototype/index.html's
@@ -192,48 +175,6 @@ const ROUTE_TITLES: Record<string, string> = {
   "/report-deal": "Report an incorrect deal",
 };
 
-function summarizeNewSpecials(products: ProductCard[], since: number | null): NewSpecialsSummary {
-  const summary: NewSpecialsSummary = {
-    byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 },
-    realDeals: 0,
-    dodgyDeals: 0,
-    total: 0,
-  };
-
-  for (const product of products) {
-    for (const deal of product.currentDeals) {
-      const scrapedAt = Date.parse(deal.scrapedAt ?? "");
-      const saleStartedAt = Date.parse(deal.saleStartedAt ?? "");
-      const isNew = since === null ||
-        (Number.isFinite(scrapedAt) ? scrapedAt > since : Number.isFinite(saleStartedAt) && saleStartedAt > since);
-      if (!isNew) continue;
-
-      summary.total += 1;
-      const storeKey = normalizeStoreKey(deal.store);
-      if (storeKey.includes("woolworths")) summary.byStore.woolworths += 1;
-      else if (storeKey.includes("newworld")) summary.byStore.newworld += 1;
-      else if (storeKey.includes("paknsave")) summary.byStore.paknsave += 1;
-      else if (storeKey.includes("foursquare")) summary.byStore.foursquare += 1;
-
-      if (matchesDealFilter(deal, "real")) summary.realDeals += 1;
-      if (matchesDealFilter(deal, "dodgy")) summary.dodgyDeals += 1;
-    }
-  }
-
-  return summary;
-}
-
-function latestCataloguePublication(products: ProductCard[]): number | null {
-  return products.reduce<number | null>((latest, product) => {
-    for (const deal of product.currentDeals) {
-      const timestamp = Date.parse(deal.scrapedAt ?? "");
-      if (!Number.isFinite(timestamp)) continue;
-      if (latest === null || timestamp > latest) latest = timestamp;
-    }
-    return latest;
-  }, null);
-}
-
 export default function AppHeader({
   sticky = true,
   collapseOnCheckDeals = false,
@@ -252,13 +193,12 @@ export default function AppHeader({
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
+  const [newSpecialsSnapshot, replaceNewSpecialsSnapshot] = useReducer(
+    (_current: ReturnType<typeof readNewSpecialsSnapshot>, next: NonNullable<ReturnType<typeof readNewSpecialsSnapshot>>) => next,
+    null,
+    readNewSpecialsSnapshot,
+  );
   const hasPresentedNewSpecialsThisMount = useRef(false);
-  const [lastShownNewSpecialsDate, setLastShownNewSpecialsDate] = useState(
-    () => readNewSpecialsPresentation().date
-  );
-  const [lastShownNewSpecialsPublication, setLastShownNewSpecialsPublication] = useState(
-    () => readNewSpecialsPresentation().publication
-  );
 
   useEffect(() => {
     const syncSplashState = (isComplete = false) =>
@@ -269,46 +209,41 @@ export default function AppHeader({
     return () => window.removeEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, handleSplashComplete);
   }, []);
 
+  const currentSpecialsSnapshot = useMemo(() => createNewSpecialsSnapshot(products), [products]);
   const newSpecials = useMemo(
-    () => summarizeNewSpecials(products, lastShownNewSpecialsPublication),
-    [products, lastShownNewSpecialsPublication]
+    () => (newSpecialsSnapshot ? summarizeNewSpecials(products, newSpecialsSnapshot) : null),
+    [products, newSpecialsSnapshot],
   );
-  const cataloguePublication = useMemo(() => latestCataloguePublication(products), [products]);
-  const hasPresentedNewSpecialsToday = lastShownNewSpecialsDate === getLocalDateKey();
+
+  useEffect(() => {
+    if (loadingProducts || products.length === 0) return;
+    if (newSpecialsSnapshot && newSpecials?.total) return;
+    writeNewSpecialsSnapshot(currentSpecialsSnapshot);
+    replaceNewSpecialsSnapshot(currentSpecialsSnapshot);
+  }, [currentSpecialsSnapshot, loadingProducts, newSpecials?.total, newSpecialsSnapshot, products.length]);
 
   const shouldPresentNewSpecialsModal =
     !loadingProducts &&
     isLaunchSplashFinished &&
-    newSpecials.total > 0 &&
-    pathname === "/" &&
-    !hasPresentedNewSpecialsToday;
+    (newSpecials?.total ?? 0) > 0 &&
+    pathname === "/";
 
   useEffect(() => {
     if (!shouldPresentNewSpecialsModal || hasPresentedNewSpecialsThisMount.current) return;
     const presentationTimer = window.setTimeout(() => {
       if (hasPresentedNewSpecialsThisMount.current) return;
       hasPresentedNewSpecialsThisMount.current = true;
-      const date = getLocalDateKey();
-      // Freeze the counts that caused this presentation before advancing the
-      // last-shown publication marker below. `newSpecials` is derived from
-      // that marker, so passing it directly to the modal would immediately
-      // recalculate the open modal to zero new deals.
+      if (!newSpecials) return;
+      // Freeze this semantic diff before saving its snapshot. The saved
+      // snapshot intentionally advances only after the user has been shown
+      // the digest, so unopened changes remain waiting for their next visit.
       setNewSpecialsModalSummary(newSpecials);
-      setLastShownNewSpecialsDate(date);
-      setLastShownNewSpecialsPublication(cataloguePublication);
-      try {
-        window.localStorage.setItem(NEW_SPECIALS_LAST_SHOWN_DATE_KEY, date);
-        if (cataloguePublication !== null) {
-          window.localStorage.setItem(NEW_SPECIALS_LAST_SHOWN_PUBLICATION_KEY, String(cataloguePublication));
-        }
-      } catch {
-        // Local storage can be unavailable in restricted WebViews; the
-        // in-memory state still prevents duplicate presentations this mount.
-      }
+      writeNewSpecialsSnapshot(currentSpecialsSnapshot);
+      replaceNewSpecialsSnapshot(currentSpecialsSnapshot);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [cataloguePublication, newSpecials, shouldPresentNewSpecialsModal]);
+  }, [currentSpecialsSnapshot, newSpecials, shouldPresentNewSpecialsModal]);
 
   useEffect(() => {
     return subscribeToCheckDealsHeaderVisibility((hidden) => {
@@ -556,15 +491,17 @@ export default function AppHeader({
       </div>
     </div>
 
-    <NewSpecialsModal
-      open={isNewSpecialsModalOpen && pathname === "/"}
-      summary={newSpecialsModalSummary ?? newSpecials}
-      onClose={() => setIsNewSpecialsModalOpen(false)}
-      onSelectFilter={(filter) => {
-        setIsNewSpecialsModalOpen(false);
-        openSearchForFilter(filter, { focus: false });
-      }}
-    />
+    {newSpecialsModalSummary && (
+      <NewSpecialsModal
+        open={isNewSpecialsModalOpen && pathname === "/"}
+        summary={newSpecialsModalSummary}
+        onClose={() => setIsNewSpecialsModalOpen(false)}
+        onSelectFilter={(filter, dealKeys) => {
+          setIsNewSpecialsModalOpen(false);
+          openSearchForFilter(filter, { focus: false, dealKeys });
+        }}
+      />
+    )}
 
     {/* Keep the profile overlay outside `.app-header-shell` so the sheet is
         independent from the sticky header's hide/show transform and can

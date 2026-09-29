@@ -79,7 +79,9 @@ interface SearchContextValue {
    * query so a post-login new-specials CTA always lands on the latest browse
    * view. `focus: false` is used by the New Specials launch notice so its
    * destination opens ready to browse without summoning the keyboard. */
-  openSearchForFilter: (filter: DealFilter, options?: { focus?: boolean }) => void;
+  openSearchForFilter: (filter: DealFilter, options?: { focus?: boolean; dealKeys?: string[] }) => void;
+  /** Exact product/store deal keys selected by the new-specials digest. */
+  newSpecialDealKeys: string[] | null;
   /** Back arrow / dedicated close button -- clears the query AND exits,
    * same as the prototype's `handleClearSearch`. */
   closeSearch: () => void;
@@ -164,6 +166,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [isActive, setIsActive] = useState(false);
   const [hasOpenedSearch, setHasOpenedSearch] = useState(false);
   const [focusSearchOnOpen, setFocusSearchOnOpen] = useState(true);
+  const [newSpecialDealKeys, setNewSpecialDealKeys] = useState<string[] | null>(null);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -308,6 +311,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       toggleStore,
       dealFilter,
       setDealFilter,
+      newSpecialDealKeys,
       query,
       setQuery,
       isActive,
@@ -328,6 +332,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       refreshCatalogue,
       openSearch: () => {
         setHasOpenedSearch(true);
+        setNewSpecialDealKeys(null);
         setPreserveSearchStateOnOpen(false);
         setFocusSearchOnOpen(true);
         setIsActive(true);
@@ -336,12 +341,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setHasOpenedSearch(true);
         setQuery("");
         setDealFilter(filter);
+        setNewSpecialDealKeys(options?.dealKeys?.length ? options.dealKeys : null);
+        // The digest count spans every supermarket. Reset a previous search
+        // preference here so its "View all" promise cannot land on a
+        // smaller, hidden subset of the selected deals.
+        if (options?.dealKeys?.length) setSelectedStores(["all"]);
         setPreserveSearchStateOnOpen(false);
         setFocusSearchOnOpen(options?.focus !== false);
         setIsActive(true);
       },
       closeSearch: () => {
         setQuery("");
+        setNewSpecialDealKeys(null);
         setFocusSearchOnOpen(true);
         setIsActive(false);
         setReturnToSearch(null);
@@ -370,7 +381,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
