@@ -316,10 +316,17 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
             key={`scrim-${stepIndex}`}
             className="pointer-events-auto absolute inset-x-0 bottom-0 bg-stone-950"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.62 }}
+            animate={{ opacity: usesBelowCardScrim ? 1 : 0.62 }}
             exit={{ opacity: 0 }}
             transition={{ duration: prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
-            style={usesBelowCardScrim ? { top: cardStyle.top } : { top: 0 }}
+            style={
+              usesBelowCardScrim
+                ? {
+                    top: cardStyle.top,
+                    background: "linear-gradient(to bottom, rgba(28, 25, 23, 0) 0%, rgba(28, 25, 23, 0.62) 18%, rgba(28, 25, 23, 0.62) 100%)",
+                  }
+                : { top: 0 }
+            }
             aria-hidden="true"
           />
         )}
@@ -373,31 +380,44 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           aria-live="polite"
         >
           {step.welcome && (
-            <div className="mb-0 flex justify-center">
-              <MascotImage
-                src="/auth-wave.webp"
-                darkSrc="/auth-wave-dark.webp"
-                alt="Dodgy Deal mascot waving"
-                width={192}
-                height={222}
-                sizes="80px"
-                unoptimized
-                className="mascot-wave h-20 w-20 object-contain"
-              />
+            <>
+              <button
+                type="button"
+                onClick={closeTour}
+                className="absolute right-5 top-4 flex h-6 w-6 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                aria-label="Skip app tour"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <div className="mb-0 flex justify-center">
+                <MascotImage
+                  src="/auth-wave.webp"
+                  darkSrc="/auth-wave-dark.webp"
+                  alt="Dodgy Deal mascot waving"
+                  width={192}
+                  height={222}
+                  sizes="80px"
+                  unoptimized
+                  className="mascot-wave h-20 w-20 object-contain"
+                />
+              </div>
+              <h2 className="whitespace-nowrap text-center font-display text-xl font-extrabold leading-tight text-ink-900">{step.title}</h2>
+            </>
+          )}
+          {!step.welcome && (
+            <div className="flex min-h-6 items-center justify-between gap-3">
+              <h2 className="whitespace-nowrap font-display text-xl font-extrabold leading-tight text-ink-900">{step.title}</h2>
+              <button
+                type="button"
+                onClick={closeTour}
+                className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                aria-label="Skip app tour"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
             </div>
           )}
-          <div className="flex min-h-6 items-center justify-between gap-3">
-            <h2 className="whitespace-nowrap font-display text-xl font-extrabold leading-tight text-ink-900">{step.title}</h2>
-            <button
-              type="button"
-              onClick={closeTour}
-              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-              aria-label="Skip app tour"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-          <p className="mb-3 mt-1 dd-type-body text-left text-stone-600">{step.body}</p>
+          <p className={`mb-3 dd-type-body text-left text-stone-600 ${step.welcome ? "mt-1" : "mt-2"}`}>{step.body}</p>
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
