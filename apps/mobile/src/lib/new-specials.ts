@@ -1,5 +1,5 @@
 import { normalizeStoreKey, type CurrentDeal, type ProductCard } from "@dodgey-deals/shared";
-import { matchesDealFilter } from "@/lib/deal-filters";
+import { matchesDealFilter } from "./deal-filters.ts";
 
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_STORAGE_KEY = "dd-semantic-specials-snapshot-v1";
