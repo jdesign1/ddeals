@@ -665,7 +665,7 @@ export default function AppHeader({
                   >
                     play_circle
                   </span>
-                  Replay app tour
+                  How to use Dodgy Deal
                 </button>
               )}
               <Link
