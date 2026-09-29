@@ -303,18 +303,18 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           transition={{ duration: prefersReducedMotion ? 0.1 : 0.2, ease: "easeOut" }}
           aria-live="polite"
         >
-          <div className="relative mb-2 flex h-8 items-center justify-end">
+          <div className="relative mb-0 flex h-7 items-center justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-0 top-0 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              className="absolute right-0 top-0 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
               aria-label="Skip app tour"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
           {step.welcome && (
-            <div className="mb-2 flex justify-center">
+            <div className="mb-0 flex justify-center">
               <MascotImage
                 src="/auth-wave.webp"
                 darkSrc="/auth-wave-dark.webp"
