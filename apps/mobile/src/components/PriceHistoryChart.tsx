@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import type { AssessmentVerdict, PriceHistoryPoint } from "@dodgey-deals/shared";
+import { normalizeStoreKey, STORE_DISPLAY_FALLBACK, type AssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 
 interface PriceHistoryChartProps {
@@ -189,6 +189,7 @@ export default function PriceHistoryChart({
   }
 
   const showingAllStores = selectedStore === ALL_STORES_VALUE;
+  const currentStoreName = STORE_DISPLAY_FALLBACK[normalizeStoreKey(currentStore)] || currentStore;
   const sourceSeries: PriceHistorySeries[] = showingAllStores
     ? historySeries
     : [{ store: currentStore, points, currentPrice, currentIsSpecial, verdict }];
@@ -260,7 +261,7 @@ export default function PriceHistoryChart({
           >
         <div className="flex min-h-5 items-start justify-center gap-2 -mb-1 pb-0">
           <span className="dd-type-control text-stone-700">
-            {showingAllStores ? "All supermarkets" : <>Supermarket price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
+            {showingAllStores ? "All supermarkets" : <>{currentStoreName} price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
           </span>
           {!showingAllStores && hasComparisonPrice && (
             <PriceChangeBadge currentPrice={currentPrice} comparisonPrice={comparisonPrice} />
