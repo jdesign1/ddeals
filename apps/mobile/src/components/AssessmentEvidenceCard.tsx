@@ -81,13 +81,20 @@ export default function AssessmentEvidenceCard({
   verdict,
   evidenceSummary,
   assessmentCopy,
+  open,
+  onOpenChange,
 }: {
   deal: CurrentDeal;
   verdict: AssessmentVerdict;
   evidenceSummary: string;
   assessmentCopy: string;
+  /** Optional controlled state lets related assessment controls open this same sheet. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
+  const isOpen = open ?? uncontrolledIsOpen;
+  const setIsOpen = onOpenChange ?? setUncontrolledIsOpen;
   const titleId = useId();
   const sheetId = useId();
   const { days, checks, trackedDays: trackedDaysValue } = getEvidenceDetails(deal);
@@ -105,7 +112,7 @@ export default function AssessmentEvidenceCard({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, setIsOpen]);
 
   return (
     <>

@@ -237,6 +237,7 @@ export default function DealAssessmentPage() {
 
   const [products, setProducts] = useState<ProductCard[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isEvidenceSheetOpen, setIsEvidenceSheetOpen] = useState(false);
   // Same plain-counter retry pattern as search-context.tsx/specials/page.tsx
   // (2026-08-11) -- lets ErrorState's Try Again button re-run the fetch
   // below instead of leaving "Couldn't load this deal" as a dead end.
@@ -906,12 +907,21 @@ export default function DealAssessmentPage() {
           <div className="flex min-w-0 flex-wrap items-center gap-2" data-onboarding="deal-verdict">
             <h3 className="text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
             {!uncertain && (
-              <AnimatedVerdictBadge
-                badge={verdictBadge}
-                animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                label={verdict === "Dodgy Deal" ? "Dodgy" : verdictBadge.label}
-                className="w-fit"
-              />
+              <button
+                type="button"
+                onClick={() => setIsEvidenceSheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={isEvidenceSheetOpen}
+                aria-label={`See the evidence for this ${verdict} assessment`}
+                className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+              >
+                <AnimatedVerdictBadge
+                  badge={verdictBadge}
+                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                  label={verdict === "Dodgy Deal" ? "Dodgy" : verdictBadge.label}
+                  className="w-fit"
+                />
+              </button>
             )}
           </div>
           <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
@@ -932,6 +942,8 @@ export default function DealAssessmentPage() {
               verdict={verdict}
               evidenceSummary={evidenceSummary}
               assessmentCopy={assessmentSummary.body}
+              open={isEvidenceSheetOpen}
+              onOpenChange={setIsEvidenceSheetOpen}
             />
           )}
         </div>
@@ -975,12 +987,21 @@ export default function DealAssessmentPage() {
                 {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
               </h2>
               {!uncertain && (
-                <AnimatedVerdictBadge
-                  badge={verdictBadge}
-                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
-                  className="mt-2 w-fit"
-                />
+                <button
+                  type="button"
+                  onClick={() => setIsEvidenceSheetOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={isEvidenceSheetOpen}
+                  aria-label={`See the evidence for this ${verdict} assessment`}
+                  className="mt-2 inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+                >
+                  <AnimatedVerdictBadge
+                    badge={verdictBadge}
+                    animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                    label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
+                    className="w-fit"
+                  />
+                </button>
               )}
             </div>
             <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
@@ -1023,6 +1044,8 @@ export default function DealAssessmentPage() {
                 verdict={verdict}
                 evidenceSummary={evidenceSummary}
                 assessmentCopy={assessmentSummary.body}
+                open={isEvidenceSheetOpen}
+                onOpenChange={setIsEvidenceSheetOpen}
               />
             )}
           </div>
