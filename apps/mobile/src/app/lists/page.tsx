@@ -29,7 +29,6 @@ import { useNotifications } from "@/lib/notifications-context";
 import ErrorState from "@/components/ErrorState";
 import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
-import SearchBar from "@/components/SearchBar";
 import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import UnreadListItem from "@/components/UnreadListItem";
@@ -509,7 +508,7 @@ export default function ListsPage() {
   }, [loadingWatchlist, watchlistItems]);
 
   if (authLoading) {
-    return <main className="flex flex-col gap-3 pb-8"><SearchBar variant="shadow" compact placeholder="Search for products to watch" sticky={false} backgroundClassName="page-paper-surface" /></main>;
+    return <main className="flex flex-col gap-3 pb-8" />;
   }
 
   if (!user) {
@@ -527,17 +526,14 @@ export default function ListsPage() {
   return (
     <main className="flex min-h-full flex-col gap-4 pb-24">
       <div className="watchlist-top-chrome">
-        <div className="flex flex-col gap-4">
-          <SearchBar variant="shadow" compact placeholder="Search for products to watch" sticky={false} backgroundClassName="page-paper-surface" />
-          <WatchlistSummaryCard
-            itemCount={watchlistItems.length}
-            newPriceItemCount={newPriceItemCount}
-            showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
-            notificationPermissionDenied={pushPermissionState === "denied"}
-            isSettingUpNotifications={isSettingUpNotifications}
-            onSetupNotifications={() => void handleNotificationSetup()}
-          />
-        </div>
+        <WatchlistSummaryCard
+          itemCount={watchlistItems.length}
+          newPriceItemCount={newPriceItemCount}
+          showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
+          notificationPermissionDenied={pushPermissionState === "denied"}
+          isSettingUpNotifications={isSettingUpNotifications}
+          onSetupNotifications={() => void handleNotificationSetup()}
+        />
       </div>
 
       <div className="watchlist-filter-bar">

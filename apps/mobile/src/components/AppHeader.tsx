@@ -430,7 +430,7 @@ export default function AppHeader({
               className="flex h-11 w-11 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               <span
-                className="material-symbols-outlined text-[26px] leading-none"
+                className="material-symbols-outlined text-[28px] leading-none"
                 style={{ fontVariationSettings: "'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}
                 aria-hidden="true"
               >
