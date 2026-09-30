@@ -422,7 +422,7 @@ export default function AppHeader({
         </div>
 
         <div aria-hidden={refreshStatus !== null} inert={refreshStatus !== null} className="relative flex flex-shrink-0 items-center gap-3">
-          {pathname !== "/deal" && !pathname.startsWith("/deal/") && (
+          {pathname !== "/settings" && pathname !== "/deal" && !pathname.startsWith("/deal/") && (
             <button
               type="button"
               onClick={openSearch}
