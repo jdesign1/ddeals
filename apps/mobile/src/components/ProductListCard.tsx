@@ -210,7 +210,7 @@ export default function ProductListCard({
         productId={product.id}
         productName={product.name}
         dataOnboarding={isTourDealCard ? "save-product" : undefined}
-        containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : isSnapshotLayout ? "absolute right-0 top-0 z-10" : undefined}
+        containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : isSnapshotLayout ? "absolute right-1 top-1 z-10" : undefined}
       />
 
       {/* Single layout keeps the horizontal image-and-text card currently
