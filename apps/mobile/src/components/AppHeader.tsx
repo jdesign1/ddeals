@@ -181,7 +181,7 @@ export default function AppHeader({
   const pathname = usePathname();
   const { user, profile, loading, isAnonymousSession, openAuthSheet, requestOnboardingTour } = useAuth();
   const { override } = useHeaderOverride();
-  const { products, loadingProducts, isActive, openSearch, openSearchForFilter } = useSearch();
+  const { products, loadingProducts, openSearch, openSearchForFilter } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
@@ -427,8 +427,6 @@ export default function AppHeader({
               type="button"
               onClick={openSearch}
               aria-label="Search specials"
-              aria-haspopup="dialog"
-              aria-expanded={isActive}
               className="flex h-11 w-11 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               <Search className="h-5 w-5" aria-hidden="true" />
