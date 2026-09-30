@@ -390,7 +390,7 @@ export default function DealAssessmentPage() {
                 .
               </p>
             </>
-          ) : verdict === "Fair Deal" ? (
+          ) : verdict === "Fair Price" ? (
             <>
               <h4 className="mb-1 text-base font-black text-stone-900">
                 {cheapestDiscountPct === 0 ? "No real savings" : `${Math.abs(cheapestDiscountPct)}% off the recent normal price`}
