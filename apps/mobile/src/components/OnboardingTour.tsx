@@ -71,18 +71,6 @@ const TOUR_STEPS: TourStep[] = [
     title: "Your Watchlist",
     body: "Your saved products live here, ready to check for your next shop. We'll notify you when these items go on special for a better price.",
   },
-  {
-    href: "/history",
-    target: '[data-onboarding="history-tab"]',
-    title: "All your checks",
-    body: "Review the products you have checked before, so you can quickly revisit a deal assessment.",
-  },
-  {
-    href: "/me",
-    target: '[data-onboarding="stats-tab"]',
-    title: "Your deal stats",
-    body: "See your checking activity and the kinds of deals you have been finding.",
-  },
 ];
 
 export default function OnboardingTour({ onClose }: OnboardingTourProps) {
