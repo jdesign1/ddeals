@@ -7,14 +7,14 @@ const DEAL_FILTER_SUMMARY: Record<DealFilter, { label: string; textClass: string
     description: "All current supermarket specials.",
   },
   real: {
-    label: "Real Saver",
+    label: "Real Saver + Fair Price",
     textClass: "text-fair-800",
-    description: "Real saver and fair-price specials.",
+    description: "Real Saver and Fair Price specials.",
   },
   dodgy: {
-    label: "Dodgy",
+    label: "Dodgy Deal",
     textClass: "text-alert-800",
-    description: "Confirmed Dodgy deals and potentially dodgy",
+    description: "Confirmed Dodgy Deals and deals awaiting review.",
   },
 };
 

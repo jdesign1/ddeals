@@ -319,9 +319,9 @@ export default function ProductListCard({
           )}
           {!hideCardBadges && isCompactLayout && (
             <>
-              {isDodgy && <span className="dd-badge dd-badge-inline dd-badge-alert ml-auto">Dodgy</span>}
-              {isRealSaver && <span className="dd-badge dd-badge-inline dd-badge-fair ml-auto">Real</span>}
-              {isFairDeal && <span className="dd-badge dd-badge-inline dd-badge-dodgy ml-auto">Fair</span>}
+              {isDodgy && <span className="dd-badge dd-badge-inline dd-badge-alert ml-auto">Dodgy Deal</span>}
+              {isRealSaver && <span className="dd-badge dd-badge-inline dd-badge-fair ml-auto">Real Saver</span>}
+              {isFairDeal && <span className="dd-badge dd-badge-inline dd-badge-dodgy ml-auto">Fair Price</span>}
             </>
           )}
         </div>
@@ -355,17 +355,17 @@ export default function ProductListCard({
           {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
           {isDodgy && (
             <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
-              Dodgy
+              Dodgy Deal
             </span>
           )}
           {isRealSaver && (
             <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">
-              Real
+              Real Saver
             </span>
           )}
           {isFairDeal && (
             <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">
-              Fair
+              Fair Price
             </span>
           )}
         </div>

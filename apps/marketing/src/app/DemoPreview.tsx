@@ -25,7 +25,7 @@ const samples = {
     name: "Classic roast",
     size: "200g",
     glyph: "C",
-    verdict: "Fair Deal",
+    verdict: "Fair Price",
     verdictTone: "fair-price",
     insightTitle: "A modest saving",
     insightBody: "A familiar promotion, not a historic low.",

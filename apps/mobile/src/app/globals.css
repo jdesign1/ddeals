@@ -1,5 +1,32 @@
 @import "tailwindcss";
 
+/* iOS touch targets: icon-only actions must remain comfortably tappable even
+   when their visible glyph is intentionally compact. Keep this shared rule
+   close to the app root so every sheet/header close control inherits it. */
+:where(
+  button[aria-label^="Close"],
+  button[aria-label="Back"],
+  button[aria-label="Account menu"],
+  button[aria-label^="Clear"],
+  button[aria-label^="Confirm "],
+  button[aria-label="Cancel remove"]
+) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+a[aria-label="Dodgy Deal home"] {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+
+.dd-category-sheet-pill {
+  min-height: 44px;
+}
+
 /* The Check Deals header lives inside the scroll container, so its sticky
    layout box stays stable while the shell moves on the compositor. This
    avoids changing scroll geometry during iOS momentum scrolling. */

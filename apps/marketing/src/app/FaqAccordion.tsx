@@ -12,8 +12,8 @@ const FAQ_ITEMS = [
     answer: "It checks today’s price against the product’s recent price history, so you can see whether you’re getting a decent saving, a small discount, or a special that looks a bit dodgy.",
   },
   {
-    question: "What do “Real Deal”, “Fair Deal”, and “Dodgy Deal” mean?",
-    answer: "A Real Deal looks like a worthwhile saving. A Fair Deal is a genuine discount, but not a huge one. A Dodgy Deal means the special may not be the saving it first appears to be.",
+    question: "What do “Real Saver”, “Fair Price”, and “Dodgy Deal” mean?",
+    answer: "A Real Saver looks like a worthwhile saving. A Fair Price is a genuine discount, but not a huge one. A Dodgy Deal means the special may not be the saving it first appears to be.",
   },
   {
     question: "Which supermarkets does Dodgy Deal cover?",

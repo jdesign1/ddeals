@@ -575,7 +575,7 @@ function SortDropdown<T extends string>({
         // Border -> shadow-sm, 2026-08-21, per Jay's pills/tabs/sort/category
         // no-border ask -- see the Home tab track's own doc comment just
         // above for the full cross-reference.
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -687,8 +687,8 @@ function TrendingSection({
   const sectionCopy =
     filter === "dodgy"
       ? {
-          empty: "No Dodgy deals or review signals found right now.",
-          categoryEmpty: "No Dodgy deals or review signals in this category right now.",
+          empty: "No Dodgy Deals or review signals found right now.",
+          categoryEmpty: "No Dodgy Deals or review signals in this category right now.",
         }
       : filter === "real"
         ? {

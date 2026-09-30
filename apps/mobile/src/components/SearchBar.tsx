@@ -246,7 +246,7 @@ export default function SearchBar({
               }}
               onFocus={openSearch}
               placeholder={placeholder}
-              className={`mobile-zoom-safe-input ${compact ? "h-9" : "h-10"} w-full border-none bg-transparent font-sans text-base text-stone-600 placeholder:text-stone-600 focus:outline-none`}
+              className="mobile-zoom-safe-input h-11 w-full border-none bg-transparent font-sans text-base text-stone-600 placeholder:text-stone-600 focus:outline-none"
               enterKeyHint="search"
             />
             {searchInput && (
@@ -256,7 +256,7 @@ export default function SearchBar({
                 title="Clear search"
                 aria-label="Clear search"
                 type="button"
-                className="flex-shrink-0 cursor-pointer rounded-full p-1.5 text-stone-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
+                className="flex h-11 w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>

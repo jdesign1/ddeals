@@ -89,7 +89,7 @@ export default function DealCard({
                 ) : (
                   <ShieldAlert className="h-3 w-3" aria-hidden="true" />
                 )}
-                {isTrueSpecial ? "True special" : "Dodgy Deal"}
+                {isTrueSpecial ? "Real Saver" : "Dodgy Deal"}
               </span>
             )}
           </div>

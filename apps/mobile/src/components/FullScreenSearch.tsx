@@ -679,7 +679,7 @@ export default function FullScreenSearch() {
       <button
         type="button"
         onClick={onOpenCategorySheet}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>{categoryFilter.length === 0 ? "Category" : `Category (${categoryFilter.length})`}</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -687,7 +687,7 @@ export default function FullScreenSearch() {
       <button
         type="button"
         onClick={onOpenSortSheet}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
       >
         <span>Sort</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -859,7 +859,7 @@ export default function FullScreenSearch() {
               <input
                 id="full-search-input"
                 autoFocus={focusSearchOnOpen}
-                className="mobile-zoom-safe-input h-9 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
+                className="mobile-zoom-safe-input h-11 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
                 placeholder="Search for a product or brand"
                 type="text"
                 value={query}
@@ -873,7 +873,7 @@ export default function FullScreenSearch() {
                   id="clear-search-btn"
                   title="Clear search"
                   aria-label="Clear search"
-                  className="flex-shrink-0 cursor-pointer rounded-full p-1.5 text-stone-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
+                  className="flex h-11 w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -1209,7 +1209,7 @@ export default function FullScreenSearch() {
                   <div className="mt-8 space-y-1 py-8 text-center">
                     <p className="dd-type-secondary dd-type-secondary-strong text-stone-500">
                       {dealFilter === "dodgy"
-                        ? "No Dodgy deals or review signals found right now"
+                        ? "No Dodgy Deals or review signals found right now"
                         : dealFilter === "real"
                           ? "No real deals found right now"
                           : "No deals found right now"}
@@ -1487,7 +1487,7 @@ export default function FullScreenSearch() {
                         <button
                           type="button"
                           onClick={() => setActiveCategoryFilter([])}
-                          className="cursor-pointer px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
+                          className="inline-flex min-h-11 cursor-pointer items-center px-2 py-2 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
                         >
                           Clear all
                         </button>

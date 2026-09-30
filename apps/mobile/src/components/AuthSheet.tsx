@@ -90,7 +90,7 @@ import { useAuth } from "@/lib/auth-context";
  * the create account tab" / "ensure both tabs have the same bottom sheet
  * height, to avoid the size change") -- the paragraph above animated the
  * height DIFFERENCE between tabs; this ask removes that difference instead.
- * `AuthPanel.tsx`'s 4 sign-up-only fields (Name/Select age/NZ ZIP Code/
+ * `AuthPanel.tsx`'s sign-up-only fields (name/date of birth/optional NZ postcode/
  * Confirm Password) are now mounted in both modes (`invisible` + `inert` in
  * sign-in, see that file's own doc comment) rather than conditionally
  * unmounted, so this panel's natural height is already the same in both
@@ -233,7 +233,7 @@ export default function AuthSheet({
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="rounded-full p-1 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
@@ -315,7 +315,7 @@ export default function AuthSheet({
                       type="button"
                       onClick={() => setMode(tab.id)}
                       aria-pressed={isActive}
-                      className={`relative z-0 flex h-9 flex-1 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg dd-type-control transition-colors ${
+                      className={`relative z-0 flex h-11 flex-1 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg dd-type-control transition-colors ${
                         isActive ? "dd-auth-tab-active text-white" : "text-stone-600 hover:text-stone-900"
                       }`}
                     >

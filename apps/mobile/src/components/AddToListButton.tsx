@@ -77,13 +77,15 @@ export default function AddToListButton({
           }
           aria-pressed={isSaved || isSelected}
           aria-busy={loadingSavedItems || isRemoving}
-          className={`${buttonClassName} ${isSelected ? "ring-2 ring-ink-900/20" : ""}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-full ${isSelected ? "ring-2 ring-ink-900/20" : ""}`}
         >
-          {isSaved || isSelected ? (
-            <Check className={`block ${iconClassName}`} strokeWidth={3} aria-hidden="true" />
-          ) : (
-            <Plus className={`block ${iconClassName}`} strokeWidth={3} aria-hidden="true" />
-          )}
+          <span className={buttonClassName} aria-hidden="true">
+            {isSaved || isSelected ? (
+              <Check className={`block ${iconClassName}`} strokeWidth={3} />
+            ) : (
+              <Plus className={`block ${iconClassName}`} strokeWidth={3} />
+            )}
+          </span>
         </button>
       </div>
 
@@ -149,7 +151,7 @@ function RemoveFromWatchlistSheet({
             >
               <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
                 <h2 id="remove-watchlist-title" className="dd-type-sheet-title text-stone-900">Remove from Watchlist?</h2>
-                <button type="button" onClick={onClose} disabled={isRemoving} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:opacity-40">
+                <button type="button" onClick={onClose} disabled={isRemoving} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:opacity-40">
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>

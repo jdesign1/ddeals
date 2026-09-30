@@ -11,7 +11,7 @@ export interface AccountProfile {
   id: string;
   full_name: string;
   date_of_birth: string;
-  zip_code: string;
+  zip_code: string | null;
   onboarding_complete: boolean;
   analytics_consent_at: string | null;
   created_at: string;
@@ -293,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await client.rpc("complete_onboarding", {
           p_full_name: details.full_name.trim(),
           p_date_of_birth: details.date_of_birth,
-          p_zip_code: details.zip_code.trim(),
+          p_zip_code: details.zip_code.trim() || null,
         });
         if (error) return { error: error.message, profile: null };
         const nextProfile = data as AccountProfile;

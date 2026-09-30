@@ -165,7 +165,7 @@ test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal" })), "Limited history");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })), "Early read");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })), "Limited history");
-  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Deal");
+  assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Price");
 });
 
 test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supermarket", () => {

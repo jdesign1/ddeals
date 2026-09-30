@@ -26,9 +26,9 @@ function getEvidenceDetails(deal: CurrentDeal) {
 }
 
 const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
-  "Real Saver": { label: "Real", className: "dd-badge-fair", icon: ShieldCheck },
-  "Fair Deal": { label: "Fair", className: "dd-badge-dodgy", icon: Info },
-  "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert", icon: AlertTriangle },
+  "Real Saver": { label: "Real Saver", className: "dd-badge-fair", icon: ShieldCheck },
+  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy", icon: Info },
+  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert", icon: AlertTriangle },
   "Early read": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
 };

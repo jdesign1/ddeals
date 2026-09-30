@@ -94,7 +94,7 @@ function chartColorForStore(store: string): string {
 const VERDICT_FADE_COLORS: Record<AssessmentVerdict, string> = {
   "Real Saver": "var(--color-verdict-real-saver)",
   "Dodgy Deal": "var(--color-verdict-dodgy)",
-  "Fair Deal": "var(--color-dodgy-600)",
+  "Fair Price": "var(--color-dodgy-600)",
   "Early read": "var(--color-verdict-unknown)",
   "Limited history": "var(--color-verdict-unknown)",
 };
@@ -151,7 +151,7 @@ export default function PriceHistoryChart({
           value={selectedStore}
           onChange={(event) => onStoreChange?.(event.target.value)}
           aria-label="Select supermarket for price history"
-          className={`min-h-10 max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-right text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0 ${
+          className={`min-h-11 max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-right text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0 ${
             selectedStore === ALL_STORES_VALUE ? "w-16" : "w-fit"
           }`}
         >

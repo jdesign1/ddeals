@@ -41,7 +41,7 @@ import MascotImage from "@/components/MascotImage";
  * Works" -> "How Dodgy Deal works", "Our Deal Rating System" -> "Our deal
  * rating system", "How To Use Dodgy Deal" -> "How to use Dodgy Deal",
  * "Best Buy" tag -> "Best buy"). Left the 3 `RatingCard` `label` values
- * ("Dodgy Deal", "Fair Deal", "Real Saver") in Title Case on purpose --
+ * ("Dodgy Deal", "Fair Price", "Real Saver") in Title Case on purpose --
  * these are the app's actual verdict category names (same 3 terms
  * `getAssessmentVerdict` produces and every other verdict badge/heading in
  * the app already renders), not ordinary phrase text, so they get the same
@@ -108,15 +108,15 @@ export default function HowItWorksPage() {
             icon={AlertTriangle}
             label="Dodgy Deal"
             labelClassName="text-alert-700"
-            tag="Dodgy"
+            tag="Dodgy Deal"
             tagClassName="dd-badge-alert"
             description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
           />
           <RatingCard
             icon={Info}
-            label="Fair Deal"
+            label="Fair Price"
             labelClassName="text-dodgy-700"
-            tag="Fair price"
+            tag="Fair Price"
             tagClassName="dd-badge-dodgy"
             description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
           />
@@ -124,7 +124,7 @@ export default function HowItWorksPage() {
             icon={ShieldCheck}
             label="Real Saver"
             labelClassName="text-fair-700"
-            tag="Verified special"
+            tag="Real Saver"
             tagClassName="dd-badge-fair"
             description="A deep, authentic discount well below the recent average price. A genuinely outstanding deal."
           />
@@ -142,7 +142,7 @@ export default function HowItWorksPage() {
             Save products you buy regularly to your own list, so you can check back on them any time.
           </Step>
           <Step number={3} title="Check any deal">
-            Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Deal, or Real Saver &mdash; based on its
+            Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Price, or Real Saver &mdash; based on its
             actual recent price history.
           </Step>
         </div>

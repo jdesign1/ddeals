@@ -3,9 +3,9 @@ import type { CurrentDeal } from "@dodgey-deals/shared";
 export type DealFilter = "all" | "real" | "dodgy";
 
 export const DEAL_FILTER_OPTIONS: { id: DealFilter; label: string }[] = [
-  { id: "all", label: "All Deals" },
-  { id: "real", label: "Real Deals" },
-  { id: "dodgy", label: "Dodgy" },
+  { id: "all", label: "All deals" },
+  { id: "real", label: "Real Saver + Fair Price" },
+  { id: "dodgy", label: "Dodgy Deal" },
 ];
 
 /**

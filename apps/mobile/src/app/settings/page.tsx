@@ -209,7 +209,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={openNameSheet}
                   aria-label="Edit your name"
-                  className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                  className="flex h-11 w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                 >
                   <Pencil className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -282,14 +282,11 @@ export default function SettingsPage() {
             aria-checked={isDarkMode}
             aria-label={isDarkMode ? "Dark mode" : "Light mode"}
             onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-            className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
-              isDarkMode ? "bg-ink-600" : "bg-stone-300"
-            }`}
+            className="inline-flex h-11 w-12 flex-shrink-0 cursor-pointer items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
           >
-            <span
-              aria-hidden="true"
-              className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isDarkMode ? "translate-x-5" : "translate-x-0"}`}
-            />
+            <span className={`settings-display-switch relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors ${isDarkMode ? "bg-ink-600" : "bg-stone-300"}`} aria-hidden="true">
+              <span className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isDarkMode ? "translate-x-5" : "translate-x-0"}`} />
+            </span>
           </button>
         </div>
       </section>
@@ -316,14 +313,11 @@ export default function SettingsPage() {
               aria-label="Push notifications"
               disabled={authLoading || isSavingNotifications}
               onClick={() => void handlePushToggle()}
-              className={`settings-display-switch relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50 ${
-                pushEnabled ? "bg-ink-600" : "bg-stone-300"
-              }`}
+              className="inline-flex h-11 w-12 flex-shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span
-                aria-hidden="true"
-                className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`}
-              />
+              <span className={`settings-display-switch relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors ${pushEnabled ? "bg-ink-600" : "bg-stone-300"}`} aria-hidden="true">
+                <span className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`} />
+              </span>
             </button>
           )}
         </div>

@@ -61,7 +61,7 @@ export default function PrivacyPage() {
         <BulletList>
           <li>
             <strong>Account information:</strong> your email address, password credentials handled by our
-            authentication provider, name, date of birth, and NZ postcode.
+            authentication provider, name, date of birth, and, if you choose to provide it, your NZ postcode.
           </li>
           <li>
             <strong>Shopping activity:</strong> saved lists, saved list items, products you check, and your deal-check
@@ -115,13 +115,14 @@ export default function PrivacyPage() {
 
       <PolicySection title="4. Information requested during sign-up">
         <p>
-          Email and password are needed to create and secure an account. The sign-up form also currently requests your
-          name, date of birth, and NZ postcode. These fields are stored with your account details. They are not
-          currently used to create personalised deal recommendations.
+          Email and password are needed to create and secure an account. The sign-up form also requests your name and
+          date of birth. You can optionally provide your NZ postcode to help us understand how people around New
+          Zealand use Dodgy Deal and improve the app. These details are stored with your account and are not currently
+          used to create personalised deal recommendations.
         </p>
         <p className="mt-3">
-          We will only retain and use this information for a clear, lawful purpose. If a field is not needed for the
-          account feature you want to use, you can continue using Dodgy Deal without an account instead.
+          We will only retain and use this information for a clear, lawful purpose. Leaving the postcode field blank
+          will not prevent you from creating an account or using account features.
         </p>
       </PolicySection>
 

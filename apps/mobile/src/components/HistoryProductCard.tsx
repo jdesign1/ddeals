@@ -13,9 +13,9 @@ interface HistoryProductCardProps {
 }
 
 const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; className: string }>> = {
-  "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert" },
-  "Real Deal": { label: "Real", className: "dd-badge-fair" },
-  "Fair Price": { label: "Fair", className: "dd-badge-dodgy" },
+  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert" },
+  "Real Deal": { label: "Real Saver", className: "dd-badge-fair" },
+  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy" },
 };
 
 /**

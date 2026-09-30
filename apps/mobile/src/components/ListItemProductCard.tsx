@@ -148,9 +148,9 @@ export interface ListItemProductCardProps {
 }
 
 const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; className: string }>> = {
-  "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert" },
-  "Real Deal": { label: "Real", className: "dd-badge-fair" },
-  "Fair Price": { label: "Fair", className: "dd-badge-dodgy" },
+  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert" },
+  "Real Deal": { label: "Real Saver", className: "dd-badge-fair" },
+  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy" },
 };
 
 // How far left (px) a swipe must travel before it counts as "remove this"
@@ -291,7 +291,7 @@ export default function ListItemProductCard({
               type="button"
               onClick={onRemove}
               aria-label={`Confirm ${removeLabel}`}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-alert-600 text-white transition-colors hover:bg-alert-700"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-alert-600 text-white transition-colors hover:bg-alert-700"
             >
               <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
             </button>
@@ -299,7 +299,7 @@ export default function ListItemProductCard({
               type="button"
               onClick={() => setConfirmingRemove(false)}
               aria-label="Cancel remove"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-xs transition-colors hover:text-stone-700"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-xs transition-colors hover:text-stone-700"
             >
               <X className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
             </button>

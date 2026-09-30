@@ -68,11 +68,11 @@ export function findBestDodgyDeal(deals: CurrentDeal[] | undefined, selectedStor
 export const HISTORY_DEAL_TYPE: Record<string, string> = {
   "Dodgy Deal": "Dodgy Deal",
   "Real Deal": "Real Saver",
-  "Fair Price": "Fair Deal",
+  "Fair Price": "Fair Price",
   "Unverified Deal": "Limited history",
 };
 
-export type AssessmentVerdict = "Dodgy Deal" | "Fair Deal" | "Real Saver" | "Early read" | "Limited history";
+export type AssessmentVerdict = "Dodgy Deal" | "Fair Price" | "Real Saver" | "Early read" | "Limited history";
 
 export function isUncertainAssessment(verdict: AssessmentVerdict): boolean {
   return verdict === "Early read" || verdict === "Limited history";
@@ -119,7 +119,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
     };
   }
 
-  if (verdict === "Fair Deal") {
+  if (verdict === "Fair Price") {
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
       return {
         heading: `${savingsPct}% off the recent normal price`,
@@ -170,16 +170,16 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 
 /**
  * Same branch order as the prototype's DealModal: a plain (non-special) item
- * always lands as a "Fair Deal" (no discount game being played); a special
+ * always lands as a "Fair Price" (no discount game being played); a special
  * without enough evidence stays neutral, while older-but-useful evidence is
  * shown as an "Early read" rather than being promoted to a confirmed verdict.
  */
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
-  if (deal.isOnSpecial === false) return "Fair Deal";
+  if (deal.isOnSpecial === false) return "Fair Price";
   if (deal.evidenceStatus === "EARLY") return "Early read";
   if (deal.evidenceStatus === "INSUFFICIENT" || deal.evidenceStatus === "LIMITED") return "Limited history";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
-  if (mapped === "Real Saver" || mapped === "Dodgy Deal" || mapped === "Fair Deal" || mapped === "Limited history") {
+  if (mapped === "Real Saver" || mapped === "Dodgy Deal" || mapped === "Fair Price" || mapped === "Limited history") {
     return mapped;
   }
   return "Limited history";

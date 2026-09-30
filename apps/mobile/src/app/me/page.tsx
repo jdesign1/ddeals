@@ -312,7 +312,7 @@ export default function MePage() {
   // 2026-08-19, per Jay: bottom sheet, not a full-page swap -- see
   // lists/page.tsx's own version of this comment.
   if (!user) {
-    const prompt = "Log in to see your deal checks, Real Deals found and estimated savings.";
+    const prompt = "Log in to see your deal checks, Real Savers found and estimated savings.";
     return (
       <main className="flex flex-col gap-4 pt-6 pb-8">
         {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>`
@@ -407,7 +407,7 @@ export default function MePage() {
                 valueClassName="text-stone-900"
               />
               <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
-              <StatCell label="Dodgy deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
+              <StatCell label="Dodgy Deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
@@ -434,7 +434,7 @@ export default function MePage() {
                   <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
                     <span className="col-span-6">Supermarket</span>
                     <span className="col-span-3 text-center">Real savers</span>
-                    <span className="col-span-3 text-center">Dodgy deals</span>
+                    <span className="col-span-3 text-center">Dodgy Deals</span>
                   </div>
                   <div className="flex flex-col gap-2">
                     {currentStoreStats.map((store) => (
@@ -521,8 +521,8 @@ export default function MePage() {
                         </div>
                         <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 border-b border-stone-200 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
                           <span>Supermarket</span>
-                          <span className="text-center text-fair-700">Real</span>
-                          <span className="text-center text-alert-700">Dodgy</span>
+                          <span className="text-center text-fair-700">Real Saver</span>
+                          <span className="text-center text-alert-700">Dodgy Deal</span>
                         </div>
                         <div className="divide-y divide-stone-100">
                           {month.stores.map((store) => (

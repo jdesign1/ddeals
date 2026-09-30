@@ -174,9 +174,9 @@ function DealActions({ productId, productName, dataOnboarding }: { productId: st
  * "Limited history" for incomplete evidence.
  */
 const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
-  "Real Saver": { label: "Verified special", className: "dd-badge-fair", icon: ShieldCheck },
-  "Dodgy Deal": { label: "Dodgy", className: "dd-badge-alert", icon: AlertTriangle },
-  "Fair Deal": { label: "Fair price", className: "dd-badge-dodgy", icon: Info },
+  "Real Saver": { label: "Real Saver", className: "dd-badge-fair", icon: ShieldCheck },
+  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert", icon: AlertTriangle },
+  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy", icon: Info },
   "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
@@ -918,7 +918,7 @@ export default function DealAssessmentPage() {
                 <AnimatedVerdictBadge
                   badge={verdictBadge}
                   animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  label={verdict === "Dodgy Deal" ? "Dodgy" : verdictBadge.label}
+                  label={verdictBadge.label}
                   className="w-fit"
                 />
               </button>
@@ -1319,7 +1319,7 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryViewTab === "90-day-view"}
                 onClick={() => setPriceHistoryViewTab("90-day-view")}
-                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                className={`relative z-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] ${
                   priceHistoryViewTab === "90-day-view" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -1342,7 +1342,7 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryViewTab === "insights"}
                 onClick={() => setPriceHistoryViewTab("insights")}
-                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                className={`relative z-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] ${
                   priceHistoryViewTab === "insights" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -1408,7 +1408,7 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryTab === "price-tips"}
                 onClick={() => setPriceHistoryTab("price-tips")}
-                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                className={`relative z-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] ${
                   priceHistoryTab === "price-tips" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -1431,7 +1431,7 @@ export default function DealAssessmentPage() {
                 role="tab"
                 aria-selected={priceHistoryTab === "should-buy"}
                 onClick={() => setPriceHistoryTab("should-buy")}
-                className={`relative z-0 flex min-h-8 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-[background-color,color,box-shadow] ${
+                className={`relative z-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] ${
                   priceHistoryTab === "should-buy" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -1497,7 +1497,7 @@ export default function DealAssessmentPage() {
           type="button"
           onClick={() => setShowProductImage(false)}
           aria-label="Close larger image"
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>

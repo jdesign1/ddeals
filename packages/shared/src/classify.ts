@@ -4,7 +4,7 @@
  * This is a direct TypeScript port of `classifySpecial()` in
  * `Prototype/index.html` (ported 2026-08-07, matches formula as of commit
  * `b114686`). It must be kept in sync with the other three copies of this
- * formula — see the "Dodgy Deal / Fair Deal / Real Saver Classification
+ * formula — see the "Dodgy Deal / Fair Price / Real Saver Classification
  * Formula" reference section in project.md, which now tracks FOUR synced
  * copies (this file, Prototype/index.html, dodgy_deals_view.sql,
  * analyser.py), not three. If you change a threshold or a rule here, update

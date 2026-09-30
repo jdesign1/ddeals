@@ -209,7 +209,7 @@ export default function HistoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search your check history…"
-            className="mobile-zoom-safe-input h-9 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
+            className="mobile-zoom-safe-input h-11 w-full border-none bg-transparent font-sans text-sm font-medium text-stone-500 placeholder:text-stone-500 focus:outline-none"
           />
         </div>
         <p className="text-center text-sm leading-relaxed text-stone-600">
@@ -280,7 +280,7 @@ export default function HistoryPage() {
                       </p>
                       {index === firstRenderableHistoryIndex && (
                         <div className="flex items-center gap-2">
-                          <label className="relative flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-xs font-bold text-stone-700 shadow-sm">
+                          <label className="relative flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-xs font-bold text-stone-700 shadow-sm">
                             <CalendarDays className="h-4 w-4 flex-shrink-0 text-stone-500" aria-hidden="true" />
                             {selectedMonth && <span>{formatSelectedMonth(selectedMonth)}</span>}
                             <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-stone-500" aria-hidden="true" />
@@ -311,7 +311,7 @@ export default function HistoryPage() {
                                 setSelectedMonth(null);
                               }}
                               aria-label="Clear date filter"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-100 hover:text-stone-900"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-100 hover:text-stone-900"
                             >
                               <X className="h-4 w-4" aria-hidden="true" />
                             </button>

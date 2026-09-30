@@ -11,6 +11,11 @@ type AuthView = "details" | "otp" | "profile";
 
 const EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function validatePostcode(postcode: string): string | null {
+  const value = postcode.trim();
+  return value === "" || /^\d{4}$/.test(value) ? null : "Enter a valid 4-digit NZ postcode or leave it blank.";
+}
+
 function getDateBounds() {
   const toIso = (date: Date) => date.toISOString().slice(0, 10);
   const now = new Date();
@@ -28,7 +33,8 @@ function validateDetails(mode: AuthMode, details: AccountDetails, email: string)
   if (mode === "signup") {
     if (!details.full_name.trim()) return "Enter your name.";
     if (!details.date_of_birth) return "Select your date of birth.";
-    if (!/^\d{4}$/.test(details.zip_code)) return "Enter a valid NZ postcode.";
+    const postcodeError = validatePostcode(details.zip_code);
+    if (postcodeError) return postcodeError;
   }
   return validateEmail(email);
 }
@@ -36,7 +42,8 @@ function validateDetails(mode: AuthMode, details: AccountDetails, email: string)
 function validateProfile(details: AccountDetails): string | null {
   if (!details.full_name.trim()) return "Enter your name.";
   if (!details.date_of_birth) return "Select your date of birth.";
-  if (!/^\d{4}$/.test(details.zip_code)) return "Enter a valid NZ postcode.";
+  const postcodeError = validatePostcode(details.zip_code);
+  if (postcodeError) return postcodeError;
   return null;
 }
 
@@ -286,7 +293,7 @@ export default function AuthPanel({
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className={labelClass}>NZ zip code</span>
+          <span className={labelClass}>NZ postcode (optional)</span>
           <input
             type="text"
             inputMode="numeric"
@@ -296,7 +303,11 @@ export default function AuthPanel({
             onChange={(event) => setDetails((current) => ({ ...current, zip_code: event.target.value.replace(/\D/g, "") }))}
             className={inputClass}
             autoComplete="postal-code"
+            aria-describedby="profile-postcode-purpose"
           />
+          <span id="profile-postcode-purpose" className="dd-type-meta text-stone-500">
+            Help us learn how to improve the app.
+          </span>
         </label>
 
         {(error || profileError) && <p className="dd-type-secondary text-alert-600">{error || profileError}</p>}
@@ -370,8 +381,11 @@ export default function AuthPanel({
               </span>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className={labelClass}>NZ zip code</span>
-              <input type="text" inputMode="numeric" maxLength={4} placeholder="e.g. 6011" value={details.zip_code} onChange={(event) => setDetails((current) => ({ ...current, zip_code: event.target.value.replace(/\D/g, "") }))} className={inputClass} autoComplete="postal-code" />
+              <span className={labelClass}>NZ postcode (optional)</span>
+              <input type="text" inputMode="numeric" maxLength={4} placeholder="e.g. 6011" value={details.zip_code} onChange={(event) => setDetails((current) => ({ ...current, zip_code: event.target.value.replace(/\D/g, "") }))} className={inputClass} autoComplete="postal-code" aria-describedby="signup-postcode-purpose" />
+              <span id="signup-postcode-purpose" className="dd-type-meta text-stone-500">
+                Help us learn how to improve the app.
+              </span>
             </label>
           </>
         )}
