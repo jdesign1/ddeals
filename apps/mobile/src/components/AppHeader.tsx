@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, RefreshCw, Search, X } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
@@ -429,7 +429,13 @@ export default function AppHeader({
               aria-label="Search specials"
               className="flex h-11 w-11 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
-              <Search className="h-5 w-5" aria-hidden="true" />
+              <span
+                className="material-symbols-outlined text-[26px] leading-none"
+                style={{ fontVariationSettings: "'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}
+                aria-hidden="true"
+              >
+                search
+              </span>
             </button>
           )}
           {pathname !== "/settings" && (loading ? null : user && avatarInitial ? (

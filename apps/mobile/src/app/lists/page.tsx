@@ -718,7 +718,7 @@ function WatchlistFilterSheet({
             <div className="space-y-6 overflow-y-auto px-5 pb-4 pt-2">
               <section aria-labelledby="watchlist-filter-categories-title" className="space-y-4">
                 <h4 id="watchlist-filter-categories-title" className="dd-type-sheet-title text-stone-900">Categories</h4>
-                <button type="button" aria-pressed={selectedCategories.length === 0} onClick={onClearCategories} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selectedCategories.length === 0 ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All categories</button>
+                <button type="button" aria-pressed={selectedCategories.length === 0} onClick={onClearCategories} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${selectedCategories.length === 0 ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>All categories</button>
                 {CATEGORY_SECTIONS.map((section) => {
                   const sectionCategories = section.categories.filter((category) => availableCategories.includes(category));
                   if (sectionCategories.length === 0) return null;
@@ -728,7 +728,7 @@ function WatchlistFilterSheet({
                       <div className="flex flex-wrap gap-2">
                         {sectionCategories.map((category) => {
                           const selected = selectedCategories.includes(category);
-                          return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggleCategory(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
+                          return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggleCategory(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
                         })}
                       </div>
                     </div>
@@ -740,7 +740,7 @@ function WatchlistFilterSheet({
                     <div className="flex flex-wrap gap-2">
                       {otherCategories.map((category) => {
                         const selected = selectedCategories.includes(category);
-                        return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggleCategory(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
+                        return <button key={category} type="button" aria-pressed={selected} onClick={() => onToggleCategory(category)} className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${selected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}>{category}</button>;
                       })}
                     </div>
                   </div>

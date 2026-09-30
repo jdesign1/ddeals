@@ -1503,15 +1503,10 @@ export default function FullScreenSearch() {
                     </div>
                   </div>
                   <div className="space-y-6 overflow-y-auto px-5 py-4">
-                    {/* Both chip styles below: border -> shadow-sm,
-                        2026-08-21, per Jay: "Update the pills and tabs to
-                        have no border lines, and short tight drop shadows
-                        instead." Applied to this "All categories" chip and
-                        every per-category chip in the map below. */}
                     <button
                       type="button"
                       onClick={() => setActiveCategoryFilter([])}
-                      className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
+                      className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
                         activeCategoryFilter.length === 0
                           ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
                           : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
@@ -1537,7 +1532,7 @@ export default function FullScreenSearch() {
                                   aria-disabled={!hasMatchingResults}
                                   title={hasMatchingResults ? undefined : "No matching deals in this category right now"}
                                   onClick={() => toggleActiveCategory(cat)}
-                                  className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
+                                  className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
                                     !hasMatchingResults
                                       ? "dd-category-sheet-pill-disabled cursor-not-allowed bg-stone-50 text-stone-300"
                                       : isSelected

@@ -14,7 +14,6 @@ export default function CategoryPicker({
   label = "Category",
   emptyMessage = "No deals in this category right now.",
   ariaLabel = "Filter by category",
-  withoutShadow = false,
   singleCategoryLabel,
 }: {
   selectedCategories: string[];
@@ -24,7 +23,6 @@ export default function CategoryPicker({
   label?: string;
   emptyMessage?: string;
   ariaLabel?: string;
-  withoutShadow?: boolean;
   singleCategoryLabel?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,7 +49,7 @@ export default function CategoryPicker({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
-        className={`inline-flex h-11 min-w-[7.5rem] cursor-pointer items-center justify-center gap-1 rounded-lg border border-stone-300 bg-white px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50 ${withoutShadow ? "" : "shadow-sm"}`}
+        className="inline-flex h-11 min-w-[7.5rem] cursor-pointer items-center justify-center gap-1 rounded-lg border border-stone-300 bg-white px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
       >
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -104,7 +102,7 @@ export default function CategoryPicker({
                     type="button"
                     onClick={() => onChange([])}
                     aria-pressed={selectedCategories.length === 0}
-                    className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
+                    className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
                       selectedCategories.length === 0
                         ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
                         : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
@@ -130,7 +128,7 @@ export default function CategoryPicker({
                                 aria-pressed={isSelected}
                                 title={hasResults ? undefined : emptyMessage}
                                 onClick={() => toggleCategory(category)}
-                                className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control shadow-sm transition-colors ${
+                                className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
                                   !hasResults
                                     ? "dd-category-sheet-pill-disabled cursor-not-allowed bg-stone-50 text-stone-300"
                                     : isSelected
