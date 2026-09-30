@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
-import SearchBar from "@/components/SearchBar";
 import { useSearch } from "@/lib/search-context";
 import {
   isNearScrollBottom,
@@ -70,7 +69,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [feedback, setFeedback] = useState<"updated" | "throttled" | null>(null);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(64);
-  const [chromeHeight, setChromeHeight] = useState(128);
+  const [chromeHeight, setChromeHeight] = useState(64);
   const checkDealsSearchBackground =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "bg-stone-100";
   const refreshStatus: "refreshing" | "updated" | "up-to-date" | null = refreshing
@@ -181,7 +180,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
 
     const updateChromeMetrics = () => {
       setHeaderHeight(header.offsetHeight || 64);
-      setChromeHeight(chrome.offsetHeight || 128);
+      setChromeHeight(chrome.offsetHeight || 64);
     };
     updateChromeMetrics();
     const observer = new ResizeObserver(updateChromeMetrics);
@@ -200,7 +199,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     publishCheckDealsScrollPosition(lastScrollTopRef.current);
   }, [dealFilter, pathname]);
 
-  // Collapsing the sticky header/search/toolbar changes the layout above the
+  // Collapsing the sticky header/toolbar changes the layout above the
   // current viewport and can make the browser emit a compensating scroll
   // event. Ignore those animation-generated events so they cannot be read as
   // a new user direction and immediately reverse the transition.
@@ -330,7 +329,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       className={`mobile-scroll-surface page-paper-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain transition-[background-color] duration-300 ease-out ${
         pathname === "/" ? checkDealsSearchBackground : ""
       }`}
-      // Check Deals keeps the header/search/toolbar layout slots fixed while
+      // Check Deals keeps the header/toolbar layout slots fixed while
       // their visual hide/show transitions run independently. The explicit
       // metrics are inherited by the sticky siblings for their fixed insets.
       style={
@@ -348,22 +347,13 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       onScroll={handleScroll}
     >
       {pathname === "/" ? (
-        /* Keep Check Deals' nav and search bar in one sticky stack. Its layout
+        /* Keep Check Deals' global nav in a sticky stack. Its layout
            height stays fixed while the child chrome animates on scroll. */
         <div
           ref={checkDealsChromeRef}
           className={`sticky top-0 z-[45] ${isHeaderHidden ? "check-deals-chrome-header-hidden" : ""}`}
         >
           <AppHeader sticky={false} collapseOnCheckDeals refreshStatus={refreshStatus} />
-          <div className="check-deals-search-slot">
-            <SearchBar
-              variant="shadow"
-              bordered
-              compact
-              sticky={false}
-              backgroundClassName={checkDealsSearchBackground}
-            />
-          </div>
         </div>
       ) : (
         <AppHeader refreshStatus={refreshStatus} />

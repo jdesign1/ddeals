@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
@@ -94,15 +94,9 @@ import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
  *    comment (line ~1569) that the account menu/avatar stays visible even
  *    on a back-button screen, rather than DealModal rendering a separate
  *    header of its own.
- *  - A global search icon lived here next to the avatar from 2026-08-09
- *    until 2026-08-11 (Jay: "remove the search icon from the top nav bar"),
- *    removed outright rather than relocated. Worth knowing this reopens a
- *    gap that icon was specifically added to close: `/specials`, `/lists`,
- *    and `/me` still have no search bar of their own (only Home's own
- *    inline bar opens the full-screen search overlay now), so on those
- *    three routes there's currently no way to reach search at all. Not
- *    fixed here since Jay didn't ask for a replacement -- flagged as a
- *    follow-up in case that's an oversight rather than intentional.
+ *  - The global search action sits before the profile control on every
+ *    standard screen. Deal-assessment routes intentionally omit it so those
+ *    focused flows stay free of unrelated navigation actions.
  *  - The 4 menu items below switched from Title Case + `uppercase` (visual
  *    ALL CAPS regardless of source casing) to real sentence case
  *    (2026-08-13, per Jay's ask to "update the settings bottom sheets to
@@ -187,7 +181,7 @@ export default function AppHeader({
   const pathname = usePathname();
   const { user, profile, loading, isAnonymousSession, openAuthSheet, requestOnboardingTour } = useAuth();
   const { override } = useHeaderOverride();
-  const { products, loadingProducts, openSearchForFilter } = useSearch();
+  const { products, loadingProducts, isActive, openSearch, openSearchForFilter } = useSearch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
@@ -384,7 +378,7 @@ export default function AppHeader({
             "How Dodgy Deal Works") that don't reach the truncation
             boundary either way, so only the deal page's long, dynamic
             product-name titles are actually affected. */}
-        <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+        <div aria-hidden={refreshStatus !== null} inert={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2 pr-2">
           {/* Mascot mark, top-left of the global nav bar -- added 2026-08-12
               on every screen, narrowed the same day (still per Jay's ask)
               to Home only, so it wouldn't compete with the back
@@ -427,14 +421,25 @@ export default function AppHeader({
           </span>
         </div>
 
-        {pathname !== "/settings" && (
-          <div aria-hidden={refreshStatus !== null} className="relative flex flex-shrink-0 items-center gap-3">
-          {loading ? null : user && avatarInitial ? (
+        <div aria-hidden={refreshStatus !== null} inert={refreshStatus !== null} className="relative flex flex-shrink-0 items-center gap-3">
+          {pathname !== "/deal" && !pathname.startsWith("/deal/") && (
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label="Search specials"
+              aria-haspopup="dialog"
+              aria-expanded={isActive}
+              className="flex h-11 w-11 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+            >
+              <Search className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
+          {pathname !== "/settings" && (loading ? null : user && avatarInitial ? (
             <button
               onClick={() => setIsMenuOpen((open) => !open)}
               id="global-header-profile-btn"
               aria-label="Account menu"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-fair-600 text-base font-bold text-white transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-fair-600 text-base font-bold text-white transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               {avatarInitial}
             </button>
@@ -445,7 +450,7 @@ export default function AppHeader({
               onClick={() => setIsMenuOpen((open) => !open)}
               id="global-header-profile-btn"
               aria-label="Account menu"
-              className="flex h-9 w-9 items-center justify-center text-stone-900 transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+              className="flex h-11 w-11 items-center justify-center text-stone-900 transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               {/* Filled black silhouette, not lucide's outline `CircleUser`
                   (2026-08-20, per Jay: "Use a filled in (black) user
@@ -465,17 +470,9 @@ export default function AppHeader({
                   head, so filling it solid just paints the whole thing one
                   flat disc with no visible face, not a recognisable
                   profile icon.
-                  `h-8 w-8` (was `h-5 w-5`) matches the button's own size
-                  exactly -- the icon now fills the circle edge-to-edge
-                  instead of floating in the middle with visible padding
-                  around it, same "icon = the whole container" idea this
-                  app's oversized bottom-sheet/header icons elsewhere
-                  already use. `overflow-hidden` added to the button itself
-                  since the icon's square bounding box is now exactly as
-                  large as the circular button -- without it, the SVG's own
-                  corner padding could show past the rounded edge at this
-                  size; with it, anything outside the circle is clipped the
-                  same way a real avatar photo would be. */}
+                  `h-8 w-8` (was `h-5 w-5`) keeps the icon visually prominent
+                  inside the 44pt button target rather than leaving it as a
+                  small glyph in a large tappable area. */}
               <span
                 className="material-symbols-outlined text-[32px]"
                 style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
@@ -484,9 +481,8 @@ export default function AppHeader({
                 account_circle
               </span>
             </button>
-          )}
+          ))}
           </div>
-        )}
       </header>
       </div>
     </div>

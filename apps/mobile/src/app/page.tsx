@@ -372,7 +372,7 @@ export default function HomePage() {
             toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
           }`}
           style={{
-            top: "var(--check-deals-chrome-height, 128px)",
+            top: "var(--check-deals-chrome-height, 64px)",
             gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
           }}
         >
