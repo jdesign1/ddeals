@@ -175,19 +175,6 @@ export default function PriceHistoryInsightCard({
 
   return (
     <div className="space-y-3">
-      {/* Title added 2026-08-20, per Jay's ask ("add a title inside it above
-          the grid"). "90-Day" hyphenated/capitalized to match the existing
-          "90-Day Low"/"90-Day High"/"90-Day Average" cell labels below and
-          this page's own "Price History Insights" heading style, rather
-          than Jay's own lowercase "90 day price tips" phrasing verbatim --
-          flagged, not silently kept as typed, since every other heading on
-          this page/card already follows this exact convention. Kept Title
-          Case even after the same-day "tile titles should be sentence case"
-          ask below -- read that ask as being about the 4 small per-tile
-          labels specifically (each literally a "tile" in the grid, plural
-          "titles"), not this card-level heading, which matches "Price
-          History Insights" above it stylistically either way. */}
-      <h4 className="dd-type-section text-stone-900">90-Day Price Tips</h4>
       <p className="dd-type-secondary text-stone-600">
         <AssessmentText text={getPriceTipsStatement(verdict, frequency)} />
       </p>

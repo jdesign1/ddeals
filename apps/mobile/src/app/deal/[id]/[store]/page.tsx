@@ -981,30 +981,30 @@ export default function DealAssessmentPage() {
         </>
       ) : (
         <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1" data-onboarding="deal-verdict">
+          <div className="min-w-0" data-onboarding="deal-verdict">
+            <div className="flex items-center justify-between gap-3">
               <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
                 {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
               </h2>
-              {!uncertain && (
-                <button
-                  type="button"
-                  onClick={() => setIsEvidenceSheetOpen(true)}
-                  aria-haspopup="dialog"
-                  aria-expanded={isEvidenceSheetOpen}
-                  aria-label={`See the evidence for this ${verdict} assessment`}
-                  className="mt-2 inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
-                >
-                  <AnimatedVerdictBadge
-                    badge={verdictBadge}
-                    animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                    label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
-                    className="w-fit"
-                  />
-                </button>
-              )}
+              <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
             </div>
-            <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
+            {!uncertain && (
+              <button
+                type="button"
+                onClick={() => setIsEvidenceSheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={isEvidenceSheetOpen}
+                aria-label={`See the evidence for this ${verdict} assessment`}
+                className="mt-2 inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+              >
+                <AnimatedVerdictBadge
+                  badge={verdictBadge}
+                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                  label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
+                  className="w-fit"
+                />
+              </button>
+            )}
           </div>
 
           <div className="flex items-start gap-4" data-onboarding="deal-summary">
@@ -1072,7 +1072,7 @@ export default function DealAssessmentPage() {
       )}
 
       {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
-          <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
+          <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
             <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
             <p className="mb-3 text-sm text-stone-600">
               {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
@@ -1235,7 +1235,7 @@ export default function DealAssessmentPage() {
                                 user data), so this ceiling is a real
                                 worst case, not a guess against unbounded
                                 content. */}
-                            <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white px-5 pb-5 pt-7 shadow-xs">
+                            <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-300 bg-white px-5 pb-5 pt-7 shadow-xs">
                               <AddToListButton productId={altProd.id} productName={altProd.name} />
                               <div className="flex items-start gap-4">
                                 <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
@@ -1276,7 +1276,7 @@ export default function DealAssessmentPage() {
                                 href={findDealForStore(altProd.currentDeals, altStore)?.productUrl || getStoreProductUrl(altStore, altProd.name)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-auto flex w-full items-center justify-center gap-2 rounded-full border-2 border-stone-300 bg-white py-2.5 text-center text-sm font-semibold text-stone-700 transition-all hover:bg-stone-50"
+                                className="dd-type-control mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-stone-400 bg-white py-2.5 text-center text-stone-700 transition-all hover:bg-stone-50"
                               >
                                 <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>
                                   {meta.short}
@@ -1300,7 +1300,7 @@ export default function DealAssessmentPage() {
         {/* Keep the detailed history views together, with the practical
             recommendation and supporting price tips in the card below. */}
         <div className="space-y-4">
-          <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
+          <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
             <div>
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
@@ -1371,7 +1371,6 @@ export default function DealAssessmentPage() {
                 loading={priceHistoryLoadingForSelection}
                 error={priceHistoryErrorForSelection}
                 historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
-                legacySingleStorePresentation={!isMultiStoreDeal}
                 storeOptions={historyStoreOptions}
                 selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
                 onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
@@ -1397,7 +1396,8 @@ export default function DealAssessmentPage() {
               </div>
             )}
           </div>
-          <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
+          <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
+            <h4 className="dd-type-section text-stone-900">90-day price tips</h4>
             <div
               className="flex items-center gap-0.5 rounded-lg bg-stone-200 p-1 shadow-inner shadow-black/5"
               role="tablist"
@@ -1459,7 +1459,7 @@ export default function DealAssessmentPage() {
                 {insights.length > 0 ? (
                   <PriceHistoryInsightCard insights={insights} verdict={verdict} />
                 ) : (
-                  <div className="rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
+                  <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-center">
                     <p className="text-sm leading-5 font-semibold text-stone-600">
                       We need a little more history before price tips are reliable.
                     </p>
@@ -1470,7 +1470,7 @@ export default function DealAssessmentPage() {
           </div>
         </div>
       </div>
-      <section className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs" aria-labelledby="report-deal-heading">
+      <section className="rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" aria-labelledby="report-deal-heading">
         <h2 id="report-deal-heading" className="dd-type-section text-stone-900">
           Is this deal incorrect?
         </h2>
