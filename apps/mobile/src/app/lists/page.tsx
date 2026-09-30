@@ -525,7 +525,7 @@ export default function ListsPage() {
 
   return (
     <main className="flex min-h-full flex-col gap-4 pb-24">
-      <div className="watchlist-top-chrome">
+      <div className="watchlist-top-chrome pt-4">
         <WatchlistSummaryCard
           itemCount={watchlistItems.length}
           newPriceItemCount={newPriceItemCount}
