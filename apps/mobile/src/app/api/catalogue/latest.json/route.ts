@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { buildCatalogueArtifact } from "@dodgey-deals/shared";
+import { assertCatalogueArtifactHasProducts, buildCatalogueArtifact } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 
 export const runtime = "nodejs";
@@ -29,10 +29,10 @@ export async function GET(request: Request): Promise<Response> {
   try {
     // Keep the route's origin read explicit so this server-side publisher
     // cannot accidentally recurse through NEXT_PUBLIC_CATALOGUE_URL.
-    const artifact = await buildCatalogueArtifact({
+    const artifact = assertCatalogueArtifactHasProducts(await buildCatalogueArtifact({
       url: supabaseConfig.url,
       anonKey: supabaseConfig.anonKey,
-    });
+    }));
     const body = JSON.stringify(artifact);
     const etag = `"${createHash("sha256").update(body).digest("hex")}"`;
     const headers = { ...SUCCESS_HEADERS, ETag: etag };
@@ -41,7 +41,10 @@ export async function GET(request: Request): Promise<Response> {
       return new Response(null, { status: 304, headers });
     }
     return new Response(body, { status: 200, headers });
-  } catch {
+  } catch (error) {
+    console.error("[catalogue] refusing to publish an unavailable or empty snapshot", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return Response.json(
       { error: "catalogue-unavailable" },
       {

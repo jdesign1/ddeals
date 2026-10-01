@@ -31,6 +31,18 @@ export function createCatalogueArtifact(
   };
 }
 
+/**
+ * An empty catalogue is never a valid replacement for a previously published
+ * supermarket snapshot. It means the upstream publication query failed or was
+ * temporarily unavailable, not that every retailer has no current specials.
+ */
+export function assertCatalogueArtifactHasProducts(artifact: CatalogueArtifact): CatalogueArtifact {
+  if (artifact.products.length === 0) {
+    throw new Error("Catalogue artifact has no products");
+  }
+  return artifact;
+}
+
 export function createCatalogueVersion(sourceUpdatedAt: number): CatalogueVersion {
   if (!Number.isFinite(sourceUpdatedAt)) throw new Error("Catalogue version marker is invalid");
   return {

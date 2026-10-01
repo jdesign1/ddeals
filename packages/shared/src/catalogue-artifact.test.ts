@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CATALOGUE_ARTIFACT_SCHEMA_VERSION,
   CATALOGUE_VERSION_SCHEMA_VERSION,
+  assertCatalogueArtifactHasProducts,
   createCatalogueArtifact,
   createCatalogueVersion,
   parseCatalogueArtifact,
@@ -41,6 +42,17 @@ test("catalogue artifact parser rejects incompatible or malformed public data", 
   assert.throws(
     () => parseCatalogueArtifact({ schemaVersion: 1, generatedAt: new Date().toISOString(), sourceUpdatedAt: null, products: [{}] }),
     /products are invalid/
+  );
+});
+
+test("an empty catalogue cannot be published as a replacement snapshot", () => {
+  assert.throws(
+    () => assertCatalogueArtifactHasProducts(createCatalogueArtifact([], 1_757_000_000_000)),
+    /has no products/
+  );
+  assert.deepEqual(
+    assertCatalogueArtifactHasProducts(createCatalogueArtifact([PRODUCT], 1_757_000_000_000)).products,
+    [PRODUCT]
   );
 });
 
