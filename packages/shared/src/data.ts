@@ -1460,7 +1460,10 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
             return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
           }
         }
-        const artifact = await fetchCatalogueArtifact(config.catalogueUrl, "no-store");
+        const artifact = await fetchCatalogueArtifact(
+          catalogueUrlForPublication(config.catalogueUrl, expectedSourceUpdatedAt),
+          "no-store"
+        );
         if (
           cached
           && expectedSourceUpdatedAt !== null
