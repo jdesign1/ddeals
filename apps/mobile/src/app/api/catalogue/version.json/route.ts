@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
 const SUCCESS_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "public, max-age=60",
-  "CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=3600",
-  "Vercel-CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=3600",
+  // This marker controls whether a client pulls a new snapshot. Serving a
+  // stale marker would keep an old local catalogue pinned after a scrape.
+  "CDN-Cache-Control": "public, s-maxage=60, must-revalidate",
+  "Vercel-CDN-Cache-Control": "public, s-maxage=60, must-revalidate",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD",
   "Access-Control-Allow-Headers": "If-None-Match",

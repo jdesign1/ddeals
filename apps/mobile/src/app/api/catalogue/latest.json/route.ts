@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 
 const SUCCESS_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
-  // Keep browser freshness short while allowing Vercel to serve the cached
-  // response during background revalidation. The app's IndexedDB fallback,
-  // rather than stale-if-error, handles an origin outage.
+  // Each publication has its own URL cache key. Once this short freshness
+  // period expires, revalidate before serving so an old store mix can never
+  // remain visible after a newer verified retailer snapshot is published.
   "Cache-Control": "public, max-age=60",
-  "CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=86400",
-  "Vercel-CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=86400",
+  "CDN-Cache-Control": "public, s-maxage=60, must-revalidate",
+  "Vercel-CDN-Cache-Control": "public, s-maxage=60, must-revalidate",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD",
   "Access-Control-Allow-Headers": "If-None-Match",

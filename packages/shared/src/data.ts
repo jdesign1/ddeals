@@ -945,6 +945,18 @@ async function fetchCatalogueVersion(
   return parseCatalogueVersion(await response.json());
 }
 
+/**
+ * Gives every published snapshot its own CDN cache key. A client that has
+ * observed a newer publication marker must never be sent an older catalogue
+ * body from a stale cache entry for the unversioned URL.
+ */
+function catalogueUrlForPublication(catalogueUrl: string, sourceUpdatedAt: number | null): string {
+  if (sourceUpdatedAt === null) return catalogueUrl;
+  const [url, fragment] = catalogueUrl.split("#", 2);
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}publication=${encodeURIComponent(String(sourceUpdatedAt))}${fragment ? `#${fragment}` : ""}`;
+}
+
 /** Builds the public payload without using browser-only IndexedDB state. */
 export async function buildCatalogueArtifact(config: SupabaseRestConfig): Promise<CatalogueArtifact> {
   const fresh = await loadLiveProductsUncached(config);
@@ -1288,7 +1300,9 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
         }
       }
 
-      const artifact = await fetchCatalogueArtifact(config.catalogueUrl);
+      const artifact = await fetchCatalogueArtifact(
+        catalogueUrlForPublication(config.catalogueUrl, expectedSourceUpdatedAt)
+      );
       if (
         cached
         && expectedSourceUpdatedAt !== null

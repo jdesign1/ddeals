@@ -35,7 +35,7 @@ import {
   type ProductCard,
   type SupabaseRestConfig,
 } from "./data.ts";
-import { createCatalogueArtifact } from "./catalogue-artifact.ts";
+import { createCatalogueArtifact, createCatalogueVersion } from "./catalogue-artifact.ts";
 import {
   readCatalogueCache,
   readCatalogueCacheMetadata,
@@ -826,6 +826,53 @@ test("loadLiveProducts: prefers the CDN artifact and does not query Supabase", a
     const result = await loadLiveProducts(config);
     assert.deepEqual(result, products);
     assert.deepEqual(calls, [config.catalogueUrl]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("loadLiveProducts: fetches the snapshot keyed to an advanced publication", async () => {
+  const cachedProducts = [fakeProductCard("old-cdn-product")];
+  const cachedAt = Date.parse("2026-08-26T14:00:00Z");
+  const publishedAt = Date.parse("2026-08-26T15:00:00Z");
+  const freshProducts = [fakeProductCard("new-cdn-product")];
+  await writeCatalogueCache(cachedProducts, cachedAt);
+  await writeCataloguePublicationCheck(
+    cachedAt,
+    Date.now() - CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS - 1,
+  );
+  const config = {
+    ...fakeConfig("versioned-cdn-artifact"),
+    catalogueUrl: "https://cdn.example.com/catalogue/latest.json",
+    catalogueVersionUrl: "https://cdn.example.com/catalogue/version.json",
+  };
+  const expectedArtifactUrl = `${config.catalogueUrl}?publication=${publishedAt}`;
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url === config.catalogueVersionUrl) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => createCatalogueVersion(publishedAt),
+      } as unknown as Response;
+    }
+    if (url === expectedArtifactUrl) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => createCatalogueArtifact(freshProducts, publishedAt),
+      } as unknown as Response;
+    }
+    throw new Error(`unexpected request: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(config);
+    assert.deepEqual(calls, [config.catalogueVersionUrl, expectedArtifactUrl]);
+    assert.deepEqual(result, freshProducts);
   } finally {
     globalThis.fetch = original;
   }
