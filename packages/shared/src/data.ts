@@ -1446,18 +1446,18 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
       const cached = await readCatalogueCache();
       try {
         let expectedSourceUpdatedAt: number | null = null;
-        if (config.catalogueVersionUrl && cached) {
+        if (config.catalogueVersionUrl) {
           try {
             const version = await fetchCatalogueVersion(config.catalogueVersionUrl, "no-store");
             expectedSourceUpdatedAt = version.sourceUpdatedAt;
             const metadata = await readCatalogueCacheMetadata();
-            if (version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
+            if (cached && version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
               await writeCataloguePublicationCheck(version.sourceUpdatedAt);
               publicationMarkerInvalidations.delete(cacheKey);
               return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
             }
           } catch {
-            return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
+            if (cached) return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
           }
         }
         const artifact = await fetchCatalogueArtifact(

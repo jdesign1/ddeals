@@ -878,6 +878,46 @@ test("loadLiveProducts: fetches the snapshot keyed to an advanced publication", 
   }
 });
 
+test("loadLiveProducts: a cold launch uses the publication-keyed snapshot", async () => {
+  const publishedAt = Date.parse("2026-08-26T15:00:00Z");
+  const products = [fakeProductCard("cold-versioned-cdn-product")];
+  const config = {
+    ...fakeConfig("cold-versioned-cdn-artifact"),
+    catalogueUrl: "https://cdn.example.com/catalogue/latest.json",
+    catalogueVersionUrl: "https://cdn.example.com/catalogue/version.json",
+  };
+  const expectedArtifactUrl = `${config.catalogueUrl}?publication=${publishedAt}`;
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (url === config.catalogueVersionUrl) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => createCatalogueVersion(publishedAt),
+      } as unknown as Response;
+    }
+    if (url === expectedArtifactUrl) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => createCatalogueArtifact(products, publishedAt),
+      } as unknown as Response;
+    }
+    throw new Error(`unexpected request: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(config);
+    assert.deepEqual(result, products);
+    assert.deepEqual(calls, [config.catalogueVersionUrl, expectedArtifactUrl]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("loadLiveProducts: a CDN outage serves warm cache without a Supabase fallback storm", async () => {
   const cachedProducts = [fakeProductCard("cdn-stale")];
   const sourceUpdatedAt = Date.parse("2026-08-26T14:00:00Z");

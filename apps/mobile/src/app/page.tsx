@@ -322,10 +322,9 @@ export default function HomePage() {
   return (
     <>
       <div className="relative">
-      {!isSearchActive && <LoadingMascot loading={loadingProducts} overlay />}
       <motion.main
           initial={{ opacity: 0 }}
-          animate={{ opacity: loadingProducts ? 0 : 1 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
           className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
         >
@@ -414,6 +413,8 @@ export default function HomePage() {
       {!isSearchActive && error && (
         <ErrorState message="Couldn't load today's specials." detail={error} onRetry={retryProducts} />
       )}
+
+      {!isSearchActive && loadingProducts && !error && <HomeCatalogueSkeleton />}
 
       {!isSearchActive && !loadingProducts && !error && (
         <>
@@ -532,6 +533,38 @@ export default function HomePage() {
       </motion.main>
       </div>
     </>
+  );
+}
+
+/** Keep the Check Deals structure visible while the full search catalogue is prepared. */
+function HomeCatalogueSkeleton() {
+  return (
+    <div className="space-y-5 px-5 pb-2" role="status" aria-label="Loading today’s deals">
+      <div className="flex rounded-xl bg-white p-1 shadow-sm" aria-hidden="true">
+        <div className="h-10 flex-1 rounded-lg bg-stone-900" />
+        <div className="ml-1 h-10 flex-1 rounded-lg bg-stone-100" />
+        <div className="ml-1 h-10 flex-1 rounded-lg bg-stone-100" />
+      </div>
+      <div className="hide-scrollbar -mx-5 flex gap-2 overflow-hidden px-5" aria-hidden="true">
+        <div className="h-10 w-14 shrink-0 rounded-full bg-stone-200" />
+        <div className="h-10 w-24 shrink-0 rounded-full bg-stone-200" />
+        <div className="h-10 w-24 shrink-0 rounded-full bg-stone-200" />
+        <div className="h-10 w-20 shrink-0 rounded-full bg-stone-200" />
+      </div>
+      <section className="space-y-3" aria-hidden="true">
+        <div className="h-6 w-40 rounded bg-stone-200" />
+        <div className="flex gap-3 overflow-hidden">
+          {[0, 1].map((index) => (
+            <div key={index} className="w-[76%] shrink-0 rounded-2xl bg-white p-4 shadow-sm">
+              <div className="h-24 rounded-xl bg-stone-100" />
+              <div className="mt-4 h-4 w-3/4 rounded bg-stone-200" />
+              <div className="mt-2 h-3 w-1/2 rounded bg-stone-100" />
+            </div>
+          ))}
+        </div>
+      </section>
+      <p className="text-center dd-type-meta text-stone-500">Getting today’s deals ready…</p>
+    </div>
   );
 }
 
