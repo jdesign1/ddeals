@@ -44,7 +44,7 @@ export default function FilterTrigger({
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 py-2 text-left ${fill ? "px-2" : "px-3"}`}
+        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-1 py-2 text-left ${fill ? "px-2" : "px-3"}`}
       >
         <span className="truncate">{label}</span>
         {!active && <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
