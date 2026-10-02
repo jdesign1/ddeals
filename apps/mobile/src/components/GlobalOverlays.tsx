@@ -86,6 +86,13 @@ export default function GlobalOverlays() {
       new URLSearchParams(window.location.search).get("preview") === "onboarding"
   );
 
+  // Warm the search sheet chunk immediately after the shell hydrates. The
+  // sheet remains off-screen until requested, but its first opening no
+  // longer waits on a separate network/module load before the fade begins.
+  useEffect(() => {
+    void import("@/components/FullScreenSearch");
+  }, []);
+
   useEffect(() => {
     if (user && onboardingTourRequest === "new" && hasSeenOnboardingTour(user.id)) {
       dismissOnboardingTour();

@@ -78,8 +78,6 @@ export interface ProductListCardProps {
     kind: DealSnapshotKind;
     amount: number;
   };
-  /** Height measured from the All-supermarkets snapshot belt baseline. */
-  snapshotCardHeight?: number;
   /** Optional onboarding anchor for the first useful card/action in a view. */
   dataOnboarding?: string;
 }
@@ -92,7 +90,6 @@ export default function ProductListCard({
   alsoSpecialStores = [],
   onNavigate,
   snapshot,
-  snapshotCardHeight,
   dataOnboarding,
 }: ProductListCardProps) {
   const router = useRouter();
@@ -181,9 +178,7 @@ export default function ProductListCard({
       // verdict badge below still carries the deal status explicitly.
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
-      data-snapshot-card={isSnapshotLayout ? true : undefined}
       style={{
-        ...(isSnapshotLayout && snapshotCardHeight ? { height: snapshotCardHeight } : {}),
         // The tour aligns its "Check a deal" target to this bottom margin so
         // the highlighted tile stays clear of the bottom safe area.
         ...(isTourDealCard ? { scrollMarginBottom: 112 } : {}),
@@ -269,13 +264,21 @@ export default function ProductListCard({
             +1px on top of that, specifically for this label, per this new
             ask, landing at `text-[12px]`, not evidence the earlier sweep
             missed it. */}
-        {!isCompactLayout && <span className="dd-type-meta text-stone-600">{brandSentenceCase}</span>}
-        <h3 className={`line-clamp-2 font-display text-base font-bold leading-snug text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
+        {!isCompactLayout && (
+          <span className={`dd-type-meta text-stone-600 ${isSnapshotLayout ? "block min-h-[1.125rem] truncate" : ""}`}>
+            {brandSentenceCase}
+          </span>
+        )}
+        <h3 className={`line-clamp-2 font-display text-base font-bold leading-snug text-stone-900 ${isCompactLayout ? "pr-12" : ""} ${isSnapshotLayout ? "min-h-[2.75rem]" : ""}`}>
           {product.name}
         </h3>
-        {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
+        {isSnapshotLayout ? (
+          <span className="block min-h-[1.125rem] truncate dd-type-meta text-stone-500">{product.unit}</span>
+        ) : product.unit ? (
+          <span className="dd-type-meta text-stone-500">{product.unit}</span>
+        ) : null}
         <div className={`mt-1 flex min-w-0 ${
-          isSnapshotLayout ? "w-full flex-col gap-1.5" : "flex-wrap items-center gap-x-2 gap-y-1"
+          isSnapshotLayout ? "w-full flex-col gap-1" : "flex-wrap items-center gap-x-2 gap-y-1"
         }`}>
           {specialPriceRange ? (
             <ResponsivePriceRange

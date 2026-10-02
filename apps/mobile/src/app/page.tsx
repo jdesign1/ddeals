@@ -500,7 +500,6 @@ export default function HomePage() {
                 onCategoriesChange={setTopSavingsCategories}
                 availableCategories={topSavingsAvailableCategories}
                 categoryCounts={topSavingsCategoryCounts}
-                isAllStoresSelected={selectedStores.includes("all")}
                 refreshKey={selectedStores.join(",")}
                 onSeeAll={() => {
                   setDealCategoryFilter(topSavingsCategories);
@@ -514,7 +513,6 @@ export default function HomePage() {
                 onCategoriesChange={setWorstDodgyCategories}
                 availableCategories={worstDodgyAvailableCategories}
                 categoryCounts={worstDodgyCategoryCounts}
-                isAllStoresSelected={selectedStores.includes("all")}
                 refreshKey={selectedStores.join(",")}
                 onSeeAll={() => {
                   setDealCategoryFilter(worstDodgyCategories);
@@ -571,7 +569,6 @@ function HomeCatalogueSkeleton() {
           ))}
         </div>
       </section>
-      <p className="text-center dd-type-meta text-stone-500">Getting today’s deals ready…</p>
     </div>
   );
 }

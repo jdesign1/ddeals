@@ -711,7 +711,8 @@ export default function FullScreenSearch() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          style={{ willChange: "opacity" }}
           className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-[background-color] duration-300 ease-out ${
             dealFilterTintClass || "page-paper-surface"
           } ${

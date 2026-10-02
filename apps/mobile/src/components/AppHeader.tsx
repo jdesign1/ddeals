@@ -428,7 +428,7 @@ export default function AppHeader({
               onClick={openSearch}
               aria-label="Search specials"
               data-onboarding="search-button"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-fair-100 text-fair-800 transition-colors hover:bg-fair-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-fair-300"
             >
               <span
                 className="material-symbols-outlined text-[28px] leading-none"

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   compareDealSnapshotEntries,
@@ -26,7 +26,6 @@ export default function DealSnapshotRail({
   onCategoriesChange,
   availableCategories,
   categoryCounts,
-  isAllStoresSelected,
   refreshKey,
   onSeeAll,
 }: {
@@ -36,7 +35,6 @@ export default function DealSnapshotRail({
   onCategoriesChange: (categories: string[]) => void;
   availableCategories: string[];
   categoryCounts: Map<string, number>;
-  isAllStoresSelected: boolean;
   refreshKey: string;
   onSeeAll: () => void;
 }) {
@@ -58,7 +56,6 @@ export default function DealSnapshotRail({
   }, [deals, kind, selectedCategories]);
 
   const railRef = useRef<HTMLDivElement>(null);
-  const [snapshotCardHeight, setSnapshotCardHeight] = useState<number | null>(null);
   const hasMountedRef = useRef(false);
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -67,17 +64,6 @@ export default function DealSnapshotRail({
     () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
   );
-
-  // The initial All-supermarkets result establishes the compact belt height.
-  // Keeping that measured height when a single supermarket is selected stops
-  // a different product mix from making the whole belt jump vertically.
-  useLayoutEffect(() => {
-    if (!isAllStoresSelected || snapshotCardHeight !== null || rankedDeals.length === 0) return;
-    const firstCard = railRef.current?.querySelector<HTMLElement>("[data-snapshot-card]");
-    if (!firstCard) return;
-    const measuredHeight = Math.ceil(firstCard.getBoundingClientRect().height);
-    if (measuredHeight > 0) setSnapshotCardHeight(measuredHeight);
-  }, [isAllStoresSelected, rankedDeals.length, snapshotCardHeight]);
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -152,7 +138,6 @@ export default function DealSnapshotRail({
                       : "dodgy-deal-card"
                     : undefined
                 }
-                snapshotCardHeight={snapshotCardHeight ?? undefined}
                 snapshot={{
                   rank: index + 1,
                   kind,
@@ -161,7 +146,7 @@ export default function DealSnapshotRail({
               />
             );
           })}
-          <SnapshotSeeAllCard kind={kind} snapshotCardHeight={snapshotCardHeight} onSeeAll={onSeeAll} />
+          <SnapshotSeeAllCard kind={kind} onSeeAll={onSeeAll} />
         </motion.div>
       )}
       <span className="sr-only" aria-live="polite">
@@ -173,11 +158,9 @@ export default function DealSnapshotRail({
 
 function SnapshotSeeAllCard({
   kind,
-  snapshotCardHeight,
   onSeeAll,
 }: {
   kind: DealSnapshotKind;
-  snapshotCardHeight: number | null;
   onSeeAll: () => void;
 }) {
   const isSavings = kind === "savings";
@@ -188,7 +171,6 @@ function SnapshotSeeAllCard({
       type="button"
       onClick={onSeeAll}
       aria-label={`See all ${label.toLowerCase()}`}
-      style={snapshotCardHeight ? { height: snapshotCardHeight } : undefined}
       className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
         isSavings
           ? "text-fair-800 focus-visible:outline-fair-700"
