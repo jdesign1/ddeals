@@ -325,10 +325,10 @@ export default function ProductListCard({
 
       {snapshot ? (
         <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-start gap-1">
-          <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-[11px] leading-4 ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
+          <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Save" : "Risen"} ${snapshot.amount.toFixed(2)}
           </span>
-          <span className={`shrink-0 select-none rounded-md px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
+          <span className={`shrink-0 select-none rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Real" : "Dodgy"}
           </span>
         </div>
