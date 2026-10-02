@@ -53,7 +53,7 @@ export default function FilterTrigger({
       <span className="pointer-events-none relative z-10 flex min-w-0 items-center justify-center gap-1 px-2 py-2">
         <span className="flex min-w-0 items-center gap-1">
           {leading}
-          <span className={active ? "whitespace-nowrap" : "truncate"}>{label}</span>
+          <span className="whitespace-nowrap">{label}</span>
         </span>
         {active ? (
           <button
