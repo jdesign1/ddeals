@@ -244,7 +244,7 @@ export default function ProductListCard({
           isCompactLayout
             ? "px-2 py-2"
             : isSnapshotLayout
-              ? "px-3 pb-7 pt-3"
+              ? "px-3 pb-7 pt-2"
               : useGridCard
               ? "px-3 pb-9 pt-3"
               : "pb-9 pl-4 pr-9 pt-4"
@@ -269,7 +269,7 @@ export default function ProductListCard({
             {brandSentenceCase}
           </span>
         )}
-        <h3 className={`line-clamp-2 font-display text-base font-bold ${isSnapshotLayout ? "leading-tight min-h-[2.5rem]" : "leading-snug"} text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
+        <h3 className={`line-clamp-2 font-display text-base font-bold ${isSnapshotLayout ? "leading-[1.125rem] min-h-[2.25rem]" : "leading-snug"} text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
           {product.name}
         </h3>
         {isSnapshotLayout ? (
@@ -278,7 +278,7 @@ export default function ProductListCard({
           <span className="dd-type-meta text-stone-500">{product.unit}</span>
         ) : null}
         <div className={`${isSnapshotLayout ? "mt-0" : "mt-1"} flex min-w-0 ${
-          isSnapshotLayout ? "w-full flex-col gap-1" : "flex-wrap items-center gap-x-2 gap-y-1"
+          isSnapshotLayout ? "w-full flex-col gap-0" : "flex-wrap items-center gap-x-2 gap-y-1"
         }`}>
           {specialPriceRange ? (
             <ResponsivePriceRange
