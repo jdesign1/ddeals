@@ -4,11 +4,10 @@ import { ChevronDown, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
- * Compact trigger used by the filter sheets. Keeping the value in a
- * truncating text slot means multi-select labels never widen the toolbar or
- * wrap onto a second line. When a filter is applied, the separate clear
- * affordance remains keyboard-accessible without turning the whole control
- * into a destructive action.
+ * Compact trigger used by the filter sheets. The default label stays stable
+ * while the toolbar remains width-constrained. When a filter is applied, the
+ * separate clear affordance remains keyboard-accessible without turning the
+ * whole control into a destructive action.
  */
 export default function FilterTrigger({
   label,
@@ -47,11 +46,13 @@ export default function FilterTrigger({
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 py-2 text-left ${fill ? "px-2" : "px-3"}`}
+        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 py-2 text-left ${
+          fill ? (active ? "px-1" : "px-2") : "px-3"
+        }`}
       >
         <span className="flex min-w-0 items-center gap-1">
           {leading}
-          <span className="truncate">{label}</span>
+          <span className={active ? "whitespace-nowrap" : "truncate"}>{label}</span>
         </span>
         {!active && <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
       </button>
@@ -60,7 +61,7 @@ export default function FilterTrigger({
           type="button"
           onClick={onClear}
           aria-label={`Clear ${ariaLabel.toLowerCase()}`}
-          className="flex w-8 shrink-0 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
+          className="flex w-6 shrink-0 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

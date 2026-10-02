@@ -382,7 +382,7 @@ export default function HomePage() {
               onChange={handleDealFilterChange}
               allLabel="Top Deals"
             />
-            <div className="grid min-w-0 grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.7fr)] gap-1.5 overflow-hidden">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
               <SupermarketPicker
                 stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
                 selectedStoreIds={selectedStores}
