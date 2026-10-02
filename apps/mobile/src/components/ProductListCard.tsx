@@ -272,9 +272,7 @@ export default function ProductListCard({
         <h3 className={`line-clamp-2 font-display text-base font-bold ${isSnapshotLayout ? "leading-[1.125rem] min-h-[2.25rem]" : "leading-snug"} text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
           {product.name}
         </h3>
-        {isSnapshotLayout ? (
-          <span className="block min-h-[1rem] truncate dd-type-meta text-stone-500">{product.unit}</span>
-        ) : product.unit ? (
+        {!isSnapshotLayout && product.unit ? (
           <span className="dd-type-meta text-stone-500">{product.unit}</span>
         ) : null}
         <div className={`${isSnapshotLayout ? "mt-0" : "mt-1"} flex min-w-0 ${
