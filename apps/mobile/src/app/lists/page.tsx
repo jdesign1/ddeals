@@ -310,6 +310,8 @@ export default function ListsPage() {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
+  const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
   const [isSettingUpNotifications, setIsSettingUpNotifications] = useState(false);
 
   useEffect(() => {
@@ -559,6 +561,26 @@ export default function ListsPage() {
     }
   }, [reload, watchlistItems]);
 
+  const clearWatchlist = useCallback(async () => {
+    if (watchlistItems.length === 0 || isClearingWatchlist) return;
+    setIsClearingWatchlist(true);
+    setError(null);
+    try {
+      const client = requireAccountsSupabaseClient();
+      await Promise.all(
+        watchlistItems.flatMap((entry) => entry.sourceItems.map((item) => removeItemFromList(client, item.list_id, entry.productId))),
+      );
+      window.dispatchEvent(new CustomEvent(LIST_MEMBERSHIP_CHANGED_EVENT, { detail: { source: "watchlist-page" } }));
+      setIsClearWatchlistSheetOpen(false);
+      await reload(false);
+    } catch (clearError) {
+      void reload(false);
+      setError(describeFetchError(clearError, "We couldn't clear your Watchlist."));
+    } finally {
+      setIsClearingWatchlist(false);
+    }
+  }, [isClearingWatchlist, reload, watchlistItems]);
+
   useEffect(() => {
     const productId = new URLSearchParams(window.location.search).get("productId");
     if (!productId || loadingWatchlist || !watchlistItems.some((item) => item.productId === productId)) return;
@@ -650,6 +672,14 @@ export default function ListsPage() {
         )}
       </div>
 
+      {!loadingWatchlist && watchlistItems.length > 0 && (
+        <div className="mx-5 pt-1">
+          <button type="button" onClick={() => setIsClearWatchlistSheetOpen(true)} className="dd-btn dd-btn-outline-alert w-full cursor-pointer">
+            Clear Watchlist
+          </button>
+        </div>
+      )}
+
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
       <WatchlistFilterSheet
         open={isFilterSheetOpen}
@@ -671,7 +701,86 @@ export default function ListsPage() {
         onSelect={selectSortMode}
         onClose={() => setIsSortSheetOpen(false)}
       />
+      <ClearWatchlistSheet
+        open={isClearWatchlistSheetOpen}
+        itemCount={watchlistItems.length}
+        isClearing={isClearingWatchlist}
+        onClear={() => void clearWatchlist()}
+        onClose={() => setIsClearWatchlistSheetOpen(false)}
+      />
     </main>
+  );
+}
+
+function ClearWatchlistSheet({
+  open,
+  itemCount,
+  isClearing,
+  onClear,
+  onClose,
+}: {
+  open: boolean;
+  itemCount: number;
+  isClearing: boolean;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <BottomSheetPortal open={open}>
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close clear Watchlist confirmation"
+              disabled={isClearing}
+              onClick={onClose}
+              className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="clear-watchlist-sheet-title"
+              aria-describedby="clear-watchlist-sheet-description"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[40vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+            >
+              <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
+                <h2 id="clear-watchlist-sheet-title" className="dd-type-sheet-title text-stone-900">Clear your Watchlist?</h2>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isClearing}
+                  aria-label="Close"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="flex flex-1 flex-col gap-3 px-5 py-5 pb-safe-sm">
+                <p id="clear-watchlist-sheet-description" className="dd-type-body text-stone-600">
+                  This will remove all {itemCount} {itemCount === 1 ? "item" : "items"} from your Watchlist. You can&apos;t undo this.
+                </p>
+                <div className="mt-auto flex flex-col gap-3 pt-4">
+                  <button type="button" onClick={onClose} disabled={isClearing} className="dd-btn dd-btn-outline-muted w-full cursor-pointer">
+                    Cancel
+                  </button>
+                  <button type="button" onClick={onClear} disabled={isClearing} className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                    {isClearing ? "Clearing Watchlist…" : "Clear Watchlist"}
+                  </button>
+                </div>
+              </div>
+            </motion.section>
+          </>
+        )}
+      </AnimatePresence>
+    </BottomSheetPortal>
   );
 }
 
