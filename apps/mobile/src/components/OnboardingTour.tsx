@@ -32,7 +32,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     href: "/",
-    target: '[data-onboarding="search-bar"]',
+    target: '[data-onboarding="search-button"]',
     title: "Find a product",
     body: "Search for grocery items to see current specials and compare across supermarkets.",
   },
