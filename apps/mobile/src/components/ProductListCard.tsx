@@ -196,7 +196,7 @@ export default function ProductListCard({
       }}
       className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border border-stone-200/80 bg-white ${
         isCompactLayout
-          ? "dd-compact-product-card flex min-h-20 items-stretch gap-3 p-2"
+          ? "dd-compact-product-card flex min-h-28 items-stretch gap-3 p-2"
           : isSnapshotLayout
             ? "dd-snapshot-card w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start flex flex-col rounded-[1.5rem]"
             : isGridLayout
@@ -261,19 +261,7 @@ export default function ProductListCard({
               : "pb-9 pl-4 pr-9 pt-4"
         }`}
       >
-        <div className="flex flex-col justify-center gap-0.5">
-        {/* Retailer badges sit immediately above the product name so the
-            bottom-right verdict badge has its own clear area. The main
-            retailer is followed inline by any other supermarkets carrying
-            the same product on special. */}
-        {!isSnapshotLayout && (
-          <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start pr-10" : "mb-1.5"}`}>
-            <StoreLogoBadge store={deal.store} variant={isCompactLayout ? "compact" : "card"} />
-            {alsoSpecialStores.map((store) => (
-              <StoreLogoBadge key={store} store={store} variant={isCompactLayout ? "compact" : "card"} />
-            ))}
-          </div>
-        )}
+        <div className="flex flex-col gap-0.5">
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same
@@ -301,20 +289,20 @@ export default function ProductListCard({
           ) : (
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
           )}
-          {isCompactLayout && showPriceChangeBadge && (
-            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
-          )}
-          {!hideCardBadges && isCompactLayout && (
-            <>
-              {isDodgy && <span className="dd-badge dd-badge-inline dd-badge-alert ml-auto">Dodgy Deal</span>}
-              {isRealSaver && <span className="dd-badge dd-badge-inline dd-badge-fair ml-auto">Real Saver</span>}
-              {isFairDeal && <span className="dd-badge dd-badge-inline dd-badge-dodgy ml-auto">Fair Price</span>}
-            </>
-          )}
         </div>
+        {/* The retailer is visually tied to its price, not to the product
+            title. This leaves the bottom row free for the saving and verdict
+            pair used by the Top 20 cards. */}
+        {!isSnapshotLayout && (
+          <div className={`mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "pr-10" : ""}`}>
+            <StoreLogoBadge store={deal.store} variant={isCompactLayout ? "compact" : "card"} />
+            {alsoSpecialStores.map((store) => (
+              <StoreLogoBadge key={store} store={store} variant={isCompactLayout ? "compact" : "card"} />
+            ))}
+          </div>
+        )}
         {!isCompactLayout && (
-          <div className="flex items-center gap-1.5">
-            <span className="dd-type-meta dd-type-meta-strong text-stone-600">
+          <span className="sr-only">
               {specialPriceRange
                 ? "Various"
                 : storeLinePrefix == null
@@ -322,10 +310,17 @@ export default function ProductListCard({
                 : storeLinePrefix === "Lowest at"
                   ? storeLabel
                   : `${storeLinePrefix} ${storeLabel}.`}
-            </span>
-          </div>
+          </span>
         )}
         </div>
+        {!isSnapshotLayout && !hideCardBadges && isCompactLayout && (
+          <div className="mt-auto flex min-w-0 items-center gap-2 pt-1.5">
+            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" />}
+            {isDodgy && <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">Dodgy Deal</span>}
+            {isRealSaver && <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">Real Saver</span>}
+            {isFairDeal && <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">Fair Price</span>}
+          </div>
+        )}
       </div>
 
       {snapshot ? (
@@ -338,8 +333,8 @@ export default function ProductListCard({
           </span>
         </div>
       ) : !hideCardBadges && !isCompactLayout && (
-        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-end gap-2 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
-          {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
+        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-2 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
+          {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" />}
           {isDodgy && (
             <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
               Dodgy Deal

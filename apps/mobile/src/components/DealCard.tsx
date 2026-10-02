@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ShieldCheck, ShieldAlert } from "lucide-react";
 import { getSpecialPriceRange, type ProductCard, type CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { isNewSpecial } from "@/lib/special-freshness";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
@@ -35,6 +35,7 @@ export default function DealCard({
   const router = useRouter();
   const isTrueSpecial = deal.dealType === "Real Deal";
   const isDodgy = deal.dealType === "Dodgy Deal";
+  const isFairDeal = deal.dealType === "Fair Price";
   const hideCardBadges = hasMixedStoreVerdicts(product);
   const showPriceChangeBadge = !hideCardBadges && (isTrueSpecial || isDodgy || deal.dealType === "Fair Price");
   const showWasPrice = deal.originalPrice > deal.price;
@@ -74,30 +75,9 @@ export default function DealCard({
             <span aria-hidden="true">NEW</span>
           </span>
         )}
-        {!hideCardBadges && (showPriceChangeBadge || isTrueSpecial || isDodgy) && (
-          <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
-            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
-            {(isTrueSpecial || isDodgy) && (
-              <span
-                className="flex items-center gap-1 rounded-md p-1 dd-type-badge text-white shadow-xs"
-                style={{
-                  backgroundColor: isTrueSpecial ? "var(--color-verdict-real-saver)" : "var(--color-verdict-dodgy)",
-                }}
-              >
-                {isTrueSpecial ? (
-                  <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                ) : (
-                  <ShieldAlert className="h-3 w-3" aria-hidden="true" />
-                )}
-                {isTrueSpecial ? "Real Saver" : "Dodgy Deal"}
-              </span>
-            )}
-          </div>
-        )}
         <AddToListButton productId={product.id} productName={product.name} />
       </div>
-      <div className="flex flex-col gap-0.5 p-3">
-        <span className="dd-type-meta text-stone-500">{deal.store}</span>
+      <div className="flex flex-1 flex-col gap-0.5 p-3">
         <span className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</span>
         <div className="mt-1 flex items-baseline gap-2">
           {specialPriceRange ? (
@@ -111,6 +91,17 @@ export default function DealCard({
             <span className="text-[13px] leading-4 text-stone-500 line-through">${deal.originalPrice.toFixed(2)}</span>
           )}
         </div>
+        <div className="mt-1.5 flex items-center">
+          <StoreLogoBadge store={deal.store} variant="card" />
+        </div>
+        {!hideCardBadges && (showPriceChangeBadge || isTrueSpecial || isDodgy || isFairDeal) && (
+          <div className="mt-auto flex min-w-0 items-center gap-2 pt-3">
+            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" />}
+            {isTrueSpecial && <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">Real Saver</span>}
+            {isDodgy && <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">Dodgy Deal</span>}
+            {isFairDeal && <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">Fair Price</span>}
+          </div>
+        )}
       </div>
     </article>
   );
