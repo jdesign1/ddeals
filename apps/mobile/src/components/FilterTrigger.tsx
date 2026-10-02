@@ -48,24 +48,28 @@ export default function FilterTrigger({
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className="flex w-full min-w-0 cursor-pointer items-center justify-center gap-1 px-2 py-2 text-left"
-      >
+        className="absolute inset-0 z-0 cursor-pointer rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+      />
+      <span className="pointer-events-none relative z-10 flex min-w-0 items-center justify-center gap-1 px-2 py-2">
         <span className="flex min-w-0 items-center gap-1">
           {leading}
           <span className={active ? "whitespace-nowrap" : "truncate"}>{label}</span>
         </span>
-        {!active && <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
-      </button>
-      {active && (
-        <button
-          type="button"
-          onClick={onClear}
-          aria-label={`Clear ${ariaLabel.toLowerCase()}`}
-          className="absolute inset-y-0 right-0 flex w-8 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
-        >
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-      )}
+        {active ? (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`Clear ${ariaLabel.toLowerCase()}`}
+            className="pointer-events-auto flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center" aria-hidden="true">
+            <ChevronDown className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </span>
     </div>
   );
 }
