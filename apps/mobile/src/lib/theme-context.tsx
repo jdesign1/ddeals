@@ -1,12 +1,22 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Preferences } from "@capacitor/preferences";
 import { SplashScreen } from "@capacitor/splash-screen";
 
 export type Theme = "light" | "dark";
 
 const THEME_STORAGE_KEY = "dodgey-deals-theme";
+const THEME_COLOR: Record<Theme, string> = {
+  light: "#faf8f4",
+  dark: "#171513",
+};
+
+// Capacitor bridge calls are asynchronous. Queue them so two quick toggles
+// cannot finish out of order and leave the next native launch on the old
+// appearance.
+let nativeThemeWrite = Promise.resolve();
 
 type ThemeContextValue = {
   theme: Theme;
@@ -23,6 +33,18 @@ function isTheme(value: string | null | undefined): value is Theme {
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
+  document.body?.setAttribute("data-theme", theme);
+  document.body?.style.setProperty("color-scheme", theme);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLOR[theme]);
+}
+
+function readBrowserTheme(): Theme | null {
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isTheme(storedTheme) ? storedTheme : null;
+  } catch {
+    return null;
+  }
 }
 
 function persistNativeTheme(theme: Theme) {
@@ -30,10 +52,15 @@ function persistNativeTheme(theme: Theme) {
   // the only preference store available early enough for the native launch
   // storyboard. The browser implementation is safe to call during web
   // development as well.
-  void Preferences.set({ key: THEME_STORAGE_KEY, value: theme }).catch(() => {
-    // The web preference still applies when the native bridge is absent or
-    // unavailable, such as a normal desktop browser session.
-  });
+  nativeThemeWrite = nativeThemeWrite
+    .catch(() => {
+      // Keep later writes available if an earlier bridge call failed.
+    })
+    .then(() => Preferences.set({ key: THEME_STORAGE_KEY, value: theme }))
+    .catch(() => {
+      // The web preference still applies when the native bridge is absent or
+      // unavailable, such as a normal desktop browser session.
+    });
 }
 
 function hideNativeSplash() {
@@ -54,29 +81,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // source of truth.
   const [theme, setThemeState] = useState<Theme>("light");
   const themeChangeVersionRef = useRef(0);
+  const themeRef = useRef<Theme>("light");
+  const pathname = usePathname();
 
   useLayoutEffect(() => {
     const savedTheme = document.documentElement.dataset.theme ?? null;
-    let frameId: number | undefined;
-
-    const syncTheme = (nextTheme: Theme) => {
-      frameId = window.requestAnimationFrame(() => {
-        setThemeState(nextTheme);
-        applyTheme(nextTheme);
-      });
-    };
-
     const initialTheme = isTheme(savedTheme) ? savedTheme : "light";
-    syncTheme(initialTheme);
-
-    return () => {
-      if (frameId !== undefined) window.cancelAnimationFrame(frameId);
-    };
+    themeRef.current = initialTheme;
+    applyTheme(initialTheme);
+    // This mirrors the before-paint bootstrap into React state. It is an
+    // intentional one-time hydration sync, not a derived-state update.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setThemeState(initialTheme);
   }, []);
+
+  // App Router keeps this provider mounted while page content changes. If a
+  // navigation or WebView resume restores stale document attributes, restore
+  // the selected appearance before the next route paints.
+  useLayoutEffect(() => {
+    applyTheme(themeRef.current);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
-    const browserTheme = document.documentElement.dataset.theme;
+    const browserTheme = readBrowserTheme();
     void Preferences.get({ key: THEME_STORAGE_KEY })
       .then(({ value }) => {
         // The native value is the fallback for a WebView where localStorage
@@ -86,14 +114,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           hideNativeSplash();
           return;
         }
-        if (!isTheme(value)) {
-          // This also migrates an existing localStorage-only Display setting
-          // into the native store on the first launch after native splash
-          // support is installed.
-          persistNativeTheme(isTheme(browserTheme) ? browserTheme : "light");
+        // A valid browser value is the preference the user changed in this
+        // running WebView. Native Preferences are only a fallback for a
+        // cleared/unavailable localStorage store; otherwise an older native
+        // bridge read could visibly undo Settings after navigation.
+        if (browserTheme) {
+          themeRef.current = browserTheme;
+          setThemeState(browserTheme);
+          applyTheme(browserTheme);
+          persistNativeTheme(browserTheme);
           hideNativeSplash();
           return;
         }
+        if (!isTheme(value)) {
+          persistNativeTheme(themeRef.current);
+          hideNativeSplash();
+          return;
+        }
+        themeRef.current = value;
         setThemeState(value);
         applyTheme(value);
         try {
@@ -114,8 +152,33 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    const restoreTheme = () => applyTheme(themeRef.current);
+    const syncAcrossWebViews = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY || !isTheme(event.newValue)) return;
+      themeChangeVersionRef.current += 1;
+      themeRef.current = event.newValue;
+      setThemeState(event.newValue);
+      applyTheme(event.newValue);
+      persistNativeTheme(event.newValue);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") restoreTheme();
+    };
+
+    window.addEventListener("pageshow", restoreTheme);
+    window.addEventListener("storage", syncAcrossWebViews);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pageshow", restoreTheme);
+      window.removeEventListener("storage", syncAcrossWebViews);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
   const setTheme = useCallback((nextTheme: Theme) => {
     themeChangeVersionRef.current += 1;
+    themeRef.current = nextTheme;
     setThemeState(nextTheme);
     applyTheme(nextTheme);
     try {

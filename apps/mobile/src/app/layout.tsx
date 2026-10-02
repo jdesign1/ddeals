@@ -73,7 +73,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           id="theme-initialization"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";}})();`,
+            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"?"dark":"light";var root=document.documentElement;root.dataset.theme=theme;root.style.colorScheme=theme;var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute("content",theme==="dark"?"#171513":"#faf8f4");}catch(e){document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";}})();`,
           }}
         />
         <AuthProvider>
