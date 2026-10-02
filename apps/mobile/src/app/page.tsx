@@ -42,7 +42,7 @@ import {
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
+import { compareLatestSpecials } from "@/lib/special-freshness";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -751,11 +751,6 @@ function TrendingSection({
     persistenceKey: revealPersistenceKey,
   });
   const visible = sorted.slice(0, visibleCount);
-  const newBadgeKeys = useMemo(
-    () => getNewSpecialKeys(sorted, ({ deal }) => deal, ({ product, deal }) => `${product.id}-${deal.store}`),
-    [sorted]
-  );
-
   return (
     <section className="flex flex-col gap-4 px-5">
       <DealFilterSummary filter={filter} />
@@ -789,7 +784,6 @@ function TrendingSection({
                     product={product}
                     deal={deal}
                     imageLoading={index < 2 ? "eager" : "lazy"}
-                    showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
                     alsoSpecialStores={alsoSpecialStores(product, deal.store)}
                     dataOnboarding={index === 0 ? "deal-card" : undefined}
                   />
@@ -838,10 +832,6 @@ function MyListSection({
 }) {
   const { isGridLayout } = useCardLayout();
   const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
-  const newBadgeKeys = useMemo(
-    () => getNewSpecialKeys(sorted, ({ deal }) => deal, ({ product, deal }) => `${product.id}-${deal.store}`),
-    [sorted]
-  );
   const { openAuthSheet } = useAuth();
 
   if (authLoading) return <LoadingMascot loading />;
@@ -939,7 +929,6 @@ function MyListSection({
                 key={`${product.id}-${deal.store}`}
                 product={product}
                 deal={deal}
-                showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
                 storeLinePrefix="Special at" // 2026-08-17, Jay: "change wording to just 'special at supermarket', remove the word 'on'"
                 alsoSpecialStores={alsoSpecialStores(product, deal.store)}
               />

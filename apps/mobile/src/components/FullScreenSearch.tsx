@@ -35,7 +35,7 @@ import { useCardLayout } from "@/lib/card-layout-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
-import { compareLatestSpecials, getNewSpecialKeys, isNewSpecial } from "@/lib/special-freshness";
+import { compareLatestSpecials, isNewSpecial } from "@/lib/special-freshness";
 import { getNewSpecialDealKey } from "@/lib/new-specials";
 
 /**
@@ -563,11 +563,6 @@ export default function FullScreenSearch() {
     resetKey: sortedPopularSpecials,
   });
   const visiblePopularSpecials = sortedPopularSpecials.slice(0, visiblePopularCount);
-  const popularNewBadgeKeys = useMemo(
-    () => getNewSpecialKeys(sortedPopularSpecials, ({ bestDeal }) => bestDeal, ({ product }) => product.id),
-    [sortedPopularSpecials]
-  );
-
   // 3+ character results -- tokenized AND search across brand/name/category,
   // followed by store/deal filters and relevance sorting. The matcher lives
   // in shared code so browser and mobile surfaces cannot drift apart.
@@ -636,16 +631,6 @@ export default function FullScreenSearch() {
     resetKey: sortedProducts,
   });
   const visibleSearchResults = sortedProducts.slice(0, visibleSearchResultsCount);
-  const searchNewBadgeKeys = useMemo(
-    () =>
-      getNewSpecialKeys(
-        sortedProducts,
-        (product) => cheapestDeal(applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet)),
-        (product) => product.id,
-      ),
-    [sortedProducts, selectedStores, dealFilter, newSpecialDealKeySet]
-  );
-
   const handleClearText = () => setQuery("");
   const handleBack = () => {
     closeSearch();
@@ -1184,7 +1169,6 @@ export default function FullScreenSearch() {
                           product={product}
                           deal={bestDeal}
                           imageLoading={index < 2 ? "eager" : "lazy"}
-                          showNewBadge={!newSpecialDealKeySet && popularNewBadgeKeys.has(product.id)}
                           storeLinePrefix={null}
                           alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal)}
                           onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
@@ -1391,7 +1375,6 @@ export default function FullScreenSearch() {
                             product={product}
                             deal={bestDeal}
                             imageLoading={index < 2 ? "eager" : "lazy"}
-                            showNewBadge={!newSpecialDealKeySet && searchNewBadgeKeys.has(product.id)}
                             storeLinePrefix={null}
                             alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter)}
                             onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}

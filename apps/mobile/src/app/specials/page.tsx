@@ -16,7 +16,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
-import { compareLatestSpecials, getNewSpecialKeys } from "@/lib/special-freshness";
+import { compareLatestSpecials } from "@/lib/special-freshness";
 
 /**
  * S8 — Latest Specials Browse, per project.md's Stitch screen inventory.
@@ -91,11 +91,6 @@ export default function SpecialsPage() {
     () => flatDeals.filter(({ deal }) => storeMatchesFilter(deal.store, storeFilter)),
     [flatDeals, storeFilter]
   );
-  const newBadgeKeys = useMemo(
-    () => getNewSpecialKeys(filteredDeals, ({ deal }) => deal, ({ product, deal }) => `${product.id}-${deal.store}`),
-    [filteredDeals]
-  );
-
   // Infinite-scroll reveal, added 2026-08-21 -- this page previously had NO
   // cap at all (`filteredDeals.map(...)` rendered straight into the grid),
   // the worst offender found in that day's "Show all X deals" discussion:
@@ -152,7 +147,6 @@ export default function SpecialsPage() {
             product={product}
             deal={deal}
             imageLoading={index < 2 ? "eager" : "lazy"}
-            showNewBadge={newBadgeKeys.has(`${product.id}-${deal.store}`)}
           />
         ))}
         {/* col-span-2 -- this is a 2-column grid, a bare `w-full` sentinel

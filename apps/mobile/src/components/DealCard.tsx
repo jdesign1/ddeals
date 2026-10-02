@@ -7,7 +7,6 @@ import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
-import { isNewSpecial } from "@/lib/special-freshness";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
 /**
@@ -23,12 +22,10 @@ import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 export default function DealCard({
   product,
   deal,
-  showNewBadge = false,
   imageLoading = "lazy",
 }: {
   product: ProductCard;
   deal: CurrentDeal;
-  showNewBadge?: boolean;
   /** The first visible card in a route/list can opt into eager loading. */
   imageLoading?: "eager" | "lazy";
 }) {
@@ -70,11 +67,6 @@ export default function DealCard({
           fetchPriority={imageLoading === "eager" ? "high" : "auto"}
           className="product-image-content object-contain p-3"
         />
-        {showNewBadge && isNewSpecial(deal) && (
-          <span className="new-special-ribbon" aria-label="New special">
-            <span aria-hidden="true">NEW</span>
-          </span>
-        )}
         <AddToListButton productId={product.id} productName={product.name} />
       </div>
       <div className="flex flex-1 flex-col gap-0.5 p-3">

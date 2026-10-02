@@ -14,7 +14,6 @@ import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { useCardLayout } from "@/lib/card-layout-context";
-import { isNewSpecial } from "@/lib/special-freshness";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
 /**
@@ -73,8 +72,6 @@ export interface ProductListCardProps {
    * nothing. Optional and a no-op for callers with nothing covering the
    * page (Home's own Trending/My List sections, /specials). */
   onNavigate?: () => void;
-  /** Parent controls the small per-view cap so a scrape wave does not mark every card. */
-  showNewBadge?: boolean;
   /** Snapshot rails use a ranked, fixed-width card and dollar-first callout. */
   snapshot?: {
     rank: number;
@@ -94,7 +91,6 @@ export default function ProductListCard({
   storeLinePrefix = "Lowest at",
   alsoSpecialStores = [],
   onNavigate,
-  showNewBadge = false,
   snapshot,
   snapshotCardHeight,
   dataOnboarding,
@@ -245,11 +241,6 @@ export default function ProductListCard({
             aria-label={`Rank ${snapshot.rank}`}
           >
             <span className="absolute left-1/3 top-1/3 -translate-x-1/2 -translate-y-1/2">{snapshot.rank}</span>
-          </span>
-        )}
-        {showNewBadge && isNewSpecial(deal) && (
-          <span className="new-special-ribbon" aria-label="New special">
-            <span aria-hidden="true">NEW</span>
           </span>
         )}
       </div>
