@@ -14,6 +14,7 @@ interface StoreLogoBadgeProps {
   store: string;
   variant?: StoreLogoBadgeVariant;
   className?: string;
+  decorative?: boolean;
 }
 
 /**
@@ -21,7 +22,7 @@ interface StoreLogoBadgeProps {
  * the former letter badge so incomplete catalogue data never produces a
  * broken image or an unlabeled tile.
  */
-export default function StoreLogoBadge({ store, variant = "card", className = "" }: StoreLogoBadgeProps) {
+export default function StoreLogoBadge({ store, variant = "card", className = "", decorative = false }: StoreLogoBadgeProps) {
   const meta = getStoreLogoMeta(store);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store;
   const sizeClass = SIZE_CLASS[variant];
@@ -29,8 +30,9 @@ export default function StoreLogoBadge({ store, variant = "card", className = ""
   if (!meta.logoSrc || !meta.logoBackground) {
     return (
       <span
-        aria-label={storeLabel}
-        title={storeLabel}
+        aria-label={decorative ? undefined : storeLabel}
+        aria-hidden={decorative || undefined}
+        title={decorative ? undefined : storeLabel}
         className={`flex ${sizeClass} shrink-0 select-none items-center justify-center rounded-md dd-type-badge shadow-xs ${meta.bg} ${meta.text} ${className}`}
       >
         {meta.short}
@@ -40,8 +42,9 @@ export default function StoreLogoBadge({ store, variant = "card", className = ""
 
   return (
     <span
-      aria-label={storeLabel}
-      title={storeLabel}
+      aria-label={decorative ? undefined : storeLabel}
+      aria-hidden={decorative || undefined}
+      title={decorative ? undefined : storeLabel}
       className={`relative flex ${sizeClass} shrink-0 select-none items-center justify-center overflow-hidden rounded-md shadow-xs ring-1 ring-black/10 ${className}`}
       style={{ backgroundColor: meta.logoBackground }}
     >

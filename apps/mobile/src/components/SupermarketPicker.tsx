@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import FilterTrigger from "@/components/FilterTrigger";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 type StoreOption = { id: string; label: string };
 
@@ -28,6 +29,13 @@ export default function SupermarketPicker({
         ? stores.find((store) => store.id === selectedStores[0])?.label ?? selectedStores[0]
         : `${selectedStores.length} Supermarkets`;
   const reset = () => onToggleStore("all");
+  const selectedLogoPreview = selectedStores.length > 0 ? (
+    <span className="flex shrink-0 -space-x-1" aria-hidden="true">
+      {selectedStores.slice(0, 2).map((storeId) => (
+        <StoreLogoBadge key={storeId} store={storeId} variant="compact" decorative className="ring-1 ring-white" />
+      ))}
+    </span>
+  ) : undefined;
 
   return (
     <>
@@ -39,6 +47,7 @@ export default function SupermarketPicker({
         ariaLabel={`Filter by supermarket: ${selectedLabel}`}
         expanded={isOpen}
         fill
+        leading={selectedLogoPreview}
       />
 
       <BottomSheetPortal open={isOpen}>
@@ -106,12 +115,13 @@ export default function SupermarketPicker({
                           type="button"
                           onClick={() => onToggleStore(store.id)}
                           aria-pressed={selected}
-                          className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
+                          className={`dd-category-sheet-pill inline-flex items-center gap-1.5 rounded-full px-3 py-2 dd-type-control transition-colors ${
                             selected
                               ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
                               : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                           }`}
                         >
+                          <StoreLogoBadge store={store.id} variant="compact" decorative />
                           {store.label}
                         </button>
                       );

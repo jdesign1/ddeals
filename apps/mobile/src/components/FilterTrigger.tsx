@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, X } from "lucide-react";
+import type { ReactNode } from "react";
 
 /**
  * Compact trigger used by the filter sheets. Keeping the value in a
@@ -19,6 +20,7 @@ export default function FilterTrigger({
   compact = false,
   hasPopup = "dialog",
   fill = false,
+  leading,
 }: {
   label: string;
   active: boolean;
@@ -29,6 +31,7 @@ export default function FilterTrigger({
   compact?: boolean;
   hasPopup?: "dialog" | "listbox";
   fill?: boolean;
+  leading?: ReactNode;
 }) {
   return (
     <div
@@ -46,7 +49,10 @@ export default function FilterTrigger({
         aria-label={ariaLabel}
         className={`flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-1 py-2 text-left ${fill ? "px-2" : "px-3"}`}
       >
-        <span className="truncate">{label}</span>
+        <span className="flex min-w-0 flex-1 items-center gap-1">
+          {leading}
+          <span className="truncate">{label}</span>
+        </span>
         {!active && <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
       </button>
       {active && (
