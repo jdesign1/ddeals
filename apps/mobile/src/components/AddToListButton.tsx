@@ -17,7 +17,7 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 export default function AddToListButton({
   productId,
   productName,
-  containerClassName = "absolute right-2 top-2 z-10",
+  containerClassName = "absolute right-0 top-0 z-10",
   buttonClassName = "flex h-7 w-7 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900 shadow",
   iconClassName = "h-4 w-4",
   dataOnboarding,

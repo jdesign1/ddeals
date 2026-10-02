@@ -50,7 +50,7 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
       <AddToListButton
         productId={product.id}
         productName={product.name}
-        containerClassName="absolute right-2 top-2 z-10"
+        containerClassName="absolute right-0 top-0 z-10"
       />
       <div className="product-image-frame -my-2 -ml-2 flex w-20 flex-shrink-0 self-stretch select-none items-center justify-center overflow-hidden rounded-l-xl bg-paper p-1.5">
         <ProductImage
@@ -64,12 +64,12 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-2">
-        <div className="mb-0.5 flex min-w-0 justify-start pr-10">
+        <div className="mb-0.5 flex min-w-0 justify-start pr-12">
           <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
             {storeMeta.short}
           </span>
         </div>
-        <h3 className="line-clamp-2 pr-10 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
+        <h3 className="line-clamp-2 pr-12 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
           <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />

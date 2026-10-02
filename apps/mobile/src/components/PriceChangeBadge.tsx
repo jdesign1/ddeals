@@ -5,11 +5,14 @@ export default function PriceChangeBadge({
   currentPrice,
   comparisonPrice,
   format = "percentage",
+  compact = false,
 }: {
   currentPrice: number;
   comparisonPrice: number | null | undefined;
   /** Product-card footers use the same dollar-first language as Top 20. */
   format?: "percentage" | "amount";
+  /** Keeps the saving chip alongside a verdict in narrow two-column cards. */
+  compact?: boolean;
 }) {
   if (comparisonPrice == null) return null;
   const amount = Math.abs(comparisonPrice - currentPrice);
@@ -23,7 +26,9 @@ export default function PriceChangeBadge({
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-0.5 rounded-md p-1 dd-type-badge text-white shadow-xs ${
+      className={`inline-flex shrink-0 items-center gap-0.5 rounded-md text-white shadow-xs ${
+        compact ? "px-1 py-0.5 text-[11px] leading-4" : "p-1 dd-type-badge"
+      } ${
         isCheaper ? "bg-fair-600" : "bg-alert-600"
       }`}
       aria-label={

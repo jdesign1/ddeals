@@ -208,7 +208,7 @@ export default function ProductListCard({
         productId={product.id}
         productName={product.name}
         dataOnboarding={isTourDealCard ? "save-product" : undefined}
-        containerClassName={isCompactLayout ? "absolute right-4 top-2 z-10" : isSnapshotLayout ? "absolute right-1 top-1 z-10" : undefined}
+        containerClassName={isCompactLayout || isSnapshotLayout ? "absolute right-0 top-0 z-10" : undefined}
       />
 
       {/* Single layout keeps the horizontal image-and-text card currently
@@ -276,7 +276,7 @@ export default function ProductListCard({
             ask, landing at `text-[12px]`, not evidence the earlier sweep
             missed it. */}
         {!isCompactLayout && <span className="dd-type-meta text-stone-600">{brandSentenceCase}</span>}
-        <h3 className={`line-clamp-2 font-display text-base font-bold leading-snug text-stone-900 ${isCompactLayout ? "pr-10" : ""}`}>
+        <h3 className={`line-clamp-2 font-display text-base font-bold leading-snug text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
           {product.name}
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
@@ -294,7 +294,7 @@ export default function ProductListCard({
             title. This leaves the bottom row free for the saving and verdict
             pair used by the Top 20 cards. */}
         {!isSnapshotLayout && (
-          <div className={`mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "pr-10" : ""}`}>
+          <div className={`mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "pr-12" : ""}`}>
             <StoreLogoBadge store={deal.store} variant={isCompactLayout ? "compact" : "card"} />
             {alsoSpecialStores.map((store) => (
               <StoreLogoBadge key={store} store={store} variant={isCompactLayout ? "compact" : "card"} />
@@ -314,40 +314,40 @@ export default function ProductListCard({
         )}
         </div>
         {!isSnapshotLayout && !hideCardBadges && isCompactLayout && (
-          <div className="mt-auto flex min-w-0 items-center gap-2 pt-1.5">
-            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" />}
-            {isDodgy && <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">Dodgy Deal</span>}
-            {isRealSaver && <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">Real Saver</span>}
-            {isFairDeal && <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">Fair Price</span>}
+          <div className="mt-auto flex min-w-0 items-center gap-1 pt-1.5">
+            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
+            {isDodgy && <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">Dodgy</span>}
+            {isRealSaver && <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">Real</span>}
+            {isFairDeal && <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">Fair</span>}
           </div>
         )}
       </div>
 
       {snapshot ? (
         <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-start gap-1">
-          <span className={`shrink-0 select-none whitespace-nowrap rounded-md p-1 dd-type-badge ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
+          <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-[11px] leading-4 ${snapshot.kind === "savings" ? "bg-fair-100 text-fair-800" : "bg-alert-100 text-alert-700"}`}>
             {snapshot.kind === "savings" ? "Save" : "Risen"} ${snapshot.amount.toFixed(2)}
           </span>
-          <span className={`shrink-0 select-none rounded-md p-1 dd-type-badge text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
+          <span className={`shrink-0 select-none rounded-md px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Real" : "Dodgy"}
           </span>
         </div>
       ) : !hideCardBadges && !isCompactLayout && (
-        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-2 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
-          {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" />}
+        <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-1 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
+          {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
           {isDodgy && (
-            <span className="shrink-0 select-none rounded-md bg-alert-600 p-1 dd-type-badge text-white shadow-xs">
-              Dodgy Deal
+            <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">
+              Dodgy
             </span>
           )}
           {isRealSaver && (
-            <span className="shrink-0 select-none rounded-md bg-fair-600 p-1 dd-type-badge text-white shadow-xs">
-              Real Saver
+            <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">
+              Real
             </span>
           )}
           {isFairDeal && (
-            <span className="shrink-0 select-none rounded-md bg-dodgy-600 p-1 dd-type-badge text-white shadow-xs">
-              Fair Price
+            <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">
+              Fair
             </span>
           )}
         </div>
