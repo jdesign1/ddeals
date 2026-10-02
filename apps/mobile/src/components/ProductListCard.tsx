@@ -248,7 +248,9 @@ export default function ProductListCard({
         className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
           isCompactLayout
             ? "px-2 py-2"
-            : useGridCard
+            : isSnapshotLayout
+              ? "px-3 pb-7 pt-3"
+              : useGridCard
               ? "px-3 pb-9 pt-3"
               : "pb-9 pl-4 pr-9 pt-4"
         }`}
@@ -321,7 +323,7 @@ export default function ProductListCard({
       {snapshot ? (
         <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-start gap-1">
           <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
-            {snapshot.kind === "savings" ? "Save" : "Risen"} ${snapshot.amount.toFixed(2)}
+            {snapshot.kind === "savings" ? "Save" : "Up"} ${snapshot.amount.toFixed(2)}
           </span>
           <span className={`shrink-0 select-none rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Real" : "Dodgy"}
