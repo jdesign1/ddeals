@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
@@ -158,12 +160,44 @@ export default function DealSnapshotRail({
               />
             );
           })}
+          <SnapshotSeeAllCard kind={kind} snapshotCardHeight={snapshotCardHeight} />
         </motion.div>
       )}
       <span className="sr-only" aria-live="polite">
         {isRefreshing ? `${title} updated` : ""}
       </span>
     </section>
+  );
+}
+
+function SnapshotSeeAllCard({
+  kind,
+  snapshotCardHeight,
+}: {
+  kind: DealSnapshotKind;
+  snapshotCardHeight: number | null;
+}) {
+  const isSavings = kind === "savings";
+  const label = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
+
+  return (
+    <Link
+      href="/specials"
+      aria-label={`See all ${label.toLowerCase()}`}
+      style={snapshotCardHeight ? { height: snapshotCardHeight } : undefined}
+      className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start self-stretch rounded-[1.5rem] border bg-white p-4 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+        isSavings
+          ? "border-fair-200 text-fair-800 hover:bg-fair-50 focus-visible:outline-fair-700"
+          : "border-alert-200 text-alert-700 hover:bg-alert-50 focus-visible:outline-alert-700"
+      }`}
+    >
+      <span className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
+        <span className={`flex h-10 w-10 items-center justify-center rounded-full ${isSavings ? "bg-fair-100" : "bg-alert-100"}`}>
+          <ArrowRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+        </span>
+        <span className="dd-type-control font-extrabold">See all</span>
+      </span>
+    </Link>
   );
 }
 
