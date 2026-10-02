@@ -35,7 +35,7 @@ export default function CheaperAlternativesSection({
         onClick={onToggle}
         aria-expanded={showCarousel}
         className={`flex w-full items-center justify-center gap-2 rounded-full border py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${
-          isMultiStoreDeal ? "border-stone-300 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
+          isMultiStoreDeal ? "border-stone-500 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
         }`}
       >
         <span>See cheaper options</span>

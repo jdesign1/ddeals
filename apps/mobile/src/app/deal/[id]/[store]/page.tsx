@@ -1086,7 +1086,7 @@ export default function DealAssessmentPage() {
               onClick={() => setShowCheaperCarousel((open) => !open)}
               aria-expanded={showCheaperCarousel}
               className={`flex w-full items-center justify-center gap-2 rounded-full border py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${
-                isMultiStoreDeal ? "border-stone-300 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
+                isMultiStoreDeal ? "border-stone-500 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
               }`}
             >
               <span>See cheaper options</span>
@@ -1481,7 +1481,7 @@ export default function DealAssessmentPage() {
         <p className="mt-1 text-sm leading-relaxed text-stone-600">Get in touch and let us know.</p>
         <Link
           href="/report-deal"
-          className="mt-4 flex min-h-11 w-full items-center justify-center rounded-xl border border-stone-300 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
+          className="mt-4 flex min-h-11 w-full items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
         >
           Report an incorrect deal
         </Link>
