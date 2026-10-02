@@ -269,15 +269,15 @@ export default function ProductListCard({
             {brandSentenceCase}
           </span>
         )}
-        <h3 className={`line-clamp-2 font-display text-base font-bold leading-snug text-stone-900 ${isCompactLayout ? "pr-12" : ""} ${isSnapshotLayout ? "min-h-[2.75rem]" : ""}`}>
+        <h3 className={`line-clamp-2 font-display text-base font-bold ${isSnapshotLayout ? "leading-tight min-h-[2.5rem]" : "leading-snug"} text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
           {product.name}
         </h3>
         {isSnapshotLayout ? (
-          <span className="block min-h-[1.125rem] truncate dd-type-meta text-stone-500">{product.unit}</span>
+          <span className="block min-h-[1rem] truncate dd-type-meta text-stone-500">{product.unit}</span>
         ) : product.unit ? (
           <span className="dd-type-meta text-stone-500">{product.unit}</span>
         ) : null}
-        <div className={`mt-1 flex min-w-0 ${
+        <div className={`${isSnapshotLayout ? "mt-0" : "mt-1"} flex min-w-0 ${
           isSnapshotLayout ? "w-full flex-col gap-1" : "flex-wrap items-center gap-x-2 gap-y-1"
         }`}>
           {specialPriceRange ? (
