@@ -661,7 +661,7 @@ export default function FullScreenSearch() {
     };
 
     return (
-      <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
+      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
         <SupermarketPicker
           selectedStoreIds={selectedStores}
           stores={availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key }))}

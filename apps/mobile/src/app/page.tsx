@@ -382,7 +382,7 @@ export default function HomePage() {
               onChange={handleDealFilterChange}
               allLabel="Top Deals"
             />
-            <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
+            <div className="flex min-w-0 items-center gap-2 overflow-hidden">
               <SupermarketPicker
                 stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
                 selectedStoreIds={selectedStores}

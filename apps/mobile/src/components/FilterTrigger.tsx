@@ -33,7 +33,7 @@ export default function FilterTrigger({
       role="group"
       aria-label={ariaLabel}
       className={`inline-flex h-11 items-stretch overflow-hidden rounded-lg border border-stone-300 bg-white dd-type-control text-stone-700 shadow-none transition-colors hover:bg-stone-50 ${
-        compact ? "min-w-0" : "w-fit min-w-[7.5rem] max-w-44 shrink-0"
+        compact ? "min-w-0" : "min-w-0 max-w-44"
       }`}
     >
       <button
