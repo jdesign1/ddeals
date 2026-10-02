@@ -30,9 +30,9 @@ export default function SupermarketPicker({
         : `${selectedStores.length} Supermarkets`;
   const reset = () => onToggleStore("all");
   const selectedLogoPreview = selectedStores.length > 0 ? (
-    <span className="flex shrink-0 -space-x-1" aria-hidden="true">
-      {selectedStores.slice(0, 2).map((storeId) => (
-        <StoreLogoBadge key={storeId} store={storeId} variant="compact" decorative className="ring-1 ring-white" />
+    <span className="flex shrink-0 gap-0" aria-hidden="true">
+      {selectedStores.slice(0, 3).map((storeId) => (
+        <StoreLogoBadge key={storeId} store={storeId} variant="selector" decorative className="ring-1 ring-white" />
       ))}
     </span>
   ) : undefined;
@@ -40,7 +40,7 @@ export default function SupermarketPicker({
   return (
     <>
       <FilterTrigger
-        label={selectedLabel}
+        label={isActive ? "" : selectedLabel}
         active={isActive}
         onOpen={() => setIsOpen(true)}
         onClear={reset}
