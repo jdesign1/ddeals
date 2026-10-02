@@ -539,26 +539,26 @@ export default function HomePage() {
 /** Keep the Check Deals structure visible while the full search catalogue is prepared. */
 function HomeCatalogueSkeleton() {
   return (
-    <div className="space-y-5 px-5 pb-2" role="status" aria-label="Loading today’s deals">
+    <div className="space-y-5 px-5 pb-2" role="status" aria-busy="true" aria-label="Loading today’s deals">
       <div className="flex rounded-xl bg-white p-1 shadow-sm" aria-hidden="true">
-        <div className="h-10 flex-1 rounded-lg bg-stone-900" />
-        <div className="ml-1 h-10 flex-1 rounded-lg bg-stone-100" />
-        <div className="ml-1 h-10 flex-1 rounded-lg bg-stone-100" />
+        <div className="dd-skeleton-shimmer h-10 flex-1 rounded-lg" />
+        <div className="dd-skeleton-shimmer ml-1 h-10 flex-1 rounded-lg" />
+        <div className="dd-skeleton-shimmer ml-1 h-10 flex-1 rounded-lg" />
       </div>
       <div className="hide-scrollbar -mx-5 flex gap-2 overflow-hidden px-5" aria-hidden="true">
-        <div className="h-10 w-14 shrink-0 rounded-full bg-stone-200" />
-        <div className="h-10 w-24 shrink-0 rounded-full bg-stone-200" />
-        <div className="h-10 w-24 shrink-0 rounded-full bg-stone-200" />
-        <div className="h-10 w-20 shrink-0 rounded-full bg-stone-200" />
+        <div className="dd-skeleton-shimmer h-10 w-14 shrink-0 rounded-full" />
+        <div className="dd-skeleton-shimmer h-10 w-24 shrink-0 rounded-full" />
+        <div className="dd-skeleton-shimmer h-10 w-24 shrink-0 rounded-full" />
+        <div className="dd-skeleton-shimmer h-10 w-20 shrink-0 rounded-full" />
       </div>
       <section className="space-y-3" aria-hidden="true">
-        <div className="h-6 w-40 rounded bg-stone-200" />
+        <div className="dd-skeleton-shimmer h-6 w-40 rounded" />
         <div className="flex gap-3 overflow-hidden">
           {[0, 1].map((index) => (
             <div key={index} className="w-[76%] shrink-0 rounded-2xl bg-white p-4 shadow-sm">
-              <div className="h-24 rounded-xl bg-stone-100" />
-              <div className="mt-4 h-4 w-3/4 rounded bg-stone-200" />
-              <div className="mt-2 h-3 w-1/2 rounded bg-stone-100" />
+              <div className="dd-skeleton-shimmer h-24 rounded-xl" />
+              <div className="dd-skeleton-shimmer mt-4 h-4 w-3/4 rounded" />
+              <div className="dd-skeleton-shimmer mt-2 h-3 w-1/2 rounded" />
             </div>
           ))}
         </div>

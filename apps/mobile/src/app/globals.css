@@ -27,6 +27,47 @@ a[aria-label="Dodgy Deal home"] {
   min-height: 44px;
 }
 
+/* Shared loading placeholder. A transform-driven highlight creates the
+   familiar left-to-right skeleton wave without changing layout or repainting
+   the whole page. Individual shapes clip the highlight to their own radius. */
+.dd-skeleton-shimmer {
+  --dd-skeleton-base: rgb(231 229 228);
+  --dd-skeleton-highlight: rgb(255 255 255 / 0.78);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--dd-skeleton-base);
+}
+
+.dd-skeleton-shimmer::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 30%,
+    var(--dd-skeleton-highlight) 50%,
+    transparent 70%,
+    transparent 100%
+  );
+  transform: translateX(-110%);
+  animation: dd-skeleton-shimmer-wave 1.55s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+[data-theme="dark"] .dd-skeleton-shimmer {
+  --dd-skeleton-base: rgb(68 64 60);
+  --dd-skeleton-highlight: rgb(255 255 255 / 0.14);
+}
+
+@keyframes dd-skeleton-shimmer-wave {
+  to {
+    transform: translateX(110%);
+  }
+}
+
 /* The Check Deals header lives inside the scroll container, so its sticky
    layout box stays stable while the shell moves on the compositor. This
    avoids changing scroll geometry during iOS momentum scrolling. */
@@ -71,6 +112,11 @@ a[aria-label="Dodgy Deal home"] {
 
   .mascot-wave {
     animation: none;
+  }
+
+  .dd-skeleton-shimmer::after {
+    animation: none;
+    opacity: 0;
   }
 }
 
