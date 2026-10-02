@@ -18,6 +18,7 @@ export default function FilterTrigger({
   expanded = false,
   compact = false,
   hasPopup = "dialog",
+  fill = false,
 }: {
   label: string;
   active: boolean;
@@ -27,13 +28,14 @@ export default function FilterTrigger({
   expanded?: boolean;
   compact?: boolean;
   hasPopup?: "dialog" | "listbox";
+  fill?: boolean;
 }) {
   return (
     <div
       role="group"
       aria-label={ariaLabel}
       className={`inline-flex h-11 items-stretch overflow-hidden rounded-lg border border-stone-300 bg-white dd-type-control text-stone-700 shadow-none transition-colors hover:bg-stone-50 ${
-        compact ? "min-w-0" : "min-w-0 max-w-44"
+        fill ? "min-w-0 w-full flex-1 basis-0" : compact ? "min-w-0" : "min-w-0 max-w-44"
       }`}
     >
       <button
@@ -52,7 +54,7 @@ export default function FilterTrigger({
           type="button"
           onClick={onClear}
           aria-label={`Clear ${ariaLabel.toLowerCase()}`}
-          className="flex w-9 shrink-0 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
+          className="flex w-8 shrink-0 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

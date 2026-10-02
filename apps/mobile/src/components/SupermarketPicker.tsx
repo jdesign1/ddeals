@@ -38,6 +38,7 @@ export default function SupermarketPicker({
         onClear={reset}
         ariaLabel={`Filter by supermarket: ${selectedLabel}`}
         expanded={isOpen}
+        fill
       />
 
       <BottomSheetPortal open={isOpen}>

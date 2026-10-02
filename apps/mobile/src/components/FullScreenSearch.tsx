@@ -673,6 +673,7 @@ export default function FullScreenSearch() {
           onOpen={() => setCategorySheetTarget(target)}
           onClear={() => (target === "results" ? setResultsCategoryFilter([]) : setPopularCategoryFilter([]))}
           ariaLabel="Filter by category"
+          fill
         />
         <FilterTrigger
           label="Sort"
@@ -682,6 +683,7 @@ export default function FullScreenSearch() {
           ariaLabel="Sort deals"
           compact
           hasPopup="listbox"
+          fill
         />
       </div>
     );

@@ -51,6 +51,7 @@ export default function CategoryPicker({
         onClear={() => onChange([])}
         ariaLabel={`${ariaLabel}: ${selectedLabel}`}
         expanded={isOpen}
+        fill
       />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>

@@ -626,6 +626,7 @@ function SortDropdown<T extends string>({
         expanded={isOpen}
         compact
         hasPopup="listbox"
+        fill
       />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>
