@@ -316,9 +316,9 @@ export default function ProductListCard({
         {!isSnapshotLayout && !hideCardBadges && isCompactLayout && (
           <div className="mt-auto flex min-w-0 items-center gap-1 pt-1.5">
             {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
-            {isDodgy && <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">Dodgy</span>}
-            {isRealSaver && <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">Real</span>}
-            {isFairDeal && <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">Fair</span>}
+            {isDodgy && <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Dodgy</span>}
+            {isRealSaver && <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Real</span>}
+            {isFairDeal && <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Fair</span>}
           </div>
         )}
       </div>
@@ -336,17 +336,17 @@ export default function ProductListCard({
         <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-1 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
           {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
           {isDodgy && (
-            <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">
+            <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
               Dodgy
             </span>
           )}
           {isRealSaver && (
-            <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">
+            <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
               Real
             </span>
           )}
           {isFairDeal && (
-            <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-[11px] leading-4 text-white shadow-xs">
+            <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
               Fair
             </span>
           )}

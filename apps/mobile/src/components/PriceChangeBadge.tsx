@@ -27,7 +27,7 @@ export default function PriceChangeBadge({
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-0.5 rounded-md text-white shadow-xs ${
-        compact ? "px-1 py-0.5 text-[11px] leading-4" : "p-1 dd-type-badge"
+        compact ? "px-1 py-0.5 text-xs leading-4 font-bold" : "p-1 dd-type-badge"
       } ${
         isCheaper ? "bg-fair-600" : "bg-alert-600"
       }`}
