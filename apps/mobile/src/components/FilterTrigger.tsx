@@ -47,13 +47,17 @@ export default function FilterTrigger({
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-1 py-2 text-left ${fill ? "px-2" : "px-3"}`}
+        className={`relative flex min-w-0 flex-1 cursor-pointer items-center py-2 text-left ${fill ? "px-2" : "px-3"}`}
       >
-        <span className="flex min-w-0 flex-1 items-center gap-1">
+        <span
+          className={`pointer-events-none absolute inset-y-0 left-0 flex min-w-0 items-center justify-center gap-1 ${
+            active ? "right-0" : "right-6"
+          }`}
+        >
           {leading}
           <span className="truncate">{label}</span>
         </span>
-        {!active && <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+        {!active && <ChevronDown className="relative ml-auto h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
       </button>
       {active && (
         <button
