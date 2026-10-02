@@ -502,6 +502,10 @@ export default function HomePage() {
                 categoryCounts={topSavingsCategoryCounts}
                 isAllStoresSelected={selectedStores.includes("all")}
                 refreshKey={selectedStores.join(",")}
+                onSeeAll={() => {
+                  setDealCategoryFilter(topSavingsCategories);
+                  handleDealSortChange("biggest-saver");
+                }}
               />
               <DealSnapshotRail
                 kind="dodgy"
@@ -512,6 +516,10 @@ export default function HomePage() {
                 categoryCounts={worstDodgyCategoryCounts}
                 isAllStoresSelected={selectedStores.includes("all")}
                 refreshKey={selectedStores.join(",")}
+                onSeeAll={() => {
+                  setDealCategoryFilter(worstDodgyCategories);
+                  handleDealSortChange("worst-dodgy");
+                }}
               />
             </>
           )}

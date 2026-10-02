@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
@@ -29,6 +28,7 @@ export default function DealSnapshotRail({
   categoryCounts,
   isAllStoresSelected,
   refreshKey,
+  onSeeAll,
 }: {
   kind: DealSnapshotKind;
   deals: FlatDeal[];
@@ -38,6 +38,7 @@ export default function DealSnapshotRail({
   categoryCounts: Map<string, number>;
   isAllStoresSelected: boolean;
   refreshKey: string;
+  onSeeAll: () => void;
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
@@ -160,7 +161,7 @@ export default function DealSnapshotRail({
               />
             );
           })}
-          <SnapshotSeeAllCard kind={kind} snapshotCardHeight={snapshotCardHeight} />
+          <SnapshotSeeAllCard kind={kind} snapshotCardHeight={snapshotCardHeight} onSeeAll={onSeeAll} />
         </motion.div>
       )}
       <span className="sr-only" aria-live="polite">
@@ -173,19 +174,22 @@ export default function DealSnapshotRail({
 function SnapshotSeeAllCard({
   kind,
   snapshotCardHeight,
+  onSeeAll,
 }: {
   kind: DealSnapshotKind;
   snapshotCardHeight: number | null;
+  onSeeAll: () => void;
 }) {
   const isSavings = kind === "savings";
   const label = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
 
   return (
-    <Link
-      href="/specials"
+    <button
+      type="button"
+      onClick={onSeeAll}
       aria-label={`See all ${label.toLowerCase()}`}
       style={snapshotCardHeight ? { height: snapshotCardHeight } : undefined}
-      className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+      className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
         isSavings
           ? "text-fair-800 focus-visible:outline-fair-700"
           : "text-alert-700 focus-visible:outline-alert-700"
@@ -195,7 +199,7 @@ function SnapshotSeeAllCard({
         <ArrowRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
         <span className="dd-type-control font-extrabold">See all</span>
       </span>
-    </Link>
+    </button>
   );
 }
 
