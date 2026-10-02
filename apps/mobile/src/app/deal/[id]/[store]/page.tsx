@@ -1203,7 +1203,6 @@ export default function DealAssessmentPage() {
                   <div className="pt-3">
                     <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
                       {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving }) => {
-                        const meta = getStoreLogoMeta(altStore);
                         return (
                           <div key={`${altProd.id}-${altStore}`}>
                             {/* Card content ported verbatim from the old
@@ -1283,8 +1282,8 @@ export default function DealAssessmentPage() {
                                 rel="noopener noreferrer"
                                 className="dd-type-control mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-stone-400 bg-white py-2.5 text-center text-stone-700 transition-all hover:bg-stone-50"
                               >
-                                <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>
-                                  {meta.short}
+                                <span aria-hidden="true">
+                                  <StoreLogoBadge store={altStore} variant="card" />
                                 </span>
                                 Go to {altStore}
                                 <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { BarChartRow } from "@dodgey-deals/shared";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 /**
  * "Current Special vs Recent prices by store" bar chart — ported from
@@ -207,12 +208,7 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
                 {over > 0 && <div className={`w-full ${deltaClass}`} style={{ height: overPx }} />}
               </motion.div>
 
-              <span
-                className="rounded-md px-2.5 py-1 dd-type-badge text-white"
-                style={{ backgroundColor: STORE_TICK_COLORS[row.name] || "#78716c" }}
-              >
-                {row.name}
-              </span>
+              <StoreLogoBadge store={row.storeName} variant="card" />
             </div>
           );
         })}
@@ -220,7 +216,3 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
     </div>
   );
 }
-
-// PNS darkened from #f59e0b (amber-500) -> #d97706 (amber-600), matching
-// store-meta.ts's own bg-amber-600 (2026-08-11, per Jay's ask).
-const STORE_TICK_COLORS: Record<string, string> = { WW: "#059669", PNS: "#d97706", NW: "#e11d48", FS: "#16a34a" };

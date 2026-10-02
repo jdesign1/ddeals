@@ -2,10 +2,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { CheaperAlternative } from "@dodgey-deals/shared";
 import { getStoreProductUrl, findDealForStore } from "@dodgey-deals/shared";
-import { getStoreLogoMeta } from "@/lib/store-meta";
 import AddToListButton from "@/components/AddToListButton";
 import InsightCarousel from "@/components/InsightCarousel";
 import ProductImage from "@/components/ProductImage";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 interface CheaperAlternativesSectionProps {
   alternatives: CheaperAlternative[];
@@ -62,7 +62,6 @@ export default function CheaperAlternativesSection({
             <div className="pt-3">
               <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
                 {alternatives.map(({ product: alternativeProduct, store, price, saving }) => {
-                  const meta = getStoreLogoMeta(store);
                   return (
                     <div key={`${alternativeProduct.id}-${store}`}>
                       <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-300 bg-white px-5 pb-5 pt-7 shadow-xs">
@@ -101,7 +100,9 @@ export default function CheaperAlternativesSection({
                           rel="noopener noreferrer"
                           className="dd-type-control mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-stone-400 bg-white py-2.5 text-center text-stone-700 transition-all hover:bg-stone-50"
                         >
-                          <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${meta.bg} ${meta.text}`}>{meta.short}</span>
+                          <span aria-hidden="true">
+                            <StoreLogoBadge store={store} variant="card" />
+                          </span>
                           Go to {store}
                           <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
                         </a>

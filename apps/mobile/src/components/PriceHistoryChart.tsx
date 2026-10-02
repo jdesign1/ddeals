@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { normalizeStoreKey, STORE_DISPLAY_FALLBACK, type AssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
+import { type AssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 interface PriceHistoryChartProps {
   points: PriceHistoryPoint[];
@@ -189,7 +190,6 @@ export default function PriceHistoryChart({
   }
 
   const showingAllStores = selectedStore === ALL_STORES_VALUE;
-  const currentStoreName = STORE_DISPLAY_FALLBACK[normalizeStoreKey(currentStore)] || currentStore;
   const sourceSeries: PriceHistorySeries[] = showingAllStores
     ? historySeries
     : [{ store: currentStore, points, currentPrice, currentIsSpecial, verdict }];
@@ -259,10 +259,16 @@ export default function PriceHistoryChart({
             className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 text-left"
             style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "none" : "auto" }}
           >
-        <div className="flex min-h-5 items-start justify-center gap-2 -mb-1 pb-0">
-          <span className="dd-type-control text-stone-700">
-            {showingAllStores ? "All supermarkets" : <>{currentStoreName} price <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span></>}
-          </span>
+        <div className="flex min-h-5 items-center justify-center gap-2 -mb-1 pb-0">
+          {showingAllStores ? (
+            <span className="dd-type-control text-stone-700">All supermarkets</span>
+          ) : (
+            <>
+              <StoreLogoBadge store={currentStore} variant="card" />
+              <span className="dd-type-control text-stone-700">price</span>
+              <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
+            </>
+          )}
           {!showingAllStores && hasComparisonPrice && (
             <PriceChangeBadge currentPrice={currentPrice} comparisonPrice={comparisonPrice} />
           )}
@@ -393,7 +399,7 @@ export default function PriceHistoryChart({
             ? renderedSeries.map((series) => (
                 <div key={series.store} className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: series.color }} />
-                  <span>{series.store}</span>
+                  <StoreLogoBadge store={series.store} variant="compact" />
                 </div>
               ))
             : (
