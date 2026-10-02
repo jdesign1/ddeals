@@ -382,7 +382,7 @@ export default function HomePage() {
               onChange={handleDealFilterChange}
               allLabel="Top Deals"
             />
-            <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.7fr)] gap-1.5 overflow-hidden">
               <SupermarketPicker
                 stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
                 selectedStoreIds={selectedStores}
@@ -412,6 +412,7 @@ export default function HomePage() {
                     defaultValue={getDefaultDealSort(dealFilter)}
                     onChange={handleDealSortChange}
                     options={TRENDING_SORT_OPTIONS}
+                    fill
                   />
                 </>
               )}
@@ -607,11 +608,13 @@ function SortDropdown<T extends string>({
   defaultValue,
   onChange,
   options,
+  fill = false,
 }: {
   value: T;
   defaultValue: T;
   onChange: (value: T) => void;
   options: { value: T; label: string }[];
+  fill?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const isActive = value !== defaultValue;
@@ -626,7 +629,7 @@ function SortDropdown<T extends string>({
         expanded={isOpen}
         compact
         hasPopup="listbox"
-        fill
+        fill={fill}
       />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>

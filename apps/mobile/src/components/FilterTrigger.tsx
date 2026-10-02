@@ -35,7 +35,7 @@ export default function FilterTrigger({
       role="group"
       aria-label={ariaLabel}
       className={`inline-flex h-11 items-stretch overflow-hidden rounded-lg border border-stone-300 bg-white dd-type-control text-stone-700 shadow-none transition-colors hover:bg-stone-50 ${
-        fill ? "min-w-0 w-full flex-1 basis-0" : compact ? "min-w-0" : "min-w-0 max-w-44"
+        fill ? "min-w-0 w-full" : compact ? "min-w-0" : "min-w-0 max-w-44"
       }`}
     >
       <button
@@ -44,7 +44,7 @@ export default function FilterTrigger({
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className="flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 px-3 py-2 text-left"
+        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 py-2 text-left ${fill ? "px-2" : "px-3"}`}
       >
         <span className="truncate">{label}</span>
         {!active && <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
