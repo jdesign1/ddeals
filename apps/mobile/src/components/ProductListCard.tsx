@@ -285,7 +285,7 @@ export default function ProductListCard({
           )}
         </div>
         {isSnapshotLayout && (
-          <span className="mt-2.5 truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
+          <span className="mt-1 truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
         )}
         {/* The retailer is visually tied to its price, not to the product
             title. This leaves the bottom row free for the saving and verdict
