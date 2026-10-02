@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Minus, Plus, Share, X } from "lucide-react";
+import { Check, ChevronDown, Share, X } from "lucide-react";
 import {
   CATEGORY_SECTIONS,
   canonicalStoreKey,
@@ -47,10 +47,26 @@ interface WatchlistItem {
 interface WatchlistGroup {
   key: string;
   label: string;
+  kind: "active" | "inactive" | "unavailable";
   items: WatchlistItem[];
 }
 
 const dairyRule = getSearchSynonymRule("dairy");
+const WATCHLIST_COLLAPSED_GROUPS_KEY = "dodgey-deals:watchlist-collapsed-groups:v1";
+
+function collapsedGroupsStorageKey(userId: string): string {
+  return `${WATCHLIST_COLLAPSED_GROUPS_KEY}:${userId}`;
+}
+
+function readCollapsedGroups(userId: string): string[] {
+  try {
+    const stored = window.localStorage.getItem(collapsedGroupsStorageKey(userId));
+    const parsed: unknown = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function watchlistCategory(product: Pick<ListItemProductMeta, "name" | "brand" | "category"> | undefined): string {
   if (!product) return "";
@@ -70,6 +86,15 @@ function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, 
 
 function itemDiscount(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]): number {
   return itemDeal(item, itemCards, selectedSupermarkets)?.discountPercentage ?? 0;
+}
+
+function otherSpecialStoreCount(product: ProductCardData, displayedStore: string): number {
+  const displayedKey = canonicalStoreKey(displayedStore);
+  return new Set(
+    product.currentDeals
+      .filter((deal) => deal.isOnSpecial && canonicalStoreKey(deal.store) !== displayedKey)
+      .map((deal) => canonicalStoreKey(deal.store)),
+  ).size;
 }
 
 function supermarketPriority(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]): number {
@@ -152,8 +177,6 @@ function WatchlistGroupSection({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }, [clearLongPress]);
 
-  const onSpecialItems = group.items.filter((entry) => itemDeal(entry, itemCards, selectedSupermarkets)?.isOnSpecial === true);
-  const notOnSpecialItems = group.items.filter((entry) => itemDeal(entry, itemCards, selectedSupermarkets)?.isOnSpecial !== true);
   const renderItem = (entry: WatchlistItem) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
@@ -165,7 +188,15 @@ function WatchlistGroupSection({
       <div key={entry.productId} data-watchlist-product-id={entry.productId}>
         <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
           {card && deal ? (
-            <ListItemProductCard product={card} deal={deal} quantity={entry.item.quantity} onRemove={() => void removeProduct(entry.productId)} removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`} onAfterNotOnSpecial={() => void reload(false)} />
+            <ListItemProductCard
+              product={card}
+              deal={deal}
+              otherSpecialCount={group.kind === "active" ? otherSpecialStoreCount(card, deal.store) : 0}
+              quantity={entry.item.quantity}
+              onRemove={() => void removeProduct(entry.productId)}
+              removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
+              onAfterNotOnSpecial={() => void reload(false)}
+            />
           ) : (
             <FallbackWatchlistRow label={meta?.name ?? "Product"} onRemove={() => void removeProduct(entry.productId)} />
           )}
@@ -201,7 +232,7 @@ function WatchlistGroupSection({
         aria-labelledby={`watchlist-group-${group.key}`}
       >
         <div
-          className={`${isCollapsed ? "mb-0" : "mb-3"} flex min-h-8 cursor-grab select-none items-center gap-3 touch-none active:cursor-grabbing`}
+          className={`${isCollapsed ? "mb-0" : "mb-3"} flex min-h-11 cursor-grab select-none items-center gap-3 touch-none active:cursor-grabbing`}
           onContextMenu={(event) => event.preventDefault()}
           onPointerDown={handleDragHandlePointerDown}
           onPointerUp={handleDragHandlePointerUp}
@@ -219,9 +250,9 @@ function WatchlistGroupSection({
               onClick={onToggleCollapsed}
               onPointerDown={(event) => event.stopPropagation()}
               disabled={group.items.length === 0}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:cursor-default disabled:opacity-50"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:cursor-default disabled:opacity-50"
             >
-              {isCollapsed ? <Plus className="h-4 w-4" aria-hidden="true" /> : <Minus className="h-4 w-4" aria-hidden="true" />}
+              <ChevronDown className={`h-5 w-5 transition-transform ${isCollapsed ? "-rotate-90" : "rotate-0"}`} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -235,11 +266,7 @@ function WatchlistGroupSection({
               className="overflow-hidden"
             >
               <div className="flex flex-col gap-2">
-                {onSpecialItems.map(renderItem)}
-                {notOnSpecialItems.length > 0 && group.key !== "price-unavailable" && (
-                  <h3 className="px-1 pt-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-stone-400">Not on special</h3>
-                )}
-                {notOnSpecialItems.map(renderItem)}
+                {group.items.map(renderItem)}
               </div>
             </motion.div>
           )}
@@ -251,6 +278,7 @@ function WatchlistGroupSection({
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
+  const userId = user?.id ?? null;
   const router = useRouter();
   const {
     unreadListItemKeys,
@@ -277,6 +305,13 @@ export default function ListsPage() {
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isSettingUpNotifications, setIsSettingUpNotifications] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setCollapsedGroupKeys(userId ? readCollapsedGroups(userId) : []);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [userId]);
 
   const applyData = useCallback((data: Awaited<ReturnType<typeof loadListsPageData>>) => {
     setItemsByList(data.grouped);
@@ -389,7 +424,9 @@ export default function ListsPage() {
       watchlistItems.filter((item) => {
         const category = watchlistCategory(productMeta.get(item.productId));
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
-        return matchesCategory;
+        const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+        const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
+        return matchesCategory && matchesSupermarket;
       }),
       sortMode,
       itemCards,
@@ -410,23 +447,37 @@ export default function ListsPage() {
   }, [itemCards, watchlistItems]);
 
   const groups = useMemo<WatchlistGroup[]>(() => {
-    const grouped = new Map<string, WatchlistItem[]>(supermarkets.map(([key]) => [key, []]));
+    const grouped = new Map<string, WatchlistItem[]>();
     for (const item of filteredItems) {
       const deal = itemDeal(item, itemCards, selectedSupermarkets);
-      const store = deal?.store ?? "Price unavailable";
-      const key = deal ? canonicalStoreKey(store) : "price-unavailable";
+      const key = !deal
+        ? "price-unavailable"
+        : deal.isOnSpecial
+          ? canonicalStoreKey(deal.store)
+          : "not-on-special";
       const existing = grouped.get(key) ?? [];
       existing.push(item);
       grouped.set(key, existing);
     }
     return [...grouped.entries()]
       .sort(([keyA], [keyB]) => {
+        const rank = (key: string) => key === "price-unavailable" ? 2 : key === "not-on-special" ? 1 : 0;
+        if (rank(keyA) !== rank(keyB)) return rank(keyA) - rank(keyB);
         const priorityA = supermarketGroupPriority(keyA, selectedSupermarkets);
         const priorityB = supermarketGroupPriority(keyB, selectedSupermarkets);
         return priorityA !== priorityB ? priorityA - priorityB : keyA.localeCompare(keyB);
       })
-      .map(([key, items]) => ({ key, label: key === "price-unavailable" ? "Not on special" : STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key, items }));
-  }, [filteredItems, itemCards, selectedSupermarkets, supermarkets]);
+      .map(([key, items]) => {
+        if (key === "price-unavailable") return { key, label: "Price unavailable", kind: "unavailable" as const, items };
+        if (key === "not-on-special") return { key, label: "Not currently on special", kind: "inactive" as const, items };
+        return {
+          key,
+          label: STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key,
+          kind: "active" as const,
+          items,
+        };
+      });
+  }, [filteredItems, itemCards, selectedSupermarkets]);
 
   const orderedGroups = useMemo(() => {
     const groupsByKey = new Map(groups.map((group) => [group.key, group]));
@@ -435,12 +486,21 @@ export default function ListsPage() {
     return [...rememberedKeys, ...newKeys].map((key) => groupsByKey.get(key)!);
   }, [groupOrder, groups]);
 
-  const expandAllWatchlistGroups = useCallback(() => {
-    setCollapsedGroupKeys([]);
-  }, []);
+  const toggleGroup = useCallback((groupKey: string) => {
+    setCollapsedGroupKeys((current) => {
+      const next = current.includes(groupKey) ? current.filter((key) => key !== groupKey) : [...current, groupKey];
+      if (userId) {
+        try {
+          window.localStorage.setItem(collapsedGroupsStorageKey(userId), JSON.stringify(next));
+        } catch {
+          // Storage restrictions should not block the disclosure interaction.
+        }
+      }
+      return next;
+    });
+  }, [userId]);
 
   const toggleSupermarket = useCallback((key: string) => {
-    expandAllWatchlistGroups();
     setSelectedSupermarkets((current) => {
       if (key === "all") return ["all"];
       if (current.includes("all")) return [key];
@@ -450,29 +510,25 @@ export default function ListsPage() {
       }
       return [...current, key];
     });
-  }, [expandAllWatchlistGroups]);
+  }, []);
 
   const toggleCategory = useCallback((category: string) => {
-    expandAllWatchlistGroups();
     setSelectedCategories((current) => current.includes(category) ? current.filter((value) => value !== category) : [...current, category]);
-  }, [expandAllWatchlistGroups]);
+  }, []);
 
   const clearCategories = useCallback(() => {
-    expandAllWatchlistGroups();
     setSelectedCategories([]);
-  }, [expandAllWatchlistGroups]);
+  }, []);
 
   const clearAllFilters = useCallback(() => {
-    expandAllWatchlistGroups();
     setSelectedCategories([]);
     setSelectedSupermarkets(["all"]);
-  }, [expandAllWatchlistGroups]);
+  }, []);
 
   const selectSortMode = useCallback((value: string) => {
-    expandAllWatchlistGroups();
     setSortMode(value as SortMode);
     setIsSortSheetOpen(false);
-  }, [expandAllWatchlistGroups]);
+  }, []);
 
   const shareList = useMemo<ListRow>(() => ({
     id: "watchlist-share",
@@ -565,7 +621,7 @@ export default function ListsPage() {
           </div>
         )}
         {!loadingWatchlist && !error && watchlistItems.length > 0 && filteredItems.length === 0 && (
-          <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match this category.</p>
+          <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match these filters.</p>
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && (
           <Reorder.Group axis="y" values={orderedGroups.map((group) => group.key)} onReorder={setGroupOrder} className="flex flex-col gap-5 px-5">
@@ -581,10 +637,7 @@ export default function ListsPage() {
                 removeProduct={removeProduct}
                 reload={reload}
                 isCollapsed={group.items.length === 0 || collapsedGroupKeys.includes(group.key)}
-                onToggleCollapsed={() => {
-                  if (group.items.length === 0) return;
-                  setCollapsedGroupKeys((current) => current.includes(group.key) ? current.filter((key) => key !== group.key) : [...current, group.key]);
-                }}
+                onToggleCollapsed={() => toggleGroup(group.key)}
               />
             ))}
           </Reorder.Group>

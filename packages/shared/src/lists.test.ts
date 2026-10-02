@@ -114,6 +114,26 @@ test("uses a live special at another store instead of greying the product becaus
   assert.equal(deal.dealType, "Real Deal");
 });
 
+test("keeps every live supermarket special with the cheapest primary offer first", () => {
+  const woolworths = { product_id: "p1", store_id: "woolworths", price: 4, is_special: true };
+  const newWorld = { product_id: "p1", store_id: "newworld", price: 5, is_special: true };
+  const l = lookups({
+    cheapestByProduct: new Map([["p1", woolworths]]),
+    specialByProduct: new Map([["p1", woolworths]]),
+    specialsByProduct: new Map([["p1", [woolworths, newWorld]]]),
+    dealByProductStore: new Map([
+      ["p1:woolworths", { product_id: "p1", store_id: "woolworths", verdict: "GENUINE", normal_price: 7 }],
+      ["p1:newworld", { product_id: "p1", store_id: "newworld", verdict: "MARGINAL", normal_price: 6 }],
+    ]),
+  });
+
+  const card = buildListItemProductCard("p1", META, l);
+  assert.ok(card);
+  assert.deepEqual(card.currentDeals.map((deal) => deal.store), ["Woolworths", "New World"]);
+  assert.deepEqual(card.currentDeals.map((deal) => deal.price), [4, 5]);
+  assert.ok(card.currentDeals.every((deal) => deal.isOnSpecial));
+});
+
 test("greys an orphaned special flag when no live deal-cache row matches", () => {
   const l = lookups({
     cheapestByProduct: new Map([[

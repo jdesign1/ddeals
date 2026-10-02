@@ -266,6 +266,8 @@ export interface ListPriceLookups {
   cheapestByProduct: Map<string, CurrentPriceLookupRow>;
   /** Cheapest currently-special price per product, when any store has one. */
   specialByProduct?: Map<string, CurrentPriceLookupRow>;
+  /** Every verified live special per product, ordered with the primary offer first. */
+  specialsByProduct?: Map<string, CurrentPriceLookupRow[]>;
   dealByProductStore: Map<string, DodgyDealsLookupRow>;
   storesByProduct: Map<string, Set<string>>;
   priceAtStore: Map<string, number>;
@@ -275,6 +277,7 @@ export interface ListPriceLookups {
 const EMPTY_LOOKUPS: ListPriceLookups = {
   cheapestByProduct: new Map(),
   specialByProduct: new Map(),
+  specialsByProduct: new Map(),
   dealByProductStore: new Map(),
   storesByProduct: new Map(),
   priceAtStore: new Map(),
@@ -317,14 +320,33 @@ export async function fetchListPriceLookups(
   const dealByProductStore = new Map<string, DodgyDealsLookupRow>();
   for (const row of dealRows) dealByProductStore.set(`${row.product_id}:${row.store_id}`, row);
 
-  // Prefer the cheapest price that has both a current special flag and a
-  // matching live deal row. This keeps valid specials at other stores active,
-  // while grey-ing products whose only special flag is stale/orphaned.
-  const specialByProduct = new Map<string, CurrentPriceLookupRow>();
+  // Keep every price that has both a current special flag and a matching live
+  // deal row. The stable ordering prevents equal-price offers moving between
+  // supermarket sections from one refresh to the next.
+  const specialsByProduct = new Map<string, CurrentPriceLookupRow[]>();
   for (const row of priceRows) {
     if (!row.is_special || !dealByProductStore.has(`${row.product_id}:${row.store_id}`)) continue;
-    const existingSpecial = specialByProduct.get(row.product_id);
-    if (!existingSpecial || row.price < existingSpecial.price) specialByProduct.set(row.product_id, row);
+    const rows = specialsByProduct.get(row.product_id) ?? [];
+    rows.push(row);
+    specialsByProduct.set(row.product_id, rows);
+  }
+
+  const specialByProduct = new Map<string, CurrentPriceLookupRow>();
+  for (const [productId, rows] of specialsByProduct) {
+    rows.sort((a, b) => {
+      const priceDifference = a.price - b.price;
+      if (priceDifference !== 0) return priceDifference;
+
+      const dealA = dealByProductStore.get(`${productId}:${a.store_id}`);
+      const dealB = dealByProductStore.get(`${productId}:${b.store_id}`);
+      const savingA = Math.max(0, (dealA?.normal_price ?? a.price) - a.price);
+      const savingB = Math.max(0, (dealB?.normal_price ?? b.price) - b.price);
+      const savingDifference = savingB - savingA;
+      if (savingDifference !== 0) return savingDifference;
+
+      return a.store_id.localeCompare(b.store_id);
+    });
+    specialByProduct.set(productId, rows[0]);
   }
 
   const storesByProduct = new Map<string, Set<string>>();
@@ -336,7 +358,7 @@ export async function fetchListPriceLookups(
   }
   const allStoreIds = new Set(priceRows.map((r) => r.store_id));
 
-  return { cheapestByProduct, specialByProduct, dealByProductStore, storesByProduct, priceAtStore, allStoreIds };
+  return { cheapestByProduct, specialByProduct, specialsByProduct, dealByProductStore, storesByProduct, priceAtStore, allStoreIds };
 }
 
 /** Pure -- no network calls -- computes one list's summary from lookups already fetched (possibly shared across several lists via `fetchListPriceLookups`). */
@@ -421,8 +443,46 @@ export interface ListItemLowestPrice {
   store: string;
 }
 
+function buildListCurrentDeal(
+  displayedPrice: CurrentPriceLookupRow,
+  dealRow: DodgyDealsLookupRow | undefined,
+  isOnLiveSpecial: boolean,
+): CurrentDeal {
+  const dealType: CurrentDeal["dealType"] =
+    dealRow && dealRow.verdict !== "UNKNOWN"
+      ? VIEW_VERDICT_TO_DEAL_TYPE[dealRow.verdict]
+      : isOnLiveSpecial
+        ? "Unverified Deal"
+        : "Fair Price";
+
+  const originalPrice = dealRow?.normal_price ?? displayedPrice.price;
+  const discountPercentage =
+    originalPrice > displayedPrice.price ? Math.round((1 - displayedPrice.price / originalPrice) * 100) : 0;
+
+  return {
+    store: STORE_DISPLAY_FALLBACK[displayedPrice.store_id] || titleCase(displayedPrice.store_id),
+    price: displayedPrice.price,
+    originalPrice,
+    discountPercentage,
+    dealType,
+    wasArtificiallyInflated: dealType === "Dodgy Deal",
+    reason: dealRow?.verdict ?? "Regular Price",
+    explanation: null,
+    isOnSpecial: isOnLiveSpecial,
+    saleStartedAt: null,
+    specialEndDate: null,
+    ninetyDayLow: null,
+    ninetyDayHigh: null,
+    ninetyDayAvg: null,
+    ninetyDaySamples: null,
+    ninetyDaySpecialSamples: null,
+    ninetyDayDaysTracked: null,
+    ninetyDaySpecialDays: null,
+  };
+}
+
 /**
- * Builds a full `ProductCard` (+ one `CurrentDeal`) for a SINGLE list
+ * Builds a full `ProductCard` for a single Watchlist product
  * item's product, reusing the exact `cheapestByProduct`/`dealByProductStore`
  * lookups `computeListSummaryFromLookups` just above already consumes for a
  * list's aggregate summary badge/total -- no extra network round trip
@@ -441,12 +501,10 @@ export interface ListItemLowestPrice {
  * gives every OTHER product surface in this app (Home, Specials, search),
  * instead of the plain `<span>{name}</span>` row this replaces.
  *
- * Deliberately NOT a full port of `buildProductCardsFromSpecials`'s
- * multi-store-aware grouping (data.ts) -- a list item only ever needs its
- * own single cheapest-price row, the same "cheapest across any store"
- * figure the list's own summary badge/total already show, not a
- * `currentDeals` array covering every store the way a Specials-page card
- * does. Fields the consuming card doesn't render -- `priceHistory`,
+ * The first `currentDeals` entry is the primary Watchlist offer; subsequent
+ * entries are other verified live specials for the same product. When no
+ * live special exists, the sole entry keeps the cheapest current price so
+ * the greyed row remains useful. Fields the consuming card doesn't render -- `priceHistory`,
  * `description`, `explanation`, `ninetyDay*`, `saleStartedAt`/
  * `specialEndDate` -- get the same "genuinely unknown at this cheap lookup
  * tier, not fabricated" defaults `fetchNonSpecialProductCards` (just above)
@@ -467,56 +525,21 @@ export function buildListItemProductCard(
   const cheapest = lookups.cheapestByProduct.get(productId);
   if (!cheapest) return null;
 
-  // A list item represents a product, not a specific supermarket. Prefer the
-  // cheapest live special at any store when one exists; otherwise retain the
-  // cheapest current price so the row can render in its greyed-out state.
-  const displayedPrice = lookups.specialByProduct?.get(productId) ?? cheapest;
-
-  const dealRow = lookups.dealByProductStore.get(`${productId}:${displayedPrice.store_id}`);
-  // `specialByProduct` is populated by the live lookup path only with
-  // current-price rows that also have a matching deal-cache row. Keep the
-  // fallback for older pure callers that do not provide that optional map.
-  const isOnLiveSpecial =
-    lookups.specialByProduct === undefined ? !!displayedPrice.is_special : !!displayedPrice.is_special && !!dealRow;
-  // No matching dodgy_deals_cache row for this product's own cheapest store
-  // -- either genuinely not on special right now ("Fair Price", same
-  // convention `fetchNonSpecialProductCards` uses), or on special but not
-  // yet verdict-classified ("Unverified Deal", an existing `CurrentDeal`
-  // dealType this app already has for exactly this "on special, no verdict
-  // to show" case -- not invented here).
-  const dealType: CurrentDeal["dealType"] =
-    dealRow && dealRow.verdict !== "UNKNOWN"
-      ? VIEW_VERDICT_TO_DEAL_TYPE[dealRow.verdict]
-      : isOnLiveSpecial
-        ? "Unverified Deal"
-        : "Fair Price";
-
-  // No known "was" price -- same as `fetchNonSpecialProductCards`, assume
-  // no saving rather than fabricate a discount percentage.
-  const originalPrice = dealRow?.normal_price ?? displayedPrice.price;
-  const discountPercentage =
-    originalPrice > displayedPrice.price ? Math.round((1 - displayedPrice.price / originalPrice) * 100) : 0;
-
-  const currentDeal: CurrentDeal = {
-    store: STORE_DISPLAY_FALLBACK[displayedPrice.store_id] || titleCase(displayedPrice.store_id),
-    price: displayedPrice.price,
-    originalPrice,
-    discountPercentage,
-    dealType,
-    wasArtificiallyInflated: dealType === "Dodgy Deal",
-    reason: dealRow?.verdict ?? "Regular Price",
-    explanation: null,
-    isOnSpecial: isOnLiveSpecial,
-    saleStartedAt: null,
-    specialEndDate: null,
-    ninetyDayLow: null,
-    ninetyDayHigh: null,
-    ninetyDayAvg: null,
-    ninetyDaySamples: null,
-    ninetyDaySpecialSamples: null,
-    ninetyDayDaysTracked: null,
-    ninetyDaySpecialDays: null,
-  };
+  const legacyPrimarySpecial = lookups.specialByProduct?.get(productId);
+  const liveSpecials = lookups.specialsByProduct?.get(productId)
+    ?? (legacyPrimarySpecial ? [legacyPrimarySpecial] : []);
+  const displayedPrice = liveSpecials[0] ?? cheapest;
+  const currentDeals = liveSpecials.length > 0
+    ? liveSpecials.map((special) => buildListCurrentDeal(
+        special,
+        lookups.dealByProductStore.get(`${productId}:${special.store_id}`),
+        true,
+      ))
+    : [buildListCurrentDeal(
+        displayedPrice,
+        lookups.dealByProductStore.get(`${productId}:${displayedPrice.store_id}`),
+        lookups.specialByProduct === undefined && !!displayedPrice.is_special,
+      )];
 
   return {
     id: productId,
@@ -526,7 +549,7 @@ export function buildListItemProductCard(
     image: meta.image_url || FALLBACK_PRODUCT_IMAGE,
     standardPrice: displayedPrice.price,
     unit: meta.unit_size || "",
-    currentDeals: [currentDeal],
+    currentDeals,
     priceHistory: [],
     description: "",
   };

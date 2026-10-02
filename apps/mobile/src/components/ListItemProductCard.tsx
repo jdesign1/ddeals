@@ -133,6 +133,8 @@ import PriceChangeBadge from "@/components/PriceChangeBadge";
 export interface ListItemProductCardProps {
   product: ProductCardData;
   deal: CurrentDeal;
+  /** Other supermarkets with a verified active special for this product. */
+  otherSpecialCount?: number;
   /** `list_items.quantity` -- only rendered as a "×N" chip when > 1, same
    * threshold the plain-text row this replaces already used. */
   quantity: number;
@@ -150,7 +152,7 @@ export interface ListItemProductCardProps {
 const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; className: string }>> = {
   "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert" },
   "Real Deal": { label: "Real Saver", className: "dd-badge-fair" },
-  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy" },
+  "Fair Price": { label: "Fair Deal", className: "dd-badge-dodgy" },
 };
 
 // How far left (px) a swipe must travel before it counts as "remove this"
@@ -161,6 +163,7 @@ const SWIPE_THRESHOLD = 70;
 export default function ListItemProductCard({
   product,
   deal,
+  otherSpecialCount = 0,
   quantity,
   onRemove,
   removeLabel,
@@ -169,7 +172,6 @@ export default function ListItemProductCard({
 }: ListItemProductCardProps) {
   const router = useRouter();
   const storeMeta = getStoreLogoMeta(deal.store);
-  const badge = deal.dealType === "Unverified Deal" ? undefined : DEAL_TYPE_BADGE[deal.dealType];
   // Same sentence-case transform ProductListCard.tsx applies to `brand`
   // (that file's own doc comment has the full "why": Title Case from
   // data.ts isn't the same thing as real sentence case, and there's no CSS
@@ -191,6 +193,8 @@ export default function ListItemProductCard({
   // just above (only one row's sheet is ever open at a time, nothing
   // outside this card needs to know).
   const isNotOnSpecial = deal.isOnSpecial === false;
+  const badge = !isNotOnSpecial && deal.dealType !== "Unverified Deal" ? DEAL_TYPE_BADGE[deal.dealType] : undefined;
+  const isAssessmentPending = !isNotOnSpecial && deal.dealType === "Unverified Deal";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
 
   const goToDeal = () => {
@@ -255,12 +259,11 @@ export default function ListItemProductCard({
       // hand-matching two separate class strings (see this file's own
       // top-of-file doc comment).
       //
-      // `grayscale opacity-60` (2026-08-21, see this file's own top-of-file
-      // doc comment) -- excluded during `confirmingRemove` on purpose, that
-      // state already has its own distinct alert-colored look and dimming
-      // it on top would make the confirm text harder to read, not clearer.
+      // Keep inactive products visibly grey without lowering text contrast;
+      // the retained current price still needs to be easy to scan. This is
+      // excluded during remove confirmation, which has its own alert state.
       className={`dd-compact-product-card group flex items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-colors hover:bg-stone-50 ${
-        isNotOnSpecial && !confirmingRemove ? "grayscale opacity-60" : ""
+        isNotOnSpecial && !confirmingRemove ? "grayscale bg-stone-50" : ""
       }`}
       ref={cardRef}
       style={{
@@ -310,12 +313,24 @@ export default function ListItemProductCard({
           <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
           <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h4>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
+            <span className="font-display text-base font-extrabold text-stone-900">
+              {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
+              ${deal.price.toFixed(2)}
+            </span>
+            {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
             <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
               {storeMeta.short}
             </span>
             {badge && <span className={`dd-badge dd-badge-compact ${badge.className}`}>{badge.label}</span>}
+            {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral">Checking deal</span>}
+            {otherSpecialCount > 0 && (
+              <span
+                className="dd-badge dd-badge-compact dd-badge-neutral"
+                aria-label={`Also on special at ${otherSpecialCount} other ${otherSpecialCount === 1 ? "supermarket" : "supermarkets"}`}
+              >
+                +{otherSpecialCount} {otherSpecialCount === 1 ? "store" : "stores"}
+              </span>
+            )}
             {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}
           </div>
         </div>
