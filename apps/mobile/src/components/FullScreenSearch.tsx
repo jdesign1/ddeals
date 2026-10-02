@@ -19,7 +19,7 @@ import ProductListCard from "@/components/ProductListCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import BackToTopButton from "@/components/BackToTopButton";
 import ErrorState from "@/components/ErrorState";
-import StorePill from "@/components/StorePill";
+import SupermarketPicker from "@/components/SupermarketPicker";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
@@ -680,6 +680,17 @@ export default function FullScreenSearch() {
     </div>
   );
 
+  const renderToolbarFilters = (categoryFilter: string[], categoryTarget: "popular" | "results") => (
+    <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
+      <SupermarketPicker options={storeOptions} selectedStores={selectedStores} onToggleStore={handleStoreToggle} />
+      {renderCategoriesAndSort(
+        categoryFilter,
+        () => setCategorySheetTarget(categoryTarget),
+        () => setSortSheetTarget(categoryTarget)
+      )}
+    </div>
+  );
+
   return (
     <AnimatePresence>
       {shouldRenderOverlay && (
@@ -1087,22 +1098,7 @@ export default function FullScreenSearch() {
                       onChange={handleDealFilterChange}
                     />
 
-                    {/* StorePill -- same component as Home's own store row
-                        (text-[13px] leading-4, per-store brand color), per Jay's ask.
-                        No longer needs its own `-mx-5 px-5` bleed-to-edge --
-                        the wrapper above now owns that (see this block's own
-                        comment above for why). */}
-                    <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
-                      {storeOptions.map((store) => (
-                        <StorePill
-                          key={store.id}
-                          storeKey={store.id}
-                          label={store.label}
-                          active={selectedStores.includes(store.id)}
-                          onClick={() => handleStoreToggle(store.id)}
-                        />
-                      ))}
-                    </div>
+                    {renderToolbarFilters(popularCategoryFilter, "popular")}
                   </div>
                 </div>
 
@@ -1157,11 +1153,6 @@ export default function FullScreenSearch() {
                       <h3 className="dd-type-control text-stone-600">
                         {newSpecialDealKeySet ? `${sortedPopularSpecials.length} new since your last visit` : `${sortedPopularSpecials.length} deals`}
                       </h3>
-                      {renderCategoriesAndSort(
-                        popularCategoryFilter,
-                        () => setCategorySheetTarget("popular"),
-                        () => setSortSheetTarget("popular")
-                      )}
                     </div>
                     <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                       {visiblePopularSpecials.map(({ product, bestDeal }, index) => (
@@ -1324,44 +1315,16 @@ export default function FullScreenSearch() {
                           cross-reference. */}
                       <DealFilterTabs value={dealFilter} onChange={handleDealFilterChange} buttonIdPrefix="price-filter" />
 
-                      {/* Same `StorePill` component as Home's row + the
-                          pre-3-char row above (2026-08-09) -- previously
-                          its own uppercase/dot-indicator variant, per Jay's
-                          ask for one consistent pill look across the whole
-                          screen. No longer needs its own `-mx-5 px-5`
-                          bleed-to-edge -- the wrapper above now owns that. */}
-                      <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
-                        {storeOptions.map((store) => (
-                          <StorePill
-                            key={store.id}
-                            storeKey={store.id}
-                            label={store.label}
-                            active={selectedStores.includes(store.id)}
-                            onClick={() => handleStoreToggle(store.id)}
-                          />
-                        ))}
-                      </div>
+                      {renderToolbarFilters(resultsCategoryFilter, "results")}
                     </div>
                   </div>
 
                   <DealFilterSummary filter={dealFilter} />
 
-                  {/* Categories + Sort now sit directly above the results
-                      grid (2026-08-09, per Jay's ask to match the home
-                      page's own count+Sort placement -- see
-                      TrendingSection/MyListSection in page.tsx), not up near
-                      the tabs. The prototype's "Filter by Supermarket:"
-                      label that used to sit above the pill row is dropped
-                      entirely, also per Jay's ask. */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="dd-type-meta dd-type-meta-strong text-stone-500">
                       {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"}
                     </span>
-                    {renderCategoriesAndSort(
-                      resultsCategoryFilter,
-                      () => setCategorySheetTarget("results"),
-                      () => setSortSheetTarget("results")
-                    )}
                   </div>
 
                   <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>

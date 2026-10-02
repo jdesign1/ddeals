@@ -11,7 +11,6 @@ import {
   type ProductCard,
   type DealSnapshotKind,
 } from "@dodgey-deals/shared";
-import CategoryPicker from "@/components/CategoryPicker";
 import ProductListCard from "@/components/ProductListCard";
 
 interface FlatDeal {
@@ -23,18 +22,12 @@ export default function DealSnapshotRail({
   kind,
   deals,
   selectedCategories,
-  onCategoriesChange,
-  availableCategories,
-  categoryCounts,
   refreshKey,
   onSeeAll,
 }: {
   kind: DealSnapshotKind;
   deals: FlatDeal[];
   selectedCategories: string[];
-  onCategoriesChange: (categories: string[]) => void;
-  availableCategories: string[];
-  categoryCounts: Map<string, number>;
   refreshKey: string;
   onSeeAll: () => void;
 }) {
@@ -90,16 +83,15 @@ export default function DealSnapshotRail({
           </h2>
           <p className="dd-type-secondary mt-1 max-w-[18rem] text-stone-600">{description}</p>
         </div>
-        <CategoryPicker
-          label="Category"
-          ariaLabel={`Filter ${title.toLowerCase()} by category`}
-          selectedCategories={selectedCategories}
-          onChange={onCategoriesChange}
-          availableCategories={availableCategories}
-          categoryCounts={categoryCounts}
-          emptyMessage={emptyMessage}
-          singleCategoryLabel="1 category"
-        />
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className={`shrink-0 cursor-pointer dd-type-control underline underline-offset-4 transition-colors ${
+            isSavings ? "text-fair-800 hover:text-fair-950" : "text-alert-700 hover:text-alert-950"
+          }`}
+        >
+          See all
+        </button>
       </div>
 
       {rankedDeals.length === 0 ? (

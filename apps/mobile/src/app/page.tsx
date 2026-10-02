@@ -25,7 +25,7 @@ import DealSnapshotRail from "@/components/DealSnapshotRail";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
-import StorePill from "@/components/StorePill";
+import SupermarketPicker from "@/components/SupermarketPicker";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
@@ -215,13 +215,13 @@ export default function HomePage() {
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
-  const [topSavingsCategories, setTopSavingsCategoriesState] = useState<string[]>(() => readSnapshotCategories("savings"));
-  const [worstDodgyCategories, setWorstDodgyCategoriesState] = useState<string[]>(() => readSnapshotCategories("dodgy"));
-  const setTopSavingsCategories = (categories: string[]) => {
-    setTopSavingsCategoriesState(persistSnapshotCategories("savings", categories));
-  };
-  const setWorstDodgyCategories = (categories: string[]) => {
-    setWorstDodgyCategoriesState(persistSnapshotCategories("dodgy", categories));
+  const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
+    ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
+  ]);
+  const setTopDealsCategories = (categories: string[]) => {
+    const nextCategories = persistSnapshotCategories("savings", categories);
+    persistSnapshotCategories("dodgy", nextCategories);
+    setTopDealsCategoriesState(nextCategories);
   };
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
@@ -286,16 +286,14 @@ export default function HomePage() {
     () => buildSnapshotDeals(products, selectedStores, "dodgy"),
     [products, selectedStores]
   );
-  const topSavingsAvailableCategories = useMemo(
-    () => [...new Set(topSavingsDeals.map(({ product }) => groupCategory(product.category, product.name)))],
-    [topSavingsDeals]
+  const topDealsAvailableCategories = useMemo(
+    () => [...new Set([...topSavingsDeals, ...worstDodgyDeals].map(({ product }) => groupCategory(product.category, product.name)))],
+    [topSavingsDeals, worstDodgyDeals]
   );
-  const worstDodgyAvailableCategories = useMemo(
-    () => [...new Set(worstDodgyDeals.map(({ product }) => groupCategory(product.category, product.name)))],
-    [worstDodgyDeals]
+  const topDealsCategoryCounts = useMemo(
+    () => getSnapshotCategoryCounts([...topSavingsDeals, ...worstDodgyDeals]),
+    [topSavingsDeals, worstDodgyDeals]
   );
-  const topSavingsCategoryCounts = useMemo(() => getSnapshotCategoryCounts(topSavingsDeals), [topSavingsDeals]);
-  const worstDodgyCategoryCounts = useMemo(() => getSnapshotCategoryCounts(worstDodgyDeals), [worstDodgyDeals]);
 
   const filteredDeals = useMemo<FlatDeal[]>(() => {
     if (dealCategoryFilter.length === 0) return dealsAllCategories;
@@ -375,36 +373,42 @@ export default function HomePage() {
             gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
           }}
         >
-          {/* Keep the tabs equidistant from the search bar and supermarket
-              pills. Both spaces are direct 16px gaps: `pt-4` on this
-              toolbar and `space-y-4` between the two rows. Keeping both
-              measurements inside the same sticky toolbar avoids the iOS
-              scroll/reveal transition treating a parent margin differently
-              from the toolbar's own spacing. */}
+          {/* The compact filter row keeps the three primary controls together
+              directly below the deal tabs. */}
           <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
             <DealFilterTabs
               value={dealFilter}
               onChange={handleDealFilterChange}
               allLabel="Top Deals"
             />
-            <div className="hide-scrollbar -mx-5 flex flex-nowrap gap-1.5 overflow-x-auto px-5">
-              <StorePill
-                storeKey="all"
-                label="All"
-                active={selectedStores.includes("all")}
-                onClick={() => toggleStore("all")}
-                backgroundClassName="bg-white"
+            <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
+              <SupermarketPicker
+                options={[{ id: "all", label: "All" }, ...availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))]}
+                selectedStores={selectedStores}
+                onToggleStore={toggleStore}
               />
-              {availableStoreKeys.map((key) => (
-                <StorePill
-                  key={key}
-                  storeKey={key}
-                  label={STORE_DISPLAY_FALLBACK[key] || key}
-                  active={selectedStores.includes(key)}
-                  onClick={() => toggleStore(key)}
-                  backgroundClassName="bg-white"
+              {dealFilter === "all" ? (
+                <CategoryPicker
+                  label="Category"
+                  selectedCategories={topDealsCategories}
+                  onChange={setTopDealsCategories}
+                  availableCategories={topDealsAvailableCategories}
+                  categoryCounts={topDealsCategoryCounts}
+                  emptyMessage="No Top Deals in this category right now."
+                  singleCategoryLabel="1 category"
                 />
-              ))}
+              ) : (
+                <>
+                  <CategoryPicker
+                    selectedCategories={dealCategoryFilter}
+                    onChange={setDealCategoryFilter}
+                    availableCategories={availableCategories}
+                    categoryCounts={categoryCounts}
+                    emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
+                  />
+                  <SortDropdown value={dealSortBy} onChange={handleDealSortChange} options={TRENDING_SORT_OPTIONS} />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -496,26 +500,20 @@ export default function HomePage() {
               <DealSnapshotRail
                 kind="savings"
                 deals={topSavingsDeals}
-                selectedCategories={topSavingsCategories}
-                onCategoriesChange={setTopSavingsCategories}
-                availableCategories={topSavingsAvailableCategories}
-                categoryCounts={topSavingsCategoryCounts}
+                selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
                 onSeeAll={() => {
-                  setDealCategoryFilter(topSavingsCategories);
+                  setDealCategoryFilter(topDealsCategories);
                   handleDealSortChange("biggest-saver");
                 }}
               />
               <DealSnapshotRail
                 kind="dodgy"
                 deals={worstDodgyDeals}
-                selectedCategories={worstDodgyCategories}
-                onCategoriesChange={setWorstDodgyCategories}
-                availableCategories={worstDodgyAvailableCategories}
-                categoryCounts={worstDodgyCategoryCounts}
+                selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
                 onSeeAll={() => {
-                  setDealCategoryFilter(worstDodgyCategories);
+                  setDealCategoryFilter(topDealsCategories);
                   handleDealSortChange("worst-dodgy");
                 }}
               />
@@ -526,11 +524,7 @@ export default function HomePage() {
               deals={filteredDeals}
               filter={dealFilter}
               sortBy={dealSortBy}
-              onSortByChange={handleDealSortChange}
               categoryFilter={dealCategoryFilter}
-              onCategoryFilterChange={setDealCategoryFilter}
-              availableCategories={availableCategories}
-              categoryCounts={categoryCounts}
               revealPersistenceKey={`check-deals:${selectedStores.join(",")}:${dealFilter}:${dealSortBy}:${dealCategoryFilter.join(",")}`}
             />
           )}
@@ -691,21 +685,13 @@ function TrendingSection({
   deals,
   filter,
   sortBy,
-  onSortByChange,
   categoryFilter,
-  onCategoryFilterChange,
-  availableCategories,
-  categoryCounts,
   revealPersistenceKey,
 }: {
   deals: FlatDeal[];
   filter: DealFilter;
   sortBy: DealSortBy;
-  onSortByChange: (value: DealSortBy) => void;
   categoryFilter: string[];
-  onCategoryFilterChange: (value: string[]) => void;
-  availableCategories: string[];
-  categoryCounts: Map<string, number>;
   revealPersistenceKey: string;
 }) {
   const { isGridLayout } = useCardLayout();
@@ -767,16 +753,6 @@ function TrendingSection({
             <span className="dd-type-meta dd-type-meta-strong text-stone-500">
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>
-            <div className="flex items-center gap-2">
-              <CategoryPicker
-                selectedCategories={categoryFilter}
-                onChange={onCategoryFilterChange}
-                availableCategories={availableCategories}
-                categoryCounts={categoryCounts}
-                emptyMessage={sectionCopy.categoryEmpty}
-              />
-              <SortDropdown value={sortBy} onChange={onSortByChange} options={TRENDING_SORT_OPTIONS} />
-            </div>
           </div>
           {sorted.length === 0 ? (
             <EmptyState illustration={noResultsIllustration}>{sectionCopy.categoryEmpty}</EmptyState>
