@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   matchesAnySelectedStore,
   deriveAvailableStoreKeys,
@@ -26,6 +26,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import SupermarketPicker from "@/components/SupermarketPicker";
+import FilterTrigger from "@/components/FilterTrigger";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
@@ -383,8 +384,8 @@ export default function HomePage() {
             />
             <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
               <SupermarketPicker
-                options={[{ id: "all", label: "All" }, ...availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))]}
-                selectedStores={selectedStores}
+                stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
+                selectedStoreIds={selectedStores}
                 onToggleStore={toggleStore}
               />
               {dealFilter === "all" ? (
@@ -406,7 +407,12 @@ export default function HomePage() {
                     categoryCounts={categoryCounts}
                     emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
                   />
-                  <SortDropdown value={dealSortBy} onChange={handleDealSortChange} options={TRENDING_SORT_OPTIONS} />
+                  <SortDropdown
+                    value={dealSortBy}
+                    defaultValue={getDefaultDealSort(dealFilter)}
+                    onChange={handleDealSortChange}
+                    options={TRENDING_SORT_OPTIONS}
+                  />
                 </>
               )}
             </div>
@@ -506,6 +512,10 @@ export default function HomePage() {
                   setDealCategoryFilter(topDealsCategories);
                   handleDealSortChange("biggest-saver");
                 }}
+                onSeeMore={() => {
+                  setDealCategoryFilter([]);
+                  handleDealSortChange("worst-dodgy");
+                }}
               />
               <DealSnapshotRail
                 kind="dodgy"
@@ -514,6 +524,10 @@ export default function HomePage() {
                 refreshKey={selectedStores.join(",")}
                 onSeeAll={() => {
                   setDealCategoryFilter(topDealsCategories);
+                  handleDealSortChange("worst-dodgy");
+                }}
+                onSeeMore={() => {
+                  setDealCategoryFilter([]);
                   handleDealSortChange("worst-dodgy");
                 }}
               />
@@ -590,28 +604,29 @@ const TRENDING_SORT_OPTIONS = CHECK_DEALS_SORT_OPTIONS;
 // else (including the sheet markup/animation) is unchanged.
 function SortDropdown<T extends string>({
   value,
+  defaultValue,
   onChange,
   options,
 }: {
   value: T;
+  defaultValue: T;
   onChange: (value: T) => void;
   options: { value: T; label: string }[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const isActive = value !== defaultValue;
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        aria-haspopup="listbox"
-        // Border -> shadow-sm, 2026-08-21, per Jay's pills/tabs/sort/category
-        // no-border ask -- see the Home tab track's own doc comment just
-        // above for the full cross-reference.
-        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
-      >
-        <span>Sort</span>
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
+      <FilterTrigger
+        label="Sort"
+        active={isActive}
+        onOpen={() => setIsOpen(true)}
+        onClear={() => onChange(defaultValue)}
+        ariaLabel="Sort deals"
+        expanded={isOpen}
+        compact
+        hasPopup="listbox"
+      />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>
           {isOpen && (
@@ -902,7 +917,12 @@ function MyListSection({
             <span className="dd-type-meta dd-type-meta-strong text-stone-500">
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>
-            <SortDropdown value={sortBy} onChange={onSortByChange} options={SORT_OPTIONS} />
+            <SortDropdown
+              value={sortBy}
+              defaultValue={getDefaultDealSort("all")}
+              onChange={onSortByChange}
+              options={SORT_OPTIONS}
+            />
           </div>
           <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
             {sorted.map(({ product, deal }) => (

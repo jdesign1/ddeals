@@ -2,45 +2,43 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import FilterTrigger from "@/components/FilterTrigger";
 
-export interface SupermarketOption {
-  id: string;
-  label: string;
-}
+type StoreOption = { id: string; label: string };
 
-/**
- * A compact entry point for the shared multi-supermarket filter. Keeping the
- * choices in a sheet avoids spending a full toolbar row on store pills while
- * preserving the selection state shared by Check Deals and full-screen search.
- */
+/** Shared supermarket selector for Check Deals and full-screen search. */
 export default function SupermarketPicker({
-  options,
-  selectedStores,
+  selectedStoreIds,
+  stores,
   onToggleStore,
 }: {
-  options: SupermarketOption[];
-  selectedStores: string[];
+  selectedStoreIds: string[];
+  stores: StoreOption[];
   onToggleStore: (storeId: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedCount = selectedStores.includes("all") ? 0 : selectedStores.length;
-  const triggerLabel = selectedCount > 0 ? `Supermarket (${selectedCount})` : "Supermarket";
+  const selectedStores = selectedStoreIds.filter((storeId) => storeId !== "all");
+  const isActive = selectedStores.length > 0;
+  const selectedLabel =
+    selectedStores.length === 0
+      ? "Supermarket"
+      : selectedStores.length === 1
+        ? stores.find((store) => store.id === selectedStores[0])?.label ?? selectedStores[0]
+        : `${selectedStores.length} Supermarkets`;
+  const reset = () => onToggleStore("all");
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        aria-label={`${triggerLabel} filter`}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
-      >
-        <span>{triggerLabel}</span>
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
+      <FilterTrigger
+        label={selectedLabel}
+        active={isActive}
+        onOpen={() => setIsOpen(true)}
+        onClear={reset}
+        ariaLabel={`Filter by supermarket: ${selectedLabel}`}
+        expanded={isOpen}
+      />
 
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>
@@ -61,37 +59,63 @@ export default function SupermarketPicker({
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 220 }}
-                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[70dvh] min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
               >
                 <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                   <h3 className="dd-type-sheet-title text-stone-900">Supermarkets</h3>
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    aria-label="Close supermarkets"
-                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-500 hover:bg-stone-100"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-                <div className="overflow-y-auto py-2 pb-safe-sm">
-                  {options.map((option) => {
-                    const isSelected = selectedStores.includes(option.id);
-                    return (
+                  <div className="flex items-center gap-1">
+                    {isActive && (
                       <button
-                        key={option.id}
                         type="button"
-                        onClick={() => onToggleStore(option.id)}
-                        aria-pressed={isSelected}
-                        className={`flex w-full cursor-pointer items-center justify-between px-5 py-3.5 text-left dd-type-control transition-colors ${
-                          isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"
-                        }`}
+                        onClick={reset}
+                        className="cursor-pointer px-2 py-1 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
                       >
-                        <span>{option.id === "all" ? "All supermarkets" : option.label}</span>
-                        {isSelected && <Check className="h-4 w-4" aria-hidden="true" />}
+                        Clear all
                       </button>
-                    );
-                  })}
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      aria-label="Close supermarkets"
+                      className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-y-auto px-5 py-4">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={reset}
+                      aria-pressed={!isActive}
+                      className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
+                        !isActive
+                          ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
+                          : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
+                      }`}
+                    >
+                      All supermarkets
+                    </button>
+                    {stores.map((store) => {
+                      const selected = selectedStores.includes(store.id);
+                      return (
+                        <button
+                          key={store.id}
+                          type="button"
+                          onClick={() => onToggleStore(store.id)}
+                          aria-pressed={selected}
+                          className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
+                            selected
+                              ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
+                              : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
+                          }`}
+                        >
+                          {store.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 px-5 pt-3">
                   <button

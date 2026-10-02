@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { CATEGORY_SECTIONS } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import FilterTrigger from "@/components/FilterTrigger";
 
 export default function CategoryPicker({
   selectedCategories,
@@ -43,17 +44,14 @@ export default function CategoryPicker({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        aria-label={`${ariaLabel}: ${selectedLabel}`}
-        className="inline-flex h-11 min-w-[7.5rem] cursor-pointer items-center justify-center gap-1 rounded-lg border border-stone-300 bg-white px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
-      >
-        <span className="truncate">{selectedLabel}</span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      </button>
+      <FilterTrigger
+        label={selectedLabel}
+        active={selectedCategories.length > 0}
+        onOpen={() => setIsOpen(true)}
+        onClear={() => onChange([])}
+        ariaLabel={`${ariaLabel}: ${selectedLabel}`}
+        expanded={isOpen}
+      />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>
           {isOpen && (

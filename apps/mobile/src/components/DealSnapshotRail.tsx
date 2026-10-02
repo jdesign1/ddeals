@@ -24,12 +24,14 @@ export default function DealSnapshotRail({
   selectedCategories,
   refreshKey,
   onSeeAll,
+  onSeeMore,
 }: {
   kind: DealSnapshotKind;
   deals: FlatDeal[];
   selectedCategories: string[];
   refreshKey: string;
   onSeeAll: () => void;
+  onSeeMore: () => void;
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
@@ -57,6 +59,7 @@ export default function DealSnapshotRail({
     () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
   );
+  const isShortRail = rankedDeals.length < 10;
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -85,12 +88,12 @@ export default function DealSnapshotRail({
         </div>
         <button
           type="button"
-          onClick={onSeeAll}
+          onClick={isShortRail ? onSeeMore : onSeeAll}
           className={`shrink-0 cursor-pointer dd-type-control underline underline-offset-4 transition-colors ${
             isSavings ? "text-fair-800 hover:text-fair-950" : "text-alert-700 hover:text-alert-950"
           }`}
         >
-          See all
+          {isShortRail ? "See more" : "See all"}
         </button>
       </div>
 
@@ -138,7 +141,7 @@ export default function DealSnapshotRail({
               />
             );
           })}
-          <SnapshotSeeAllCard kind={kind} onSeeAll={onSeeAll} />
+          {!isShortRail && <SnapshotSeeAllCard kind={kind} onSeeAll={onSeeAll} label="See all" />}
         </motion.div>
       )}
       <span className="sr-only" aria-live="polite">
@@ -151,18 +154,20 @@ export default function DealSnapshotRail({
 function SnapshotSeeAllCard({
   kind,
   onSeeAll,
+  label,
 }: {
   kind: DealSnapshotKind;
   onSeeAll: () => void;
+  label: "See all" | "See more";
 }) {
   const isSavings = kind === "savings";
-  const label = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
+  const beltTitle = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
 
   return (
     <button
       type="button"
       onClick={onSeeAll}
-      aria-label={`See all ${label.toLowerCase()}`}
+      aria-label={`${label} ${label === "See all" ? "in" : "from"} ${beltTitle.toLowerCase()}`}
       className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
         isSavings
           ? "text-fair-800 focus-visible:outline-fair-700"
@@ -171,7 +176,7 @@ function SnapshotSeeAllCard({
     >
       <span className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
         <ArrowRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
-        <span className="dd-type-control font-extrabold">See all</span>
+        <span className="dd-type-control font-extrabold">{label}</span>
       </span>
     </button>
   );

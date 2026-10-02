@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, ArrowLeft, Check, ChevronDown, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import {
   STORE_DISPLAY_FALLBACK,
@@ -20,6 +20,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import BackToTopButton from "@/components/BackToTopButton";
 import ErrorState from "@/components/ErrorState";
 import SupermarketPicker from "@/components/SupermarketPicker";
+import FilterTrigger from "@/components/FilterTrigger";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
@@ -458,11 +459,6 @@ export default function FullScreenSearch() {
   // this effect was fully subsumed, not just broken.
 
   const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
-  const storeOptions = useMemo(
-    () => [{ id: "all", label: "All" }, ...availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key }))],
-    [availableStoreKeys]
-  );
-
   const homeCategories = useMemo(
     () => [...new Set(products.map((p) => groupCategory(p.category, p.name)).filter(Boolean))].sort(),
     [products]
@@ -655,41 +651,41 @@ export default function FullScreenSearch() {
    * Both triggers: border -> shadow-sm, 2026-08-21, per Jay: "Update the
    * pills and tabs to have no border lines, and short tight drop shadows
    * instead." Same swap as `app/page.tsx`'s `SortDropdown` trigger. */
-  const renderCategoriesAndSort = (
-    categoryFilter: string[],
-    onOpenCategorySheet: () => void,
-    onOpenSortSheet: () => void
-  ) => (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={onOpenCategorySheet}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
-      >
-        <span>{categoryFilter.length === 0 ? "Category" : `Category (${categoryFilter.length})`}</span>
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        onClick={onOpenSortSheet}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 py-2 dd-type-control text-stone-600 shadow-none transition-colors hover:bg-stone-50"
-      >
-        <span>Sort</span>
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-    </div>
-  );
+  const renderToolbarFilters = (target: "popular" | "results") => {
+    const categoryFilter = target === "results" ? resultsCategoryFilter : popularCategoryFilter;
+    const sortBy = target === "results" ? resultsSortBy : popularSortBy;
+    const clearSort = () => {
+      const defaultSort = getDefaultDealSort(dealFilter);
+      if (target === "results") handleSortChange(defaultSort as ResultsSortBy, setResultsSortBy);
+      else handleSortChange(defaultSort as PopularSortBy, setPopularSortBy);
+    };
 
-  const renderToolbarFilters = (categoryFilter: string[], categoryTarget: "popular" | "results") => (
-    <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
-      <SupermarketPicker options={storeOptions} selectedStores={selectedStores} onToggleStore={handleStoreToggle} />
-      {renderCategoriesAndSort(
-        categoryFilter,
-        () => setCategorySheetTarget(categoryTarget),
-        () => setSortSheetTarget(categoryTarget)
-      )}
-    </div>
-  );
+    return (
+      <div className="hide-scrollbar -mx-5 flex flex-nowrap items-center gap-2 overflow-x-auto px-5">
+        <SupermarketPicker
+          selectedStoreIds={selectedStores}
+          stores={availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key }))}
+          onToggleStore={handleStoreToggle}
+        />
+        <FilterTrigger
+          label={categoryFilter.length === 0 ? "Category" : `Category (${categoryFilter.length})`}
+          active={categoryFilter.length > 0}
+          onOpen={() => setCategorySheetTarget(target)}
+          onClear={() => (target === "results" ? setResultsCategoryFilter([]) : setPopularCategoryFilter([]))}
+          ariaLabel="Filter by category"
+        />
+        <FilterTrigger
+          label="Sort"
+          active={sortBy !== getDefaultDealSort(dealFilter)}
+          onOpen={() => setSortSheetTarget(target)}
+          onClear={clearSort}
+          ariaLabel="Sort deals"
+          compact
+          hasPopup="listbox"
+        />
+      </div>
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -1098,7 +1094,7 @@ export default function FullScreenSearch() {
                       onChange={handleDealFilterChange}
                     />
 
-                    {renderToolbarFilters(popularCategoryFilter, "popular")}
+                    {renderToolbarFilters("popular")}
                   </div>
                 </div>
 
@@ -1315,7 +1311,7 @@ export default function FullScreenSearch() {
                           cross-reference. */}
                       <DealFilterTabs value={dealFilter} onChange={handleDealFilterChange} buttonIdPrefix="price-filter" />
 
-                      {renderToolbarFilters(resultsCategoryFilter, "results")}
+                      {renderToolbarFilters("results")}
                     </div>
                   </div>
 
