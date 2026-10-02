@@ -36,7 +36,9 @@ export default function FilterTrigger({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={`inline-flex h-11 items-stretch overflow-hidden rounded-lg border border-stone-300 bg-white dd-type-control text-stone-700 shadow-none transition-colors hover:bg-stone-50 ${
+      className={`relative inline-flex h-11 items-stretch overflow-hidden rounded-lg border bg-white dd-type-control text-stone-700 shadow-none transition-colors hover:bg-stone-50 ${
+        active ? "border-stone-950" : "border-stone-300"
+      } ${
         fill ? "min-w-0 w-full" : compact ? "min-w-0" : "min-w-0 max-w-44"
       }`}
     >
@@ -46,9 +48,7 @@ export default function FilterTrigger({
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 py-2 text-left ${
-          fill ? (active ? "px-1" : "px-2") : "px-3"
-        }`}
+        className="flex w-full min-w-0 cursor-pointer items-center justify-center gap-1 px-2 py-2 text-left"
       >
         <span className="flex min-w-0 items-center gap-1">
           {leading}
@@ -61,7 +61,7 @@ export default function FilterTrigger({
           type="button"
           onClick={onClear}
           aria-label={`Clear ${ariaLabel.toLowerCase()}`}
-          className="flex w-6 shrink-0 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
+          className="absolute inset-y-0 right-0 flex w-8 cursor-pointer items-center justify-center text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
