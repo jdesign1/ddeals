@@ -31,6 +31,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
 import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import UnreadListItem from "@/components/UnreadListItem";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { AnimatePresence, motion, Reorder, useDragControls, useReducedMotion } from "motion/react";
@@ -238,6 +239,11 @@ function WatchlistGroupSection({
           onPointerUp={handleDragHandlePointerUp}
           onPointerCancel={handleDragHandlePointerUp}
         >
+          {group.kind === "active" && (
+            <span aria-hidden="true">
+              <StoreLogoBadge store={group.key} variant="compact" />
+            </span>
+          )}
           <h2 id={`watchlist-group-${group.key}`} className="min-w-0 flex-1 truncate text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">{group.label}</h2>
           <div className="flex shrink-0 items-center gap-2">
             <span className="normal-case tracking-normal text-[12px] font-bold text-stone-400">

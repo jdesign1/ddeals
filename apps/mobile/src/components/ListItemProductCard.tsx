@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
-import { getStoreLogoMeta } from "@/lib/store-meta";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 /**
  * Compact product row for a list's own item list on `apps/mobile/src/app/
@@ -38,7 +38,7 @@ import PriceChangeBadge from "@/components/PriceChangeBadge";
  *    genuinely a different information density for a different slot in the
  *    page.
  * Verdict-badge color mapping (`.dd-badge-fair`/`-dodgy`/`-alert`) and the
- * store-badge lookup (`getStoreLogoMeta`) are copied from `ProductListCard`
+ * store badge treatment (`StoreLogoBadge`) is shared with `ProductListCard`
  * verbatim, though, not reinvented -- same meaning, same colors, just a
  * compact inline pill row here instead of that card's floating corner
  * badges (there isn't room for 2 floating corner badges plus the remove
@@ -171,7 +171,6 @@ export default function ListItemProductCard({
   onAfterNotOnSpecial,
 }: ListItemProductCardProps) {
   const router = useRouter();
-  const storeMeta = getStoreLogoMeta(deal.store);
   // Same sentence-case transform ProductListCard.tsx applies to `brand`
   // (that file's own doc comment has the full "why": Title Case from
   // data.ts isn't the same thing as real sentence case, and there's no CSS
@@ -318,9 +317,7 @@ export default function ListItemProductCard({
               ${deal.price.toFixed(2)}
             </span>
             {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
-            <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
-              {storeMeta.short}
-            </span>
+            <StoreLogoBadge store={deal.store} variant="compact" />
             {badge && <span className={`dd-badge dd-badge-compact ${badge.className}`}>{badge.label}</span>}
             {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral">Checking deal</span>}
             {otherSpecialCount > 0 && (
