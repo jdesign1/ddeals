@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "assets.woolworths.com.au" },
       { protocol: "https", hostname: "a.fsimg.co.nz" },
+      // Official Foodstuffs brand artwork used for the compact PAK'nSAVE and
+      // New World retailer marks.
+      { protocol: "https", hostname: "au-images.contentstack.com" },
       { protocol: "https", hostname: "placehold.co" },
     ],
     // Product photos are independent of the frequently changing price data

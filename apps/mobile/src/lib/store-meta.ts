@@ -17,7 +17,7 @@ export interface StoreLogoMeta {
   text: string;
   logoSrc?: string;
   logoBackground?: string;
-  logoShape?: "symbol" | "wordmark" | "tile";
+  logoShape?: "symbol" | "wordmark" | "tile" | "left-crop";
   logoWidth?: number;
   logoHeight?: number;
 }
@@ -49,21 +49,21 @@ const STORE_LOGOS: Record<string, StoreLogoMeta> = {
     short: "PNS",
     bg: "bg-amber-600",
     text: "text-white",
-    logoSrc: "/store-logos/paknsave.svg",
+    logoSrc: "https://au-images.contentstack.com/v3/assets/blt764dfa8e6eb818cb/blt8ee71f0335474ac5/69277547ac1a413bbe0f38d8/fs118378-pak-n-save-square.jpg",
     logoBackground: "#ffed00",
-    logoShape: "wordmark",
-    logoWidth: 132,
-    logoHeight: 30,
+    logoShape: "tile",
+    logoWidth: 504,
+    logoHeight: 504,
   },
   newworld: {
     short: "NW",
     bg: "bg-rose-600",
     text: "text-white",
-    logoSrc: "/store-logos/newworld.svg",
-    logoBackground: "#e1251b",
-    logoShape: "symbol",
-    logoWidth: 46,
-    logoHeight: 30,
+    logoSrc: "https://au-images.contentstack.com/v3/assets/blt3febb09f1eb825b2/blt6c3a4fc231d04da8/693b4f616403dec744ab1b6f/nz-logo.jpg",
+    logoBackground: "#ffffff",
+    logoShape: "left-crop",
+    logoWidth: 4421,
+    logoHeight: 1240,
   },
   foursquare: {
     short: "FS",

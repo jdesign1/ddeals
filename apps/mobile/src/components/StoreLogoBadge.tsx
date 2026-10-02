@@ -42,7 +42,7 @@ export default function StoreLogoBadge({ store, variant = "card", className = ""
     <span
       aria-label={storeLabel}
       title={storeLabel}
-      className={`flex ${sizeClass} shrink-0 select-none items-center justify-center overflow-hidden rounded-md shadow-xs ring-1 ring-black/10 ${className}`}
+      className={`relative flex ${sizeClass} shrink-0 select-none items-center justify-center overflow-hidden rounded-md shadow-xs ring-1 ring-black/10 ${className}`}
       style={{ backgroundColor: meta.logoBackground }}
     >
       <Image
@@ -52,7 +52,9 @@ export default function StoreLogoBadge({ store, variant = "card", className = ""
         width={meta.logoWidth ?? 30}
         height={meta.logoHeight ?? 30}
         className={
-          meta.logoShape === "tile"
+          meta.logoShape === "left-crop"
+            ? "absolute left-0 top-[4%] h-[92%] w-auto max-w-none"
+            : meta.logoShape === "tile"
             ? "h-full w-full object-contain"
             : meta.logoShape === "wordmark"
               ? "h-auto max-h-[58%] w-[88%] object-contain"

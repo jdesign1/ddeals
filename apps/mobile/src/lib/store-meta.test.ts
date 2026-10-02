@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getStoreLogoMeta } from "./store-meta.ts";
 
-test("supported supermarkets resolve to local official logo assets", () => {
+test("supported supermarkets resolve to official logo assets", () => {
   for (const store of ["Woolworths", "PAK'nSAVE", "New World", "Four Square", "SuperValue"]) {
     const meta = getStoreLogoMeta(store);
 
-    assert.match(meta.logoSrc ?? "", /^\/store-logos\/[a-z]+\.svg$/);
+    assert.match(meta.logoSrc ?? "", /^(\/store-logos\/[a-z]+\.svg|https:\/\/au-images\.contentstack\.com\/)/);
     assert.ok(meta.logoBackground);
   }
 });
