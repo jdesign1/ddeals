@@ -59,7 +59,7 @@ const STORE_LOGOS: Record<string, StoreLogoMeta> = {
     short: "NW",
     bg: "bg-rose-600",
     text: "text-white",
-    logoSrc: "https://au-images.contentstack.com/v3/assets/blt3febb09f1eb825b2/blt6c3a4fc231d04da8/693b4f616403dec744ab1b6f/nz-logo.jpg?crop=1160,1120,x170,y60&width=132&height=128&fit=bounds&format=webp&quality=80",
+    logoSrc: "https://au-images.contentstack.com/v3/assets/blt3febb09f1eb825b2/blt6c3a4fc231d04da8/693b4f616403dec744ab1b6f/nz-logo.jpg?crop=1100,1060,x200,y90&width=132&height=128&fit=bounds&format=webp&quality=80",
     logoBackground: "#ffffff",
     logoShape: "tile",
     logoWidth: 132,

@@ -113,6 +113,7 @@ export default function ProductListCard({
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
   const { isGridLayout, isCompactLayout } = useCardLayout();
+  const pinStoreLogosToFooter = !isSnapshotLayout && !isCompactLayout && !hideCardBadges;
   const useGridCard = isSnapshotLayout || isGridLayout;
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
@@ -261,7 +262,7 @@ export default function ProductListCard({
               : "pb-9 pl-4 pr-9 pt-4"
         }`}
       >
-        <div className="flex flex-col gap-0.5">
+        <div className="flex min-h-0 flex-1 flex-col gap-0.5">
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump
             (2026-08-17, Jay: "the top brand text, reduce the letter
             spacing to normal, and increase the font size by 1px") -- same
@@ -290,11 +291,14 @@ export default function ProductListCard({
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
           )}
         </div>
+        {isSnapshotLayout && (
+          <span className="mt-0.5 truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
+        )}
         {/* The retailer is visually tied to its price, not to the product
             title. This leaves the bottom row free for the saving and verdict
             pair used by the Top 20 cards. */}
         {!isSnapshotLayout && (
-          <div className={`mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "pr-12" : ""}`}>
+          <div className={`${pinStoreLogosToFooter ? "mt-auto pt-2" : "mt-1.5"} flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "pr-12" : ""}`}>
             <StoreLogoBadge store={deal.store} variant={isCompactLayout ? "compact" : "card"} />
             {alsoSpecialStores.map((store) => (
               <StoreLogoBadge key={store} store={store} variant={isCompactLayout ? "compact" : "card"} />

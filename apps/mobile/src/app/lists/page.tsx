@@ -475,7 +475,7 @@ export default function ListsPage() {
       })
       .map(([key, items]) => {
         if (key === "price-unavailable") return { key, label: "Price unavailable", kind: "unavailable" as const, items };
-        if (key === "not-on-special") return { key, label: "Not currently on special", kind: "inactive" as const, items };
+        if (key === "not-on-special") return { key, label: "NOT ON SPECIAL", kind: "inactive" as const, items };
         return {
           key,
           label: STORE_DISPLAY_FALLBACK[key] ?? itemDeal(items[0], itemCards, selectedSupermarkets)?.store ?? key,
