@@ -17,7 +17,7 @@ export interface StoreLogoMeta {
   text: string;
   logoSrc?: string;
   logoBackground?: string;
-  logoShape?: "symbol" | "wordmark" | "tile" | "left-crop";
+  logoShape?: "symbol" | "wordmark" | "tile";
   logoWidth?: number;
   logoHeight?: number;
 }
@@ -49,21 +49,21 @@ const STORE_LOGOS: Record<string, StoreLogoMeta> = {
     short: "PNS",
     bg: "bg-amber-600",
     text: "text-white",
-    logoSrc: "https://au-images.contentstack.com/v3/assets/blt764dfa8e6eb818cb/blt8ee71f0335474ac5/69277547ac1a413bbe0f38d8/fs118378-pak-n-save-square.jpg",
+    logoSrc: "https://au-images.contentstack.com/v3/assets/blt764dfa8e6eb818cb/blt8ee71f0335474ac5/69277547ac1a413bbe0f38d8/fs118378-pak-n-save-square.jpg?crop=408,306,x48,y100&width=128&height=96&format=webp&quality=80",
     logoBackground: "#ffed00",
     logoShape: "tile",
-    logoWidth: 504,
-    logoHeight: 504,
+    logoWidth: 128,
+    logoHeight: 96,
   },
   newworld: {
     short: "NW",
     bg: "bg-rose-600",
     text: "text-white",
-    logoSrc: "https://au-images.contentstack.com/v3/assets/blt3febb09f1eb825b2/blt6c3a4fc231d04da8/693b4f616403dec744ab1b6f/nz-logo.jpg",
+    logoSrc: "https://au-images.contentstack.com/v3/assets/blt3febb09f1eb825b2/blt6c3a4fc231d04da8/693b4f616403dec744ab1b6f/nz-logo.jpg?crop=1240,1240,x0,y0&width=128&height=128&format=webp&quality=80",
     logoBackground: "#ffffff",
-    logoShape: "left-crop",
-    logoWidth: 4421,
-    logoHeight: 1240,
+    logoShape: "tile",
+    logoWidth: 128,
+    logoHeight: 128,
   },
   foursquare: {
     short: "FS",
