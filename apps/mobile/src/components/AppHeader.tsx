@@ -263,7 +263,7 @@ export default function AppHeader({
   const title = override
     ? override.title
     : pathname === "/"
-      ? "Dodgy Deal"
+      ? ""
       : ROUTE_TITLES[pathname] || "Dodgy Deal";
 
   // Wait for the profile record before rendering the signed-in initial. The
@@ -428,7 +428,7 @@ export default function AppHeader({
               onClick={openSearch}
               aria-label="Search specials"
               data-onboarding="search-button"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-fair-100 text-fair-800 transition-colors hover:bg-fair-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-fair-300"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-900 transition-colors hover:bg-stone-50 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
             >
               <span
                 className="material-symbols-outlined text-[28px] leading-none"
