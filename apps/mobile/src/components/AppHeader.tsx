@@ -428,7 +428,7 @@ export default function AppHeader({
               onClick={openSearch}
               aria-label="Search specials"
               data-onboarding="search-button"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-900 transition-colors hover:bg-stone-50 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+              className="flex h-11 w-auto shrink-0 items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-3.5 text-stone-900 transition-colors hover:bg-stone-50 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
             >
               <span
                 className="material-symbols-outlined text-[28px] leading-none"
@@ -437,6 +437,7 @@ export default function AppHeader({
               >
                 search
               </span>
+              <span className="dd-type-control whitespace-nowrap">Search</span>
             </button>
           )}
           {pathname !== "/settings" && (loading ? null : user && avatarInitial ? (
