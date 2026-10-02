@@ -12,7 +12,7 @@ import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
-import { getStoreLogoMeta } from "@/lib/store-meta";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { isNewSpecial } from "@/lib/special-freshness";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
@@ -112,10 +112,8 @@ export default function ProductListCard({
   const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
-  const storeMeta = getStoreLogoMeta(deal.store);
   const { isGridLayout, isCompactLayout } = useCardLayout();
   const useGridCard = isSnapshotLayout || isGridLayout;
-  const storeBadgePadding = isCompactLayout ? "px-1.5 py-0.5" : "p-1";
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
   // `product.brand` already arrives Title Cased from `packages/shared/src/
@@ -270,21 +268,10 @@ export default function ProductListCard({
             the same product on special. */}
         {!isSnapshotLayout && (
           <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "mb-0.5 justify-start pr-10" : "mb-1.5"}`}>
-            <span className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${storeMeta.bg} ${storeMeta.text}`}>
-              {storeMeta.short}
-            </span>
-            {alsoSpecialStores.map((store) => {
-              const meta = getStoreLogoMeta(store);
-              return (
-                <span
-                  key={store}
-                  title={STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store}
-                  className={`shrink-0 select-none rounded-md ${storeBadgePadding} dd-type-badge shadow-xs ${meta.bg} ${meta.text}`}
-                >
-                  {meta.short}
-                </span>
-              );
-            })}
+            <StoreLogoBadge store={deal.store} variant={isCompactLayout ? "compact" : "card"} />
+            {alsoSpecialStores.map((store) => (
+              <StoreLogoBadge key={store} store={store} variant={isCompactLayout ? "compact" : "card"} />
+            ))}
           </div>
         )}
         {/* `tracking-widest` -> `tracking-normal` + a second +1px bump

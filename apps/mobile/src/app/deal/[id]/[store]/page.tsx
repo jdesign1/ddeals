@@ -38,6 +38,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { usePageHeader } from "@/lib/header-context";
 import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
@@ -815,9 +816,13 @@ export default function DealAssessmentPage() {
                   storeDeal.isOnSpecial !== false && bestSpecialPriceCents != null && Math.round(item.price * 100) === bestSpecialPriceCents;
                 const rowContent = (
                   <>
-                    <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
-                      {storeMeta.short}
-                    </span>
+                    {isMultiStoreDeal ? (
+                      <StoreLogoBadge store={item.store} variant="ranking" />
+                    ) : (
+                      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
+                        {storeMeta.short}
+                      </span>
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-1.5">
                         <span className="truncate text-sm font-extrabold text-stone-800">{item.store}</span>
