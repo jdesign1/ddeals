@@ -13,7 +13,7 @@ requests and makes the compact badges reliable offline.
 - New World: the black-outline diamond comes directly from Foodstuffs'
   official lockup at
   `https://au-images.contentstack.com/v3/assets/blt3febb09f1eb825b2/blt6c3a4fc231d04da8/693b4f616403dec744ab1b6f/nz-logo.jpg`.
-  The app requests a 128×128 crop of the diamond only, so the wordmark never
+  The app requests a 144×128 crop of the diamond only, so the wordmark never
   appears in a badge. Next's image pipeline delivers these small variants as
   WebP to supporting clients.
 - `foursquare.svg`: Four Square's current square logo referenced directly by

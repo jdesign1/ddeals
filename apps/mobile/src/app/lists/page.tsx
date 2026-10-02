@@ -241,7 +241,7 @@ function WatchlistGroupSection({
         >
           {group.kind === "active" && (
             <span aria-hidden="true">
-              <StoreLogoBadge store={group.key} variant="compact" />
+              <StoreLogoBadge store={group.key} variant="card" />
             </span>
           )}
           <h2 id={`watchlist-group-${group.key}`} className="min-w-0 flex-1 truncate text-[13px] font-extrabold uppercase tracking-[0.12em] text-stone-500">{group.label}</h2>
