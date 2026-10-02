@@ -668,7 +668,7 @@ export default function FullScreenSearch() {
           onToggleStore={handleStoreToggle}
         />
         <FilterTrigger
-          label={categoryFilter.length === 0 ? "Category" : `Category (${categoryFilter.length})`}
+          label="Category"
           active={categoryFilter.length > 0}
           onOpen={() => setCategorySheetTarget(target)}
           onClear={() => (target === "results" ? setResultsCategoryFilter([]) : setPopularCategoryFilter([]))}

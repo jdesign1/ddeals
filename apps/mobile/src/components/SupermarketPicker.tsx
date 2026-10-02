@@ -22,32 +22,19 @@ export default function SupermarketPicker({
   const [isOpen, setIsOpen] = useState(false);
   const selectedStores = selectedStoreIds.filter((storeId) => storeId !== "all");
   const isActive = selectedStores.length > 0;
-  const selectedLabel =
-    selectedStores.length === 0
-      ? "Supermarket"
-      : selectedStores.length === 1
-        ? stores.find((store) => store.id === selectedStores[0])?.label ?? selectedStores[0]
-        : `${selectedStores.length} Supermarkets`;
+  const selectedLabel = "Supermarket";
   const reset = () => onToggleStore("all");
-  const selectedLogoPreview = selectedStores.length > 0 ? (
-    <span className="flex shrink-0 gap-0" aria-hidden="true">
-      {selectedStores.slice(0, 3).map((storeId) => (
-        <StoreLogoBadge key={storeId} store={storeId} variant="selector" decorative className="ring-1 ring-white" />
-      ))}
-    </span>
-  ) : undefined;
 
   return (
     <>
       <FilterTrigger
-        label={isActive ? "" : selectedLabel}
+        label={selectedLabel}
         active={isActive}
         onOpen={() => setIsOpen(true)}
         onClear={reset}
         ariaLabel={`Filter by supermarket: ${selectedLabel}`}
         expanded={isOpen}
         fill
-        leading={selectedLogoPreview}
       />
 
       <BottomSheetPortal open={isOpen}>
