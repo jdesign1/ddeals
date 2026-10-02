@@ -185,16 +185,14 @@ function SnapshotSeeAllCard({
       href="/specials"
       aria-label={`See all ${label.toLowerCase()}`}
       style={snapshotCardHeight ? { height: snapshotCardHeight } : undefined}
-      className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start self-stretch rounded-[1.5rem] border bg-white p-4 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+      className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
         isSavings
-          ? "border-fair-200 text-fair-800 hover:bg-fair-50 focus-visible:outline-fair-700"
-          : "border-alert-200 text-alert-700 hover:bg-alert-50 focus-visible:outline-alert-700"
+          ? "text-fair-800 focus-visible:outline-fair-700"
+          : "text-alert-700 focus-visible:outline-alert-700"
       }`}
     >
       <span className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
-        <span className={`flex h-10 w-10 items-center justify-center rounded-full ${isSavings ? "bg-fair-100" : "bg-alert-100"}`}>
-          <ArrowRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
-        </span>
+        <ArrowRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
         <span className="dd-type-control font-extrabold">See all</span>
       </span>
     </Link>

@@ -274,7 +274,9 @@ export default function ProductListCard({
           {product.name}
         </h3>
         {product.unit && <span className="dd-type-meta text-stone-500">{product.unit}</span>}
-        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <div className={`mt-1 flex min-w-0 ${
+          isSnapshotLayout ? "w-full flex-col gap-1.5" : "flex-wrap items-center gap-x-2 gap-y-1"
+        }`}>
           {specialPriceRange ? (
             <ResponsivePriceRange
               text={`$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`}
@@ -283,10 +285,10 @@ export default function ProductListCard({
           ) : (
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
           )}
+          {isSnapshotLayout && (
+            <span className="truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
+          )}
         </div>
-        {isSnapshotLayout && (
-          <span className="mt-1 truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
-        )}
         {/* The retailer is visually tied to its price, not to the product
             title. This leaves the bottom row free for the saving and verdict
             pair used by the Top 20 cards. */}
