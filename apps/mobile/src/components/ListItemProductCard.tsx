@@ -188,6 +188,7 @@ export default function ListItemProductCard({
   const isNotOnSpecial = deal.isOnSpecial === false;
   const isRealSaver = !isNotOnSpecial && deal.dealType === "Real Deal" && deal.originalPrice > deal.price;
   const isDodgyDeal = !isNotOnSpecial && (deal.dealType === "Dodgy Deal" || deal.isDodgyReviewCandidate === true);
+  const isFairPrice = !isNotOnSpecial && deal.dealType === "Fair Price";
   const isAssessmentPending = !isNotOnSpecial && deal.dealType === "Unverified Deal";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
 
@@ -309,10 +310,11 @@ export default function ListItemProductCard({
         </div>
       ) : (
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2">
-          {(isRealSaver || isDodgyDeal || isAssessmentPending) && (
+          {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
             <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
               {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
               {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
+              {isFairPrice && <span className="dd-badge dd-badge-compact dd-badge-dodgy whitespace-nowrap">It&apos;s been cheaper</span>}
               {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral whitespace-nowrap">Checking deal</span>}
             </div>
           )}
