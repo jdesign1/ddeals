@@ -6,9 +6,12 @@ import {
   productTitleCase,
   FALLBACK_PRODUCT_IMAGE,
   VIEW_VERDICT_TO_DEAL_TYPE,
+  VIEW_VERDICT_SHORT_REASON,
+  resolvePublishedDealAssessment,
   type SupabaseRestConfig,
   type ProductCard,
   type CurrentDeal,
+  type PublishedAssessmentRow,
 } from "./data.ts";
 
 /**
@@ -212,13 +215,20 @@ interface CurrentPriceLookupRow {
   is_special: boolean | null;
 }
 
-interface DodgyDealsLookupRow {
+interface DodgyDealsLookupRow extends PublishedAssessmentRow {
   product_id: string;
   store_id: string;
-  verdict: "DODGY" | "GENUINE" | "MARGINAL" | "UNKNOWN";
-  normal_price: number | null;
   sale_unit_price?: number | null;
   sale_unit_label?: string | null;
+  special_end_date?: string | null;
+  product_url?: string | null;
+  sale_started_at?: string | null;
+  cache_refreshed_at?: string | null;
+  specials_verified_at?: string | null;
+  regular_price_samples?: number | null;
+  regular_history_days?: number | null;
+  unit_price_coverage_days?: number | null;
+  unit_price_max_span_days?: number | null;
 }
 
 export interface ListSummary {
@@ -306,7 +316,22 @@ export async function fetchListPriceLookups(
     // paying the view's full ~0.5-3.4s+ cost regardless of how few product
     // ids were actually requested. Read through the verified-membership view
     // over the same 15-minute materialized cache.
-    fetchByIds<DodgyDealsLookupRow>(config, "published_dodgy_deals_cache", "product_id", "product_id,store_id,verdict,normal_price,sale_unit_price,sale_unit_label", ids),
+    fetchByIds<DodgyDealsLookupRow>(
+      config,
+      "published_dodgy_deals_cache",
+      "product_id",
+      [
+        "product_id,store_id,verdict,normal_price,sale_price,saving_pct,reason",
+        "sale_started_at,special_end_date,product_url,sale_unit_price,sale_unit_label",
+        "unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days",
+        "price_history_90d_low,price_history_90d_high,price_history_90d_avg",
+        "price_history_90d_samples,price_history_90d_special_samples,price_history_90d_price_changes",
+        "price_history_90d_days_tracked,price_history_90d_special_days",
+        "regular_price_samples,regular_history_days,evidence_status,evidence_strength",
+        "store_history_ready,classifier_version,cache_refreshed_at,specials_verified_at",
+      ].join(","),
+      ids,
+    ),
   ]);
 
   // Cheapest current price per product, across any store.
@@ -450,38 +475,59 @@ function buildListCurrentDeal(
   dealRow: DodgyDealsLookupRow | undefined,
   isOnLiveSpecial: boolean,
 ): CurrentDeal {
-  const dealType: CurrentDeal["dealType"] =
-    dealRow && dealRow.verdict !== "UNKNOWN"
-      ? VIEW_VERDICT_TO_DEAL_TYPE[dealRow.verdict]
-      : isOnLiveSpecial
-        ? "Unverified Deal"
-        : "Fair Price";
+  // Only resolve a published assessment when the matching price is currently
+  // special. A stale cache row must not make a regular Watchlist price look
+  // like an active deal.
+  const assessment = isOnLiveSpecial && dealRow
+    ? resolvePublishedDealAssessment({ ...dealRow, sale_price: displayedPrice.price })
+    : null;
+  const verdict = assessment?.verdict ?? (isOnLiveSpecial ? "UNKNOWN" : null);
+  const dealType: CurrentDeal["dealType"] = verdict
+    ? verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[verdict]
+    : "Fair Price";
 
   const originalPrice = dealRow?.normal_price ?? displayedPrice.price;
   const discountPercentage =
     originalPrice > displayedPrice.price ? Math.round((1 - displayedPrice.price / originalPrice) * 100) : 0;
 
   return {
+    sourceProductId: displayedPrice.product_id,
+    sourceStoreId: displayedPrice.store_id,
     store: STORE_DISPLAY_FALLBACK[displayedPrice.store_id] || titleCase(displayedPrice.store_id),
     price: displayedPrice.price,
     originalPrice,
     discountPercentage,
     dealType,
     wasArtificiallyInflated: dealType === "Dodgy Deal",
-    reason: dealRow?.verdict ?? "Regular Price",
-    explanation: null,
+    reason: verdict ? VIEW_VERDICT_SHORT_REASON[verdict] : "Regular Price",
+    explanation: dealRow?.reason ?? null,
     isOnSpecial: isOnLiveSpecial,
-    saleStartedAt: null,
-    specialEndDate: null,
-    ninetyDayLow: null,
-    ninetyDayHigh: null,
-    ninetyDayAvg: null,
-    ninetyDaySamples: null,
-    ninetyDaySpecialSamples: null,
-    ninetyDayDaysTracked: null,
-    ninetyDaySpecialDays: null,
+    saleStartedAt: dealRow?.sale_started_at ?? null,
+    specialEndDate: dealRow?.special_end_date ?? null,
+    scrapedAt: dealRow?.cache_refreshed_at ?? null,
+    specialsVerifiedAt: dealRow?.specials_verified_at ?? null,
+    productUrl: dealRow?.product_url ?? null,
+    ninetyDayLow: dealRow?.price_history_90d_low ?? null,
+    ninetyDayHigh: dealRow?.price_history_90d_high ?? null,
+    ninetyDayAvg: dealRow?.price_history_90d_avg ?? null,
+    ninetyDaySamples: dealRow?.price_history_90d_samples ?? null,
+    ninetyDaySpecialSamples: dealRow?.price_history_90d_special_samples ?? null,
+    ninetyDayPriceChanges: dealRow?.price_history_90d_price_changes ?? null,
+    ninetyDayDaysTracked: dealRow?.price_history_90d_days_tracked ?? null,
+    ninetyDaySpecialDays: dealRow?.price_history_90d_special_days ?? null,
+    regularPriceSamples: dealRow?.regular_price_samples ?? null,
+    regularHistoryDays: dealRow?.regular_history_days ?? null,
+    evidenceStatus: dealRow?.evidence_status ?? null,
+    evidenceStrength: dealRow?.evidence_strength ?? null,
+    storeHistoryReady: dealRow?.store_history_ready ?? null,
+    classifierVersion: dealRow?.classifier_version ?? null,
+    unitPriceSamples: dealRow?.unit_price_samples ?? null,
+    unitPriceCoverageDays: dealRow?.unit_price_coverage_days ?? null,
+    unitPriceMaxSpanDays: dealRow?.unit_price_max_span_days ?? null,
     saleUnitPrice: dealRow?.sale_unit_price ?? null,
     saleUnitLabel: dealRow?.sale_unit_label ?? null,
+    assessmentBasis: assessment?.assessmentBasis ?? null,
+    isDodgyReviewCandidate: assessment?.isDodgyReviewCandidate ?? false,
   };
 }
 
@@ -508,11 +554,10 @@ function buildListCurrentDeal(
  * The first `currentDeals` entry is the primary Watchlist offer; subsequent
  * entries are other verified live specials for the same product. When no
  * live special exists, the sole entry keeps the cheapest current price so
- * the greyed row remains useful. Fields the consuming card doesn't render -- `priceHistory`,
- * `description`, `explanation`, `ninetyDay*`, `saleStartedAt`/
- * `specialEndDate` -- get the same "genuinely unknown at this cheap lookup
- * tier, not fabricated" defaults `fetchNonSpecialProductCards` (just above)
- * already established for the same reason, not independently re-derived.
+ * the greyed row remains useful. `priceHistory` and `description` stay
+ * intentionally compact, while the deal/evidence fields are carried through
+ * from the published cache so the Watchlist badge and deal page share one
+ * assessment basis.
  *
  * Returns `null` when the product has no current price at all -- matches
  * `computeListSummaryFromLookups`'s own "excluded from totals, not assumed

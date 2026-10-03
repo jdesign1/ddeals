@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
-import { type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
+import { getAssessmentVerdict, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
@@ -186,10 +186,14 @@ export default function ListItemProductCard({
   // just above (only one row's sheet is ever open at a time, nothing
   // outside this card needs to know).
   const isNotOnSpecial = deal.isOnSpecial === false;
-  const isRealSaver = !isNotOnSpecial && deal.dealType === "Real Deal" && deal.originalPrice > deal.price;
-  const isDodgyDeal = !isNotOnSpecial && (deal.dealType === "Dodgy Deal" || deal.isDodgyReviewCandidate === true);
-  const isFairPrice = !isNotOnSpecial && deal.dealType === "Fair Price";
-  const isAssessmentPending = !isNotOnSpecial && deal.dealType === "Unverified Deal";
+  // Use the same public assessment resolver as the deal page. Watchlist copy
+  // stays compact, but its state must not diverge (especially for near-low
+  // historical reads and unconfirmed Dodgy review candidates).
+  const assessmentVerdict = isNotOnSpecial ? "Fair Price" : getAssessmentVerdict(deal);
+  const isRealSaver = assessmentVerdict === "Real Saver";
+  const isDodgyDeal = assessmentVerdict === "Dodgy Deal";
+  const isFairPrice = assessmentVerdict === "Fair Price";
+  const isAssessmentPending = assessmentVerdict === "Early read" || assessmentVerdict === "Limited history";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
 
   const goToDeal = () => {

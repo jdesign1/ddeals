@@ -265,21 +265,38 @@ export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 /** Allow a one-cent rounding difference between the current price and the recorded low. */
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 
-type HistoricalAssessmentRow = Pick<
-  DodgyDealsRow,
-  | "verdict"
-  | "evidence_status"
-  | "sale_price"
-  | "price_history_90d_low"
-  | "price_history_90d_high"
-  | "price_history_90d_avg"
-  | "price_history_90d_samples"
-  | "price_history_90d_special_samples"
-  | "price_history_90d_price_changes"
-  | "price_history_90d_days_tracked"
-  | "price_history_90d_special_days"
-  | "sale_started_at"
->;
+/**
+ * The published fields required to resolve a user-facing verdict. This is
+ * intentionally a structural subset rather than `DodgyDealsRow`: the
+ * Watchlist cache has no need to fetch product presentation fields, while
+ * the deal page receives the complete row. Keeping the resolver's input
+ * narrow lets both surfaces use exactly the same assessment rules.
+ */
+export type PublishedAssessmentRow = {
+  verdict: DodgyDealsRow["verdict"];
+  sale_price?: number | null;
+  normal_price?: number | null;
+  saving_pct?: number | null;
+  reason?: string | null;
+  sale_started_at?: string | null;
+  unit_price_change_pct?: number | null;
+  unit_price_samples?: number | null;
+  classifier_version?: string | null;
+  evidence_status?: DodgyDealsRow["evidence_status"];
+  evidence_strength?: DodgyDealsRow["evidence_strength"];
+  store_history_ready?: boolean | null;
+  price_history_90d_low?: number | null;
+  price_history_90d_high?: number | null;
+  price_history_90d_avg?: number | null;
+  price_history_90d_samples?: number | null;
+  price_history_90d_special_samples?: number | null;
+  price_history_90d_price_changes?: number | null;
+  price_history_90d_days_tracked?: number | null;
+  price_history_90d_special_days?: number | null;
+};
+
+type HistoricalAssessmentRow = Pick<PublishedAssessmentRow, "verdict">
+  & Partial<Omit<PublishedAssessmentRow, "verdict">>;
 
 /**
  * Produces an independent historical signal for rows whose primary
@@ -376,10 +393,7 @@ export function isStrongHistoricalFairPrice(row: HistoricalAssessmentRow): boole
  * Dodgy verdict. Every condition is required so early, incomplete, legacy,
  * and store-history-not-ready rows remain neutral.
  */
-export function isDodgyReviewCandidate(row: Pick<
-  DodgyDealsRow,
-  "verdict" | "evidence_status" | "evidence_strength" | "store_history_ready" | "normal_price" | "sale_price"
->): boolean {
+export function isDodgyReviewCandidate(row: PublishedAssessmentRow): boolean {
   if (
     row.verdict !== "UNKNOWN" ||
     row.evidence_status !== "SUFFICIENT" ||
@@ -391,7 +405,8 @@ export function isDodgyReviewCandidate(row: Pick<
     return false;
   }
 
-  return row.sale_price > row.normal_price * (1 + DODGY_REVIEW_OVER_NORMAL_THRESHOLD / 100);
+  return row.sale_price != null
+    && row.sale_price > row.normal_price * (1 + DODGY_REVIEW_OVER_NORMAL_THRESHOLD / 100);
 }
 
 /**
@@ -401,12 +416,12 @@ export function isDodgyReviewCandidate(row: Pick<
  * new unit coverage fields arrive; genuinely above-normal prices remain Dodgy.
  * Completely legacy rows retain their old text fallback until they are replaced.
  */
-function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
+function effectiveViewVerdict(row: PublishedAssessmentRow): DodgyDealsRow["verdict"] {
   // Rows from the migration window have no evidence_status at all; preserve
   // their legacy verdict contract. Once the field is present, only SUFFICIENT
   // evidence may publish a directional verdict.
   if (row.evidence_status != null && row.evidence_status !== "SUFFICIENT") return "UNKNOWN";
-  if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0) return row.verdict;
+  if (row.verdict !== "DODGY" || row.normal_price == null || row.normal_price <= 0 || row.sale_price == null) return row.verdict;
 
   if (
     row.evidence_status != null &&
@@ -439,6 +454,32 @@ function effectiveViewVerdict(row: DodgyDealsRow): DodgyDealsRow["verdict"] {
 
   if (!hasIndependentDodgySignal && increasePct <= MATERIAL_OVER_NORMAL_THRESHOLD) return "MARGINAL";
   return row.verdict;
+}
+
+export interface PublishedDealAssessment {
+  verdict: DodgyDealsRow["verdict"];
+  assessmentBasis: HistoricalAssessmentBasis | null;
+  isDodgyReviewCandidate: boolean;
+}
+
+/**
+ * Single source of truth for the published deal assessment. Catalogue rows,
+ * Watchlist rows, and any future compact product surface should call this
+ * before mapping a verdict to display copy.
+ */
+export function resolvePublishedDealAssessment(row: PublishedAssessmentRow): PublishedDealAssessment {
+  const assessmentBasis = getHistoricalAssessmentBasis(row);
+  const verdict = assessmentBasis === "NINETY_DAY_LOW"
+    ? "GENUINE"
+    : assessmentBasis === "NINETY_DAY_NEAR_LOW"
+      ? "MARGINAL"
+      : effectiveViewVerdict(row);
+
+  return {
+    verdict,
+    assessmentBasis,
+    isDodgyReviewCandidate: isDodgyReviewCandidate(row),
+  };
 }
 
 export const titleCase = (s: string | null | undefined): string =>
@@ -658,13 +699,8 @@ export function mergeProductMeta(memberMetas: ProductMetaInput[]): ProductMetaIn
 }
 
 function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
-  const historicalBasis = getHistoricalAssessmentBasis(row);
-  const verdict = historicalBasis === "NINETY_DAY_LOW"
-    ? "GENUINE"
-    : historicalBasis === "NINETY_DAY_NEAR_LOW"
-      ? "MARGINAL"
-      : effectiveViewVerdict(row);
-  const isDodgyReviewCandidateRow = isDodgyReviewCandidate(row);
+  const assessment = resolvePublishedDealAssessment(row);
+  const { verdict, assessmentBasis } = assessment;
   return {
     sourceProductId: row.product_id,
     sourceStoreId: row.store_id,
@@ -674,7 +710,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
     dealType: verdict === "UNKNOWN" ? "Unverified Deal" : VIEW_VERDICT_TO_DEAL_TYPE[verdict],
     wasArtificiallyInflated: verdict === "DODGY",
-    isDodgyReviewCandidate: isDodgyReviewCandidateRow,
+    isDodgyReviewCandidate: assessment.isDodgyReviewCandidate,
     reason: VIEW_VERDICT_SHORT_REASON[verdict] || "Standard Special",
     explanation: row.reason,
     isOnSpecial: true,
@@ -702,7 +738,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     unitPriceMaxSpanDays: row.unit_price_max_span_days ?? null,
     saleUnitPrice: row.sale_unit_price ?? null,
     saleUnitLabel: row.sale_unit_label ?? null,
-    assessmentBasis: historicalBasis,
+    assessmentBasis,
   };
 }
 

@@ -72,7 +72,13 @@ test("GENUINE verdict at the cheapest store -> Real Deal, real discount %", () =
 test("DODGY verdict -> Dodgy Deal, wasArtificiallyInflated true", () => {
   const l = lookups({
     cheapestByProduct: new Map([["p1", { product_id: "p1", store_id: "paknsave", price: 5, is_special: true }]]),
-    dealByProductStore: new Map([["p1:paknsave", { product_id: "p1", store_id: "paknsave", verdict: "DODGY", normal_price: 5 }]]),
+    dealByProductStore: new Map([["p1:paknsave", {
+      product_id: "p1",
+      store_id: "paknsave",
+      verdict: "DODGY",
+      normal_price: 5,
+      reason: "price raised before special",
+    }]]),
   });
   const card = buildListItemProductCard("p1", META, l);
   const deal = card!.currentDeals[0];
@@ -154,6 +160,65 @@ test("UNKNOWN verdict row falls through to the is_special check, same as no row 
   });
   const card = buildListItemProductCard("p1", META, l);
   assert.equal(card!.currentDeals[0].dealType, "Unverified Deal");
+});
+
+test("near-low historical evidence uses the same Fair Price assessment as the deal page", () => {
+  const l = lookups({
+    cheapestByProduct: new Map([["p1", {
+      product_id: "p1", store_id: "paknsave", price: 7.59, is_special: true,
+    }]]),
+    dealByProductStore: new Map([["p1:paknsave", {
+      product_id: "p1",
+      store_id: "paknsave",
+      verdict: "UNKNOWN",
+      normal_price: 8.99,
+      sale_price: 99, // deliberately stale: the live current price must win
+      saving_pct: 15.6,
+      evidence_status: "EARLY",
+      price_history_90d_low: 7.49,
+      price_history_90d_high: 9.79,
+      price_history_90d_avg: 8.12,
+      price_history_90d_samples: 8,
+      price_history_90d_special_samples: 5,
+      price_history_90d_price_changes: 5,
+      price_history_90d_days_tracked: 73,
+      price_history_90d_special_days: 36,
+      sale_started_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    }]]),
+  });
+
+  const deal = buildListItemProductCard("p1", META, l)!.currentDeals[0];
+  assert.equal(deal.dealType, "Fair Price");
+  assert.equal(deal.assessmentBasis, "NINETY_DAY_NEAR_LOW");
+  assert.equal(deal.price, 7.59);
+  assert.equal(deal.evidenceStatus, "EARLY");
+});
+
+test("exact historical low uses the same Real Deal assessment as the deal page", () => {
+  const l = lookups({
+    cheapestByProduct: new Map([["p1", {
+      product_id: "p1", store_id: "newworld", price: 6, is_special: true,
+    }]]),
+    dealByProductStore: new Map([["p1:newworld", {
+      product_id: "p1",
+      store_id: "newworld",
+      verdict: "UNKNOWN",
+      normal_price: 8,
+      evidence_status: "INSUFFICIENT",
+      price_history_90d_low: 6,
+      price_history_90d_high: 10,
+      price_history_90d_avg: 8,
+      price_history_90d_samples: 10,
+      price_history_90d_special_samples: 3,
+      price_history_90d_price_changes: 6,
+      price_history_90d_days_tracked: 80,
+      price_history_90d_special_days: 30,
+    }]]),
+  });
+
+  const deal = buildListItemProductCard("p1", META, l)!.currentDeals[0];
+  assert.equal(deal.dealType, "Real Deal");
+  assert.equal(deal.assessmentBasis, "NINETY_DAY_LOW");
 });
 
 test("product-level fields carry through from meta, with the same fallbacks fetchNonSpecialProductCards uses", () => {
