@@ -166,6 +166,10 @@ test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })), "Early read");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })), "Limited history");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Price");
+  assert.equal(
+    getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY", assessmentBasis: "NINETY_DAY_LOW" })),
+    "Real Saver"
+  );
 });
 
 test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supermarket", () => {
@@ -209,6 +213,26 @@ test("buildAssessmentSummaryCopy: keeps fair and genuine savings tied to the sel
   );
   assert.match(realCopy.body, /Current price: \$3\.50/);
   assert.match(realCopy.body, /\$5\.00\.\nThat's a genuine saving\.$/);
+});
+
+test("buildAssessmentSummaryCopy: explains a historical-low saver without claiming a recent baseline", () => {
+  const copy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      price: 5.19,
+      originalPrice: 5.94,
+      dealType: "Unverified Deal",
+      evidenceStatus: "EARLY",
+      assessmentBasis: "NINETY_DAY_LOW",
+      ninetyDayLow: 5.19,
+      ninetyDayAvg: 5.70,
+    })
+  );
+
+  assert.equal(copy.heading, "Lowest price in 90 days");
+  assert.equal(
+    copy.body,
+    "Current price: $5.19.\n90-day low: $5.19.\nThis is the lowest recorded price in the last 90 days. It is 9% below the 90-day average."
+  );
 });
 
 test("buildAssessmentSummaryCopy: uses concise incomplete-history copy for a single store", () => {

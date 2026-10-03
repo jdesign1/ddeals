@@ -166,6 +166,8 @@ export interface CurrentDeal {
   /** Retailer-provided comparative price for the current sale unit. */
   saleUnitPrice?: number | null;
   saleUnitLabel?: string | null;
+  /** The assessment was rescued by a strong, repeated 90-day low signal. */
+  assessmentBasis?: "NINETY_DAY_LOW" | null;
 }
 
 /** A sparse price/special-state transition from the retailer history table. */
@@ -237,6 +239,86 @@ export const VIEW_VERDICT_SHORT_REASON: Record<string, string> = {
  * normal 5% Dodgy threshold before we surface it for more checking.
  */
 export const DODGY_REVIEW_OVER_NORMAL_THRESHOLD = 15;
+
+/** Minimum observations before a 90-day low can independently support a read. */
+export const HISTORICAL_SAVER_MIN_SAMPLES = 6;
+/** Minimum duration of usable 90-day tracking before a historical low is trusted. */
+export const HISTORICAL_SAVER_MIN_TRACKED_DAYS = 45;
+/** Require a meaningful regular-price window, not a catalogue made up of specials. */
+export const HISTORICAL_SAVER_MIN_REGULAR_DAYS = 14;
+/** The current low must beat the 90-day average by at least this percentage. */
+export const HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT = 5;
+/** The current low must sit materially below the observed 90-day high. */
+export const HISTORICAL_SAVER_MIN_HIGH_DISCOUNT = 10;
+/** Allow a one-cent rounding difference between the current price and the recorded low. */
+export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
+
+/**
+ * Identifies a strong historical-low signal for rows whose primary classifier
+ * is still neutral. This is deliberately narrower than "current price is
+ * below the 90-day high": it needs a sustained observation window, a real
+ * regular-price period, a materially lower average, and a current price at
+ * the recorded low. It lets the app make a useful assessment when a retailer's
+ * recent status rows are incomplete without treating every low observation as
+ * a confirmed deal.
+ */
+export function isStrongHistoricalSaver(row: Pick<
+  DodgyDealsRow,
+  | "verdict"
+  | "evidence_status"
+  | "sale_price"
+  | "price_history_90d_low"
+  | "price_history_90d_high"
+  | "price_history_90d_avg"
+  | "price_history_90d_samples"
+  | "price_history_90d_price_changes"
+  | "price_history_90d_days_tracked"
+  | "price_history_90d_special_days"
+>): boolean {
+  if (
+    row.verdict !== "UNKNOWN"
+    || (row.evidence_status !== "EARLY" && row.evidence_status !== "INSUFFICIENT" && row.evidence_status !== "LIMITED")
+  ) {
+    return false;
+  }
+
+  const salePrice = Number(row.sale_price);
+  const low = Number(row.price_history_90d_low);
+  const high = Number(row.price_history_90d_high);
+  const average = Number(row.price_history_90d_avg);
+  const samples = Number(row.price_history_90d_samples);
+  const trackedDays = Number(row.price_history_90d_days_tracked);
+  const specialDays = Number(row.price_history_90d_special_days);
+  const priceChanges = row.price_history_90d_price_changes == null ? null : Number(row.price_history_90d_price_changes);
+
+  if (![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)) return false;
+  if (
+    salePrice <= 0
+    || low <= 0
+    || high <= low
+    || average <= 0
+    || samples < HISTORICAL_SAVER_MIN_SAMPLES
+    || trackedDays < HISTORICAL_SAVER_MIN_TRACKED_DAYS
+    || specialDays < 0
+    || specialDays > trackedDays
+    || trackedDays - specialDays < HISTORICAL_SAVER_MIN_REGULAR_DAYS
+    // A missing transition count means we cannot tell whether this is a
+    // repeatable low or simply one sparse observation. Do not promote legacy
+    // rows until the rolling-history aggregate is complete.
+    || priceChanges == null
+    || !Number.isFinite(priceChanges)
+    || priceChanges < 2
+  ) {
+    return false;
+  }
+
+  const currentIsAtLow = salePrice <= low + HISTORICAL_SAVER_LOW_TOLERANCE;
+  const averageDiscount = ((average - salePrice) / average) * 100;
+  const highDiscount = ((high - salePrice) / high) * 100;
+  return currentIsAtLow
+    && averageDiscount >= HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT
+    && highDiscount >= HISTORICAL_SAVER_MIN_HIGH_DISCOUNT;
+}
 
 /**
  * Identifies a possible Dodgy signal without converting it into a confirmed
@@ -525,7 +607,8 @@ export function mergeProductMeta(memberMetas: ProductMetaInput[]): ProductMetaIn
 }
 
 function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
-  const verdict = effectiveViewVerdict(row);
+  const historicalSaver = isStrongHistoricalSaver(row);
+  const verdict = historicalSaver ? "GENUINE" : effectiveViewVerdict(row);
   const isDodgyReviewCandidateRow = isDodgyReviewCandidate(row);
   return {
     sourceProductId: row.product_id,
@@ -564,6 +647,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     unitPriceMaxSpanDays: row.unit_price_max_span_days ?? null,
     saleUnitPrice: row.sale_unit_price ?? null,
     saleUnitLabel: row.sale_unit_label ?? null,
+    assessmentBasis: historicalSaver ? "NINETY_DAY_LOW" : null,
   };
 }
 
@@ -802,7 +886,7 @@ interface LiveProductsCacheEntry {
 }
 
 const CATALOGUE_SPECIALS_SELECT =
-  "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,price_history_90d_price_changes,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at,specials_verified_at";
+  "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,unit_price_samples,unit_price_coverage_days,unit_price_max_span_days,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_low,price_history_90d_high,price_history_90d_avg,price_history_90d_samples,price_history_90d_special_samples,price_history_90d_price_changes,price_history_90d_days_tracked,price_history_90d_special_days,regular_price_samples,regular_history_days,evidence_status,evidence_strength,store_history_ready,classifier_version,cache_refreshed_at,specials_verified_at";
 
 const LEGACY_CATALOGUE_SPECIALS_SELECT =
   "published_dodgy_deals_cache?select=product_id,store_id,product_name,brand,category,store_name,sale_price,normal_price,saving_pct,inflate_pct,sale_unit_price,sale_unit_label,unit_price_change_pct,history_days,special_label,was_price,special_end_date,image_url,unit_size,sale_started_at,product_url,verdict,reason,price_history_90d_samples,specials_verified_at";

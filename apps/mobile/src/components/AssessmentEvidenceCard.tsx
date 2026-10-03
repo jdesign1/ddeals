@@ -104,6 +104,9 @@ export default function AssessmentEvidenceCard({
   const hasEvidenceCounts = Boolean(days || checks || trackedDays || ninetyDayChecks || priceChanges);
   const verdictBadge = VERDICT_BADGE[verdict];
   const priceMovement = getPriceMovement(deal);
+  const evidenceFooter = deal.assessmentBasis === "NINETY_DAY_LOW"
+    ? "This read is based on repeated 90-day price history. More observations can make it even more reliable."
+    : "More history makes the assessment more reliable.";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -214,7 +217,7 @@ export default function AssessmentEvidenceCard({
                       ))}
                     </p>
                     <p className="mt-4 border-t border-stone-100 pt-3 text-[15px] font-medium leading-6 text-stone-700">
-                      More history makes the assessment more reliable.
+                      {evidenceFooter}
                     </p>
                   </div>
                 </div>

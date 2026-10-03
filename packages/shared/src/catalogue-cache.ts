@@ -59,8 +59,10 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * Version 15 invalidates cards built before retailer-provided comparative
  * unit-price fields were carried through the catalogue payload, so the new
  * unit-price rows cannot be hidden by a six-hour legacy IndexedDB snapshot.
+ * Version 16 invalidates cards built before the historical-low assessment
+ * basis was carried through neutral catalogue rows.
  */
-const CATALOGUE_CACHE_VERSION = 15;
+const CATALOGUE_CACHE_VERSION = 16;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {

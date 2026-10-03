@@ -26,6 +26,7 @@ import {
   fetchPriceHistory90d,
   validateCurrentDeal,
   applyTargetedDealToProducts,
+  isStrongHistoricalSaver,
   isDodgyReviewCandidate,
   DODGY_REVIEW_OVER_NORMAL_THRESHOLD,
   __targetedDealValidations,
@@ -271,6 +272,65 @@ test("buildProductCardsFromSpecials: maps verdict to dealType/reason and standar
   assert.equal(paknsaveDeal?.wasArtificiallyInflated, true);
   assert.equal(woolworthsDeal?.sourceProductId, "p1");
   assert.equal(woolworthsDeal?.sourceStoreId, "woolworths");
+});
+
+test("historical-low evidence can confirm a neutral deal when recent status rows are incomplete", () => {
+  const candidate = row({
+    sale_price: 5.19,
+    normal_price: 5.94,
+    saving_pct: 12.6,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    evidence_strength: "EARLY",
+    store_history_ready: false,
+    price_history_90d_low: 5.19,
+    price_history_90d_high: 6.69,
+    price_history_90d_avg: 5.70,
+    price_history_90d_samples: 10,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 32,
+  });
+
+  assert.equal(isStrongHistoricalSaver(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Real Deal");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_LOW");
+});
+
+test("historical-low evidence stays neutral when the average is too close to the current price", () => {
+  const candidate = row({
+    sale_price: 7.69,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 7.69,
+    price_history_90d_high: 8.59,
+    price_history_90d_avg: 7.80,
+    price_history_90d_samples: 6,
+    price_history_90d_price_changes: 2,
+    price_history_90d_days_tracked: 42,
+    price_history_90d_special_days: 26,
+  });
+
+  assert.equal(isStrongHistoricalSaver(candidate), false);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
+});
+
+test("historical-low evidence stays neutral when transition history is missing", () => {
+  const candidate = row({
+    sale_price: 5.19,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 5.19,
+    price_history_90d_high: 6.69,
+    price_history_90d_avg: 5.70,
+    price_history_90d_samples: 10,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 32,
+  });
+
+  assert.equal(isStrongHistoricalSaver(candidate), false);
 });
 
 test("buildProductCardsFromSpecials: carries retailer unit-price fields to each deal", () => {
@@ -989,9 +1049,11 @@ test("loadLiveProducts: on a cache miss, the fetched result is written to Indexe
     assert.doesNotMatch(productFetch, /canonical_product_id=not\.is\.null/);
     const specialsFetch = calls.find((url) => url.includes("published_dodgy_deals_cache?select="));
     assert.ok(specialsFetch, "expected the bulk specials lookup");
+    assert.match(specialsFetch, /price_history_90d_low/);
     assert.match(specialsFetch, /price_history_90d_samples/);
     assert.match(specialsFetch, /price_history_90d_price_changes/);
-    assert.doesNotMatch(specialsFetch, /price_history_90d_low|price_history_90d_high|price_history_90d_avg|price_history_90d_special_samples|price_history_90d_days_tracked|price_history_90d_special_days/);
+    assert.match(specialsFetch, /price_history_90d_days_tracked/);
+    assert.match(specialsFetch, /price_history_90d_special_days/);
 
     // writeCatalogueCache is fire-and-forget inside loadLiveProducts (not
     // awaited, matching the prototype's own pattern) -- give it a couple of
