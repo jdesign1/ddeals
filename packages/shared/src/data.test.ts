@@ -387,6 +387,33 @@ test("established history can classify a fair current price that is above the ab
   assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
 });
 
+test("stable low with enough history can classify an early read as Fair Price", () => {
+  const candidate = row({
+    product_id: "2887b813-3a98-45d5-82f2-23b80ccb21fc",
+    product_name: "Gut Health Kefir Natural Coconut Dairy-Free Pourable Yoghurt",
+    store_id: "paknsave",
+    store_name: "Pak'nSave",
+    sale_price: 5.79,
+    normal_price: 5.79,
+    saving_pct: 0,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 5.79,
+    price_history_90d_high: 6.39,
+    price_history_90d_avg: 5.87,
+    price_history_90d_samples: 12,
+    price_history_90d_special_samples: 7,
+    price_history_90d_price_changes: 2,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 39,
+    regular_history_days: 34,
+  });
+
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
+});
+
 test("repeated 90-day lows can upgrade a recent MARGINAL read to Real Deal", () => {
   const candidate = row({
     sale_price: 15.99,

@@ -270,10 +270,10 @@ export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 /** A broader Fair Price read needs more observations than a near-low read. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES = 8;
-/** A modest average discount is enough for a fair read when history is robust. */
-export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = 2.5;
-/** Keep the fair read meaningfully below the observed high. */
-export const HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT = 10;
+/** Even a modest average discount can support a fair read when history is robust. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = 1;
+/** Keep the fair read below a meaningfully higher observed high. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT = 5;
 /** Never promote a price that is materially above the current normal reference. */
 export const HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM = 1;
 /** A genuine recent discount is not a Real Saver when it is this far above the 90-day average. */
