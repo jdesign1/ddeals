@@ -387,6 +387,75 @@ test("established history can classify a fair current price that is above the ab
   assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
 });
 
+test("repeated 90-day lows can upgrade a recent MARGINAL read to Real Deal", () => {
+  const candidate = row({
+    sale_price: 15.99,
+    normal_price: 15.99,
+    saving_pct: 0,
+    verdict: "MARGINAL",
+    evidence_status: "SUFFICIENT",
+    price_history_90d_low: 15.99,
+    price_history_90d_high: 22.99,
+    price_history_90d_avg: 18.45,
+    price_history_90d_samples: 7,
+    price_history_90d_special_samples: 4,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 35,
+  });
+
+  assert.equal(isStrongHistoricalSaver(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Real Deal");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_LOW");
+});
+
+test("a genuine recent discount becomes Fair Price when the full history is materially above average", () => {
+  const candidate = row({
+    sale_price: 7.89,
+    normal_price: 9.19,
+    saving_pct: 14.1,
+    verdict: "GENUINE",
+    evidence_status: "SUFFICIENT",
+    price_history_90d_low: 4.99,
+    price_history_90d_high: 9.19,
+    price_history_90d_avg: 6.79,
+    price_history_90d_samples: 8,
+    price_history_90d_special_samples: 4,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 37,
+  });
+
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ABOVE_AVERAGE");
+});
+
+test("historical low evidence never overrides an explicit Dodgy verdict", () => {
+  const candidate = row({
+    sale_price: 4.99,
+    normal_price: 7.99,
+    saving_pct: 37.5,
+    verdict: "DODGY",
+    evidence_status: "SUFFICIENT",
+    unit_price_change_pct: -0.5,
+    unit_price_samples: 10,
+    price_history_90d_low: 4.99,
+    price_history_90d_high: 9.99,
+    price_history_90d_avg: 7.45,
+    price_history_90d_samples: 12,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 6,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 35,
+  });
+
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Dodgy Deal");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, null);
+});
+
 test("historical-low evidence stays neutral for a one-off low observation", () => {
   const candidate = row({
     sale_price: 5.19,

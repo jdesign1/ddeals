@@ -166,14 +166,15 @@ export interface CurrentDeal {
   /** Retailer-provided comparative price for the current sale unit. */
   saleUnitPrice?: number | null;
   saleUnitLabel?: string | null;
-  /** The assessment was rescued by an independent 90-day price signal. */
+  /** The assessment was refined by an independent 90-day price signal. */
   assessmentBasis?: HistoricalAssessmentBasis | null;
 }
 
 export type HistoricalAssessmentBasis =
   | "NINETY_DAY_LOW"
   | "NINETY_DAY_NEAR_LOW"
-  | "NINETY_DAY_ESTABLISHED_FAIR";
+  | "NINETY_DAY_ESTABLISHED_FAIR"
+  | "NINETY_DAY_ABOVE_AVERAGE";
 
 /** A sparse price/special-state transition from the retailer history table. */
 export interface PriceHistoryPoint {
@@ -269,14 +270,14 @@ export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 /** A broader Fair Price read needs more observations than a near-low read. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES = 8;
-/** Do not call a price fair if it is materially above the 90-day low. */
-export const HISTORICAL_ESTABLISHED_FAIR_MAX_LOW_GAP = 12.5;
-/** A small average discount is enough for a fair read when history is robust. */
-export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = 1.5;
+/** A modest average discount is enough for a fair read when history is robust. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = 2.5;
 /** Keep the fair read meaningfully below the observed high. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT = 10;
 /** Never promote a price that is materially above the current normal reference. */
 export const HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM = 1;
+/** A genuine recent discount is not a Real Saver when it is this far above the 90-day average. */
+export const HISTORICAL_ABOVE_AVERAGE_MIN_GAP = 5;
 
 /**
  * The published fields required to resolve a user-facing verdict. This is
@@ -312,21 +313,22 @@ type HistoricalAssessmentRow = Pick<PublishedAssessmentRow, "verdict">
   & Partial<Omit<PublishedAssessmentRow, "verdict">>;
 
 /**
- * Produces an independent historical signal for rows whose primary
- * classifier is still neutral. This is deliberately narrower than "current
+ * Produces an independent historical signal for published rows when the
+ * rolling history can refine the primary classifier. This is deliberately narrower than "current
  * price is below the 90-day high": it needs a sustained observation window,
  * a real regular-price period, a meaningful average/high separation, and a
  * current price at or near the recorded low. A separate established-Fair
- * branch permits a slightly wider low gap only when the current normal
- * reference and a larger observation count support that interpretation. The
- * published aggregate does not expose low-specific recurrence yet, so the
- * final gate uses repeated special-state observations or a current low held
- * for at least two calendar days. A one-off low remains neutral.
+ * branch permits a wider position in the observed range only when the
+ * current normal reference and a larger observation count support that
+ * interpretation. A final above-average branch can also downgrade a recent
+ * GENUINE read when the full window clearly disagrees. The published
+ * aggregate does not expose low-specific recurrence yet, so the final gate
+ * uses repeated special-state observations or a current low held for at least
+ * two calendar days. A one-off low remains neutral.
  */
 function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalAssessmentBasis | null {
   if (
-    row.verdict !== "UNKNOWN"
-    || (row.evidence_status !== "EARLY" && row.evidence_status !== "INSUFFICIENT" && row.evidence_status !== "LIMITED")
+    row.verdict === "DODGY"
   ) {
     return null;
   }
@@ -399,11 +401,19 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     && Number.isFinite(normalPrice)
     && normalPrice > 0
     && salePrice <= normalPrice * (1 + HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM / 100)
-    && lowGapPct <= HISTORICAL_ESTABLISHED_FAIR_MAX_LOW_GAP
+    && (salePrice - low) / (high - low) <= 0.5
     && averageDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT
     && highDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT
   ) {
     return "NINETY_DAY_ESTABLISHED_FAIR";
+  }
+
+  if (
+    row.verdict === "GENUINE"
+    && averageDiscount <= -HISTORICAL_ABOVE_AVERAGE_MIN_GAP
+    && highDiscount >= 0
+  ) {
+    return "NINETY_DAY_ABOVE_AVERAGE";
   }
 
   return null;
@@ -501,7 +511,9 @@ export function resolvePublishedDealAssessment(row: PublishedAssessmentRow): Pub
   const assessmentBasis = getHistoricalAssessmentBasis(row);
   const verdict = assessmentBasis === "NINETY_DAY_LOW"
     ? "GENUINE"
-    : assessmentBasis === "NINETY_DAY_NEAR_LOW" || assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"
+    : assessmentBasis === "NINETY_DAY_NEAR_LOW"
+      || assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"
+      || assessmentBasis === "NINETY_DAY_ABOVE_AVERAGE"
       ? "MARGINAL"
       : effectiveViewVerdict(row);
 

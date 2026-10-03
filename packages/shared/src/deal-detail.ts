@@ -148,6 +148,21 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
         body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis is near the lowest recorded price in the last 90 days.${averageCopy}`,
       };
     }
+    if (
+      deal.assessmentBasis === "NINETY_DAY_ABOVE_AVERAGE"
+      && deal.ninetyDayAvg != null
+      && Number.isFinite(deal.ninetyDayAvg)
+      && deal.ninetyDayAvg > 0
+    ) {
+      const aboveAveragePct = Math.round(((deal.price - deal.ninetyDayAvg) / deal.ninetyDayAvg) * 100);
+      const recentNormalCopy = savingsPct != null && savingsPct > 0 && normalPrice
+        ? ` It is ${savingsPct}% below the recent normal price.`
+        : "";
+      return {
+        heading: "Fair price, but above the 90-day average",
+        body: `Current price: ${currentPrice}.\n90-day average: ${formatAssessmentPrice(deal.ninetyDayAvg)}.\nThis is ${aboveAveragePct}% above the typical 90-day price, so it is not a standout saver.${recentNormalCopy}`,
+      };
+    }
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
       return {
         heading: `${savingsPct}% off the recent normal price`,
@@ -219,16 +234,19 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
  * Same branch order as the prototype's DealModal: a plain (non-special) item
  * always lands as a "Fair Price" (no discount game being played); a special
  * without enough evidence stays neutral, while older-but-useful evidence is
- * shown as an "Early read" rather than being promoted to a confirmed verdict.
- * Separately marked repeated/held 90-day low signals are intentional
- * exceptions: they have enough independent history to present a Real Saver or
- * Fair Price read even when the retailer's recent-baseline status is still
- * early.
+ * shown as an "Early read" rather than being promoted on recent history
+ * alone. Separately marked 90-day signals are intentional exceptions: they
+ * can confirm a Real Saver, establish a Fair Price, or temper an overly
+ * optimistic recent GENUINE read when the full window disagrees.
  */
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Price";
   if (deal.assessmentBasis === "NINETY_DAY_LOW") return "Real Saver";
-  if (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW" || deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR") return "Fair Price";
+  if (
+    deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"
+    || deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"
+    || deal.assessmentBasis === "NINETY_DAY_ABOVE_AVERAGE"
+  ) return "Fair Price";
   if (deal.evidenceStatus === "EARLY") return "Early read";
   if (deal.evidenceStatus === "INSUFFICIENT" || deal.evidenceStatus === "LIMITED") return "Limited history";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
