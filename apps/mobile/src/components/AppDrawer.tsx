@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Bell, ChevronDown, X } from "lucide-react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
@@ -92,9 +93,14 @@ export default function AppDrawer() {
               }}
               className="flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
-              <span className="material-symbols-outlined flex h-14 w-14 flex-shrink-0 self-center items-center justify-center text-[48px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 48" }} aria-hidden="true">
-                account_circle
-              </span>
+              <Image
+                src="/logo.svg"
+                alt=""
+                width={48}
+                height={48}
+                className="theme-logo h-12 w-12 flex-shrink-0"
+                aria-hidden="true"
+              />
               <span>
                 <span className="block dd-type-control font-semibold text-stone-900">Create account or log in</span>
                 <span className="block dd-type-meta text-stone-500">Save lists and preferences</span>
