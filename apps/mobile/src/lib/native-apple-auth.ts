@@ -28,9 +28,21 @@ async function hashNonce(rawNonce: string): Promise<string> {
  * identity token directly with Supabase. The private Apple OAuth secret is
  * never sent to the app; it remains a Supabase dashboard setting for web OAuth.
  */
-export async function signInWithNativeApple(
-  client: SupabaseClient
-): Promise<Awaited<ReturnType<SupabaseClient["auth"]["signInWithIdToken"]>>> {
+export async function signInWithNativeApple(client: SupabaseClient) {
+  return authenticateWithNativeApple(client, false);
+}
+
+/**
+ * Links the Apple identity returned by the native iOS prompt to the current
+ * Supabase user. This must use `linkIdentity`, not `signInWithIdToken`, or the
+ * prompt would switch the session to a separate Apple-owned user and split
+ * private rows such as Watchlist items.
+ */
+export async function linkWithNativeApple(client: SupabaseClient) {
+  return authenticateWithNativeApple(client, true);
+}
+
+async function authenticateWithNativeApple(client: SupabaseClient, linkIdentity: boolean) {
   const rawNonce = createRawNonce();
   const hashedNonce = await hashNonce(rawNonce);
 
@@ -47,9 +59,13 @@ export async function signInWithNativeApple(
   const identityToken = result.response.identityToken?.trim();
   if (!identityToken) throw new Error("Apple did not return an identity token.");
 
-  return client.auth.signInWithIdToken({
+  const credentials = {
     provider: "apple",
     token: identityToken,
     nonce: rawNonce,
-  });
+  } as const;
+
+  return linkIdentity
+    ? client.auth.linkIdentity(credentials)
+    : client.auth.signInWithIdToken(credentials);
 }

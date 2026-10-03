@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { Session, User } from "@dodgey-deals/shared";
 import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
-import { isNativeAppleSignInAvailable, signInWithNativeApple } from "./native-apple-auth";
+import { isNativeAppleSignInAvailable, linkWithNativeApple, signInWithNativeApple } from "./native-apple-auth";
 import { isNativeGoogleSignInAvailable, signInWithNativeGoogle } from "./native-google-auth";
 
 export interface AccountProfile {
@@ -26,6 +26,13 @@ export interface AccountDetails {
 
 type AuthProviderName = "google" | "apple";
 
+export type AccountIdentity = {
+  id: string;
+  identity_id: string;
+  provider: string;
+  email?: string;
+};
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
@@ -46,6 +53,19 @@ interface AuthContextValue {
   requestOtp: (email: string, shouldCreateUser: boolean) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   signInWithProvider: (provider: AuthProviderName) => Promise<{ error: string | null }>;
+  getLinkedIdentities: () => Promise<{ error: string | null; identities: AccountIdentity[] }>;
+  linkAppleIdentity: () => Promise<{ error: string | null }>;
+  requestEmailIdentityLink: (email: string) => Promise<{
+    error: string | null;
+    currentEmail: string | null;
+    newEmail: string;
+  }>;
+  verifyEmailIdentityLink: (params: {
+    currentEmail: string | null;
+    currentToken?: string;
+    newEmail: string;
+    newToken: string;
+  }) => Promise<{ error: string | null }>;
   completeProfile: (details: AccountDetails) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   updateProfileName: (name: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   refreshProfile: () => Promise<AccountProfile | null>;
@@ -273,6 +293,98 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: { redirectTo: authRedirectUrl },
         });
         if (error && typeof window !== "undefined") window.sessionStorage.removeItem(PROVIDER_RETURN_STORAGE_KEY);
+        return { error: error?.message ?? null };
+      },
+      getLinkedIdentities: async () => {
+        if (!client) return { error: configurationError(), identities: [] };
+        if (!user) return { error: "Please sign in before managing sign-in methods.", identities: [] };
+        const { data, error } = await client.auth.getUserIdentities();
+        return {
+          error: error?.message ?? null,
+          identities: (data?.identities ?? []) as AccountIdentity[],
+        };
+      },
+      linkAppleIdentity: async () => {
+        if (!client) return { error: configurationError() };
+        if (!user) return { error: "Please sign in before linking Apple." };
+
+        if (isNativeAppleSignInAvailable()) {
+          try {
+            const authResult = await linkWithNativeApple(client);
+            if (!authResult.error) {
+              const { data: refreshedUser } = await client.auth.getUser();
+              if (refreshedUser.user) setUser(refreshedUser.user);
+            }
+            return { error: authResult.error?.message ?? null };
+          } catch (error) {
+            return { error: error instanceof Error ? error.message : "Apple linking failed." };
+          }
+        }
+
+        const { error } = await client.auth.linkIdentity({
+          provider: "apple",
+          options: { redirectTo: authRedirectUrl },
+        });
+        return { error: error?.message ?? null };
+      },
+      requestEmailIdentityLink: async (email) => {
+        if (!client) return { error: configurationError(), currentEmail: null, newEmail: "" };
+        if (!user) {
+          return {
+            error: "Please sign in before adding an email sign-in method.",
+            currentEmail: null,
+            newEmail: "",
+          };
+        }
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail) return { error: "Enter an email address.", currentEmail: null, newEmail: "" };
+        if (normalizedEmail === user.email?.trim().toLowerCase()) {
+          return {
+            error: "That email is already the email on this account.",
+            currentEmail: user.email ?? null,
+            newEmail: normalizedEmail,
+          };
+        }
+        const { error } = await client.auth.updateUser(
+          { email: normalizedEmail },
+          { emailRedirectTo: authRedirectUrl || undefined },
+        );
+        return {
+          error: error?.message ?? null,
+          currentEmail: user.email ?? null,
+          newEmail: normalizedEmail,
+        };
+      },
+      verifyEmailIdentityLink: async ({ currentEmail, currentToken, newEmail, newToken }) => {
+        if (!client) return { error: configurationError() };
+        if (!user) return { error: "Please sign in before verifying an email sign-in method." };
+        const normalizedCurrentEmail = currentEmail?.trim().toLowerCase() || "";
+        const normalizedCurrentToken = currentToken?.trim() || "";
+        const normalizedNewEmail = newEmail.trim().toLowerCase();
+        const normalizedNewToken = newToken.trim();
+        if (!normalizedNewEmail || !/^\d{6,8}$/.test(normalizedNewToken)) {
+          return { error: "Enter the verification code from your new email." };
+        }
+        if (normalizedCurrentToken && !/^\d{6,8}$/.test(normalizedCurrentToken)) {
+          return { error: "Enter the verification code from your current email." };
+        }
+        if (normalizedCurrentToken && normalizedCurrentEmail) {
+          const { error } = await client.auth.verifyOtp({
+            email: normalizedCurrentEmail,
+            token: normalizedCurrentToken,
+            type: "email_change",
+          });
+          if (error) return { error: error.message };
+        }
+        const { error } = await client.auth.verifyOtp({
+          email: normalizedNewEmail,
+          token: normalizedNewToken,
+          type: "email_change",
+        });
+        if (!error) {
+          const { data: refreshedUser } = await client.auth.getUser();
+          if (refreshedUser.user) setUser(refreshedUser.user);
+        }
         return { error: error?.message ?? null };
       },
       completeProfile: async (details) => {

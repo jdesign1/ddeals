@@ -13,6 +13,7 @@ import { getAccountDisplayName, getAccountEmailDisplay } from "@/lib/account-dis
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
+import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 
@@ -453,6 +454,7 @@ export default function SettingsPage() {
                 </p>
               </div>
             )}
+            <IdentityLinkingPanel />
             <button
               type="button"
               onClick={() => setIsLogoutSheetOpen(true)}
