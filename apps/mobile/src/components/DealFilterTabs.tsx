@@ -28,8 +28,12 @@ export default function DealFilterTabs({
     <div
       role="radiogroup"
       aria-label="Deal filters"
-      className={`dd-segmented-control flex items-center gap-0.5 rounded-lg p-1 shadow-sm shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
+      className="dd-segmented-control relative flex h-11 items-center gap-0.5"
     >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 inset-y-1 rounded-full shadow-sm shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
+      />
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
         return (
@@ -40,7 +44,7 @@ export default function DealFilterTabs({
             role="radio"
             aria-checked={isActive}
             onClick={() => onChange(tab.id)}
-            className={`relative z-0 flex min-h-11 flex-1 cursor-pointer appearance-none items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+            className={`relative z-0 flex h-11 flex-1 cursor-pointer appearance-none items-center justify-center rounded-full px-3 py-1 text-center dd-type-control transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
               isActive ? "dd-segmented-control-active text-white shadow-sm" : "text-stone-600 hover:text-stone-900"
             }`}
           >
@@ -48,7 +52,7 @@ export default function DealFilterTabs({
               {isActive && (
                 <motion.span
                   layoutId={activeFillId}
-                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-ink-900 shadow-sm"
+                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-x-0 inset-y-1 rounded-full bg-ink-900 shadow-sm"
                   style={{ zIndex: -1 }}
                   initial={false}
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}

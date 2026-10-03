@@ -36,33 +36,37 @@ export default function FilterTrigger({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={`relative inline-flex h-11 items-stretch overflow-hidden rounded-lg border bg-white dd-type-control text-stone-700 shadow-none transition-colors hover:bg-stone-50 ${
-        active ? "border-stone-950" : "border-stone-300"
-      } ${
+      className={`relative inline-flex h-11 items-stretch ${
         fill ? "min-w-0 w-full" : compact ? "min-w-0" : "min-w-0 max-w-44"
       }`}
     >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 inset-y-1 rounded-full border bg-white shadow-none transition-colors ${
+          active ? "border-stone-950" : "border-stone-300"
+        }`}
+      />
       <button
         type="button"
         onClick={onOpen}
         aria-haspopup={hasPopup}
         aria-expanded={expanded}
         aria-label={ariaLabel}
-        className="absolute inset-0 z-0 cursor-pointer rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+        className="absolute inset-0 z-0 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
       />
-      <span className="pointer-events-none relative z-10 flex w-full min-w-0 items-center justify-center px-2 py-2 pr-8">
+      <span className="pointer-events-none relative z-10 flex h-11 w-full min-w-0 items-center justify-center px-2 pr-8 dd-type-control text-stone-700">
         <span className="flex min-w-0 items-center gap-1">
           {leading}
           <span className="whitespace-nowrap">{label}</span>
         </span>
       </span>
-      <span className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-8 items-center justify-center">
+      <span className="pointer-events-none absolute inset-y-1 right-0 z-10 flex w-8 items-center justify-center">
         {active ? (
           <button
             type="button"
             onClick={onClear}
             aria-label={`Clear ${ariaLabel.toLowerCase()}`}
-            className="pointer-events-auto flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+            className="pointer-events-auto flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
