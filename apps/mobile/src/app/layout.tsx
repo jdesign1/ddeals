@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Manrope } from "next/font/google";
 import Script from "next/script";
+import AppDrawer from "@/components/AppDrawer";
 import BottomNav from "@/components/BottomNav";
 import GlobalOverlays from "@/components/GlobalOverlays";
 import LaunchSplash from "@/components/LaunchSplash";
@@ -13,6 +14,7 @@ import { CardLayoutProvider } from "@/lib/card-layout-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
 import { WatchlistProvider } from "@/lib/watchlist-context";
+import { NavigationDrawerProvider } from "@/lib/navigation-drawer-context";
 import "./globals.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
@@ -90,6 +92,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 override. */}
               <CardLayoutProvider>
                 <SearchProvider>
+                <NavigationDrawerProvider>
               <LaunchSplash />
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
                   normal flex sibling (its own row, reserving space below
@@ -155,10 +158,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   other half lives at. */}
               <ScrollContainer>{children}</ScrollContainer>
               <BottomNav />
+              <AppDrawer />
               {/* Mounted once, globally, so FullScreenSearch/ScannerModal are
                   available regardless of which route is active -- previously
                   both only existed inside Home's own page.tsx. */}
-              <GlobalOverlays />
+                <GlobalOverlays />
+                </NavigationDrawerProvider>
                 </SearchProvider>
               </CardLayoutProvider>
             </HeaderOverrideProvider>

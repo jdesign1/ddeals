@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearch } from "@/lib/search-context";
 import { useNotifications } from "@/lib/notifications-context";
+import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 
 type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
@@ -228,6 +229,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { isActive: isSearchActive, closeSearch } = useSearch();
   const { unreadCount } = useNotifications();
+  const { isOpen: isDrawerOpen } = useNavigationDrawer();
 
   if (pathname.startsWith("/deal/") || pathname === "/settings" || CONTACT_ROUTES.includes(pathname)) return null;
 
@@ -236,9 +238,11 @@ export default function BottomNav() {
       {/* Extend the frosted layer behind the floating pill so catalogue
           content scrolling underneath the bottom edge is blurred on both
           mobile browsers and iOS WKWebView. */}
-      <div className="app-bottom-nav-backdrop" aria-hidden="true" />
+      <div className={`app-drawer-shiftable app-bottom-nav-backdrop ${isDrawerOpen ? "is-drawer-open" : ""}`} aria-hidden="true" />
       <nav
-        className={`app-bottom-nav fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${
+        aria-hidden={isDrawerOpen || undefined}
+        inert={isDrawerOpen ? true : undefined}
+        className={`app-drawer-shiftable app-bottom-nav fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${isDrawerOpen ? "is-drawer-open" : ""} ${
           isSearchActive ? "z-[55]" : "z-40"
         }`}
       >
