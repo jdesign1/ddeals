@@ -332,7 +332,7 @@ export default function ListItemProductCard({
             {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}
           </div>
           {unitPriceLabel && (
-            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel}`}>
+            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel.replace("/", " per ")}`}>
               {unitPriceLabel}
             </span>
           )}

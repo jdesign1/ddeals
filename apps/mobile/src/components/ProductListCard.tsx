@@ -104,7 +104,10 @@ export default function ProductListCard({
     dataOnboarding === "dodgy-deal-card";
   const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
-  const unitPriceLabel = formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel);
+  // Top 20 cards stay intentionally compact. Unit pricing remains available
+  // on full Search cards, while the assessment page carries the detailed
+  // comparison for Top 20 items.
+  const unitPriceLabel = isSnapshotLayout ? null : formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel);
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
   const { isGridLayout, isCompactLayout } = useCardLayout();
   const pinStoreLogosToFooter = !isSnapshotLayout && !isCompactLayout && !hideCardBadges;
@@ -288,7 +291,7 @@ export default function ProductListCard({
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
           )}
           {unitPriceLabel && (
-            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel}`}>
+            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel.replace("/", " per ")}`}>
               {unitPriceLabel}
             </span>
           )}
