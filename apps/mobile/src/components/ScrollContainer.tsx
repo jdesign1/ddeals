@@ -362,6 +362,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   };
 
   return (
+    <>
     <div
       ref={scrollRef}
       aria-hidden={isDrawerOpen || undefined}
@@ -407,10 +408,11 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       >
         {children}
       </div>
-      <BackToTopButton
-        scrollRef={scrollRef}
-        enabled={pathname === "/" || pathname === "/history" || pathname === "/lists"}
-      />
     </div>
+    <BackToTopButton
+      scrollRef={scrollRef}
+      enabled={!isDrawerOpen && (pathname === "/" || pathname === "/history" || pathname === "/lists")}
+    />
+    </>
   );
 }
