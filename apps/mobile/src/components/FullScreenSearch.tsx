@@ -781,13 +781,13 @@ export default function FullScreenSearch() {
               here in case the effect reads as invisible in practice and a
               follow-up ask to make it truly overlay scrolling content
               turns out to be what was actually wanted. */}
-          <div className="flex flex-shrink-0 items-center gap-2 px-4 pb-[2px] pt-4 backdrop-blur-md">
+          <div className="flex h-16 flex-shrink-0 items-center gap-2.5 px-4 backdrop-blur-md">
             <button
               type="button"
               onClick={handleBack}
               id="close-search-btn"
               aria-label="Back"
-              className="-ml-2 flex-shrink-0 cursor-pointer rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-700"
+              className="flex h-11 w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-300 bg-white text-stone-800 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -836,7 +836,7 @@ export default function FullScreenSearch() {
                 fix) is to apply the same visual fix to every component that
                 shares the pattern, not just the one currently being looked
                 at. */}
-            <form onSubmit={(e) => e.preventDefault()} className="dd-search-control flex flex-1 items-center rounded-full border border-stone-300 bg-white py-1.5 pl-5 pr-3 shadow-none transition-colors focus-within:border-stone-900">
+            <form onSubmit={(e) => e.preventDefault()} className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 shadow-none transition-colors focus-within:border-stone-900">
               {/* Mascot mark replaces lucide's `Search` icon here (2026-08-20,
                   per Jay: "In the active search bar state, replace the search
                   icon with the dodgy man icon") -- same `/logo.svg` mark
@@ -850,7 +850,7 @@ export default function FullScreenSearch() {
                   is); this was `Search`'s only usage in this file, so it's
                   dropped from the `lucide-react` import above rather than
                   left there unused. */}
-              <Image src="/logo.svg" alt="" width={24} height={24} className="theme-logo mr-3 h-6 w-6 flex-shrink-0" />
+              <Image src="/logo.svg" alt="" width={28} height={28} className="theme-logo mr-3 h-7 w-7 flex-shrink-0" />
               <input
                 id="full-search-input"
                 autoFocus={focusSearchOnOpen}
