@@ -537,7 +537,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => openSearchForFilter("all", { focus: false })}
-                  className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
                 >
                   See all deals
                 </button>
@@ -786,7 +786,7 @@ function TrendingSection({
         <EmptyState illustration={noResultsIllustration}>{sectionCopy.empty}</EmptyState>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-center gap-2 text-center">
             <span className="dd-type-meta dd-type-meta-strong text-stone-500">
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>

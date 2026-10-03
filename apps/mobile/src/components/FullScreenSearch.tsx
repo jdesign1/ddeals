@@ -1107,7 +1107,7 @@ export default function FullScreenSearch() {
 
                 {sortedPopularSpecials.length > 0 ? (
                   <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-center gap-2 text-center">
                       {/* Was a static "Dodgy deals now" / "Popular specials
                           now" label -- now shows the live count (matches
                           `sortedPopularSpecials.length`, the same number the
@@ -1320,7 +1320,7 @@ export default function FullScreenSearch() {
 
                   <DealFilterSummary filter={dealFilter} />
 
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-center gap-2 text-center">
                     <span className="dd-type-meta dd-type-meta-strong text-stone-500">
                       {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"}
                     </span>
