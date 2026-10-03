@@ -45,7 +45,7 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { isAnonymousSession } = useAuth();
+  const { isAnonymousSession, user } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
   const { products, loadingProducts, query, openSearch, openSearchForFilter } = useSearch();
@@ -135,11 +135,17 @@ export default function AppHeader({
             </div>
           ) : (
             <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2.5">
-              <button type="button" id="global-header-menu-btn" aria-label="Open menu" aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-800 shadow-sm transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200">
-                <Menu className="h-5 w-5" aria-hidden="true" />
+              <button type="button" id="global-header-menu-btn" aria-label={user ? "Open profile menu" : "Open menu"} aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-800 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200">
+                {user ? (
+                  <span className="material-symbols-outlined text-[28px] leading-none" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
+                    account_circle
+                  </span>
+                ) : (
+                  <Menu className="h-5 w-5" aria-hidden="true" />
+                )}
               </button>
-              <button type="button" onClick={openSearch} aria-label="Search Dodgy Deal" data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left shadow-sm transition-colors hover:bg-stone-50 focus:outline-none focus-visible:border-stone-900">
-                <Image src="/logo.svg" alt="" width={24} height={24} className="theme-logo mr-3 h-6 w-6 flex-shrink-0 animate-mascot-header-blink" />
+              <button type="button" onClick={openSearch} aria-label="Search Dodgy Deal" data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors hover:bg-stone-50 focus:outline-none focus-visible:border-stone-900">
+                <Image src="/logo.svg" alt="" width={28} height={28} className="theme-logo mr-3 h-7 w-7 flex-shrink-0 animate-mascot-header-blink" />
                 <span className={`min-w-0 flex-1 truncate text-base ${query ? "font-medium text-stone-700" : "font-normal text-stone-400"}`}>{query || "Search Dodgy Deal"}</span>
               </button>
             </div>
