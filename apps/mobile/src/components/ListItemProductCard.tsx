@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
-import { formatUnitPrice, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
+import { type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
@@ -186,7 +186,8 @@ export default function ListItemProductCard({
   // just above (only one row's sheet is ever open at a time, nothing
   // outside this card needs to know).
   const isNotOnSpecial = deal.isOnSpecial === false;
-  const unitPriceLabel = !isNotOnSpecial ? formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel) : null;
+  const isRealSaver = !isNotOnSpecial && deal.dealType === "Real Deal" && deal.originalPrice > deal.price;
+  const isDodgyDeal = !isNotOnSpecial && (deal.dealType === "Dodgy Deal" || deal.isDodgyReviewCandidate === true);
   const isAssessmentPending = !isNotOnSpecial && deal.dealType === "Unverified Deal";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
 
@@ -255,8 +256,14 @@ export default function ListItemProductCard({
       // Keep inactive products visibly grey without lowering text contrast;
       // the retained current price still needs to be easy to scan. This is
       // excluded during remove confirmation, which has its own alert state.
-      className={`dd-compact-product-card group flex items-stretch gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 transition-colors hover:bg-stone-50 ${
-        isNotOnSpecial && !confirmingRemove ? "grayscale bg-stone-50" : ""
+      className={`dd-compact-product-card group flex min-h-[76px] items-stretch gap-3 overflow-hidden rounded-xl border bg-white p-2 transition-colors hover:bg-stone-50 ${
+        isNotOnSpecial && !confirmingRemove
+          ? "border-stone-200/80 grayscale bg-stone-50"
+          : isRealSaver
+            ? "border-fair-600"
+            : isDodgyDeal
+              ? "border-alert-600"
+              : "border-stone-200/80"
       }`}
       ref={cardRef}
       style={{
@@ -265,18 +272,6 @@ export default function ListItemProductCard({
         ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
       }}
     >
-      <div className="product-image-frame flex h-14 w-14 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
-        <ProductImage
-          src={product.image}
-          alt={product.name}
-          width={56}
-          height={56}
-          sizes="56px"
-          loading="lazy"
-          className="product-image-content h-full w-full object-contain"
-        />
-      </div>
-
       {confirmingRemove ? (
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2 py-0.5">
           <span className="min-w-0 flex-1 break-words text-left text-[13px] leading-4 font-bold text-alert-700">
@@ -311,6 +306,8 @@ export default function ListItemProductCard({
               ${deal.price.toFixed(2)}
             </span>
             {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
+            {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
+            {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
             <StoreLogoBadge store={deal.store} variant="compact" />
             {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral">Checking deal</span>}
             {otherSpecialCount > 0 && (
@@ -323,13 +320,19 @@ export default function ListItemProductCard({
             )}
             {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}
           </div>
-          {unitPriceLabel && (
-            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel.replace("/", " per ")}`}>
-              {unitPriceLabel}
-            </span>
-          )}
         </div>
       )}
+      <div className="product-image-frame flex min-h-full w-20 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
+        <ProductImage
+          src={product.image}
+          alt={product.name}
+          width={80}
+          height={80}
+          sizes="80px"
+          loading="lazy"
+          className="product-image-content h-full w-full object-contain"
+        />
+      </div>
     </motion.div>
 
     <NotOnSpecialSheet
@@ -344,8 +347,7 @@ export default function ListItemProductCard({
 /**
  * Explanation sheet for tapping a greyed-out, not-on-special list item --
  * 2026-08-21, see this file's own top-of-file doc comment for the full
- * "why" (including the flagged "we will notify you" copy, which isn't
- * backed by a real notifications system yet). Same bottom-sheet chrome
+ * "why" (including the Watchlist alert copy). Same bottom-sheet chrome
  * every other sheet in this app already uses (scrim + spring slide-up,
  * `rounded-t-3xl`/`shadow-2xl`, `text-lg font-black tracking-tight` title +
  * top-right close X -- see `app/page.tsx`'s `SortDropdown` or

@@ -58,13 +58,13 @@ test("alerts when a regular item returns to a verified special", () => {
   }), "returned_to_special");
 });
 
-test("never alerts for a dodgy special or stale baseline", () => {
+test("alerts when a watched special becomes dodgy, but not from a stale baseline", () => {
   const input = {
     previous: state,
     currentPrice: 8,
     isVerifiedSpecial: true,
     verdict: "DODGY",
   };
-  assert.equal(detectWatchlistPriceAlert({ ...input, previousIsFresh: true }), null);
+  assert.equal(detectWatchlistPriceAlert({ ...input, previousIsFresh: true }), "dodgy_special");
   assert.equal(detectWatchlistPriceAlert({ ...input, previousIsFresh: false, verdict: "GENUINE" }), null);
 });

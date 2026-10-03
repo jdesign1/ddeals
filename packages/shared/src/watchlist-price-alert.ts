@@ -1,4 +1,4 @@
-export type WatchlistAlertType = "returned_to_special" | "better_special_price";
+export type WatchlistAlertType = "returned_to_special" | "better_special_price" | "dodgy_special";
 
 export interface WatchlistPriceState {
   last_price: number;
@@ -11,8 +11,9 @@ export const WATCHLIST_MIN_PERCENT_DROP = 0.05;
 
 /**
  * Decide whether a fresh catalogue observation is a meaningful Watchlist
- * price alert. A first observation establishes a baseline and never alerts;
- * subsequent alerts must clear both the dollar and percentage thresholds.
+ * alert. A first observation establishes a baseline and never alerts;
+ * genuine price alerts must clear both the dollar and percentage thresholds,
+ * while a newly dodgy special is surfaced immediately.
  */
 export function detectWatchlistPriceAlert({
   previous,
@@ -27,7 +28,8 @@ export function detectWatchlistPriceAlert({
   isVerifiedSpecial: boolean;
   verdict: string | undefined;
 }): WatchlistAlertType | null {
-  if (!previous || !previousIsFresh || !isVerifiedSpecial || verdict === "DODGY") return null;
+  if (!previous || !previousIsFresh || !isVerifiedSpecial) return null;
+  if (verdict === "DODGY") return "dodgy_special";
 
   const referencePrice = previous.last_is_special
     ? Number(previous.last_notified_price ?? previous.last_price)

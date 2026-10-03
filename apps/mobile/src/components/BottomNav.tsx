@@ -263,7 +263,7 @@ export default function BottomNav() {
                       : "stats-tab"
               }
               aria-current={isActive ? "page" : undefined}
-              aria-label={hasUnreadUpdates ? `${label}, new price updates` : undefined}
+              aria-label={hasUnreadUpdates ? `${label}, new deal updates` : undefined}
               onClick={() => {
                 if (isSearchActive) closeSearch();
               }}

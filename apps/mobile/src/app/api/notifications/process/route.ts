@@ -66,7 +66,7 @@ interface AlertEventRow {
   product_name: string;
   store_id: string;
   store_name: string;
-  event_type: "returned_to_special" | "better_special_price";
+  event_type: "returned_to_special" | "better_special_price" | "dodgy_special";
   price: number;
   previous_price: number;
   verdict: "GENUINE" | "MARGINAL" | "UNKNOWN";
@@ -124,7 +124,9 @@ function buildAlertCopy(events: AlertEventRow[], list: ListRow): {
   const savings = `$${Math.max(0, Number(event.previous_price) - Number(event.price)).toFixed(2)}`;
   const trustedAssessment = event.verdict === "GENUINE";
   let body: string;
-  if (!trustedAssessment) {
+  if (event.event_type === "dodgy_special") {
+    body = `${event.product_name} at ${event.store_name} now looks dodgy at ${price}. Avoid this deal and tap to review ${list.name}.`;
+  } else if (!trustedAssessment) {
     body = `Price update: ${event.product_name} is ${price} at ${event.store_name}. Tap to view ${list.name}.`;
   } else if (event.event_type === "returned_to_special") {
     body = `${event.product_name} is back on special at ${event.store_name} for ${price}, down ${savings}. Tap to view ${list.name}.`;

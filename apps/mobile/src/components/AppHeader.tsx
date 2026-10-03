@@ -4,7 +4,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, Menu, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, Menu, RefreshCw, Share2 } from "lucide-react";
 import NewSpecialsModal from "@/components/NewSpecialsModal";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 import { useAuth } from "@/lib/auth-context";
@@ -13,6 +13,7 @@ import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
+import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import {
   createNewSpecialsSnapshot,
   readNewSpecialsSnapshot,
@@ -107,6 +108,7 @@ export default function AppHeader({
   }
 
   const isContextHeader = Boolean(override) || CONTEXT_HEADER_ROUTES.includes(pathname) || pathname.startsWith("/deal/");
+  const isWatchlist = pathname === "/lists";
   const contextTitle = override?.title ?? ROUTE_TITLES[pathname] ?? "Dodgy Deal";
   const isHeaderHidden = pathname === "/" && isHiddenOnCheckDeals;
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
@@ -151,6 +153,16 @@ export default function AppHeader({
                 <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mr-3 h-8 w-8 flex-shrink-0 animate-mascot-header-blink" />
                 <span className={`min-w-0 flex-1 truncate text-base ${query ? "font-medium text-stone-700" : "font-normal text-stone-400"}`}>{query || "Search Dodgy Deal"}</span>
               </button>
+              {isWatchlist && (
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event(WATCHLIST_SHARE_EVENT))}
+                  aria-label="Share Watchlist"
+                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-700 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+                >
+                  <Share2 className="h-5 w-5" aria-hidden="true" />
+                </button>
+              )}
             </div>
           )}
         </header>

@@ -8,11 +8,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 
-interface UnreadListAlert {
+export interface UnreadListAlert {
   id: string;
   list_id: string;
   list_item_id: string;
   product_id: string;
+  product_name: string;
+  store_name: string;
+  event_type: "returned_to_special" | "better_special_price" | "dodgy_special";
+  price: number;
+  verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
 }
 
 interface NotificationsContextValue {
@@ -22,6 +27,7 @@ interface NotificationsContextValue {
   pushPermissionState: PermissionState | null;
   notificationError: string | null;
   unreadCount: number;
+  unreadAlerts: ReadonlyArray<UnreadListAlert>;
   unreadListItemKeys: ReadonlySet<string>;
   setPushEnabled: (enabled: boolean) => Promise<boolean>;
   openNotificationSettings: () => Promise<void>;
@@ -68,7 +74,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     for (let offset = 0; ; offset += 500) {
       const unreadResult = await client
         .from("list_price_alert_events")
-        .select("id,list_id,list_item_id,product_id")
+        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,price,verdict")
         .is("viewed_at", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + 499);
@@ -329,6 +335,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     pushPermissionState,
     notificationError,
     unreadCount: unreadAlerts.length,
+    unreadAlerts,
     unreadListItemKeys,
     setPushEnabled,
     openNotificationSettings,
@@ -344,7 +351,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     pushPermissionState,
     refreshNotifications,
     setPushEnabled,
-    unreadAlerts.length,
+    unreadAlerts,
     unreadListItemKeys,
   ]);
 

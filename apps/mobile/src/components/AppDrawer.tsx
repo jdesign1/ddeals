@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { Bell, ChevronDown, X } from "lucide-react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
+import { useNotifications } from "@/lib/notifications-context";
 
 export default function AppDrawer() {
   const { isOpen, closeDrawer } = useNavigationDrawer();
   const { user, profile, loading, openAuthSheet, requestOnboardingTour } = useAuth();
+  const { unreadCount, unreadAlerts } = useNotifications();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
 
@@ -55,7 +58,7 @@ export default function AppDrawer() {
         className={`app-side-drawer fixed inset-y-0 left-0 z-[80] flex flex-col bg-white shadow-2xl ${isOpen ? "is-open" : ""}`}
       >
         <div className="flex items-center justify-between px-5 pb-3">
-          <h2 className="font-display text-lg font-extrabold text-ink-900">Menu</h2>
+          <h2 className="font-display text-lg font-extrabold text-ink-900">Dodgy Deal</h2>
           <button
             ref={closeButtonRef}
             type="button"
@@ -99,6 +102,44 @@ export default function AppDrawer() {
             </button>
           )}
         </div>
+
+        {user && unreadCount > 0 && (
+          <div className="mx-4 mb-3 rounded-2xl border border-alert-100 bg-alert-50">
+            <button
+              type="button"
+              onClick={() => setIsNotificationsOpen((open) => !open)}
+              aria-expanded={isNotificationsOpen}
+              className="flex min-h-12 w-full items-center gap-2 px-4 text-left dd-type-control font-semibold text-alert-800"
+            >
+              <Bell className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">Watchlist updates ({unreadCount})</span>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-alert-600" aria-hidden="true" />
+              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isNotificationsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+            {isNotificationsOpen && (
+              <div className="border-t border-alert-100 px-4 pb-3 pt-2">
+                <p className="dd-type-meta leading-4 text-alert-800">
+                  {unreadCount === 1 ? "One watched item has a new deal update." : `${unreadCount} watched items have new deal updates.`}
+                </p>
+                <ul className="mt-2 space-y-1.5" aria-label="Unread Watchlist updates">
+                  {unreadAlerts.slice(0, 3).map((alert) => (
+                    <li key={alert.id} className="dd-type-meta leading-4 text-alert-800">
+                      {alert.event_type === "dodgy_special"
+                        ? `${alert.product_name} now looks dodgy at ${alert.store_name}.`
+                        : alert.verdict === "GENUINE"
+                          ? `${alert.product_name} is a verified special at ${alert.store_name}.`
+                          : `${alert.product_name} has a better price at ${alert.store_name}.`}
+                    </li>
+                  ))}
+                </ul>
+                {unreadCount > 3 && <p className="mt-1 dd-type-meta text-alert-700">Plus {unreadCount - 3} more updates.</p>}
+                <Link href="/lists" onClick={closeDrawer} className="mt-2 inline-flex dd-type-meta font-bold text-alert-800 underline decoration-alert-300 underline-offset-2">
+                  Review Watchlist
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         <nav aria-label="Menu links" className="border-t border-stone-100 px-3 py-3">
           <Link href="/how-it-works" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
