@@ -163,6 +163,9 @@ export interface CurrentDeal {
   unitPriceSamples?: number | null;
   unitPriceCoverageDays?: number | null;
   unitPriceMaxSpanDays?: number | null;
+  /** Retailer-provided comparative price for the current sale unit. */
+  saleUnitPrice?: number | null;
+  saleUnitLabel?: string | null;
 }
 
 /** A sparse price/special-state transition from the retailer history table. */
@@ -559,6 +562,8 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     unitPriceSamples: row.unit_price_samples ?? null,
     unitPriceCoverageDays: row.unit_price_coverage_days ?? null,
     unitPriceMaxSpanDays: row.unit_price_max_span_days ?? null,
+    saleUnitPrice: row.sale_unit_price ?? null,
+    saleUnitLabel: row.sale_unit_label ?? null,
   };
 }
 

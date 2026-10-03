@@ -7,7 +7,7 @@ import type {
   ProductCard as ProductCardData,
   CurrentDeal,
 } from "@dodgey-deals/shared";
-import { STORE_DISPLAY_FALLBACK, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
+import { STORE_DISPLAY_FALLBACK, formatUnitPrice, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
@@ -104,6 +104,7 @@ export default function ProductListCard({
     dataOnboarding === "dodgy-deal-card";
   const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
+  const unitPriceLabel = formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel);
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
   const { isGridLayout, isCompactLayout } = useCardLayout();
   const pinStoreLogosToFooter = !isSnapshotLayout && !isCompactLayout && !hideCardBadges;
@@ -276,7 +277,7 @@ export default function ProductListCard({
           <span className="dd-type-meta text-stone-500">{product.unit}</span>
         ) : null}
         <div className={`${isSnapshotLayout ? "mt-0" : "mt-1"} flex min-w-0 ${
-          isSnapshotLayout ? "w-full flex-col gap-0" : "flex-wrap items-center gap-x-2 gap-y-1"
+          isSnapshotLayout ? "w-full flex-col gap-0" : "flex-col gap-0"
         }`}>
           {specialPriceRange ? (
             <ResponsivePriceRange
@@ -285,6 +286,11 @@ export default function ProductListCard({
             />
           ) : (
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
+          )}
+          {unitPriceLabel && (
+            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel}`}>
+              {unitPriceLabel}
+            </span>
           )}
           {isSnapshotLayout && (
             <span className="truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>

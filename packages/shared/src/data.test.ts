@@ -273,6 +273,14 @@ test("buildProductCardsFromSpecials: maps verdict to dealType/reason and standar
   assert.equal(woolworthsDeal?.sourceStoreId, "woolworths");
 });
 
+test("buildProductCardsFromSpecials: carries retailer unit-price fields to each deal", () => {
+  const cards = buildProductCardsFromSpecials([
+    ["group-1", [row({ sale_unit_price: 10.99, sale_unit_label: "$/kg" })]],
+  ]);
+  assert.equal(cards[0].currentDeals[0].saleUnitPrice, 10.99);
+  assert.equal(cards[0].currentDeals[0].saleUnitLabel, "$/kg");
+});
+
 test("buildProductCardsFromSpecials: legacy near-normal DODGY rows are shown as Fair Price", () => {
   const rows = [
     row({ sale_price: 5, normal_price: 5, verdict: "DODGY", reason: "Sale price is the same as the normal price" }),

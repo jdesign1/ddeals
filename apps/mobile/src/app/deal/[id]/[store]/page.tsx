@@ -21,6 +21,7 @@ import {
   getStoreProductUrl,
   getCurrentPriceRange,
   getSpecialPriceRange,
+  formatUnitPrice,
   getRealAveragePrice,
   buildRankingList,
   buildVisibleRanking,
@@ -692,6 +693,7 @@ export default function DealAssessmentPage() {
   }
 
   const selectedDeal = activeDeal;
+  const selectedUnitPrice = formatUnitPrice(selectedDeal.saleUnitPrice, selectedDeal.saleUnitLabel);
   const verdict = getAssessmentVerdict(selectedDeal);
   const uncertain = isUncertainAssessment(verdict);
   const verdictColorClass =
@@ -811,6 +813,7 @@ export default function DealAssessmentPage() {
                 const storeMeta = getStoreLogoMeta(item.store);
                 const isCurrentStore = storesMatch(item.store, selectedDeal.store);
                 const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
+                const storeUnitPrice = formatUnitPrice(storeDeal.saleUnitPrice, storeDeal.saleUnitLabel);
                 const bestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
                 const isBestSpecialPrice =
                   storeDeal.isOnSpecial !== false && bestSpecialPriceCents != null && Math.round(item.price * 100) === bestSpecialPriceCents;
@@ -837,6 +840,7 @@ export default function DealAssessmentPage() {
                     </span>
                     <span className="flex-shrink-0 text-right">
                       <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
+                      {storeUnitPrice && <span className="block dd-type-meta text-stone-500">{storeUnitPrice}</span>}
                       <span
                         className={`block text-xs font-extrabold ${
                           storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"
@@ -1028,6 +1032,11 @@ export default function DealAssessmentPage() {
                 <span className={`font-display text-2xl font-extrabold ${dealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</span>
                 <span className="text-sm font-bold text-stone-500">ea</span>
               </div>
+              {selectedUnitPrice && (
+                <p className="mt-0.5 dd-type-meta text-stone-500" aria-label={`Unit price ${selectedUnitPrice}`}>
+                  {selectedUnitPrice}
+                </p>
+              )}
               {specialPriceRange && (
                 <p className="mt-1 text-sm font-semibold text-stone-600">
                   Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)} across {specialPriceRange.storeCount} supermarkets

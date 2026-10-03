@@ -217,6 +217,8 @@ interface DodgyDealsLookupRow {
   store_id: string;
   verdict: "DODGY" | "GENUINE" | "MARGINAL" | "UNKNOWN";
   normal_price: number | null;
+  sale_unit_price?: number | null;
+  sale_unit_label?: string | null;
 }
 
 export interface ListSummary {
@@ -304,7 +306,7 @@ export async function fetchListPriceLookups(
     // paying the view's full ~0.5-3.4s+ cost regardless of how few product
     // ids were actually requested. Read through the verified-membership view
     // over the same 15-minute materialized cache.
-    fetchByIds<DodgyDealsLookupRow>(config, "published_dodgy_deals_cache", "product_id", "product_id,store_id,verdict,normal_price", ids),
+    fetchByIds<DodgyDealsLookupRow>(config, "published_dodgy_deals_cache", "product_id", "product_id,store_id,verdict,normal_price,sale_unit_price,sale_unit_label", ids),
   ]);
 
   // Cheapest current price per product, across any store.
@@ -478,6 +480,8 @@ function buildListCurrentDeal(
     ninetyDaySpecialSamples: null,
     ninetyDayDaysTracked: null,
     ninetyDaySpecialDays: null,
+    saleUnitPrice: dealRow?.sale_unit_price ?? null,
+    saleUnitLabel: dealRow?.sale_unit_label ?? null,
   };
 }
 

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
-import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
+import { formatUnitPrice, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
@@ -192,6 +192,7 @@ export default function ListItemProductCard({
   // just above (only one row's sheet is ever open at a time, nothing
   // outside this card needs to know).
   const isNotOnSpecial = deal.isOnSpecial === false;
+  const unitPriceLabel = !isNotOnSpecial ? formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel) : null;
   const badge = !isNotOnSpecial && deal.dealType !== "Unverified Deal" ? DEAL_TYPE_BADGE[deal.dealType] : undefined;
   const isAssessmentPending = !isNotOnSpecial && deal.dealType === "Unverified Deal";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
@@ -330,6 +331,11 @@ export default function ListItemProductCard({
             )}
             {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}
           </div>
+          {unitPriceLabel && (
+            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel}`}>
+              {unitPriceLabel}
+            </span>
+          )}
         </div>
       )}
     </motion.div>
