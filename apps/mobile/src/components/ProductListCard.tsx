@@ -337,9 +337,6 @@ export default function ProductListCard({
           <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Save" : "Up"} ${snapshot.amount.toFixed(2)}
           </span>
-          <span className={`shrink-0 select-none rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
-            {snapshot.kind === "savings" ? "Real" : "Dodgy"}
-          </span>
         </div>
       ) : !hideCardBadges && !isCompactLayout && (
         <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-1 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
