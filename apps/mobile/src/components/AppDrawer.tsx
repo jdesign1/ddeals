@@ -91,9 +91,9 @@ export default function AppDrawer() {
                 closeDrawer();
                 openAuthSheet();
               }}
-              className="flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+              className="flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
-              <UserCircle className="h-12 w-12 flex-shrink-0 fill-stone-900 text-stone-900" aria-hidden="true" />
+              <UserCircle className="h-14 w-14 flex-shrink-0 self-center fill-stone-900 text-stone-900" aria-hidden="true" />
               <span>
                 <span className="block dd-type-control font-semibold text-stone-900">Create account or log in</span>
                 <span className="block dd-type-meta text-stone-500">Save lists and preferences</span>
