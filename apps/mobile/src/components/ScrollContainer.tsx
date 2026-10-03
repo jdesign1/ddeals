@@ -59,6 +59,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollTopRef = useRef(0);
   const checkDealsScrollTopRef = useRef(0);
+  const previousDealFilterRef = useRef(dealFilter);
   const settingsScrollTopRef = useRef(0);
   const previousPathnameRef = useRef(pathname);
   const headerHiddenRef = useRef(false);
@@ -165,6 +166,44 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
     };
   }, [pathname]);
+
+  // Switching deal tabs changes the content beneath the sticky chrome. Start
+  // each newly selected tab at its own top rather than leaving the user at
+  // the previous tab's scroll offset. Keep the saved home position at zero
+  // when a link changes the filter before navigating back to `/` (for example
+  // a deal-statistics link into the Real Saver or Dodgy tab).
+  useLayoutEffect(() => {
+    const filterChanged = previousDealFilterRef.current !== dealFilter;
+    previousDealFilterRef.current = dealFilter;
+    if (!filterChanged) return;
+
+    checkDealsScrollTopRef.current = 0;
+    if (pathname !== "/") return;
+
+    const resetToTop = () => {
+      const element = scrollRef.current;
+      if (!element) return;
+      element.scrollTop = 0;
+      lastScrollTopRef.current = 0;
+      headerScrollAnchorRef.current = 0;
+      headerHiddenRef.current = false;
+      setIsHeaderHidden(false);
+      publishCheckDealsHeaderVisibility(false);
+      publishCheckDealsScrollPosition(0);
+    };
+
+    resetToTop();
+    let secondFrame: number | null = null;
+    const firstFrame = window.requestAnimationFrame(() => {
+      resetToTop();
+      secondFrame = window.requestAnimationFrame(resetToTop);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [dealFilter, pathname]);
 
   useEffect(
     () => () => {

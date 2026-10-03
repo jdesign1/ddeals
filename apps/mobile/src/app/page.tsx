@@ -211,6 +211,7 @@ export default function HomePage() {
     toggleStore,
     dealFilter,
     setDealFilter,
+    openSearchForFilter,
   } = useSearch();
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
@@ -532,6 +533,15 @@ export default function HomePage() {
                   handleDealSortChange("worst-dodgy");
                 }}
               />
+              <div className="px-5 pb-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => openSearchForFilter("all", { focus: false })}
+                  className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+                >
+                  See all deals
+                </button>
+              </div>
             </>
           )}
           {dealFilter !== "all" && (

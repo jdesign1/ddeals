@@ -278,7 +278,8 @@ export default function FullScreenSearch() {
     const restore = () => {
       const element = scrollContainerRef.current;
       if (!element) return;
-      element.scrollTop = Math.min(lastScrollTopRef.current, Math.max(0, element.scrollHeight - element.clientHeight));
+      const targetScrollTop = preserveSearchStateOnOpen ? lastScrollTopRef.current : 0;
+      element.scrollTop = Math.min(targetScrollTop, Math.max(0, element.scrollHeight - element.clientHeight));
     };
 
     restore();
@@ -291,7 +292,7 @@ export default function FullScreenSearch() {
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
     };
-  }, [isOpen]);
+  }, [isOpen, preserveSearchStateOnOpen, dealFilter]);
 
   // Toolbar (the tab track + StorePill row above each list) show/hide on
   // scroll (2026-08-17, per Jay: "on scroll up from a long list, display the
