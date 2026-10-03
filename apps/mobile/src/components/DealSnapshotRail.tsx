@@ -37,8 +37,8 @@ export default function DealSnapshotRail({
   const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
   const description = isSavings ? "Biggest savings" : "Biggest price hikes";
   const emptyMessage = isSavings
-    ? "No verified savings match this category yet."
-    : "No inflated-price Dodgy specials match this category yet.";
+    ? "No real specials in this category right now, check again later"
+    : "No dodgy specials in this category right now, check again later";
 
   const rankedDeals = useMemo(() => {
     const filtered = selectedCategories.length === 0

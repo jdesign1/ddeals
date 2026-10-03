@@ -149,12 +149,6 @@ export interface ListItemProductCardProps {
   onAfterNotOnSpecial?: () => void;
 }
 
-const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; className: string }>> = {
-  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert" },
-  "Real Deal": { label: "Real Saver", className: "dd-badge-fair" },
-  "Fair Price": { label: "Fair Deal", className: "dd-badge-dodgy" },
-};
-
 // How far left (px) a swipe must travel before it counts as "remove this"
 // rather than an accidental/small drag -- see this file's own top-of-file
 // doc comment for the full swipe-gesture design.
@@ -193,7 +187,6 @@ export default function ListItemProductCard({
   // outside this card needs to know).
   const isNotOnSpecial = deal.isOnSpecial === false;
   const unitPriceLabel = !isNotOnSpecial ? formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel) : null;
-  const badge = !isNotOnSpecial && deal.dealType !== "Unverified Deal" ? DEAL_TYPE_BADGE[deal.dealType] : undefined;
   const isAssessmentPending = !isNotOnSpecial && deal.dealType === "Unverified Deal";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
 
@@ -317,9 +310,8 @@ export default function ListItemProductCard({
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
               ${deal.price.toFixed(2)}
             </span>
-            {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />}
+            {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
             <StoreLogoBadge store={deal.store} variant="compact" />
-            {badge && <span className={`dd-badge dd-badge-compact ${badge.className}`}>{badge.label}</span>}
             {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral">Checking deal</span>}
             {otherSpecialCount > 0 && (
               <span

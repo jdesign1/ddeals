@@ -12,12 +12,6 @@ interface HistoryProductCardProps {
   deal: CurrentDeal;
 }
 
-const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; className: string }>> = {
-  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert" },
-  "Real Deal": { label: "Real Saver", className: "dd-badge-fair" },
-  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy" },
-};
-
 /**
  * Dense history row for All Checks. It follows the Lists page's compact item
  * proportions while retaining the historical check's store, price, verdict,
@@ -26,7 +20,6 @@ const DEAL_TYPE_BADGE: Partial<Record<CurrentDeal["dealType"], { label: string; 
 export default function HistoryProductCard({ product, deal }: HistoryProductCardProps) {
   const router = useRouter();
   const storeMeta = getStoreLogoMeta(deal.store);
-  const badge = deal.dealType === "Unverified Deal" ? undefined : DEAL_TYPE_BADGE[deal.dealType];
   const goToDeal = () => {
     router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
   };
@@ -72,8 +65,7 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
         <h3 className="line-clamp-2 pr-12 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-          <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} />
-          {badge && <span className={`dd-badge dd-badge-inline ml-auto ${badge.className}`}>{badge.label}</span>}
+          <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
         </div>
       </div>
     </div>
