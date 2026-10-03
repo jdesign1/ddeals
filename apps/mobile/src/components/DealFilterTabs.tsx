@@ -32,7 +32,7 @@ export default function DealFilterTabs({
     >
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-x-0 inset-y-1 rounded-full shadow-sm shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
+        className={`pointer-events-none absolute inset-x-0 inset-y-0.5 rounded-full shadow-sm shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
       />
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
@@ -52,7 +52,7 @@ export default function DealFilterTabs({
               {isActive && (
                 <motion.span
                   layoutId={activeFillId}
-                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-x-0 inset-y-1 rounded-full bg-ink-900 shadow-sm"
+                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-x-0 inset-y-0.5 rounded-full bg-ink-900 shadow-sm"
                   style={{ zIndex: -1 }}
                   initial={false}
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}

@@ -80,7 +80,7 @@ export default function SupermarketPicker({
                     </button>
                   </div>
                 </div>
-                <div className="overflow-y-auto px-5 py-4">
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
