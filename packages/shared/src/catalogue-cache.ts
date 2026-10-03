@@ -56,8 +56,11 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * identity now uses canonical product matches only, so stale grouped cards
  * cannot preserve links to unrelated retailer products. Version 14 also
  * invalidates cards built before the conservative product-identity guard.
+ * Version 15 invalidates cards built before retailer-provided comparative
+ * unit-price fields were carried through the catalogue payload, so the new
+ * unit-price rows cannot be hidden by a six-hour legacy IndexedDB snapshot.
  */
-const CATALOGUE_CACHE_VERSION = 14;
+const CATALOGUE_CACHE_VERSION = 15;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {
