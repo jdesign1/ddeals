@@ -210,7 +210,7 @@ a[aria-label="Dodgy Deal home"] {
   z-index: 50;
   align-self: stretch;
   isolation: isolate;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
   background: var(--color-paper, #faf8f4);
 }
 

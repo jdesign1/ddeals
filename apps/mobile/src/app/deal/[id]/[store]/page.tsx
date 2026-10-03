@@ -183,8 +183,8 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
 
-function getEvidenceSummary(verdict: AssessmentVerdict): string | null {
-  return isUncertainAssessment(verdict) ? "Needs more history" : "See the evidence";
+function getEvidenceSummary(): string {
+  return "See the evidence";
 }
 
 function AnimatedVerdictBadge({
@@ -725,7 +725,7 @@ export default function DealAssessmentPage() {
   const multiStoreDealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
   const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
-  const evidenceSummary = getEvidenceSummary(verdict);
+  const evidenceSummary = getEvidenceSummary();
   const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
   const lowestSpecialStoreNames =
     lowestSpecialPriceCents == null
@@ -997,7 +997,7 @@ export default function DealAssessmentPage() {
           <div className="min-w-0" data-onboarding="deal-verdict">
             <div className="flex items-center justify-between gap-3">
               <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
-                {verdict === "Early read" || verdict === "Limited history" ? "Needs more history" : verdict}
+                {verdict === "Early read" || verdict === "Limited history" ? "Limited Price History" : verdict}
               </h2>
               <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
             </div>
@@ -1054,7 +1054,7 @@ export default function DealAssessmentPage() {
 
           <div>
             <h4 className="dd-type-section dd-type-assessment-heading mb-1 text-stone-900">
-              <AssessmentText text={assessmentSummary.heading} />
+              Tracking the price to see a trend
             </h4>
             {evidenceSummary && (
               <AssessmentEvidenceCard

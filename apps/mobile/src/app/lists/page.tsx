@@ -390,8 +390,8 @@ export default function ListsPage() {
   }
 
   return (
-    <main className="flex min-h-full flex-col gap-4 pb-24">
-      <div className="watchlist-top-chrome pt-4">
+    <main className="flex min-h-full flex-col gap-2 pb-24">
+      <div className="watchlist-top-chrome pt-2">
         <WatchlistSummaryCard
           itemCount={watchlistItems.length}
           newPriceItemCount={newPriceItemCount}
@@ -574,10 +574,10 @@ function WatchlistSummaryCard({
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div className="flex items-center justify-between gap-3">
         <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Watching {itemCount} {itemCount === 1 ? "item" : "items"}</h1>
-        {!isEmpty && (
+        {!isEmpty && hasNewPrices && (
           <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
-            <span className={`h-2.5 w-2.5 rounded-full ${hasNewPrices ? "bg-fair-600" : "bg-stone-300"}`} aria-hidden="true" />
-            {hasNewPrices ? `${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices` : "No new prices yet"}
+            <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
+            {`${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices`}
           </div>
         )}
       </div>
@@ -603,7 +603,7 @@ function WatchlistSummaryCard({
 function FallbackWatchlistRow({ label, image, onRemove }: { label: string; image?: string | null; onRemove: () => void }) {
   return (
     <div className="flex min-h-[76px] items-stretch justify-between overflow-hidden rounded-xl border border-stone-200/80 bg-white grayscale opacity-60">
-      {image && <div className="flex min-h-[76px] w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50"><ProductImage src={image} alt="" width={80} height={80} sizes="80px" loading="lazy" className="h-full w-full object-contain" /></div>}
+      {image && <div className="flex min-h-[76px] w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50"><ProductImage src={image} alt="" width={96} height={96} sizes="96px" loading="lazy" className="h-full w-full object-contain" /></div>}
       <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2">
         <span className="min-w-0 text-sm font-semibold text-stone-700">{label}<span className="mt-0.5 block text-xs font-medium text-stone-500">Currently unavailable</span></span>
         <button type="button" onClick={onRemove} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-stone-600 hover:bg-stone-100">Remove</button>

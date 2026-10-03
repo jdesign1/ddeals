@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
-const SHOW_AFTER_PX = 640;
-const MIN_SCROLLABLE_DISTANCE_PX = 900;
+const SHOW_AFTER_PX = 480;
+const HIDE_BEFORE_PX = 48;
+const MIN_SCROLLABLE_DISTANCE_PX = 720;
 const SCROLL_TO_TOP_DURATION_MS = 220;
 
 /**
@@ -21,21 +22,34 @@ export default function BackToTopButton({
   enabled?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
+  const visibleRef = useRef(false);
   const scrollAnimationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      return;
-    }
+    if (!enabled) return;
+
+    const setButtonVisible = (nextVisible: boolean) => {
+      if (visibleRef.current === nextVisible) return;
+      visibleRef.current = nextVisible;
+      setVisible(nextVisible);
+    };
 
     const update = () => {
       const element = scrollRef.current;
       if (!element) {
-        setVisible(false);
+        setButtonVisible(false);
         return;
       }
       const isLongList = element.scrollHeight - element.clientHeight >= MIN_SCROLLABLE_DISTANCE_PX;
-      setVisible(isLongList && element.scrollTop >= SHOW_AFTER_PX);
+      if (!isLongList) {
+        setButtonVisible(false);
+        return;
+      }
+
+      // Use hysteresis so layout changes or iOS rubber-banding cannot make
+      // the control flash off while the user is still scrolling back up.
+      if (!visibleRef.current && element.scrollTop >= SHOW_AFTER_PX) setButtonVisible(true);
+      if (visibleRef.current && element.scrollTop <= HIDE_BEFORE_PX) setButtonVisible(false);
     };
 
     update();
@@ -43,12 +57,18 @@ export default function BackToTopButton({
     element?.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     const observer = element ? new ResizeObserver(update) : null;
-    if (observer && element) observer.observe(element);
+    if (observer && element) {
+      observer.observe(element);
+      if (element.firstElementChild) observer.observe(element.firstElementChild);
+    }
+    const mutationObserver = element ? new MutationObserver(update) : null;
+    if (mutationObserver && element) mutationObserver.observe(element, { childList: true, subtree: true });
 
     return () => {
       element?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
       observer?.disconnect();
+      mutationObserver?.disconnect();
       if (scrollAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(scrollAnimationFrameRef.current);
       }

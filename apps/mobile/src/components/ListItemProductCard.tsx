@@ -272,13 +272,13 @@ export default function ListItemProductCard({
         ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
       }}
     >
-      <div className="product-image-frame flex min-h-[76px] w-20 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50">
+      <div className="product-image-frame flex min-h-[76px] w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50">
         <ProductImage
           src={product.image}
           alt={product.name}
-          width={80}
-          height={80}
-          sizes="80px"
+          width={96}
+          height={96}
+          sizes="96px"
           loading="lazy"
           className="product-image-content h-full w-full object-contain"
         />

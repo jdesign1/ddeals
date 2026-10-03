@@ -29,8 +29,8 @@ const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: strin
   "Real Saver": { label: "Real Saver", className: "dd-badge-fair", icon: ShieldCheck },
   "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy", icon: Info },
   "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert", icon: AlertTriangle },
-  "Early read": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
-  "Limited history": { label: "Needs more history", className: "dd-badge-neutral", icon: Clock3 },
+  "Early read": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
+  "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
 
 function formatCount(value: number | null | undefined, singular: string, plural = `${singular}s`): string | null {
