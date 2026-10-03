@@ -170,6 +170,10 @@ test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling
     getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY", assessmentBasis: "NINETY_DAY_LOW" })),
     "Real Saver"
   );
+  assert.equal(
+    getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY", assessmentBasis: "NINETY_DAY_NEAR_LOW" })),
+    "Fair Price"
+  );
 });
 
 test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supermarket", () => {
@@ -232,6 +236,26 @@ test("buildAssessmentSummaryCopy: explains a historical-low saver without claimi
   assert.equal(
     copy.body,
     "Current price: $5.19.\n90-day low: $5.19.\nThis is the lowest recorded price in the last 90 days. It is 9% below the 90-day average."
+  );
+});
+
+test("buildAssessmentSummaryCopy: explains a near-low fair price without claiming a recent baseline", () => {
+  const copy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      price: 7.59,
+      originalPrice: 8.79,
+      dealType: "Unverified Deal",
+      evidenceStatus: "EARLY",
+      assessmentBasis: "NINETY_DAY_NEAR_LOW",
+      ninetyDayLow: 7.49,
+      ninetyDayAvg: 8.12,
+    })
+  );
+
+  assert.equal(copy.heading, "Near the lowest price in 90 days");
+  assert.equal(
+    copy.body,
+    "Current price: $7.59.\n90-day low: $7.49.\nThis is near the lowest recorded price in the last 90 days. It is 7% below the 90-day average."
   );
 });
 

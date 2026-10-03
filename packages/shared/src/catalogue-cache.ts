@@ -63,8 +63,10 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * basis was carried through neutral catalogue rows.
  * Version 17 invalidates cards built before the repeated-or-held-low
  * recurrence guard was applied.
+ * Version 18 invalidates cards built before near-low Fair Price assessments
+ * were carried through neutral catalogue rows.
  */
-const CATALOGUE_CACHE_VERSION = 17;
+const CATALOGUE_CACHE_VERSION = 18;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {

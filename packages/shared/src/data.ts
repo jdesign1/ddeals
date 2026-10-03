@@ -166,9 +166,11 @@ export interface CurrentDeal {
   /** Retailer-provided comparative price for the current sale unit. */
   saleUnitPrice?: number | null;
   saleUnitLabel?: string | null;
-  /** The assessment was rescued by a strong, repeated 90-day low signal. */
-  assessmentBasis?: "NINETY_DAY_LOW" | null;
+  /** The assessment was rescued by an independent 90-day price signal. */
+  assessmentBasis?: HistoricalAssessmentBasis | null;
 }
+
+export type HistoricalAssessmentBasis = "NINETY_DAY_LOW" | "NINETY_DAY_NEAR_LOW";
 
 /** A sparse price/special-state transition from the retailer history table. */
 export interface PriceHistoryPoint {
@@ -254,21 +256,16 @@ export const HISTORICAL_SAVER_MIN_REGULAR_DAYS = 14;
 export const HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT = 5;
 /** The current low must sit materially below the observed 90-day high. */
 export const HISTORICAL_SAVER_MIN_HIGH_DISCOUNT = 10;
+/** A near-low fair price can sit slightly above the recorded low. */
+export const HISTORICAL_FAIR_MAX_LOW_GAP = 3;
+/** A near-low fair price still needs a meaningful 90-day average discount. */
+export const HISTORICAL_FAIR_MIN_AVERAGE_DISCOUNT = 3;
+/** A near-low fair price must remain below a materially higher 90-day peak. */
+export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 /** Allow a one-cent rounding difference between the current price and the recorded low. */
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 
-/**
- * Identifies a strong historical-low signal for rows whose primary classifier
- * is still neutral. This is deliberately narrower than "current price is
- * below the 90-day high": it needs a sustained observation window, a real
- * regular-price period, a materially lower average, and a current price at
- * the recorded low. The published aggregate does not expose low-specific
- * recurrence yet, so the final gate uses repeated special-state observations
- * or a current low held for at least two calendar days. It lets the app make
- * a useful assessment when a retailer's recent status rows are incomplete
- * without treating every one-off low observation as a confirmed deal.
- */
-export function isStrongHistoricalSaver(row: Pick<
+type HistoricalAssessmentRow = Pick<
   DodgyDealsRow,
   | "verdict"
   | "evidence_status"
@@ -282,12 +279,24 @@ export function isStrongHistoricalSaver(row: Pick<
   | "price_history_90d_days_tracked"
   | "price_history_90d_special_days"
   | "sale_started_at"
->): boolean {
+>;
+
+/**
+ * Produces an independent historical signal for rows whose primary
+ * classifier is still neutral. This is deliberately narrower than "current
+ * price is below the 90-day high": it needs a sustained observation window,
+ * a real regular-price period, a meaningful average/high separation, and a
+ * current price at or near the recorded low. The published aggregate does
+ * not expose low-specific recurrence yet, so the final gate uses repeated
+ * special-state observations or a current low held for at least two calendar
+ * days. A one-off low remains neutral.
+ */
+function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalAssessmentBasis | null {
   if (
     row.verdict !== "UNKNOWN"
     || (row.evidence_status !== "EARLY" && row.evidence_status !== "INSUFFICIENT" && row.evidence_status !== "LIMITED")
   ) {
-    return false;
+    return null;
   }
 
   const salePrice = Number(row.sale_price);
@@ -304,7 +313,7 @@ export function isStrongHistoricalSaver(row: Pick<
     ? Math.max(0, (Date.now() - saleStartedAt) / (24 * 60 * 60 * 1000))
     : null;
 
-  if (![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)) return false;
+  if (![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)) return null;
   if (
     salePrice <= 0
     || low <= 0
@@ -323,7 +332,7 @@ export function isStrongHistoricalSaver(row: Pick<
     || !Number.isFinite(priceChanges)
     || priceChanges < 2
   ) {
-    return false;
+    return null;
   }
 
   const currentIsAtLow = salePrice <= low + HISTORICAL_SAVER_LOW_TOLERANCE;
@@ -332,10 +341,34 @@ export function isStrongHistoricalSaver(row: Pick<
     || (currentLowDays != null && currentLowDays >= HISTORICAL_SAVER_MIN_CURRENT_LOW_DAYS);
   const averageDiscount = ((average - salePrice) / average) * 100;
   const highDiscount = ((high - salePrice) / high) * 100;
-  return currentIsAtLow
-    && hasRepeatedOrHeldLow
+  if (!hasRepeatedOrHeldLow) return null;
+  if (
+    currentIsAtLow
     && averageDiscount >= HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT
-    && highDiscount >= HISTORICAL_SAVER_MIN_HIGH_DISCOUNT;
+    && highDiscount >= HISTORICAL_SAVER_MIN_HIGH_DISCOUNT
+  ) {
+    return "NINETY_DAY_LOW";
+  }
+
+  const lowGapPct = ((salePrice - low) / low) * 100;
+  if (
+    lowGapPct >= 0
+    && lowGapPct <= HISTORICAL_FAIR_MAX_LOW_GAP
+    && averageDiscount >= HISTORICAL_FAIR_MIN_AVERAGE_DISCOUNT
+    && highDiscount >= HISTORICAL_FAIR_MIN_HIGH_DISCOUNT
+  ) {
+    return "NINETY_DAY_NEAR_LOW";
+  }
+
+  return null;
+}
+
+export function isStrongHistoricalSaver(row: HistoricalAssessmentRow): boolean {
+  return getHistoricalAssessmentBasis(row) === "NINETY_DAY_LOW";
+}
+
+export function isStrongHistoricalFairPrice(row: HistoricalAssessmentRow): boolean {
+  return getHistoricalAssessmentBasis(row) === "NINETY_DAY_NEAR_LOW";
 }
 
 /**
@@ -625,8 +658,12 @@ export function mergeProductMeta(memberMetas: ProductMetaInput[]): ProductMetaIn
 }
 
 function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
-  const historicalSaver = isStrongHistoricalSaver(row);
-  const verdict = historicalSaver ? "GENUINE" : effectiveViewVerdict(row);
+  const historicalBasis = getHistoricalAssessmentBasis(row);
+  const verdict = historicalBasis === "NINETY_DAY_LOW"
+    ? "GENUINE"
+    : historicalBasis === "NINETY_DAY_NEAR_LOW"
+      ? "MARGINAL"
+      : effectiveViewVerdict(row);
   const isDodgyReviewCandidateRow = isDodgyReviewCandidate(row);
   return {
     sourceProductId: row.product_id,
@@ -665,7 +702,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
     unitPriceMaxSpanDays: row.unit_price_max_span_days ?? null,
     saleUnitPrice: row.sale_unit_price ?? null,
     saleUnitLabel: row.sale_unit_label ?? null,
-    assessmentBasis: historicalSaver ? "NINETY_DAY_LOW" : null,
+    assessmentBasis: historicalBasis,
   };
 }
 

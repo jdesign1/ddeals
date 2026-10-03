@@ -26,6 +26,7 @@ import {
   fetchPriceHistory90d,
   validateCurrentDeal,
   applyTargetedDealToProducts,
+  isStrongHistoricalFairPrice,
   isStrongHistoricalSaver,
   isDodgyReviewCandidate,
   DODGY_REVIEW_OVER_NORMAL_THRESHOLD,
@@ -317,6 +318,49 @@ test("historical-low evidence can confirm a low held across multiple days", () =
   });
 
   assert.equal(isStrongHistoricalSaver(candidate), true);
+});
+
+test("near-low history can classify a neutral special as Fair Price", () => {
+  const candidate = row({
+    sale_price: 7.59,
+    normal_price: 8.79,
+    saving_pct: 13.7,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 7.49,
+    price_history_90d_high: 9.79,
+    price_history_90d_avg: 8.12,
+    price_history_90d_samples: 8,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 5,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 36,
+    sale_started_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_NEAR_LOW");
+});
+
+test("near-low history stays neutral when the current price is materially above the low", () => {
+  const candidate = row({
+    sale_price: 7.99,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 7.49,
+    price_history_90d_high: 9.79,
+    price_history_90d_avg: 8.12,
+    price_history_90d_samples: 8,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 5,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 36,
+    sale_started_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), false);
 });
 
 test("historical-low evidence stays neutral for a one-off low observation", () => {

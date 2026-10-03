@@ -120,6 +120,24 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
   }
 
   if (verdict === "Fair Price") {
+    if (
+      deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"
+      && deal.ninetyDayLow != null
+      && Number.isFinite(deal.ninetyDayLow)
+      && deal.ninetyDayLow > 0
+    ) {
+      const averageDiscount =
+        deal.ninetyDayAvg != null && Number.isFinite(deal.ninetyDayAvg) && deal.ninetyDayAvg > 0
+          ? Math.round(((deal.ninetyDayAvg - deal.price) / deal.ninetyDayAvg) * 100)
+          : null;
+      const averageCopy = averageDiscount != null && averageDiscount > 0
+        ? ` It is ${averageDiscount}% below the 90-day average.`
+        : "";
+      return {
+        heading: "Near the lowest price in 90 days",
+        body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis is near the lowest recorded price in the last 90 days.${averageCopy}`,
+      };
+    }
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
       return {
         heading: `${savingsPct}% off the recent normal price`,
@@ -192,13 +210,15 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
  * always lands as a "Fair Price" (no discount game being played); a special
  * without enough evidence stays neutral, while older-but-useful evidence is
  * shown as an "Early read" rather than being promoted to a confirmed verdict.
- * A separately marked repeated 90-day low is the one intentional exception:
- * it has enough independent history to present a Real Saver read even when
- * the retailer's recent-baseline status is still early.
+ * Separately marked repeated/held 90-day low signals are intentional
+ * exceptions: they have enough independent history to present a Real Saver or
+ * Fair Price read even when the retailer's recent-baseline status is still
+ * early.
  */
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Price";
   if (deal.assessmentBasis === "NINETY_DAY_LOW") return "Real Saver";
+  if (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW") return "Fair Price";
   if (deal.evidenceStatus === "EARLY") return "Early read";
   if (deal.evidenceStatus === "INSUFFICIENT" || deal.evidenceStatus === "LIMITED") return "Limited history";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
