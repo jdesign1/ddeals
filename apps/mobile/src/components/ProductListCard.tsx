@@ -179,7 +179,8 @@ export default function ProductListCard({
         isTourDealCard ? `/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}` : undefined
       }
       // Product item cards use a subtle outline rather than elevation. The
-      // verdict badge below still carries the deal status explicitly.
+      // price-change badge below carries the useful dollar delta without
+      // duplicating the verdict in a separate status pill.
       // Product cards remain tappable, but vertical swipes must stay with the
       // page's scroll container even when the gesture starts on this card.
       style={{
@@ -322,12 +323,9 @@ export default function ProductListCard({
           </span>
         )}
         </div>
-        {!isSnapshotLayout && !hideCardBadges && isCompactLayout && (
+        {!isSnapshotLayout && !hideCardBadges && isCompactLayout && showPriceChangeBadge && (
           <div className="mt-auto flex min-w-0 items-center gap-1 pt-1.5">
-            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
-            {isDodgy && <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Dodgy</span>}
-            {isRealSaver && <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Real</span>}
-            {isFairDeal && <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Fair</span>}
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
           </div>
         )}
       </div>
@@ -338,24 +336,9 @@ export default function ProductListCard({
             {snapshot.kind === "savings" ? "Save" : "Up"} ${snapshot.amount.toFixed(2)}
           </span>
         </div>
-      ) : !hideCardBadges && !isCompactLayout && (
+      ) : !hideCardBadges && !isCompactLayout && showPriceChangeBadge && (
         <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-1 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
-          {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
-          {isDodgy && (
-            <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
-              Dodgy
-            </span>
-          )}
-          {isRealSaver && (
-            <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
-              Real
-            </span>
-          )}
-          {isFairDeal && (
-            <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
-              Fair
-            </span>
-          )}
+          <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
         </div>
       )}
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { HelpCircle, PlayCircle, Settings, UserCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -71,19 +71,15 @@ export default function AppDrawer() {
           {loading ? (
             <div className="h-[76px] animate-pulse rounded-2xl bg-stone-100" aria-label="Loading account" />
           ) : user ? (
-            <Link
-              href="/account"
-              onClick={closeDrawer}
-              className="flex min-h-[76px] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
-            >
+            <div className="flex min-h-[76px] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3">
               <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-fair-600 text-lg font-bold text-white">
                 {avatarInitial}
               </span>
               <span className="min-w-0">
                 <span className="block truncate dd-type-control font-semibold text-stone-900">{displayName}</span>
-                <span className="block dd-type-meta text-stone-500">View account</span>
+                <span className="block dd-type-meta text-stone-500">Deal detective</span>
               </span>
-            </Link>
+            </div>
           ) : (
             <button
               type="button"
@@ -93,7 +89,9 @@ export default function AppDrawer() {
               }}
               className="flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
-              <UserCircle className="h-14 w-14 flex-shrink-0 self-center fill-stone-900 text-stone-900" aria-hidden="true" />
+              <span className="material-symbols-outlined flex h-14 w-14 flex-shrink-0 self-center items-center justify-center text-[48px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 48" }} aria-hidden="true">
+                account_circle
+              </span>
               <span>
                 <span className="block dd-type-control font-semibold text-stone-900">Create account or log in</span>
                 <span className="block dd-type-meta text-stone-500">Save lists and preferences</span>
@@ -104,17 +102,23 @@ export default function AppDrawer() {
 
         <nav aria-label="Menu links" className="border-t border-stone-100 px-3 py-3">
           <Link href="/how-it-works" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
-            <HelpCircle className="h-5 w-5 text-stone-900" aria-hidden="true" />
+            <span className="material-symbols-outlined text-[24px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
+              help_center
+            </span>
             How Dodgy Deal works
           </Link>
           {user && (
             <button type="button" onClick={() => { closeDrawer(); requestOnboardingTour(); }} className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
-              <PlayCircle className="h-5 w-5 text-stone-900" aria-hidden="true" />
+              <span className="material-symbols-outlined text-[24px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
+                play_circle
+              </span>
               How to use Dodgy Deal
             </button>
           )}
           <Link href="/settings" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
-            <Settings className="h-5 w-5 text-stone-900" aria-hidden="true" />
+            <span className="material-symbols-outlined text-[24px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
+              settings
+            </span>
             Settings
           </Link>
         </nav>

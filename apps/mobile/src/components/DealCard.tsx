@@ -34,7 +34,7 @@ export default function DealCard({
   const isDodgy = deal.dealType === "Dodgy Deal";
   const isFairDeal = deal.dealType === "Fair Price";
   const hideCardBadges = hasMixedStoreVerdicts(product);
-  const showPriceChangeBadge = !hideCardBadges && (isTrueSpecial || isDodgy || deal.dealType === "Fair Price");
+  const showPriceChangeBadge = !hideCardBadges && (isTrueSpecial || isDodgy || isFairDeal);
   const showWasPrice = deal.originalPrice > deal.price;
   const specialPriceRange = getSpecialPriceRange(product);
 
@@ -86,12 +86,9 @@ export default function DealCard({
         <div className="mt-1.5 flex items-center">
           <StoreLogoBadge store={deal.store} variant="card" />
         </div>
-        {!hideCardBadges && (showPriceChangeBadge || isTrueSpecial || isDodgy || isFairDeal) && (
+        {!hideCardBadges && showPriceChangeBadge && (
           <div className="mt-auto flex min-w-0 items-center gap-1 pt-3">
-            {showPriceChangeBadge && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
-            {isTrueSpecial && <span aria-label="Real Saver" className="shrink-0 select-none rounded-md bg-fair-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Real</span>}
-            {isDodgy && <span aria-label="Dodgy Deal" className="shrink-0 select-none rounded-md bg-alert-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Dodgy</span>}
-            {isFairDeal && <span aria-label="Fair Price" className="shrink-0 select-none rounded-md bg-dodgy-600 px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">Fair</span>}
+            <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
           </div>
         )}
       </div>

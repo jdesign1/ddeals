@@ -33,13 +33,13 @@ export default function PriceChangeBadge({
       }`}
       aria-label={
         format === "amount"
-          ? `${isCheaper ? "Save" : "Risen"} $${amount.toFixed(2)} from the reference price`
+          ? `${isCheaper ? "Save" : "Up"} $${amount.toFixed(2)} from the reference price`
           : `${change!.percentage}% ${isCheaper ? "below" : "above"} the reference price`
       }
     >
       {format === "amount" ? (
         <>
-          {isCheaper ? "Save" : "Risen"} ${amount.toFixed(2)}
+          {isCheaper ? "Save" : "Up"} ${amount.toFixed(2)}
         </>
       ) : (
         <>

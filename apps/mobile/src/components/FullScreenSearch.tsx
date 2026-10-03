@@ -850,7 +850,7 @@ export default function FullScreenSearch() {
                   is); this was `Search`'s only usage in this file, so it's
                   dropped from the `lucide-react` import above rather than
                   left there unused. */}
-              <Image src="/logo.svg" alt="" width={28} height={28} className="theme-logo mr-3 h-7 w-7 flex-shrink-0" />
+              <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mr-3 h-8 w-8 flex-shrink-0" />
               <input
                 id="full-search-input"
                 autoFocus={focusSearchOnOpen}
@@ -1558,16 +1558,24 @@ export default function FullScreenSearch() {
                         <button
                           key={opt.value}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => {
                             activeSortConfig.onChange(opt.value);
                             setSortSheetTarget(null);
                           }}
-                          className={`flex w-full cursor-pointer items-center justify-between px-5 py-3.5 text-left dd-type-control transition-colors ${
+                          className={`flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-3.5 text-left dd-type-control transition-colors ${
                             isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"
                           }`}
                         >
                           <span>{opt.label}</span>
-                          {isSelected && <Check className="h-4 w-4" aria-hidden="true" />}
+                          <span
+                            aria-hidden="true"
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                              isSelected ? "border-ink-600 bg-ink-600 text-white" : "border-stone-300 bg-white text-transparent"
+                            }`}
+                          >
+                            <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                          </span>
                         </button>
                       );
                     })}
