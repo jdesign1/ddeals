@@ -850,7 +850,7 @@ export default function FullScreenSearch() {
                   is); this was `Search`'s only usage in this file, so it's
                   dropped from the `lucide-react` import above rather than
                   left there unused. */}
-              <Image src="/logo.svg" alt="" width={28} height={28} className="theme-logo mr-3 h-7 w-7 flex-shrink-0" />
+              <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mr-3 h-8 w-8 flex-shrink-0" />
               <input
                 id="full-search-input"
                 autoFocus={focusSearchOnOpen}
