@@ -403,7 +403,7 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="grid grid-cols-3 gap-2 px-5">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden px-5">
           <SupermarketPicker
             stores={supermarkets.map(([id, label]) => ({ id, label }))}
             selectedStoreIds={selectedSupermarkets}
@@ -602,12 +602,12 @@ function WatchlistSummaryCard({
 
 function FallbackWatchlistRow({ label, image, onRemove }: { label: string; image?: string | null; onRemove: () => void }) {
   return (
-    <div className="flex min-h-[76px] items-stretch justify-between gap-3 overflow-hidden rounded-xl border border-stone-200/80 bg-white p-2 grayscale opacity-60">
-      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-1">
+    <div className="flex min-h-[76px] items-stretch justify-between overflow-hidden rounded-xl border border-stone-200/80 bg-white grayscale opacity-60">
+      {image && <div className="flex min-h-[76px] w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50"><ProductImage src={image} alt="" width={80} height={80} sizes="80px" loading="lazy" className="h-full w-full object-contain" /></div>}
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2">
         <span className="min-w-0 text-sm font-semibold text-stone-700">{label}<span className="mt-0.5 block text-xs font-medium text-stone-500">Currently unavailable</span></span>
         <button type="button" onClick={onRemove} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-stone-600 hover:bg-stone-100">Remove</button>
       </div>
-      {image && <div className="flex min-h-full w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-stone-50"><ProductImage src={image} alt="" width={80} height={80} sizes="80px" loading="lazy" className="h-full w-full object-contain" /></div>}
     </div>
   );
 }

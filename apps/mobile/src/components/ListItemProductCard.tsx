@@ -256,7 +256,7 @@ export default function ListItemProductCard({
       // Keep inactive products visibly grey without lowering text contrast;
       // the retained current price still needs to be easy to scan. This is
       // excluded during remove confirmation, which has its own alert state.
-      className={`dd-compact-product-card group flex min-h-[76px] items-stretch gap-3 overflow-hidden rounded-xl border bg-white p-2 transition-colors hover:bg-stone-50 ${
+      className={`dd-compact-product-card group flex min-h-[76px] items-stretch overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50 ${
         isNotOnSpecial && !confirmingRemove
           ? "border-stone-200/80 grayscale bg-stone-50"
           : isRealSaver
@@ -272,8 +272,19 @@ export default function ListItemProductCard({
         ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
       }}
     >
+      <div className="product-image-frame flex min-h-[76px] w-20 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50">
+        <ProductImage
+          src={product.image}
+          alt={product.name}
+          width={80}
+          height={80}
+          sizes="80px"
+          loading="lazy"
+          className="product-image-content h-full w-full object-contain"
+        />
+      </div>
       {confirmingRemove ? (
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 py-0.5">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 p-2">
           <span className="min-w-0 flex-1 break-words text-left text-[13px] leading-4 font-bold text-alert-700">
             Remove {product.name}?
           </span>
@@ -297,19 +308,25 @@ export default function ListItemProductCard({
           </div>
         </div>
       ) : (
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2">
+          {(isRealSaver || isDodgyDeal || isAssessmentPending) && (
+            <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+              {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
+              {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
+              {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral whitespace-nowrap">Checking deal</span>}
+            </div>
+          )}
           <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
           <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h4>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <span className="font-display text-base font-extrabold text-stone-900">
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
               ${deal.price.toFixed(2)}
             </span>
             {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
-            {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
-            {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <StoreLogoBadge store={deal.store} variant="compact" />
-            {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral">Checking deal</span>}
             {otherSpecialCount > 0 && (
               <span
                 className="dd-badge dd-badge-compact dd-badge-neutral"
@@ -322,17 +339,6 @@ export default function ListItemProductCard({
           </div>
         </div>
       )}
-      <div className="product-image-frame flex min-h-full w-20 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-lg bg-stone-50">
-        <ProductImage
-          src={product.image}
-          alt={product.name}
-          width={80}
-          height={80}
-          sizes="80px"
-          loading="lazy"
-          className="product-image-content h-full w-full object-contain"
-        />
-      </div>
     </motion.div>
 
     <NotOnSpecialSheet
