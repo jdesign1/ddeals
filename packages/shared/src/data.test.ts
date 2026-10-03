@@ -287,15 +287,55 @@ test("historical-low evidence can confirm a neutral deal when recent status rows
     price_history_90d_high: 6.69,
     price_history_90d_avg: 5.70,
     price_history_90d_samples: 10,
+    price_history_90d_special_samples: 5,
     price_history_90d_price_changes: 4,
     price_history_90d_days_tracked: 73,
     price_history_90d_special_days: 32,
+    sale_started_at: new Date(Date.now() - 86_400_000).toISOString(),
   });
 
   assert.equal(isStrongHistoricalSaver(candidate), true);
   const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
   assert.equal(cards[0].currentDeals[0].dealType, "Real Deal");
   assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_LOW");
+});
+
+test("historical-low evidence can confirm a low held across multiple days", () => {
+  const candidate = row({
+    sale_price: 5.19,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 5.19,
+    price_history_90d_high: 6.69,
+    price_history_90d_avg: 5.70,
+    price_history_90d_samples: 10,
+    price_history_90d_special_samples: 1,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 32,
+    sale_started_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+  });
+
+  assert.equal(isStrongHistoricalSaver(candidate), true);
+});
+
+test("historical-low evidence stays neutral for a one-off low observation", () => {
+  const candidate = row({
+    sale_price: 5.19,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 5.19,
+    price_history_90d_high: 6.69,
+    price_history_90d_avg: 5.70,
+    price_history_90d_samples: 10,
+    price_history_90d_special_samples: 1,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 32,
+    sale_started_at: new Date(Date.now() - 86_400_000).toISOString(),
+  });
+
+  assert.equal(isStrongHistoricalSaver(candidate), false);
 });
 
 test("historical-low evidence stays neutral when the average is too close to the current price", () => {

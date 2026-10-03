@@ -242,6 +242,10 @@ export const DODGY_REVIEW_OVER_NORMAL_THRESHOLD = 15;
 
 /** Minimum observations before a 90-day low can independently support a read. */
 export const HISTORICAL_SAVER_MIN_SAMPLES = 6;
+/** Require either repeated special-state observations or a held current low. */
+export const HISTORICAL_SAVER_MIN_SPECIAL_SAMPLES = 2;
+/** A current low held for two tracked days is not treated as a one-off dip. */
+export const HISTORICAL_SAVER_MIN_CURRENT_LOW_DAYS = 2;
 /** Minimum duration of usable 90-day tracking before a historical low is trusted. */
 export const HISTORICAL_SAVER_MIN_TRACKED_DAYS = 45;
 /** Require a meaningful regular-price window, not a catalogue made up of specials. */
@@ -258,9 +262,11 @@ export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
  * is still neutral. This is deliberately narrower than "current price is
  * below the 90-day high": it needs a sustained observation window, a real
  * regular-price period, a materially lower average, and a current price at
- * the recorded low. It lets the app make a useful assessment when a retailer's
- * recent status rows are incomplete without treating every low observation as
- * a confirmed deal.
+ * the recorded low. The published aggregate does not expose low-specific
+ * recurrence yet, so the final gate uses repeated special-state observations
+ * or a current low held for at least two calendar days. It lets the app make
+ * a useful assessment when a retailer's recent status rows are incomplete
+ * without treating every one-off low observation as a confirmed deal.
  */
 export function isStrongHistoricalSaver(row: Pick<
   DodgyDealsRow,
@@ -271,9 +277,11 @@ export function isStrongHistoricalSaver(row: Pick<
   | "price_history_90d_high"
   | "price_history_90d_avg"
   | "price_history_90d_samples"
+  | "price_history_90d_special_samples"
   | "price_history_90d_price_changes"
   | "price_history_90d_days_tracked"
   | "price_history_90d_special_days"
+  | "sale_started_at"
 >): boolean {
   if (
     row.verdict !== "UNKNOWN"
@@ -287,9 +295,14 @@ export function isStrongHistoricalSaver(row: Pick<
   const high = Number(row.price_history_90d_high);
   const average = Number(row.price_history_90d_avg);
   const samples = Number(row.price_history_90d_samples);
+  const specialSamples = row.price_history_90d_special_samples == null ? null : Number(row.price_history_90d_special_samples);
   const trackedDays = Number(row.price_history_90d_days_tracked);
   const specialDays = Number(row.price_history_90d_special_days);
   const priceChanges = row.price_history_90d_price_changes == null ? null : Number(row.price_history_90d_price_changes);
+  const saleStartedAt = row.sale_started_at ? Date.parse(row.sale_started_at) : NaN;
+  const currentLowDays = Number.isFinite(saleStartedAt)
+    ? Math.max(0, (Date.now() - saleStartedAt) / (24 * 60 * 60 * 1000))
+    : null;
 
   if (![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)) return false;
   if (
@@ -302,6 +315,7 @@ export function isStrongHistoricalSaver(row: Pick<
     || specialDays < 0
     || specialDays > trackedDays
     || trackedDays - specialDays < HISTORICAL_SAVER_MIN_REGULAR_DAYS
+    || (specialSamples != null && (!Number.isFinite(specialSamples) || specialSamples < 0))
     // A missing transition count means we cannot tell whether this is a
     // repeatable low or simply one sparse observation. Do not promote legacy
     // rows until the rolling-history aggregate is complete.
@@ -313,9 +327,13 @@ export function isStrongHistoricalSaver(row: Pick<
   }
 
   const currentIsAtLow = salePrice <= low + HISTORICAL_SAVER_LOW_TOLERANCE;
+  const hasRepeatedOrHeldLow =
+    (specialSamples != null && specialSamples >= HISTORICAL_SAVER_MIN_SPECIAL_SAMPLES)
+    || (currentLowDays != null && currentLowDays >= HISTORICAL_SAVER_MIN_CURRENT_LOW_DAYS);
   const averageDiscount = ((average - salePrice) / average) * 100;
   const highDiscount = ((high - salePrice) / high) * 100;
   return currentIsAtLow
+    && hasRepeatedOrHeldLow
     && averageDiscount >= HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT
     && highDiscount >= HISTORICAL_SAVER_MIN_HIGH_DISCOUNT;
 }
