@@ -269,7 +269,11 @@ export default function FullScreenSearch() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   useLayoutEffect(() => {
-    if (!isOpen) return;
+    // `resumeAfterDealBack` opens search before `router.back()` swaps the
+    // deal route away. Wait until the overlay is actually rendered; otherwise
+    // this effect runs against a null scroll ref and misses the returned
+    // search screen entirely.
+    if (!shouldRenderOverlay) return;
 
     // On iOS, the overlay's scroll content can finish its first layout one
     // frame after the fixed container is mounted. Retry across two frames so
@@ -292,7 +296,7 @@ export default function FullScreenSearch() {
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
     };
-  }, [isOpen, preserveSearchStateOnOpen, dealFilter]);
+  }, [shouldRenderOverlay, preserveSearchStateOnOpen, dealFilter]);
 
   // Toolbar (the tab track + StorePill row above each list) show/hide on
   // scroll (2026-08-17, per Jay: "on scroll up from a long list, display the
