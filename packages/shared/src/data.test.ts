@@ -363,6 +363,30 @@ test("near-low history stays neutral when the current price is materially above 
   assert.equal(isStrongHistoricalFairPrice(candidate), false);
 });
 
+test("established history can classify a fair current price that is above the absolute low", () => {
+  const candidate = row({
+    sale_price: 8.59,
+    normal_price: 8.59,
+    saving_pct: 0,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 7.79,
+    price_history_90d_high: 9.89,
+    price_history_90d_avg: 8.83,
+    price_history_90d_samples: 9,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 5,
+    price_history_90d_days_tracked: 73,
+    price_history_90d_special_days: 40,
+    sale_started_at: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
+});
+
 test("historical-low evidence stays neutral for a one-off low observation", () => {
   const candidate = row({
     sale_price: 5.19,

@@ -170,7 +170,10 @@ export interface CurrentDeal {
   assessmentBasis?: HistoricalAssessmentBasis | null;
 }
 
-export type HistoricalAssessmentBasis = "NINETY_DAY_LOW" | "NINETY_DAY_NEAR_LOW";
+export type HistoricalAssessmentBasis =
+  | "NINETY_DAY_LOW"
+  | "NINETY_DAY_NEAR_LOW"
+  | "NINETY_DAY_ESTABLISHED_FAIR";
 
 /** A sparse price/special-state transition from the retailer history table. */
 export interface PriceHistoryPoint {
@@ -264,6 +267,16 @@ export const HISTORICAL_FAIR_MIN_AVERAGE_DISCOUNT = 3;
 export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 /** Allow a one-cent rounding difference between the current price and the recorded low. */
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
+/** A broader Fair Price read needs more observations than a near-low read. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES = 8;
+/** Do not call a price fair if it is materially above the 90-day low. */
+export const HISTORICAL_ESTABLISHED_FAIR_MAX_LOW_GAP = 12.5;
+/** A small average discount is enough for a fair read when history is robust. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = 1.5;
+/** Keep the fair read meaningfully below the observed high. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT = 10;
+/** Never promote a price that is materially above the current normal reference. */
+export const HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM = 1;
 
 /**
  * The published fields required to resolve a user-facing verdict. This is
@@ -303,10 +316,12 @@ type HistoricalAssessmentRow = Pick<PublishedAssessmentRow, "verdict">
  * classifier is still neutral. This is deliberately narrower than "current
  * price is below the 90-day high": it needs a sustained observation window,
  * a real regular-price period, a meaningful average/high separation, and a
- * current price at or near the recorded low. The published aggregate does
- * not expose low-specific recurrence yet, so the final gate uses repeated
- * special-state observations or a current low held for at least two calendar
- * days. A one-off low remains neutral.
+ * current price at or near the recorded low. A separate established-Fair
+ * branch permits a slightly wider low gap only when the current normal
+ * reference and a larger observation count support that interpretation. The
+ * published aggregate does not expose low-specific recurrence yet, so the
+ * final gate uses repeated special-state observations or a current low held
+ * for at least two calendar days. A one-off low remains neutral.
  */
 function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalAssessmentBasis | null {
   if (
@@ -377,6 +392,20 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     return "NINETY_DAY_NEAR_LOW";
   }
 
+  const normalPrice = row.normal_price == null ? null : Number(row.normal_price);
+  if (
+    samples >= HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES
+    && normalPrice != null
+    && Number.isFinite(normalPrice)
+    && normalPrice > 0
+    && salePrice <= normalPrice * (1 + HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM / 100)
+    && lowGapPct <= HISTORICAL_ESTABLISHED_FAIR_MAX_LOW_GAP
+    && averageDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT
+    && highDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT
+  ) {
+    return "NINETY_DAY_ESTABLISHED_FAIR";
+  }
+
   return null;
 }
 
@@ -385,7 +414,8 @@ export function isStrongHistoricalSaver(row: HistoricalAssessmentRow): boolean {
 }
 
 export function isStrongHistoricalFairPrice(row: HistoricalAssessmentRow): boolean {
-  return getHistoricalAssessmentBasis(row) === "NINETY_DAY_NEAR_LOW";
+  const basis = getHistoricalAssessmentBasis(row);
+  return basis === "NINETY_DAY_NEAR_LOW" || basis === "NINETY_DAY_ESTABLISHED_FAIR";
 }
 
 /**
@@ -471,7 +501,7 @@ export function resolvePublishedDealAssessment(row: PublishedAssessmentRow): Pub
   const assessmentBasis = getHistoricalAssessmentBasis(row);
   const verdict = assessmentBasis === "NINETY_DAY_LOW"
     ? "GENUINE"
-    : assessmentBasis === "NINETY_DAY_NEAR_LOW"
+    : assessmentBasis === "NINETY_DAY_NEAR_LOW" || assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"
       ? "MARGINAL"
       : effectiveViewVerdict(row);
 

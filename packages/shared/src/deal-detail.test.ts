@@ -174,6 +174,10 @@ test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling
     getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY", assessmentBasis: "NINETY_DAY_NEAR_LOW" })),
     "Fair Price"
   );
+  assert.equal(
+    getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY", assessmentBasis: "NINETY_DAY_ESTABLISHED_FAIR" })),
+    "Fair Price"
+  );
 });
 
 test("buildAssessmentSummaryCopy: keeps dodgy evidence tied to the selected supermarket", () => {
@@ -257,6 +261,27 @@ test("buildAssessmentSummaryCopy: explains a near-low fair price without claimin
     copy.body,
     "Current price: $7.59.\n90-day low: $7.49.\nThis is near the lowest recorded price in the last 90 days. It is 7% below the 90-day average."
   );
+});
+
+test("buildAssessmentSummaryCopy: explains an established fair price from 90-day history", () => {
+  const copy = buildAssessmentSummaryCopy(
+    fakeDeal({
+      price: 8.59,
+      originalPrice: 8.59,
+      dealType: "Unverified Deal",
+      evidenceStatus: "EARLY",
+      assessmentBasis: "NINETY_DAY_ESTABLISHED_FAIR",
+      ninetyDayLow: 7.79,
+      ninetyDayHigh: 9.89,
+      ninetyDayAvg: 8.83,
+    })
+  );
+
+  assert.equal(copy.heading, "Fair price based on 90-day history");
+  assert.match(copy.body, /Current price: \$8\.59/);
+  assert.match(copy.body, /90-day low: \$7\.79/);
+  assert.match(copy.body, /below the typical 90-day price/);
+  assert.match(copy.body, /90-day high of \$9\.89/);
 });
 
 test("buildAssessmentSummaryCopy: uses concise incomplete-history copy for a single store", () => {

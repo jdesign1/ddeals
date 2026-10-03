@@ -121,7 +121,8 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 
   if (verdict === "Fair Price") {
     if (
-      deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"
+      (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"
+        || deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR")
       && deal.ninetyDayLow != null
       && Number.isFinite(deal.ninetyDayLow)
       && deal.ninetyDayLow > 0
@@ -133,6 +134,15 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
       const averageCopy = averageDiscount != null && averageDiscount > 0
         ? ` It is ${averageDiscount}% below the 90-day average.`
         : "";
+      if (deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR") {
+        const highCopy = deal.ninetyDayHigh != null && Number.isFinite(deal.ninetyDayHigh) && deal.ninetyDayHigh > 0
+          ? ` It is below the 90-day high of ${formatAssessmentPrice(deal.ninetyDayHigh)}.`
+          : "";
+        return {
+          heading: "Fair price based on 90-day history",
+          body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis price is below the typical 90-day price, but it has been cheaper before.${averageCopy}${highCopy}`,
+        };
+      }
       return {
         heading: "Near the lowest price in 90 days",
         body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis is near the lowest recorded price in the last 90 days.${averageCopy}`,
@@ -218,7 +228,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Price";
   if (deal.assessmentBasis === "NINETY_DAY_LOW") return "Real Saver";
-  if (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW") return "Fair Price";
+  if (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW" || deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR") return "Fair Price";
   if (deal.evidenceStatus === "EARLY") return "Early read";
   if (deal.evidenceStatus === "INSUFFICIENT" || deal.evidenceStatus === "LIMITED") return "Limited history";
   const mapped = HISTORY_DEAL_TYPE[deal.dealType];
