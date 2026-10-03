@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
+import { ArrowLeft, Check, Menu, RefreshCw } from "lucide-react";
+import NewSpecialsModal from "@/components/NewSpecialsModal";
+import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 import { useAuth } from "@/lib/auth-context";
 import { useHeaderOverride } from "@/lib/header-context";
+import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
-import BottomSheetPortal from "@/components/BottomSheetPortal";
-import NewSpecialsModal from "@/components/NewSpecialsModal";
 import {
   createNewSpecialsSnapshot,
   readNewSpecialsSnapshot,
@@ -19,147 +19,13 @@ import {
   writeNewSpecialsSnapshot,
   type NewSpecialsSummary,
 } from "@/lib/new-specials";
-import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
 
-
-/**
- * Shared global top nav bar — ported from Prototype/index.html's
- * `AppHeader` (see project.md, "Restyled the prototype to the new 'Dodgy
- * Deal · Mobile UI Kit' design system", 2026-08-04). The prototype renders
- * one `AppHeader` above every tab's content so the profile icon/menu always
- * sits in the same place; this does the same job here, mounted once in
- * `layout.tsx` above `{children}` rather than per-page.
- *
- * Markup/classes (sticky h-16 bar, avatar circle, dropdown menu shape) are
- * copied as closely as this app's actual routes allow. Deliberate
- * differences from the prototype, flagged rather than silently dropped:
- *  - The prototype's menu has "How Dodgy Deal works" / "Manage Account" /
- *    "Store Settings" items navigating to tabs that only exist in the
- *    prototype's own state machine, none of which existed in apps/mobile at
- *    first -- so until 2026-08-12 this menu only offered what was real: log
- *    out (signed in) or a link to /lists (signed out). Since then, per
- *    Jay's ask to "add the profile menu options from the prototype," two of
- *    those three now have real pages here too (`/how-it-works`, `/account`,
- *    `/settings`
- *    -- see those files' own doc comments) and are wired into the menu
- *    below. "Store Settings" is deliberately still skipped -- Jay's own
- *    call when asked, since there's no real store-preferences feature in
- *    apps/mobile to link it to. Also unlike the prototype (whose
- *    `isUserMenuOpen && isLoggedIn` outer guard makes its own logged-out
- *    menu branch dead code -- the profile button there opens the login
- *    modal directly, never the menu), this version opens a real menu in
- *    *both* states, since "How Dodgy Deal works" is available either way
- *    and logged-out visitors still need a "Create account / log in" entry
- *    point to `/lists` (sentence case since 2026-08-13, see this file's
- *    own bullet on that below).
- *  - The menu itself renders as a bottom sheet (same day, same batch --
- *    Jay: "selecting the profile menu, should appear as a bottom sheet,
- *    rather than the current drop down menu"), not the small top-right
- *    dropdown card it briefly was for a few hours on 2026-08-12. Same
- *    `AnimatePresence` + spring `y: "100%" -> 0` slide-up recipe every
- *    other bottom sheet in this app uses (`ScannerModal.tsx`, the deal
- *    page's "Cheaper Alternative Options" sheet, `FullScreenSearch.tsx`'s
- *    category sheet), scrim-and-panel both capped at the app's own
- *    `max-w-[480px]` mobile width, `z-50`/`z-[51]` matching the
- *    `ScannerModal.tsx`/deal-page-sheet stacking tier (this menu, like
- *    those two, opens from ordinary page chrome, not from inside another
- *    overlay -- see `PageLoader.tsx`'s own doc comment for the app's full
- *    z-index ordering). Closes via scrim tap, an explicit X button in the
- *    sheet's own header, or picking a menu item -- the old dropdown's
- *    click-outside-the-card `mousedown` listener is gone, since a
- *    full-viewport scrim already covers every "outside" click the old
- *    listener existed to catch.
- *  - Same day, one more fix: Jay noticed the new sheet was rendering
- *    *underneath* `BottomNav` on Home ("bottom sheet should appear over
- *    the bottom nav bar"). The sticky shell is raised to `z-[45]` (above
- *    `BottomNav`'s `z-40` and below the app's `z-50` overlay tier), while
- *    the sheet and scrim render outside that shell at their own `z-50` /
- *    `z-[51]` values. They must remain outside the shell because the shell
- *    is part of the sticky chrome that translates during scroll; keeping a
- *    fixed overlay inside it would couple the sheet to that scrolling layer
- *    and could clip it to the nav height. This preserves the correct stacking
- *    order without coupling the sheet to the sticky chrome.
- *  - The prototype's avatar circle is hardcoded to the letter "S" (a
- *    leftover from its mock data, never actually wired to the signed-in
- *    user's name). This version computes the initial from the real
- *    Supabase user instead, since a real user is available here.
- *  - The `showCloseButton` variant used by the prototype for its
- *    manage-account/settings/how-it-works sub-pages isn't ported. These are
- *    real routes here and use the shared `usePageHeader()` back-button flow.
- *  - `onBack`/back-arrow support *is* ported (added 2026-08-09 for the deal-
- *    assessment page), but not as a prop — since this header is mounted
- *    once in layout.tsx above the router outlet, pages instead publish an
- *    override via `usePageHeader()` (see lib/header-context.tsx), which
- *    this component reads back out. Matches Prototype/index.html's own
- *    comment (line ~1569) that the account menu/avatar stays visible even
- *    on a back-button screen, rather than DealModal rendering a separate
- *    header of its own.
- *  - The global search action sits before the profile control on every
- *    standard screen. Deal-assessment routes intentionally omit it so those
- *    focused flows stay free of unrelated navigation actions.
- *  - The 4 menu items below switched from Title Case + `uppercase` (visual
- *    ALL CAPS regardless of source casing) to real sentence case
- *    (2026-08-13, per Jay's ask to "update the settings bottom sheets to
- *    use sentence case for items in the list") -- "How Dodgy Deal Works" ->
- *    "How Dodgy Deal works", "Manage Account" -> "Manage account", "Log
- *    Out" -> "Log out", "Create Account / Log In" -> "Create account / log
- *    in". "Dodgy Deal" stays capitalized in the first one as the brand
- *    name, same as everywhere else in the app. Needed dropping the
- *    `uppercase` Tailwind class on each item too, not just changing the
- *    source strings -- `text-transform: uppercase` unconditionally
- *    uppercases the rendered text regardless of casing in the JSX, so the
- *    string-only change alone wouldn't have been visible. This sheet is
- *    the only real "settings"-style list of navigable items in the app
- *    (checked `ScannerModal.tsx`'s and the deal-assessment page's own
- *    bottom sheets too -- neither is a menu of list items in this sense:
- *    one's a scan/upload action sheet, the other's a product-comparison
- *    list). The small "Account" eyebrow label above these items was
- *    initially left uppercase in this same entry (a section heading, not
- *    a "list item"), but Jay's very next ask -- "scan the app to ensure
- *    there are no capitals only texts, app should use sentence case" --
- *    is broader than just this sheet's list items, so the `uppercase`
- *    class came off this label too (same day, immediate follow-up). Its
- *    source string was already "Account" (one capitalized word), so
- *    dropping the class alone was enough here -- no string change needed,
- *    unlike the 4 menu items above. Same app-wide sweep also caught the
- *    dev-only "Test mode" banner just above (`isAnonymousSession` branch,
- *    named `isFakeSession` at the time) -- its source text was already
- *    sentence case too, `uppercase` class dropped, no string change. (That
- *    banner's own copy changed again 2026-08-13 for an unrelated reason --
- *    see its own comment just above in the JSX -- once the test account it
- *    describes stopped being fake.)
- *
- * `<header>`'s own fill swapped `bg-stone-50` -> `bg-white` (2026-08-20, per
- * Jay: "Make the top nav bar on all pages, a slightly lighter grey than the
- * background of the app") -- `globals.css`'s own `body { background: var(
- * --background) }` is `#fafaf9`, this app's own stone-50, and this header
- * was rendering that exact same token, so there was zero visual separation
- * between the bar and the page scrolling underneath it. No lighter grey
- * token exists anywhere in this project's own palette (`globals.css`'s
- * `@theme` block only defines custom `ink-*`/`fair-*`/`dodgy-*`/`alert-*`
- * scales plus a couple of one-off tokens like `--color-paper` -- every
- * `stone-*` class used app-wide, including the one this header used, is
- * Tailwind's own unmodified default scale, and stone-100 is a shade
- * *darker* than stone-50, not lighter) -- plain `bg-white` is the only
- * "lighter than stone-50" option available without inventing a new token
- * for a one-line change, and reads as the "slightly lighter grey" Jay
- * described since white sits only barely above stone-50 (#fafaf9) on the
- * lightness scale, not a stark, high-contrast jump.
- */
-
+const CONTEXT_HEADER_ROUTES = ["/account", "/how-it-works", "/settings", "/privacy", "/terms", "/support", "/report-deal"];
 const ROUTE_TITLES: Record<string, string> = {
-  // "Lists" (2026-08-15, My List page changes) -- was "My List". Only
-  // this label changed; the route itself, BottomNav.tsx's own tab label,
-  // and every doc comment elsewhere in this app that still says "My
-  // List"/"S1 -- My Lists" describing the feature by name are unaffected
-  // and deliberately left as-is (see BottomNav.tsx before touching its
-  // own tab label for the same reason -- Jay didn't ask for that one).
+  "/account": "Manage account",
+  "/how-it-works": "How Dodgy Deal works",
   "/lists": "Watchlist",
   "/specials": "Specials",
-  // "Deal stats" (2026-08-11), matching BottomNav.tsx's own label change
-  // for this same route -- was "Me". Keeps the sticky top bar and the
-  // bottom-nav tab in agreement rather than showing two different names
-  // for the one screen.
   "/me": "Deal stats",
   "/history": "All Checks",
   "/settings": "Settings",
@@ -179,10 +45,10 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { user, profile, loading, isAnonymousSession, openAuthSheet, requestOnboardingTour } = useAuth();
+  const { isAnonymousSession } = useAuth();
   const { override } = useHeaderOverride();
-  const { products, loadingProducts, openSearch, openSearchForFilter } = useSearch();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
+  const { products, loadingProducts, query, openSearch, openSearchForFilter } = useSearch();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
@@ -195,13 +61,14 @@ export default function AppHeader({
   const hasPresentedNewSpecialsThisMount = useRef(false);
 
   useEffect(() => {
-    const syncSplashState = (isComplete = false) =>
-      setIsLaunchSplashFinished(isComplete || !document.querySelector(".launch-splash"));
+    const syncSplashState = (isComplete = false) => setIsLaunchSplashFinished(isComplete || !document.querySelector(".launch-splash"));
     const handleSplashComplete = () => syncSplashState(true);
     syncSplashState();
     window.addEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, handleSplashComplete);
     return () => window.removeEventListener(LAUNCH_SPLASH_COMPLETE_EVENT, handleSplashComplete);
   }, []);
+
+  useEffect(() => subscribeToCheckDealsHeaderVisibility(setIsHiddenOnCheckDeals), []);
 
   const currentSpecialsSnapshot = useMemo(() => createNewSpecialsSnapshot(products), [products]);
   const newSpecials = useMemo(
@@ -216,21 +83,13 @@ export default function AppHeader({
     replaceNewSpecialsSnapshot(currentSpecialsSnapshot);
   }, [currentSpecialsSnapshot, loadingProducts, newSpecials?.total, newSpecialsSnapshot, products.length]);
 
-  const shouldPresentNewSpecialsModal =
-    !loadingProducts &&
-    isLaunchSplashFinished &&
-    (newSpecials?.total ?? 0) > 0 &&
-    pathname === "/";
-
+  const shouldPresentNewSpecialsModal = !loadingProducts && isLaunchSplashFinished && (newSpecials?.total ?? 0) > 0 && pathname === "/";
   useEffect(() => {
     if (!shouldPresentNewSpecialsModal || hasPresentedNewSpecialsThisMount.current) return;
     const presentationTimer = window.setTimeout(() => {
       if (hasPresentedNewSpecialsThisMount.current) return;
       hasPresentedNewSpecialsThisMount.current = true;
       if (!newSpecials) return;
-      // Freeze this semantic diff before saving its snapshot. The saved
-      // snapshot intentionally advances only after the user has been shown
-      // the digest, so unopened changes remain waiting for their next visit.
       setNewSpecialsModalSummary(newSpecials);
       writeNewSpecialsSnapshot(currentSpecialsSnapshot);
       replaceNewSpecialsSnapshot(currentSpecialsSnapshot);
@@ -239,394 +98,58 @@ export default function AppHeader({
     return () => window.clearTimeout(presentationTimer);
   }, [currentSpecialsSnapshot, newSpecials, shouldPresentNewSpecialsModal]);
 
-  useEffect(() => {
-    return subscribeToCheckDealsHeaderVisibility((hidden) => {
-      setIsHiddenOnCheckDeals(hidden);
-    });
-  }, []);
-
-  // Close the menu on route change so it doesn't stay open across
-  // navigation. Adjusted during render (React's documented escape hatch for
-  // "state that depends on a prop changing") rather than in a useEffect --
-  // an effect calling setState synchronously on every dependency change
-  // trips react-hooks/set-state-in-effect, which this codebase otherwise
-  // keeps clean (see page.tsx's lazy useState comment for the same pattern
-  // used elsewhere in this app).
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
-    setIsMenuOpen(false);
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);
   }
 
-  const title = override
-    ? override.title
-    : pathname === "/"
-      ? ""
-      : ROUTE_TITLES[pathname] || "Dodgy Deal";
-
-  // Wait for the profile record before rendering the signed-in initial. The
-  // account fallback name starts with "D", which briefly flashed during app
-  // launch while the real profile name was still being fetched.
-  const profileFullName = profile?.full_name?.trim();
-  const avatarInitial = user && profileFullName ? profileFullName.charAt(0).toUpperCase() : null;
-
-  // Mascot mark hidden on the three routes that set a header override --
-  // all asked for individually, same day (2026-08-14): the deal-assessment
-  // page ("remove the dodgy deal logo man from deal assessment pages top
-  // nav bar"), Manage Account ("remove the mascot icon from the manage
-  // account page"), and How Dodgy Deal Works ("also remove the mascot from
-  // the How Dodgy Deal works page"). That's now every route `override`
-  // covers, but still gated on pathname rather than on `override` itself --
-  // `override` is only set from a child page's own `useEffect` (see
-  // header-context.tsx), so it's briefly null on first paint even on these
-  // routes; gating on it would flash the mascot for one frame on every
-  // navigation here instead of never showing it. Every OTHER route (Home,
-  // My List, Specials, Deal stats, All Checks) keeps the mascot per the
-  // 2026-08-13 "every screen" revert documented below.
-  const showLogoMark =
-    !["/account", "/how-it-works", "/settings", "/privacy", "/terms", "/support", "/report-deal"].includes(pathname) &&
-    !pathname.startsWith("/deal/");
+  const isContextHeader = Boolean(override) || CONTEXT_HEADER_ROUTES.includes(pathname) || pathname.startsWith("/deal/");
+  const contextTitle = override?.title ?? ROUTE_TITLES[pathname] ?? "Dodgy Deal";
+  const isHeaderHidden = pathname === "/" && isHiddenOnCheckDeals;
 
   return (
-    // Sticky wrapper (not the <header> itself, see below) so the test-mode
-    // strip and the real header bar stick together as one unit -- 2026-08-09,
-    // added alongside the dev-only test-account button (lib/auth-context.tsx).
-    // This banner is the whole reason `isAnonymousSession` is surfaced through
-    // context at all: even though the test account is a real, working
-    // Supabase account since 2026-08-13 (see auth-context.tsx's own doc
-    // comment), it still has no email attached to it and can't be signed
-    // back into from another device/browser, so it must never be silently
-    // indistinguishable from a real named account while testing. Copy
-    // updated 2026-08-13 alongside that swap -- used to say "fake local
-    // login, no real account or data," which became false once the account
-    // itself became real.
     <>
-    <div
-      className={`app-header-shell ${sticky ? "sticky top-0" : ""} z-[45] w-full flex-shrink-0 ${collapseOnCheckDeals && pathname === "/" ? "check-deals-collapsible" : ""} ${collapseOnCheckDeals && pathname === "/" && isHiddenOnCheckDeals ? "check-deals-header-collapsed" : ""} ${pathname === "/" && isHiddenOnCheckDeals ? "is-hidden" : ""}`}
-      aria-hidden={pathname === "/" && isHiddenOnCheckDeals}
-    >
-      <div>
-      {isAnonymousSession && (
-        <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center dd-type-meta dd-type-meta-strong text-amber-950">
-          Test mode — anonymous test account, not linked to an email
-        </div>
-      )}
-      {/* `shadow-sm` added 2026-08-20, per Jay: "give the header top nav a
-          tight drop shadow like the other components have" -- same
-          `shadow-sm` utility `SearchBar.tsx`/`DealCard.tsx`/
-          `ProductListCard.tsx` already use for "the same tight drop shadow"
-          across this app (see `SearchBar.tsx`'s own 2026-08-17 doc comment
-          for that precedent), not a new/different shadow value invented
-          for this bar. Sits on `<header>` itself, not the outer sticky
-          `<div>` wrapping it + the anonymous-test-mode banner -- the banner
-          (when shown) sits visually above this bar, not under it, so the
-          shadow belongs to the white bar's own bottom edge specifically,
-          same edge that just picked up separation from the page via this
-          same session's earlier `bg-stone-50` -> `bg-white` change. */}
-      <header className="relative flex h-16 w-full items-center justify-between bg-white px-6">
-        <AnimatePresence initial={false}>
-          {refreshStatus && (
-            <motion.div
-              key="refresh-status"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
-              role="status"
-              aria-live="polite"
-              className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-white text-stone-900"
-            >
-              {refreshStatus === "refreshing" ? (
-                <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Check className="h-5 w-5" aria-hidden="true" />
-              )}
-              <span className="dd-type-control">
-                {refreshStatus === "refreshing" ? "Refreshing" : refreshStatus === "updated" ? "Updated" : "Already up to date"}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {/* min-w-0 + flex-1 here (not the old `max-w-[70%]` on the title span)
-            -- a percentage max-width only resolves against a *definite*
-            containing-block width, and this wrapper's width was otherwise
-            "auto"/shrink-to-fit (a plain flex item with no explicit size), so
-            the 70% cap was effectively arbitrary rather than reliably "however
-            much space is actually left" once the back button and/or a wider
-            account-menu area were present. flex-1 gives this wrapper an
-            actual definite width (remaining space after the avatar area),
-            and min-w-0 on both this wrapper and the title span itself lets
-            that definite width shrink below the title's intrinsic content
-            width -- required for `truncate`'s overflow-hidden/ellipsis to
-            engage at all in a flex row. */}
-        {/* `pr-2` (2026-08-17, per Jay: "the title on the deal assessment
-            pages in the top nav needs to truncate a bit sooner") -- this
-            wrapper is `flex-1`, so the title `<span>` below (itself
-            `flex-1 truncate`) claims every last px of remaining width
-            before the avatar area, meaning the ellipsis previously only
-            engaged once text was flush against the avatar circle with no
-            breathing room. `pr-2` reserves 8px of guaranteed gap so
-            `truncate` kicks in slightly earlier instead, at the same
-            visual point every route with an override title (this page,
-            `/account`, `/how-it-works`) now shares -- global on this
-            shared header rather than deal-page-scoped since there's no
-            per-page styling hook here (`HeaderOverride` only carries
-            `title`/`onBack`, see header-context.tsx), but harmless for the
-            other two: their titles are short, fixed strings ("Account",
-            "How Dodgy Deal Works") that don't reach the truncation
-            boundary either way, so only the deal page's long, dynamic
-            product-name titles are actually affected. */}
-        <div aria-hidden={refreshStatus !== null} inert={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2 pr-2">
-          {/* Mascot mark, top-left of the global nav bar -- added 2026-08-12
-              on every screen, narrowed the same day (still per Jay's ask)
-              to Home only, so it wouldn't compete with the back
-              button/title on every other route. Reverted back to every
-              screen 2026-08-13, per Jay's ask to "keep the dodgy icon man
-              on each page's top header bar so it appears before page
-              titles (same as the home page)". Same /logo.svg the mascot
-              uses elsewhere (LoadingMascot/PageLoader/ErrorState), just
-              static here rather than animated. Always links to `/` (tapping
-              the mark goes home from anywhere, standard logo behaviour),
-              not just a decorative mark on other routes (well, the routes
-              that still show it -- see `showLogoMark` above, added
-              2026-08-14: it's now off on every route that sets a header
-              override, so the "mascot ahead of a back arrow" layout this
-              comment used to describe no longer happens anywhere in this
-              app, even though `/account`/`/how-it-works`/the deal page all
-              still set `override` for their title + back arrow). */}
-          {showLogoMark && (
-            <Link href="/" aria-label="Dodgy Deal home" className="flex-shrink-0">
-              <Image
-                src="/logo.svg"
-                alt=""
-                width={32}
-                height={32}
-                className={`theme-logo h-8 w-8 ${pathname === "/me" ? "" : "animate-mascot-header-blink"}`}
-              />
-            </Link>
-          )}
-          {override && (
-            <button
-              onClick={override.onBack}
-              aria-label="Back"
-              className="-ml-1.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
-            >
-              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-            </button>
-          )}
-          <span className="min-w-0 flex-1 truncate font-display text-base font-extrabold tracking-normal text-ink-900">
-            {title}
-          </span>
-        </div>
+      <div
+        className={`app-header-shell ${sticky ? "sticky top-0" : ""} z-[45] w-full flex-shrink-0 ${collapseOnCheckDeals && pathname === "/" ? "check-deals-collapsible" : ""} ${collapseOnCheckDeals && isHeaderHidden ? "check-deals-header-collapsed" : ""} ${isHeaderHidden ? "is-hidden" : ""}`}
+        aria-hidden={isHeaderHidden}
+      >
+        {isAnonymousSession && <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center dd-type-meta dd-type-meta-strong text-amber-950">Test mode — anonymous test account, not linked to an email</div>}
+        <header className="relative flex h-16 w-full items-center bg-white px-4 shadow-sm">
+          <AnimatePresence initial={false}>
+            {refreshStatus && (
+              <motion.div key="refresh-status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.28, ease: "easeOut" }} role="status" aria-live="polite" className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-white text-stone-900">
+                {refreshStatus === "refreshing" ? <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Check className="h-5 w-5" aria-hidden="true" />}
+                <span className="dd-type-control">{refreshStatus === "refreshing" ? "Refreshing" : refreshStatus === "updated" ? "Updated" : "Already up to date"}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <div aria-hidden={refreshStatus !== null} inert={refreshStatus !== null} className="relative flex flex-shrink-0 items-center gap-3">
-          {pathname !== "/settings" && pathname !== "/deal" && !pathname.startsWith("/deal/") && (
-            <button
-              type="button"
-              onClick={openSearch}
-              aria-label="Search specials"
-              data-onboarding="search-button"
-              className="flex h-11 w-auto shrink-0 items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-3.5 text-stone-900 transition-colors hover:bg-stone-50 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
-            >
-              <span
-                className="material-symbols-outlined text-[28px] leading-none"
-                style={{ fontVariationSettings: "'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}
-                aria-hidden="true"
-              >
-                search
-              </span>
-              <span className="dd-type-control whitespace-nowrap">Search</span>
-            </button>
-          )}
-          {pathname !== "/settings" && (loading ? null : user && avatarInitial ? (
-            <button
-              onClick={() => setIsMenuOpen((open) => !open)}
-              id="global-header-profile-btn"
-              aria-label="Account menu"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-fair-600 text-base font-bold text-white transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
-            >
-              {avatarInitial}
-            </button>
-          ) : user ? (
-            <span aria-hidden="true" className="h-8 w-8 rounded-full border border-stone-200 bg-stone-100" />
+          {isContextHeader ? (
+            <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2">
+              <button type="button" onClick={() => (override?.onBack ? override.onBack() : window.history.back())} aria-label="Back" className="-ml-1.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <span className="min-w-0 flex-1 truncate pr-2 font-display text-base font-extrabold tracking-normal text-ink-900">{contextTitle}</span>
+            </div>
           ) : (
-            <button
-              onClick={() => setIsMenuOpen((open) => !open)}
-              id="global-header-profile-btn"
-              aria-label="Account menu"
-              className="flex h-11 w-11 items-center justify-center text-stone-900 transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
-            >
-              {/* Filled black silhouette, not lucide's outline `CircleUser`
-                  (2026-08-20, per Jay: "Use a filled in (black) user
-                  profile icon and make the icon larger, the size of the
-                  whole circle container") -- `User` (the plain person
-                  silhouette, no circle frame of its own -- this button's
-                  own `bg-stone-100` rounded-full IS the frame now) with
-                  `fill="currentColor"`/`stroke="none"` instead of lucide's
-                  default `fill="none"`/`stroke="currentColor"` -- lucide
-                  ships one outline style per icon, no separate "filled"
-                  variant, so this is the standard way to get a solid glyph
-                  out of it: `User`'s own 2 shapes (a head circle, and an
-                  open shoulders path that SVG auto-closes with a straight
-                  line for fill purposes) read as one solid silhouette once
-                  filled. `CircleUser` was tried first and rejected -- its
-                  own outer ring is a SEPARATE `<circle>` from the inner
-                  head, so filling it solid just paints the whole thing one
-                  flat disc with no visible face, not a recognisable
-                  profile icon.
-                  `h-8 w-8` (was `h-5 w-5`) keeps the icon visually prominent
-                  inside the 44pt button target rather than leaving it as a
-                  small glyph in a large tappable area. */}
-              <span
-                className="material-symbols-outlined text-[32px]"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                aria-hidden="true"
-              >
-                account_circle
-              </span>
-            </button>
-          ))}
-          </div>
-      </header>
-      </div>
-    </div>
-
-    {newSpecialsModalSummary && (
-      <NewSpecialsModal
-        open={isNewSpecialsModalOpen && pathname === "/"}
-        summary={newSpecialsModalSummary}
-        onClose={() => setIsNewSpecialsModalOpen(false)}
-        onSelectFilter={(filter, dealKeys) => {
-          setIsNewSpecialsModalOpen(false);
-          openSearchForFilter(filter, { focus: false, dealKeys });
-        }}
-      />
-    )}
-
-    {/* Keep the profile overlay outside `.app-header-shell` so the sheet is
-        independent from the sticky header's hide/show transform and can
-        always cover the full viewport. */}
-    <BottomSheetPortal open={isMenuOpen}>
-      <AnimatePresence>
-        {isMenuOpen && (
-          <>
-          <motion.div
-            key="profile-menu-scrim"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setIsMenuOpen(false)}
-            className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
-          />
-          <motion.div
-            key="profile-menu-sheet"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
-          >
-            <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4">
-              {/* Bottom-sheet title style unified app-wide 2026-08-19 --
-                  was a small tracking-widest text-stone-500 eyebrow label,
-                  now a real title, same class every bottom sheet's top
-                  title uses (see app/page.tsx's Sort sheet for the full
-                  cross-reference). `<h3>`, not `<span>`, to match. */}
-              <h3 className="dd-type-sheet-title text-stone-900">Account</h3>
-              <button
-                onClick={() => setIsMenuOpen(false)}
-                aria-label="Close"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
+            <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2.5">
+              <button type="button" id="global-header-menu-btn" aria-label="Open menu" aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-800 shadow-sm transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200">
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <button type="button" onClick={openSearch} aria-label="Search Dodgy Deal" data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left shadow-sm transition-colors hover:bg-stone-50 focus:outline-none focus-visible:border-stone-900">
+                <Image src="/logo.svg" alt="" width={24} height={24} className="theme-logo mr-3 h-6 w-6 flex-shrink-0 animate-mascot-header-blink" />
+                <span className={`min-w-0 flex-1 truncate text-base ${query ? "font-medium text-stone-700" : "font-normal text-stone-400"}`}>{query || "Search Dodgy Deal"}</span>
               </button>
             </div>
-            {/* Leading icon on each item (2026-08-14, Jay: "In the
-                account bottom sheet - add icons before each of the
-                items") -- every row switched from `block` to `flex
-                items-center gap-3` to lay the icon and label out
-                horizontally instead of the icon needing its own absolute
-                position; text/hover/border/spacing classes otherwise
-                unchanged from before. Icons picked to match each row's
-                own existing color (the two `stone-700` rows get a plain
-                `stone-500` icon, "Log out"'s `alert-600` icon matches its
-                text, "Create account / log in"'s `ink-600` icon matches
-                its text) rather than a single neutral icon color for all
-                four. */}
-            <div className="py-2 pb-safe-sm">
-              {!user && (
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    openAuthSheet();
-                  }}
-                  className="flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left dd-type-control text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-700"
-                >
-                  <span
-                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
-                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                    aria-hidden="true"
-                  >
-                    app_registration
-                  </span>
-                  Create account / log in
-                </button>
-              )}
-              <Link
-                href="/how-it-works"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex w-full items-center gap-3 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
-              >
-                <span
-                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
-                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                  aria-hidden="true"
-                >
-                  help_center
-                </span>
-                How Dodgy Deal works
-              </Link>
-              {user && (
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    requestOnboardingTour();
-                  }}
-                  className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
-                >
-                  <span
-                    className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
-                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                    aria-hidden="true"
-                  >
-                    play_circle
-                  </span>
-                  How to use Dodgy Deal
-                </button>
-              )}
-              <Link
-                href="/settings"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-stone-100 px-5 py-4 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
-              >
-                <span
-                  className="material-symbols-outlined shrink-0 text-[22px] text-stone-900"
-                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                  aria-hidden="true"
-                >
-                  settings
-                </span>
-                Settings
-              </Link>
-            </div>
-          </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </BottomSheetPortal>
+          )}
+        </header>
+      </div>
+
+      {newSpecialsModalSummary && (
+        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={() => setIsNewSpecialsModalOpen(false)} onSelectFilter={(filter, dealKeys) => { setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} />
+      )}
     </>
   );
 }

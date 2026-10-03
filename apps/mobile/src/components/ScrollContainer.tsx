@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type TouchEvent } from "react";
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
+import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useSearch } from "@/lib/search-context";
 import {
   isNearScrollBottom,
@@ -50,6 +51,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings" && !CONTACT_ROUTES.includes(pathname);
   const { refreshCatalogue, dealFilter } = useSearch();
+  const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -323,10 +325,12 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   return (
     <div
       ref={scrollRef}
+      aria-hidden={isDrawerOpen || undefined}
+      inert={isDrawerOpen ? true : undefined}
       // Explicitly reserve vertical gestures for this scroll surface. This
       // keeps a drag that starts on a tappable product card from being
       // interpreted as card interaction instead of page scrolling.
-      className={`mobile-scroll-surface page-paper-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain transition-[background-color] duration-300 ease-out ${
+      className={`app-drawer-shiftable mobile-scroll-surface page-paper-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain transition-[background-color] duration-300 ease-out ${isDrawerOpen ? "is-drawer-open" : ""} ${
         pathname === "/" ? checkDealsSearchBackground : ""
       }`}
       // Check Deals keeps the header/toolbar layout slots fixed while

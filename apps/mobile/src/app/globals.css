@@ -94,6 +94,49 @@ a[aria-label="Dodgy Deal home"] {
   pointer-events: none;
 }
 
+:root {
+  --app-drawer-width: min(84vw, 340px);
+}
+
+.app-drawer-shiftable {
+  will-change: transform;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.app-drawer-shiftable.is-drawer-open {
+  transform: translate3d(var(--app-drawer-width), 0, 0);
+}
+
+.app-drawer-scrim {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms ease, visibility 0s linear 320ms;
+}
+
+.app-drawer-scrim.is-open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.app-side-drawer {
+  left: max(0px, calc((100vw - 480px) / 2));
+  width: var(--app-drawer-width);
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  transform: translate3d(-100%, 0, 0);
+  visibility: hidden;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 320ms;
+}
+
+.app-side-drawer.is-open {
+  transform: translate3d(0, 0, 0);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-header-shell {
     will-change: auto;
@@ -102,6 +145,12 @@ a[aria-label="Dodgy Deal home"] {
 
   .app-header-shell.check-deals-collapsible {
     will-change: auto;
+    transition: none;
+  }
+
+  .app-drawer-shiftable,
+  .app-drawer-scrim,
+  .app-side-drawer {
     transition: none;
   }
 
@@ -1338,6 +1387,18 @@ html[data-theme="dark"] .theme-loader-surface {
 .app-bottom-nav,
 .app-bottom-nav-backdrop {
   transition: opacity 100ms ease-out, visibility 0s linear;
+}
+
+.app-drawer-shiftable.app-bottom-nav,
+.app-drawer-shiftable.app-bottom-nav-backdrop {
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), opacity 100ms ease-out, visibility 0s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-drawer-shiftable.app-bottom-nav,
+  .app-drawer-shiftable.app-bottom-nav-backdrop {
+    transition: none;
+  }
 }
 
 /* The selected capsule sits inside a link with 6px of vertical padding.
