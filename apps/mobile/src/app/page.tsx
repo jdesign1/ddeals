@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
-import { Check, X } from "lucide-react";
+import { motion } from "motion/react";
 import {
   matchesAnySelectedStore,
   deriveAvailableStoreKeys,
@@ -26,7 +25,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 import SupermarketPicker from "@/components/SupermarketPicker";
-import FilterTrigger from "@/components/FilterTrigger";
+import NativeSelectFilter from "@/components/NativeSelectFilter";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
@@ -42,7 +41,6 @@ import {
   type CheckDealsSortBy,
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
-import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { compareLatestSpecials } from "@/lib/special-freshness";
 
 /**
@@ -408,11 +406,12 @@ export default function HomePage() {
                     categoryCounts={categoryCounts}
                     emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
                   />
-                  <SortDropdown
+                  <NativeSelectFilter
                     value={dealSortBy}
                     defaultValue={getDefaultDealSort(dealFilter)}
                     onChange={handleDealSortChange}
                     options={TRENDING_SORT_OPTIONS}
+                    ariaLabel="Sort deals"
                     fill
                   />
                 </>
@@ -592,131 +591,11 @@ function HomeCatalogueSkeleton() {
   );
 }
 
-/** Ported from Prototype/index.html's "Sort" control (originally a
- * `<select>` visually hidden but stretched over a styled label+chevron
- * pill, so it kept native picker behaviour). Switched to a bottom sheet
- * (2026-08-13, per Jay's ask to turn "the sort drop down menu on all pages"
- * into a bottom sheet) -- same scrim + spring slide-up pattern
- * `FullScreenSearch.tsx`'s Categories/Sort sheets use, just self-contained
- * here since both call sites (Trending/My List rails below) share the same
- * fixed options, unlike that file's per-screen option lists. Picking a
- * row applies it and closes immediately (single-select, matching what the
- * native `<select>` this replaced did), no separate "Done" footer. */
 const SORT_OPTIONS = CHECK_DEALS_SORT_OPTIONS;
 
 // Trending uses the shared Check Deals options; My List reuses the same list
 // below so the price-aware sorting language stays consistent across rails.
 const TRENDING_SORT_OPTIONS = CHECK_DEALS_SORT_OPTIONS;
-
-// Made generic over `T extends string` 2026-08-21 so Trending's own
-// `TrendingSortBy` options could reuse this same dropdown/bottom-sheet
-// instead of a second near-identical component -- `options` is now a prop
-// instead of always reading the module-level `SORT_OPTIONS`, everything
-// else (including the sheet markup/animation) is unchanged.
-function SortDropdown<T extends string>({
-  value,
-  defaultValue,
-  onChange,
-  options,
-  fill = false,
-}: {
-  value: T;
-  defaultValue: T;
-  onChange: (value: T) => void;
-  options: { value: T; label: string }[];
-  fill?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const isActive = value !== defaultValue;
-  return (
-    <>
-      <FilterTrigger
-        label="Sort"
-        active={isActive}
-        onOpen={() => setIsOpen(true)}
-        onClear={() => onChange(defaultValue)}
-        ariaLabel="Sort deals"
-        expanded={isOpen}
-        compact
-        hasPopup="listbox"
-        fill={fill}
-      />
-      <BottomSheetPortal open={isOpen}>
-        <AnimatePresence>
-          {isOpen && (
-            <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
-            >
-              <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-                {/* Bottom-sheet title style unified app-wide 2026-08-19, per
-                    Jay: "use a slightly bolder larger top title text" for
-                    every bottom sheet -- was text-sm/font-black here, now
-                    the same text-lg/font-black/tracking-tight every other
-                    sheet's title uses too (AuthSheet, ScannerModal, the
-                    deal page's alternatives sheet, this file's own two
-                    sheets, FullScreenSearch's Categories/Sort sheets,
-                    AppHeader's account sheet, AddToListButton's and
-                    lists/page.tsx's create-list sheet -- see each file's
-                    own title element for the same class). */}
-                <h3 className="dd-type-sheet-title text-stone-900">Sort by</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Close"
-                  className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="py-2 pb-safe-sm">
-                {options.map((opt) => {
-                  const isSelected = opt.value === value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => {
-                        onChange(opt.value);
-                        setIsOpen(false);
-                      }}
-                      className={`flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-3.5 text-left dd-type-control transition-colors ${
-                        isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      <span
-                        aria-hidden="true"
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                          isSelected ? "border-ink-600 bg-ink-600 text-white" : "border-stone-300 bg-white text-transparent"
-                        }`}
-                      >
-                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </BottomSheetPortal>
-    </>
-  );
-}
 
 function TrendingSection({
   deals,
@@ -939,11 +818,12 @@ function MyListSection({
             <span className="dd-type-meta dd-type-meta-strong text-stone-500">
               {sorted.length} {sorted.length === 1 ? "item" : "items"}
             </span>
-            <SortDropdown
+            <NativeSelectFilter
               value={sortBy}
               defaultValue={getDefaultDealSort("all")}
               onChange={onSortByChange}
               options={SORT_OPTIONS}
+              ariaLabel="Sort list specials"
             />
           </div>
           <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>

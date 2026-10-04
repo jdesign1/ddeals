@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import type { CurrentDeal, ProductCard as ProductCardData } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
-import PriceChangeBadge from "@/components/PriceChangeBadge";
-import { getStoreLogoMeta } from "@/lib/store-meta";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 interface HistoryProductCardProps {
   product: ProductCardData;
@@ -14,12 +13,12 @@ interface HistoryProductCardProps {
 
 /**
  * Dense history row for All Checks. It follows the Lists page's compact item
- * proportions while retaining the historical check's store, price, verdict,
- * save action, and tap-through to the deal page.
+ * proportions while retaining the historical check's supermarket, price, save
+ * action, and tap-through to the deal page. Assessment badges stay on the
+ * assessment screen rather than competing with this scan-friendly history.
  */
 export default function HistoryProductCard({ product, deal }: HistoryProductCardProps) {
   const router = useRouter();
-  const storeMeta = getStoreLogoMeta(deal.store);
   const goToDeal = () => {
     router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
   };
@@ -58,14 +57,11 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5 pr-2">
         <div className="mb-0.5 flex min-w-0 justify-start pr-12">
-          <span className={`select-none rounded-md px-1.5 py-0.5 dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
-            {storeMeta.short}
-          </span>
+          <StoreLogoBadge store={deal.store} variant="compact" />
         </div>
         <h3 className="line-clamp-2 pr-12 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h3>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <span className="font-display text-base font-extrabold text-stone-900">${deal.price.toFixed(2)}</span>
-          <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
         </div>
       </div>
     </div>

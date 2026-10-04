@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, ArrowLeft, Check, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import {
   STORE_DISPLAY_FALLBACK,
@@ -21,6 +21,7 @@ import BackToTopButton from "@/components/BackToTopButton";
 import ErrorState from "@/components/ErrorState";
 import SupermarketPicker from "@/components/SupermarketPicker";
 import FilterTrigger from "@/components/FilterTrigger";
+import NativeSelectFilter from "@/components/NativeSelectFilter";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
 import { useSearch } from "@/lib/search-context";
@@ -421,31 +422,6 @@ export default function FullScreenSearch() {
   const toggleActiveCategory = (cat: string) =>
     setActiveCategoryFilter((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
 
-  // Sort bottom sheet (2026-08-13, per Jay's ask to turn "the sort drop down
-  // menu on all pages" -- this file's two native `<select>`-based sort
-  // controls, Popular Specials' and Search Results' -- into a bottom sheet,
-  // matching the Categories sheet right above this that already replaced the
-  // Prototype's plain scrim-less popover). Same `null`-means-closed /
-  // string-target-means-open shape as `categorySheetTarget`, but the option
-  // list + current value + setter differ per target, so a single derived
-  // config object is computed here instead of threading 3 separate props through
-  // `renderCategoriesAndSort` the way the pre-sheet `<select>` version did.
-  const [sortSheetTarget, setSortSheetTarget] = useState<"popular" | "results" | null>(null);
-  const activeSortConfig =
-    sortSheetTarget === "popular"
-      ? {
-          value: popularSortBy as string,
-          onChange: (v: string) => handleSortChange(v as PopularSortBy, setPopularSortBy),
-          options: CHECK_DEALS_SORT_OPTIONS,
-        }
-      : sortSheetTarget === "results"
-        ? {
-            value: resultsSortBy as string,
-            onChange: (v: string) => handleSortChange(v as ResultsSortBy, setResultsSortBy),
-            options: CHECK_DEALS_SORT_OPTIONS,
-          }
-        : null;
-
   const trimmedQuery = query.trim();
 
   // The old dedicated "reset show-all expansion" effect that used to live
@@ -633,6 +609,11 @@ export default function FullScreenSearch() {
   });
   const visibleSearchResults = sortedProducts.slice(0, visibleSearchResultsCount);
   const handleClearText = () => setQuery("");
+  const fullSearchInputRef = useRef<HTMLInputElement>(null);
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    fullSearchInputRef.current?.blur();
+  };
   const handleBack = () => {
     closeSearch();
   };
@@ -642,28 +623,12 @@ export default function FullScreenSearch() {
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
 
-  /** Shared "Categories" button + "Sort" button row, used above both the
-   * pre-3-char popular list and the post-3-char results grid -- factored out
-   * once both were repositioned to sit directly above their own list
-   * (2026-08-09), since they're now structurally identical apart from which
-   * state/options they bind to. Sort switched from a native `<select>`
-   * (visually hidden, stretched over this same label+chevron pill) to
-   * opening the bottom sheet below (2026-08-13, per Jay's ask) -- now just
-   * takes an `onOpenSortSheet` callback instead of `sortValue`/`onSortChange`/
-   * `sortOptions`, since the sheet itself reads the right value/options via
-   * `activeSortConfig` above (keyed off `sortSheetTarget`) once it's open.
-   *
-   * Both triggers: border -> shadow-sm, 2026-08-21, per Jay: "Update the
-   * pills and tabs to have no border lines, and short tight drop shadows
-   * instead." Same swap as `app/page.tsx`'s `SortDropdown` trigger. */
+  /** Shared Categories + native Sort row, used above both the popular list
+   * and typed search results. */
   const renderToolbarFilters = (target: "popular" | "results") => {
     const categoryFilter = target === "results" ? resultsCategoryFilter : popularCategoryFilter;
     const sortBy = target === "results" ? resultsSortBy : popularSortBy;
-    const clearSort = () => {
-      const defaultSort = getDefaultDealSort(dealFilter);
-      if (target === "results") handleSortChange(defaultSort as ResultsSortBy, setResultsSortBy);
-      else handleSortChange(defaultSort as PopularSortBy, setPopularSortBy);
-    };
+    const defaultSort = getDefaultDealSort(dealFilter);
 
     return (
       <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
@@ -680,14 +645,16 @@ export default function FullScreenSearch() {
           ariaLabel="Filter by category"
           fill
         />
-        <FilterTrigger
-          label="Sort"
-          active={sortBy !== getDefaultDealSort(dealFilter)}
-          onOpen={() => setSortSheetTarget(target)}
-          onClear={clearSort}
+        <NativeSelectFilter
+          value={sortBy}
+          defaultValue={defaultSort}
+          onChange={(value) =>
+            target === "results"
+              ? handleSortChange(value as ResultsSortBy, setResultsSortBy)
+              : handleSortChange(value as PopularSortBy, setPopularSortBy)
+          }
+          options={CHECK_DEALS_SORT_OPTIONS}
           ariaLabel="Sort deals"
-          compact
-          hasPopup="listbox"
           fill
         />
       </div>
@@ -729,9 +696,7 @@ export default function FullScreenSearch() {
           style={{ willChange: "opacity" }}
           className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-[background-color] duration-300 ease-out ${
             dealFilterTintClass || "page-paper-surface"
-          } ${
-            categorySheetTarget !== null || sortSheetTarget !== null ? "z-[70]" : "z-50"
-          }`}
+          } ${categorySheetTarget !== null ? "z-[70]" : "z-50"}`}
         >
           {/* Keep the same frosted fade behind the global floating nav while
               full-screen search is open. The overlay sits above the global
@@ -841,7 +806,7 @@ export default function FullScreenSearch() {
                 fix) is to apply the same visual fix to every component that
                 shares the pattern, not just the one currently being looked
                 at. */}
-            <form onSubmit={(e) => e.preventDefault()} className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 shadow-none transition-colors focus-within:border-stone-900">
+            <form onSubmit={handleSearchSubmit} className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 shadow-none transition-colors focus-within:border-stone-900">
               {/* Mascot mark replaces lucide's `Search` icon here (2026-08-20,
                   per Jay: "In the active search bar state, replace the search
                   icon with the dodgy man icon") -- same `/logo.svg` mark
@@ -858,6 +823,7 @@ export default function FullScreenSearch() {
               <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mr-3 h-8 w-8 flex-shrink-0" />
               <input
                 id="full-search-input"
+                ref={fullSearchInputRef}
                 autoFocus={focusSearchOnOpen}
                 className="mobile-zoom-safe-input h-11 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
                 placeholder="Search for a product or brand"
@@ -1514,82 +1480,6 @@ export default function FullScreenSearch() {
             </AnimatePresence>
           </BottomSheetPortal>
 
-          {/* Sort bottom sheet (2026-08-13, per Jay's ask) -- same
-              scrim + spring slide-up pattern as the Categories sheet right
-              above, reading its option list/current value/setter from
-              `activeSortConfig` (keyed off `sortSheetTarget`) rather than
-              the Categories sheet's own multi-select "toggle a chip" list:
-              sort is single-select, so picking a row applies it and closes
-              the sheet immediately (matching the native `<select>` this
-              replaced -- picking an option there closed the picker too),
-              no separate "Done" footer needed. */}
-          <BottomSheetPortal open={sortSheetTarget !== null && activeSortConfig !== null}>
-            <AnimatePresence>
-              {sortSheetTarget !== null && activeSortConfig && (
-                <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setSortSheetTarget(null)}
-                  className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
-                />
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 25, stiffness: 220 }}
-                  className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex min-h-[45vh] max-h-[70vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
-                >
-                  <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-                    {/* Bottom-sheet title style unified app-wide 2026-08-19
-                        -- was text-sm, now text-lg, same class every bottom
-                        sheet's top title uses (see app/page.tsx's Sort sheet
-                        for the full cross-reference). */}
-                    <h3 className="dd-type-sheet-title text-stone-900">Sort by</h3>
-                    <button
-                      type="button"
-                      onClick={() => setSortSheetTarget(null)}
-                      aria-label="Close"
-                      className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
-                    >
-                      <X className="h-4 w-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto py-2 pb-safe-sm">
-                    {activeSortConfig.options.map((opt) => {
-                      const isSelected = opt.value === activeSortConfig.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          aria-pressed={isSelected}
-                          onClick={() => {
-                            activeSortConfig.onChange(opt.value);
-                            setSortSheetTarget(null);
-                          }}
-                          className={`flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-3.5 text-left dd-type-control transition-colors ${
-                            isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"
-                          }`}
-                        >
-                          <span>{opt.label}</span>
-                          <span
-                            aria-hidden="true"
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                              isSelected ? "border-ink-600 bg-ink-600 text-white" : "border-stone-300 bg-white text-transparent"
-                            }`}
-                          >
-                            <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </BottomSheetPortal>
         </motion.div>
       )}
     </AnimatePresence>

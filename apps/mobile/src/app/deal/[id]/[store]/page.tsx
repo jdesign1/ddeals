@@ -168,21 +168,21 @@ function DealActions({ productId, productName, dataOnboarding }: { productId: st
  * those files' own `DEAL_TYPE_BADGE` maps) -- matched here, not reinvented,
  * for the "consistent" part of Jay's ask.
  *
- * Labels name the specific claim instead of repeating the full verdict --
- * "Verified special" (this
- * price was checked against a real recent price and is genuinely lower),
- * "Dodgy" (the opposite -- the "special" price is at or above a
- * recent real price), "Fair price" (no unusual pricing either way, whether
- * or not it happens to be on special right now), plus "Early flag" and
- * "Limited history" for incomplete evidence.
+ * Badge labels provide the shopper decision alongside the main verdict title.
  */
 const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
-  "Real Saver": { label: "Real Saver", className: "dd-badge-fair", icon: ShieldCheck },
-  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert", icon: AlertTriangle },
-  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy", icon: Info },
+  "Real Saver": { label: "Safe to buy", className: "dd-badge-fair", icon: ShieldCheck },
+  "Dodgy Deal": { label: "Don't buy", className: "dd-badge-alert", icon: AlertTriangle },
+  "Fair Price": { label: "It's been cheaper", className: "dd-badge-dodgy", icon: Info },
   "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
   "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
 };
+
+function getVerdictTitle(verdict: AssessmentVerdict): string {
+  if (verdict === "Dodgy Deal") return "Dodgy discount";
+  if (verdict === "Early read" || verdict === "Limited history") return "Limited Price History";
+  return verdict;
+}
 
 function getEvidenceSummary(): string {
   return "See the evidence";
@@ -807,7 +807,7 @@ export default function DealAssessmentPage() {
               <p className="mt-0.5 text-sm leading-relaxed text-stone-500">Select a supermarket to see assessment details</p>
             </div>
             <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
-              {rankingList.map((item) => {
+              {rankingList.map((item, index) => {
                 const storeDeal = findDealForStore(product.currentDeals, item.store);
                 if (!storeDeal) return null;
                 const storeVerdict = getAssessmentVerdict(storeDeal);
@@ -815,6 +815,8 @@ export default function DealAssessmentPage() {
                 const showStoreBadge = storeVerdict !== "Limited history";
                 const storeMeta = getStoreLogoMeta(item.store);
                 const isCurrentStore = storesMatch(item.store, selectedDeal.store);
+                const isFirstStore = index === 0;
+                const isLastStore = index === rankingList.length - 1;
                 const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
                 const storeUnitPrice = shouldDisplayAssessmentUnitPrice(product.category, product.name, storeDeal.saleUnitLabel)
                   ? formatUnitPrice(storeDeal.saleUnitPrice, storeDeal.saleUnitLabel)
@@ -861,7 +863,11 @@ export default function DealAssessmentPage() {
                   </>
                 );
                 const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
-                  isCurrentStore ? "rounded-md outline-2 outline outline-offset-0 outline-stone-400" : ""
+                  isCurrentStore
+                    ? `outline-2 outline outline-offset-0 outline-stone-400 ${
+                        isFirstStore ? "rounded-t-2xl" : isLastStore ? "rounded-b-2xl" : "rounded-none"
+                      }`
+                    : ""
                 }`;
                 return (
                   <button
@@ -890,40 +896,13 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
       <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-        {/* Verdict badge -- "Verified special" (Real Saver) ADDED
-            2026-08-20, per Jay: "remove verified specials badge from the
-            lists. Add it to deal assessment pages for real savers" -- moved
-            here from the S1 Lists page (see that page's own doc comment,
-            same day), where it was a whole-list aggregate ("at least one
-            item in this list is a verified special"); here it marks THIS
-            specific item's own verdict instead, which is both more precise
-            (Jay said "for real savers", singular verdict, not "for lists
-            containing one") and free to compute -- `verdict === "Real
-            Saver"` already means `deal.dealType === "Real Deal"`
-            (`getAssessmentVerdict`, see `deal-detail.ts`), which itself
-            already requires a genuine (non-DODGY, non-UNKNOWN)
-            `dodgy_deals_cache` verdict match, the exact same "verified"
-            condition the old list badge checked (`hasVerifiedSpecial`,
-            lists.ts) -- no new data/fetch needed.
-
-            Extended to Dodgy Deal/Fair Deal too, same day, per Jay's
-            follow-up: "Is there a badge we can use for fair and dodge deal
-            assessment pages? so the badge usage is consistent" -- see the
-            `VERDICT_BADGE` map above this component for the full color/
-            label reasoning. Same `.dd-badge` primitive for all 3, visual
-            continuity with the original single-verdict badge (a bigger
-            redesign wasn't asked for). Placed below the selected supermarket
-            name so the verdict reads as a compact store-level status without
-            repeating the page title. NOT duplicated into the
-            "Cheaper options on special" sheet's own compact current-item
-            summary card further down this file (same `verdict`/`product`
-            in scope there) -- that card is a tightly-packed `p-4` row built
-            to fit inside a bottom sheet, no spare room for a second badge
-            line without its own layout pass; flagged here as a possible
-            follow-up rather than assumed in scope for either ask. */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2" data-onboarding="deal-verdict">
-            <h3 className="text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
+        {/* The selected store's action badge sits below its title, keeping the
+            price aligned with the supermarket identity on the first row. */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5" data-onboarding="deal-verdict">
+            <StoreLogoBadge store={selectedDeal.store} variant="card" />
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
             {!uncertain && (
               <button
                 type="button"
@@ -931,16 +910,16 @@ export default function DealAssessmentPage() {
                 aria-haspopup="dialog"
                 aria-expanded={isEvidenceSheetOpen}
                 aria-label={`See the evidence for this ${verdict} assessment`}
-                className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+                className="mt-1 inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
               >
                 <AnimatedVerdictBadge
                   badge={verdictBadge}
                   animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  label={verdictBadge.label}
                   className="w-fit"
                 />
               </button>
             )}
+            </div>
           </div>
           <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
         </div>
@@ -1002,7 +981,7 @@ export default function DealAssessmentPage() {
           <div className="min-w-0" data-onboarding="deal-verdict">
             <div className="flex items-center justify-between gap-3">
               <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
-                {verdict === "Early read" || verdict === "Limited history" ? "Limited Price History" : verdict}
+                {getVerdictTitle(verdict)}
               </h2>
               <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
             </div>
@@ -1018,7 +997,6 @@ export default function DealAssessmentPage() {
                 <AnimatedVerdictBadge
                   badge={verdictBadge}
                   animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  label={verdict === "Dodgy Deal" ? "Dodgy discount" : verdictBadge.label}
                   className="w-fit"
                 />
               </button>
