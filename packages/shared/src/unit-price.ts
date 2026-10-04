@@ -6,10 +6,12 @@
  * prefixes; the numeric value remains the retailer's own comparative price.
  * This avoids inventing a unit price from an ambiguous pack-size string.
  *
- * Keep this allow-list deliberately small. Unit prices are shown on several
- * surfaces, so accepting arbitrary retailer text would make the cards noisy
- * and could expose a label that is not meaningful to shoppers.
+ * Keep this allow-list deliberately small. Unit prices are retained as
+ * pricing evidence, but only selectively shown to shoppers on assessment
+ * surfaces (see `shouldDisplayAssessmentUnitPrice` below).
  */
+
+import { groupCategory } from "./deal-detail.ts";
 
 const UNIT_LABELS = new Map([
   ["g", "g"],
@@ -50,6 +52,46 @@ function normalizeUnitLabel(label: string): string | null {
     .replace(/\s+/g, "");
 
   return UNIT_LABELS.get(cleaned) ?? null;
+}
+
+// Comparative pricing is most useful where shoppers can reasonably compare
+// different pack sizes or weights. Beauty and personal-care products, for
+// example, technically have a unit price but it adds little decision value.
+const ALWAYS_COMPARABLE_CATEGORIES = new Set([
+  "Fruit & Veg",
+  "Meat & Poultry",
+  "Fish & Seafood",
+  "Fridge & Deli",
+  "Dairy & Eggs",
+  "Drinks",
+  "Pets",
+]);
+
+const PANTRY_STAPLE_TERMS = /\b(?:almond(?:s)?|cashew(?:s)?|hazelnut(?:s)?|macadamia(?:s)?|peanut(?:s)?|pecan(?:s)?|pistachio(?:s)?|walnut(?:s)?|nut(?:s)?|seed(?:s)?|dried fruit|rice|pasta|cereal|oat(?:s|meal)?|flour|sugar|coffee|tea|cocoa|protein|powder|oil)\b/i;
+const HOUSEHOLD_COMPARISON_TERMS = /\b(?:detergent|laundry|washing powder|dishwasher|dishwash|fabric softener|bleach|cleaner|cleaning|disinfectant)\b/i;
+
+/**
+ * Whether a retailer's comparative price is useful to show on a deal
+ * assessment. This does not affect price history, deal classification, or
+ * shrinkflation checks: those continue to retain every valid unit price.
+ */
+export function shouldDisplayAssessmentUnitPrice(
+  category: string | null | undefined,
+  productName: string | null | undefined,
+  label: string | null | undefined,
+): boolean {
+  if (!label) return false;
+
+  const unit = normalizeUnitLabel(label);
+  if (!unit || unit === "each") return false;
+
+  const shopperCategory = groupCategory(category, productName);
+  if (ALWAYS_COMPARABLE_CATEGORIES.has(shopperCategory)) return true;
+
+  const name = productName || "";
+  if (shopperCategory === "Pantry") return PANTRY_STAPLE_TERMS.test(name);
+  if (shopperCategory === "Household & Cleaning") return HOUSEHOLD_COMPARISON_TERMS.test(name);
+  return false;
 }
 
 export function formatUnitPrice(

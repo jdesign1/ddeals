@@ -7,7 +7,7 @@ import type {
   ProductCard as ProductCardData,
   CurrentDeal,
 } from "@dodgey-deals/shared";
-import { STORE_DISPLAY_FALLBACK, formatUnitPrice, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
+import { STORE_DISPLAY_FALLBACK, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
@@ -104,10 +104,8 @@ export default function ProductListCard({
     dataOnboarding === "dodgy-deal-card";
   const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
-  // Top 20 cards stay intentionally compact. Unit pricing remains available
-  // on full Search cards, while the assessment page carries the detailed
-  // comparison for Top 20 items.
-  const unitPriceLabel = isSnapshotLayout ? null : formatUnitPrice(deal.saleUnitPrice, deal.saleUnitLabel);
+  // Unit pricing remains available for deal assessment and data analysis, but
+  // browse cards stay focused on the product's actual shelf price.
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
   const { isGridLayout, isCompactLayout } = useCardLayout();
   const pinStoreLogosToFooter = !isSnapshotLayout && !isCompactLayout && !hideCardBadges;
@@ -290,11 +288,6 @@ export default function ProductListCard({
             />
           ) : (
             <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
-          )}
-          {unitPriceLabel && (
-            <span className="dd-type-meta text-stone-500" aria-label={`Unit price ${unitPriceLabel.replace("/", " per ")}`}>
-              {unitPriceLabel}
-            </span>
           )}
           {isSnapshotLayout && (
             <span className="truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
