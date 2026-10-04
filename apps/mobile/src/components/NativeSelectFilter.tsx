@@ -29,9 +29,7 @@ export default function NativeSelectFilter<T extends string>({
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
         aria-label={ariaLabel}
-        className={`h-11 w-full cursor-pointer appearance-none rounded-full border bg-white pl-3 pr-8 dd-type-control text-stone-700 shadow-none transition-colors focus:border-stone-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
-          active ? "border-stone-950" : "border-stone-300"
-        }`}
+        className="peer absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0 focus:outline-none focus:ring-0"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -39,7 +37,15 @@ export default function NativeSelectFilter<T extends string>({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-700" aria-hidden="true" />
+      <div
+        aria-hidden="true"
+        className={`flex h-11 w-full items-center rounded-full border bg-white pl-3 pr-2.5 dd-type-control text-stone-700 shadow-none transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ink-600 peer-focus-visible:ring-offset-1 ${
+          active ? "border-stone-950" : "border-stone-300"
+        }`}
+      >
+        <span>Sort</span>
+        <ChevronDown className="ml-auto h-3.5 w-3.5 text-stone-700" aria-hidden="true" />
+      </div>
     </div>
   );
 }
