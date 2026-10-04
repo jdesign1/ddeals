@@ -408,6 +408,7 @@ export default function HomePage() {
                   />
                   <NativeSelectFilter
                     value={dealSortBy}
+                    defaultValue={getDefaultDealSort(dealFilter)}
                     onChange={handleDealSortChange}
                     options={TRENDING_SORT_OPTIONS}
                     ariaLabel="Sort deals"
@@ -819,6 +820,7 @@ function MyListSection({
             </span>
             <NativeSelectFilter
               value={sortBy}
+              defaultValue={getDefaultDealSort("all")}
               onChange={onSortByChange}
               options={SORT_OPTIONS}
               ariaLabel="Sort list specials"

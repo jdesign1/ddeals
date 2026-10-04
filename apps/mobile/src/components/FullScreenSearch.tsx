@@ -642,6 +642,7 @@ export default function FullScreenSearch() {
         />
         <NativeSelectFilter
           value={sortBy}
+          defaultValue={getDefaultDealSort(dealFilter)}
           onChange={(value) =>
             target === "results"
               ? handleSortChange(value as ResultsSortBy, setResultsSortBy)
