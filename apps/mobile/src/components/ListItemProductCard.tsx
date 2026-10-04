@@ -324,7 +324,7 @@ export default function ListItemProductCard({
           )}
           <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
           <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h4>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <div className="mt-1 flex flex-wrap items-end gap-1.5">
             <span className="font-display text-base font-extrabold text-stone-900">
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
               ${deal.price.toFixed(2)}
