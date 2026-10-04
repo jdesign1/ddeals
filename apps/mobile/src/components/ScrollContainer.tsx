@@ -137,6 +137,24 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       };
     }
 
+    // This shell owns the scrollable surface for every route. App Router's
+    // default route scrolling therefore cannot reset it when a Watchlist row
+    // opens a deal assessment. Start every assessment at the top before its
+    // content paints, while retaining the existing Check Deals restoration
+    // when that was the route the user came from.
+    if (pathname.startsWith("/deal/")) {
+      if (previousPathname === "/") checkDealsScrollTopRef.current = lastScrollTopRef.current;
+      const resetToTop = () => {
+        const element = scrollRef.current;
+        if (!element) return;
+        element.scrollTop = 0;
+        lastScrollTopRef.current = 0;
+      };
+      resetToTop();
+      const firstFrame = window.requestAnimationFrame(resetToTop);
+      return () => window.cancelAnimationFrame(firstFrame);
+    }
+
     if (previousPathname === "/" && pathname !== "/") {
       checkDealsScrollTopRef.current = lastScrollTopRef.current;
       if (scrollRef.current) scrollRef.current.scrollTop = 0;

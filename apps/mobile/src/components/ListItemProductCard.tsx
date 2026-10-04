@@ -285,7 +285,7 @@ export default function ListItemProductCard({
           height={96}
           sizes="96px"
           loading="lazy"
-          className="product-image-content h-full w-full object-contain"
+          className="product-image-content h-3/4 w-3/4 object-contain"
         />
       </div>
       {confirmingRemove ? (
@@ -329,7 +329,7 @@ export default function ListItemProductCard({
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
               ${deal.price.toFixed(2)}
             </span>
-            {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />}
+            {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact bare />}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <StoreLogoBadge store={deal.store} variant="compact" />

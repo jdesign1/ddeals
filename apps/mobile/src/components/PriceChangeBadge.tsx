@@ -6,6 +6,7 @@ export default function PriceChangeBadge({
   comparisonPrice,
   format = "percentage",
   compact = false,
+  bare = false,
 }: {
   currentPrice: number;
   comparisonPrice: number | null | undefined;
@@ -13,6 +14,8 @@ export default function PriceChangeBadge({
   format?: "percentage" | "amount";
   /** Keeps the saving chip alongside a verdict in narrow two-column cards. */
   compact?: boolean;
+  /** Uses coloured text only, for dense card metadata such as Watchlist rows. */
+  bare?: boolean;
 }) {
   if (comparisonPrice == null) return null;
   const amount = Math.abs(comparisonPrice - currentPrice);
@@ -23,14 +26,15 @@ export default function PriceChangeBadge({
 
   const isCheaper = comparisonPrice > currentPrice;
   const ChangeIcon = isCheaper ? ArrowDown : ArrowUp;
+  const sizeClass = compact ? "text-xs leading-4 font-bold" : "dd-type-badge";
+  const presentationClass = bare
+    ? sizeClass
+    : `${compact ? "rounded-md px-1 py-0.5" : "rounded-md p-1"} ${sizeClass} text-white shadow-xs`;
+  const colorClass = isCheaper ? (bare ? "text-fair-600" : "bg-fair-600") : bare ? "text-alert-600" : "bg-alert-600";
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-0.5 rounded-md text-white shadow-xs ${
-        compact ? "px-1 py-0.5 text-xs leading-4 font-bold" : "p-1 dd-type-badge"
-      } ${
-        isCheaper ? "bg-fair-600" : "bg-alert-600"
-      }`}
+      className={`inline-flex shrink-0 items-center gap-0.5 ${presentationClass} ${colorClass}`}
       aria-label={
         format === "amount"
           ? `${isCheaper ? "Save" : "Up"} $${amount.toFixed(2)} from the reference price`
