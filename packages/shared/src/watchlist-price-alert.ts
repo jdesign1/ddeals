@@ -8,6 +8,20 @@ export interface WatchlistPriceState {
 
 export const WATCHLIST_MIN_PRICE_DROP = 0.25;
 export const WATCHLIST_MIN_PERCENT_DROP = 0.05;
+// The full catalogue runs every four days. Keep two full cycles of tolerance
+// so one delayed/missed run does not erase a useful baseline, while still
+// preventing indefinitely stale observations from generating alerts.
+export const WATCHLIST_MAX_OBSERVATION_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+
+export function isWatchlistObservationFresh(
+  observedAt: string | Date | null | undefined,
+  now = Date.now(),
+): boolean {
+  const timestamp = observedAt instanceof Date ? observedAt.getTime() : Date.parse(String(observedAt ?? ""));
+  if (!Number.isFinite(timestamp)) return false;
+  const age = now - timestamp;
+  return age >= 0 && age <= WATCHLIST_MAX_OBSERVATION_AGE_MS;
+}
 
 /**
  * Decide whether a fresh catalogue observation is a meaningful Watchlist

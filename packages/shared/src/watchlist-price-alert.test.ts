@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   detectWatchlistPriceAlert,
+  isWatchlistObservationFresh,
   WATCHLIST_MIN_PRICE_DROP,
+  WATCHLIST_MAX_OBSERVATION_AGE_MS,
 } from "./watchlist-price-alert.ts";
 
 const state = {
@@ -19,6 +21,19 @@ test("does not alert on the first observation", () => {
     isVerifiedSpecial: true,
     verdict: "GENUINE",
   }), null);
+});
+
+test("keeps a baseline fresh across one weekly promotion cycle", () => {
+  const now = Date.parse("2026-10-04T00:00:00.000Z");
+  assert.equal(isWatchlistObservationFresh("2026-09-28T00:00:00.000Z", now), true);
+  assert.equal(isWatchlistObservationFresh("2026-09-25T23:59:59.999Z", now), false);
+  assert.equal(WATCHLIST_MAX_OBSERVATION_AGE_MS, 8 * 24 * 60 * 60 * 1000);
+});
+
+test("does not treat malformed or future observations as fresh", () => {
+  const now = Date.parse("2026-10-04T00:00:00.000Z");
+  assert.equal(isWatchlistObservationFresh("not-a-date", now), false);
+  assert.equal(isWatchlistObservationFresh("2026-10-04T00:00:00.001Z", now), false);
 });
 
 test("alerts when a special price becomes meaningfully cheaper", () => {

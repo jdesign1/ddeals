@@ -1,4 +1,8 @@
-import { createSupabaseClient, detectWatchlistPriceAlert } from "@dodgey-deals/shared";
+import {
+  createSupabaseClient,
+  detectWatchlistPriceAlert,
+  isWatchlistObservationFresh,
+} from "@dodgey-deals/shared";
 import { accountsConfig } from "@/lib/accounts-config";
 import { supabaseConfig } from "@/lib/config";
 import { isApnsConfigured, sendApnsAlert } from "@/lib/apns";
@@ -114,7 +118,7 @@ function buildAlertCopy(events: AlertEventRow[], list: ListRow): {
   if (products.length > 1) {
     return {
       title: `${list.name} price update`,
-      body: `${products.length} items on ${list.name} have new special-price updates. Tap to view your list.`,
+      body: `${products.length} items on ${list.name} have new special-price updates.`,
       productId: products[0].product_id,
     };
   }
@@ -125,13 +129,13 @@ function buildAlertCopy(events: AlertEventRow[], list: ListRow): {
   const trustedAssessment = event.verdict === "GENUINE";
   let body: string;
   if (event.event_type === "dodgy_special") {
-    body = `${event.product_name} at ${event.store_name} now looks dodgy at ${price}. Avoid this deal and tap to review ${list.name}.`;
+    body = `${event.product_name} at ${event.store_name} now looks dodgy at ${price}.`;
   } else if (!trustedAssessment) {
-    body = `Price update: ${event.product_name} is ${price} at ${event.store_name}. Tap to view ${list.name}.`;
+    body = `Price update: ${event.product_name} is ${price} at ${event.store_name}.`;
   } else if (event.event_type === "returned_to_special") {
-    body = `${event.product_name} is back on special at ${event.store_name} for ${price}, down ${savings}. Tap to view ${list.name}.`;
+    body = `${event.product_name} is back on special at ${event.store_name} for ${price}, down ${savings}.`;
   } else {
-    body = `${event.product_name} is now ${price} at ${event.store_name}, ${savings} less. Tap to view ${list.name}.`;
+    body = `${event.product_name} is now ${price} at ${event.store_name}, ${savings} less.`;
   }
 
   return {
@@ -201,14 +205,16 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
   }
 
   const now = Date.now();
-  const staleAfterMs = 48 * 60 * 60 * 1000;
   const nextStates: AlertStateRow[] = [];
   const newEvents: Omit<AlertEventRow, "id" | "created_at" | "viewed_at" | "push_sent_at">[] = [];
   for (const price of priceRows) {
     const linkedSpecial = specialByPriceKey.get(priceKey(price.product_id, price.store_id));
-    const observationIsFresh = Number.isFinite(Date.parse(price.updated_at)) && now - Date.parse(price.updated_at) <= staleAfterMs;
+    const observationIsFresh = isWatchlistObservationFresh(price.updated_at, now);
+    // Do not replace a useful baseline with an old retailer snapshot. The
+    // next fresh scrape should still be compared with the last trustworthy
+    // observation instead of being treated as a first observation.
+    if (!observationIsFresh) continue;
     const isVerifiedSpecial = Boolean(
-      observationIsFresh &&
       price.is_special &&
       linkedSpecial &&
       Math.abs(Number(linkedSpecial.sale_price) - Number(price.price)) < 0.01
@@ -218,7 +224,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
     for (const item of listProductItems) {
       const key = `${item.id}:${price.store_id}`;
       const previous = stateByKey.get(key);
-      const previousIsFresh = previous && now - Date.parse(previous.last_observed_at) <= staleAfterMs;
+      const previousIsFresh = previous && isWatchlistObservationFresh(previous.last_observed_at, now);
       let eventType: AlertEventRow["event_type"] | null = null;
       const currentPrice = Number(price.price);
 
