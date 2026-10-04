@@ -589,10 +589,6 @@ export default function FullScreenSearch() {
       .map((x) => x.product);
   }, [products, trimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet]);
 
-  const totalRetailersCount = useMemo(
-    () => new Set(sortedProducts.flatMap((p) => applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet).map((d) => d.store))).size,
-    [sortedProducts, selectedStores, dealFilter, newSpecialDealKeySet]
-  );
   // Infinite-scroll reveal replaced the old "Show all N items" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
   // sortedProducts` restarts the reveal at the top whenever the query,
@@ -1167,14 +1163,10 @@ export default function FullScreenSearch() {
 
             {!loading && !error && trimmedQuery.length >= 3 && (
               <>
-                <section className="space-y-2 pt-5 text-center">
+                <section className="py-4 text-center">
                   <h2 id="search-title" className="dd-type-section text-stone-900">
                     Results for &lsquo;{trimmedQuery}&rsquo;
                   </h2>
-                  <p id="search-subtitle" className="dd-type-meta text-stone-500">
-                    {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"} found · {totalRetailersCount}{" "}
-                    {totalRetailersCount === 1 ? "retailer" : "retailers"}
-                  </p>
                 </section>
 
                 {/* One container (not split) so the sticky toolbar below
