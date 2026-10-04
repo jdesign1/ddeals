@@ -8,21 +8,17 @@ import { ChevronDown } from "lucide-react";
  */
 export default function NativeSelectFilter<T extends string>({
   value,
-  defaultValue,
   onChange,
   options,
   ariaLabel,
   fill = false,
 }: {
   value: T;
-  defaultValue: T;
   onChange: (value: T) => void;
   options: { value: T; label: string }[];
   ariaLabel: string;
   fill?: boolean;
 }) {
-  const active = value !== defaultValue;
-
   return (
     <div className={`relative inline-flex h-11 ${fill ? "min-w-0 w-full" : "min-w-0"}`}>
       <select
@@ -39,9 +35,7 @@ export default function NativeSelectFilter<T extends string>({
       </select>
       <div
         aria-hidden="true"
-        className={`flex h-11 w-full items-center rounded-full border bg-white pl-3 pr-2.5 dd-type-control text-stone-700 shadow-none transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ink-600 peer-focus-visible:ring-offset-1 ${
-          active ? "border-stone-950" : "border-stone-300"
-        }`}
+        className="absolute inset-x-0 inset-y-1 flex items-center rounded-full border border-stone-300 bg-white pl-3 pr-2.5 dd-type-control text-stone-700 shadow-none transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ink-600 peer-focus-visible:ring-offset-1"
       >
         <span>Sort</span>
         <ChevronDown className="ml-auto h-3.5 w-3.5 text-stone-700" aria-hidden="true" />

@@ -624,7 +624,6 @@ export default function FullScreenSearch() {
   const renderToolbarFilters = (target: "popular" | "results") => {
     const categoryFilter = target === "results" ? resultsCategoryFilter : popularCategoryFilter;
     const sortBy = target === "results" ? resultsSortBy : popularSortBy;
-    const defaultSort = getDefaultDealSort(dealFilter);
 
     return (
       <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
@@ -643,7 +642,6 @@ export default function FullScreenSearch() {
         />
         <NativeSelectFilter
           value={sortBy}
-          defaultValue={defaultSort}
           onChange={(value) =>
             target === "results"
               ? handleSortChange(value as ResultsSortBy, setResultsSortBy)
