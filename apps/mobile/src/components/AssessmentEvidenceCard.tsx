@@ -2,11 +2,12 @@
 
 import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ChevronRight, Clock3, Info, ShieldCheck, X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import AssessmentText from "@/components/AssessmentText";
 import WinkMascot from "@/components/WinkMascot";
+import { VERDICT_BADGE } from "@/lib/assessment-verdict";
 
 function getEvidenceDetails(deal: CurrentDeal) {
   const days = Number.isFinite(deal.regularHistoryDays)
@@ -24,14 +25,6 @@ function getEvidenceDetails(deal: CurrentDeal) {
     trackedDays: trackedDays == null ? null : Math.round(trackedDays),
   };
 }
-
-const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
-  "Real Saver": { label: "Real Saver", className: "dd-badge-fair", icon: ShieldCheck },
-  "Fair Price": { label: "Fair Price", className: "dd-badge-dodgy", icon: Info },
-  "Dodgy Deal": { label: "Dodgy Deal", className: "dd-badge-alert", icon: AlertTriangle },
-  "Early read": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
-  "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
-};
 
 function formatCount(value: number | null | undefined, singular: string, plural = `${singular}s`): string | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;

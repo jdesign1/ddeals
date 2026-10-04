@@ -1,4 +1,5 @@
 import { buildPriceTimingSignal, type PriceHistoryPoint, type PriceTimingAction, type PriceTimingSignal } from "@dodgey-deals/shared";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 export interface PriceTimingSeries {
   store: string;
@@ -45,8 +46,8 @@ function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore
 
   return (
     <div className="rounded-xl border border-stone-200/80 bg-white p-4">
-      <div className="min-w-0">
-        {showStore && <p className="dd-type-meta truncate text-stone-500">{series.store}</p>}
+      <div className="flex min-w-0 items-center gap-2">
+        {showStore && <StoreLogoBadge store={series.store} variant="card" />}
         <span className={`inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-sm font-bold ${action.className}`}>
           {action.label}
         </span>

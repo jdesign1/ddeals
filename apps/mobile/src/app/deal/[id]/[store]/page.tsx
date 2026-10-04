@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ChevronDown, Clock3, ExternalLink, Info, Share, ShieldCheck, X } from "lucide-react";
+import { ChevronDown, ExternalLink, Share, X } from "lucide-react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -55,6 +55,7 @@ import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
 import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
+import { getVerdictTitle, VERDICT_BADGE } from "@/lib/assessment-verdict";
 
 /**
  * Deal-assessment page — ported from Prototype/index.html's `DealModal`
@@ -170,20 +171,6 @@ function DealActions({ productId, productName, dataOnboarding }: { productId: st
  *
  * Badge labels provide the shopper decision alongside the main verdict title.
  */
-const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className: string; icon: typeof ShieldCheck }> = {
-  "Real Saver": { label: "Safe to buy", className: "dd-badge-fair", icon: ShieldCheck },
-  "Dodgy Deal": { label: "Don't buy", className: "dd-badge-alert", icon: AlertTriangle },
-  "Fair Price": { label: "It's been cheaper", className: "dd-badge-dodgy", icon: Info },
-  "Early read": { label: "Early flag", className: "dd-badge-neutral", icon: Clock3 },
-  "Limited history": { label: "Limited history", className: "dd-badge-neutral", icon: Clock3 },
-};
-
-function getVerdictTitle(verdict: AssessmentVerdict): string {
-  if (verdict === "Dodgy Deal") return "Dodgy discount";
-  if (verdict === "Early read" || verdict === "Limited history") return "Limited Price History";
-  return verdict;
-}
-
 function getEvidenceSummary(): string {
   return "See the evidence";
 }
@@ -810,9 +797,6 @@ export default function DealAssessmentPage() {
               {rankingList.map((item, index) => {
                 const storeDeal = findDealForStore(product.currentDeals, item.store);
                 if (!storeDeal) return null;
-                const storeVerdict = getAssessmentVerdict(storeDeal);
-                const storeBadge = VERDICT_BADGE[storeVerdict];
-                const showStoreBadge = storeVerdict !== "Limited history";
                 const storeMeta = getStoreLogoMeta(item.store);
                 const isCurrentStore = storesMatch(item.store, selectedDeal.store);
                 const isFirstStore = index === 0;
@@ -837,13 +821,6 @@ export default function DealAssessmentPage() {
                       <span className="flex flex-wrap items-center gap-1.5">
                         <span className="truncate text-sm font-extrabold text-stone-800">{item.store}</span>
                       </span>
-                      {showStoreBadge && (
-                        <AnimatedVerdictBadge
-                          badge={storeBadge}
-                          animationKey={`ranking-${product.id}-${item.store}-${storeVerdict}`}
-                          className="dd-badge-compact mt-1 w-fit"
-                        />
-                      )}
                     </span>
                     <span className="flex-shrink-0 text-right">
                       <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
@@ -896,32 +873,30 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
       <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-        {/* The selected store's action badge sits below its title, keeping the
-            price aligned with the supermarket identity on the first row. */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-2.5" data-onboarding="deal-verdict">
-            <StoreLogoBadge store={selectedDeal.store} variant="card" />
-            <div className="min-w-0">
+        <div className="space-y-1.5" data-onboarding="deal-verdict">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <StoreLogoBadge store={selectedDeal.store} variant="card" />
               <h3 className="truncate text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
-            {!uncertain && (
-              <button
-                type="button"
-                onClick={() => setIsEvidenceSheetOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={isEvidenceSheetOpen}
-                aria-label={`See the evidence for this ${verdict} assessment`}
-                className="mt-1 inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
-              >
-                <AnimatedVerdictBadge
-                  badge={verdictBadge}
-                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  className="w-fit"
-                />
-              </button>
-            )}
             </div>
+            <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
           </div>
-          <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
+          {!uncertain && (
+            <button
+              type="button"
+              onClick={() => setIsEvidenceSheetOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={isEvidenceSheetOpen}
+              aria-label={`See the evidence for this ${verdict} assessment`}
+              className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+            >
+              <AnimatedVerdictBadge
+                badge={verdictBadge}
+                animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                className="w-fit"
+              />
+            </button>
+          )}
         </div>
 
         <div>
