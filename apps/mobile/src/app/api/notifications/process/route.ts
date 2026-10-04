@@ -2,6 +2,7 @@ import {
   createSupabaseClient,
   detectWatchlistPriceAlert,
   isWatchlistObservationFresh,
+  type WatchlistVerdict,
 } from "@dodgey-deals/shared";
 import { accountsConfig } from "@/lib/accounts-config";
 import { supabaseConfig } from "@/lib/config";
@@ -45,6 +46,7 @@ interface AlertStateRow {
   store_id: string;
   last_price: number;
   last_is_special: boolean;
+  last_verdict: WatchlistVerdict | null;
   last_observed_at: string;
   last_notified_price: number | null;
   last_notified_at: string | null;
@@ -70,10 +72,10 @@ interface AlertEventRow {
   product_name: string;
   store_id: string;
   store_name: string;
-  event_type: "returned_to_special" | "better_special_price" | "dodgy_special";
+  event_type: "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
   price: number;
   previous_price: number;
-  verdict: "GENUINE" | "MARGINAL" | "UNKNOWN";
+  verdict: WatchlistVerdict;
   event_key: string;
   created_at: string;
   viewed_at: string | null;
@@ -116,9 +118,15 @@ function buildAlertCopy(events: AlertEventRow[], list: ListRow): {
   const products = [...bestByProduct.values()];
 
   if (products.length > 1) {
+    const dodgyCount = products.filter((event) => event.event_type === "became_dodgy" || event.event_type === "dodgy_special").length;
+    const realSaverCount = products.filter((event) => event.event_type === "became_real_saver").length;
     return {
-      title: `${list.name} price update`,
-      body: `${products.length} items on ${list.name} have new special-price updates.`,
+      title: `${list.name} Watchlist update`,
+      body: dodgyCount > 0
+        ? `${dodgyCount === 1 ? "One watched item is" : `${dodgyCount} watched items are`} now Dodgy. Don’t buy. Tap to review.`
+        : realSaverCount > 0
+          ? `${realSaverCount === 1 ? "One watched item is" : `${realSaverCount} watched items are`} now Real Savers. Tap to review.`
+          : `${products.length} watched items have new special-price updates. Tap to review.`,
       productId: products[0].product_id,
     };
   }
@@ -126,16 +134,17 @@ function buildAlertCopy(events: AlertEventRow[], list: ListRow): {
   const event = products[0];
   const price = `$${Number(event.price).toFixed(2)}`;
   const savings = `$${Math.max(0, Number(event.previous_price) - Number(event.price)).toFixed(2)}`;
-  const trustedAssessment = event.verdict === "GENUINE";
   let body: string;
-  if (event.event_type === "dodgy_special") {
-    body = `${event.product_name} at ${event.store_name} now looks dodgy at ${price}.`;
-  } else if (!trustedAssessment) {
-    body = `Price update: ${event.product_name} is ${price} at ${event.store_name}.`;
+  if (event.event_type === "became_dodgy" || event.event_type === "dodgy_special") {
+    body = `${event.product_name} at ${event.store_name} is now Dodgy at ${price}. Don’t buy it. Tap to review.`;
+  } else if (event.event_type === "became_real_saver") {
+    body = `${event.product_name} at ${event.store_name} is now a Real Saver at ${price}. Safe to buy. Tap to review.`;
+  } else if (event.verdict !== "GENUINE") {
+    body = `Price update: ${event.product_name} is ${price} at ${event.store_name}. Tap to view ${list.name}.`;
   } else if (event.event_type === "returned_to_special") {
-    body = `${event.product_name} is back on special at ${event.store_name} for ${price}, down ${savings}.`;
+    body = `${event.product_name} is back on special at ${event.store_name} for ${price}, down ${savings}. Tap to view ${list.name}.`;
   } else {
-    body = `${event.product_name} is now ${price} at ${event.store_name}, ${savings} less.`;
+    body = `${event.product_name} is now ${price} at ${event.store_name}, ${savings} less. Tap to view ${list.name}.`;
   }
 
   return {
@@ -189,7 +198,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
   for (const itemChunk of chunks(itemIds, 100)) {
     const { data, error } = await accounts
       .from("list_price_alert_state")
-      .select("list_item_id,store_id,last_price,last_is_special,last_observed_at,last_notified_price,last_notified_at")
+      .select("list_item_id,store_id,last_price,last_is_special,last_verdict,last_observed_at,last_notified_price,last_notified_at")
       .in("list_item_id", itemChunk);
     if (error) throw new Error(`Could not read notification state: ${error.message}`);
     stateRows.push(...((data ?? []) as AlertStateRow[]));
@@ -210,11 +219,8 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
   for (const price of priceRows) {
     const linkedSpecial = specialByPriceKey.get(priceKey(price.product_id, price.store_id));
     const observationIsFresh = isWatchlistObservationFresh(price.updated_at, now);
-    // Do not replace a useful baseline with an old retailer snapshot. The
-    // next fresh scrape should still be compared with the last trustworthy
-    // observation instead of being treated as a first observation.
-    if (!observationIsFresh) continue;
     const isVerifiedSpecial = Boolean(
+      observationIsFresh &&
       price.is_special &&
       linkedSpecial &&
       Math.abs(Number(linkedSpecial.sale_price) - Number(price.price)) < 0.01
@@ -253,17 +259,18 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
           event_type: eventType,
           price: currentPrice,
           previous_price: previousPrice,
-          verdict: linkedSpecial.verdict === "GENUINE" ? "GENUINE" : linkedSpecial.verdict === "MARGINAL" ? "MARGINAL" : "UNKNOWN",
+          verdict: linkedSpecial.verdict,
           event_key: eventKey,
         });
       }
 
-      const didNotify = Boolean(eventType && linkedSpecial);
+      const didNotify = Boolean(eventType && linkedSpecial && list);
       nextStates.push({
         list_item_id: item.id,
         store_id: price.store_id,
         last_price: currentPrice,
         last_is_special: isVerifiedSpecial,
+        last_verdict: isVerifiedSpecial ? linkedSpecial?.verdict ?? null : previous?.last_verdict ?? null,
         last_observed_at: price.updated_at,
         last_notified_price: didNotify ? currentPrice : previous?.last_notified_price ?? null,
         last_notified_at: didNotify ? new Date(now).toISOString() : previous?.last_notified_at ?? null,
@@ -399,6 +406,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await processAlerts();
+    console.info("List-price notification processing completed.", result);
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("List-price notification processing failed.", error instanceof Error ? error.message : "Unknown error");

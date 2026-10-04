@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import {
   canonicalStoreKey,
   describeFetchError,
+  FREE_WATCHLIST_LIMIT,
   groupCategory,
   getSearchSynonymRule,
   invalidateListsPageCache,
@@ -25,6 +26,7 @@ import { useAuth } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import { useNotifications } from "@/lib/notifications-context";
+import { useSubscriptions } from "@/lib/subscription-context";
 import ErrorState from "@/components/ErrorState";
 import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
@@ -98,6 +100,7 @@ function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<st
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
+  const { isPremium, openSubscriptionSheet } = useSubscriptions();
   const router = useRouter();
   const {
     unreadListItemKeys,
@@ -394,11 +397,13 @@ export default function ListsPage() {
       <div className="watchlist-top-chrome pt-2">
         <WatchlistSummaryCard
           itemCount={watchlistItems.length}
+          isPremium={isPremium}
           newPriceItemCount={newPriceItemCount}
           showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
           notificationPermissionDenied={pushPermissionState === "denied"}
           isSettingUpNotifications={isSettingUpNotifications}
           onSetupNotifications={() => void handleNotificationSetup()}
+          onUpgrade={openSubscriptionSheet}
         />
       </div>
 
@@ -554,18 +559,22 @@ function ClearWatchlistSheet({
 
 function WatchlistSummaryCard({
   itemCount,
+  isPremium,
   newPriceItemCount,
   showNotificationSetup,
   notificationPermissionDenied,
   isSettingUpNotifications,
   onSetupNotifications,
+  onUpgrade,
 }: {
   itemCount: number;
+  isPremium: boolean;
   newPriceItemCount: number;
   showNotificationSetup: boolean;
   notificationPermissionDenied: boolean;
   isSettingUpNotifications: boolean;
   onSetupNotifications: () => void;
+  onUpgrade: () => void;
 }) {
   const hasNewPrices = newPriceItemCount > 0;
   const isEmpty = itemCount === 0;
@@ -573,7 +582,7 @@ function WatchlistSummaryCard({
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div className="flex items-center justify-between gap-3">
-        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist - {itemCount} {itemCount === 1 ? "item" : "items"}</h1>
+        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist - {itemCount}{!isPremium && ` / ${FREE_WATCHLIST_LIMIT}`} {itemCount === 1 ? "item" : "items"}</h1>
         {!isEmpty && hasNewPrices && (
           <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
             <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
@@ -586,6 +595,11 @@ function WatchlistSummaryCard({
           ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
           : "Below are the best specials currently available for the products you’re watching."}
       </p>
+      {!isPremium && itemCount >= FREE_WATCHLIST_LIMIT && (
+        <button type="button" onClick={onUpgrade} className="mt-3 w-full rounded-xl bg-fair-100 px-3 py-2.5 text-left text-[13px] font-extrabold text-ink-900 transition-colors hover:bg-fair-200">
+          Unlock unlimited Watchlist items <span aria-hidden="true">→</span>
+        </button>
+      )}
       {showNotificationSetup && (
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
           <p className="text-[12px] leading-4 text-stone-500">

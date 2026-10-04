@@ -8,16 +8,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 
-export interface UnreadListAlert {
+interface UnreadListAlert {
   id: string;
   list_id: string;
   list_item_id: string;
   product_id: string;
   product_name: string;
   store_name: string;
-  event_type: "returned_to_special" | "better_special_price" | "dodgy_special";
-  price: number;
+  event_type: "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
   verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
+  price: number;
 }
 
 interface NotificationsContextValue {
@@ -74,7 +74,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     for (let offset = 0; ; offset += 500) {
       const unreadResult = await client
         .from("list_price_alert_events")
-        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,price,verdict")
+        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,price")
         .is("viewed_at", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + 499);

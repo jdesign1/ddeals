@@ -14,6 +14,7 @@ import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import { useNotifications } from "@/lib/notifications-context";
+import { useSubscriptions } from "@/lib/subscription-context";
 
 const CARD_LAYOUT_OPTIONS = [
   { value: "grid" as const, label: "Grid", detail: "Two across" },
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
   const { user, session, profile, loading: authLoading, signOut, updateProfileName } = useAuth();
+  const { isPremium, openSubscriptionSheet } = useSubscriptions();
   const {
     pushEnabled,
     pushReady,
@@ -221,6 +223,22 @@ export default function SettingsPage() {
             <p className="dd-type-meta dd-type-meta-strong text-stone-500">Profile</p>
             <p className="mt-1 dd-type-secondary text-stone-600">Your Dodgy Deal shopper profile</p>
           </div>
+        </section>
+      )}
+
+      {user && (
+        <section className="rounded-2xl border border-fair-200 bg-fair-50 p-5 shadow-sm" aria-labelledby="settings-subscription-title">
+          <div className="mb-4">
+            <h2 id="settings-subscription-title" className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Dodgy Deal Plus</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-700">
+              {isPremium
+                ? "Your subscription is active. Keep saving without a Watchlist limit, with price alerts included."
+                : "Keep the full deal assessment and price alerts free, and subscribe when you want unlimited Watchlist items."}
+            </p>
+          </div>
+          <button type="button" onClick={openSubscriptionSheet} className="dd-btn dd-btn-primary w-full cursor-pointer">
+            {isPremium ? "View subscription" : "See subscription options"}
+          </button>
         </section>
       )}
 

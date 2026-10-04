@@ -12,6 +12,7 @@ export { isDairyProduct } from "./search-synonyms.ts";
 export * from "./product-search.ts";
 export * from "./specials-freshness.ts";
 export * from "./price-change-stats.ts";
+export * from "./subscriptions.ts";
 export * from "./watchlist-price-alert.ts";
 export * from "./deal-ranking.ts";
 export * from "./unit-price.ts";

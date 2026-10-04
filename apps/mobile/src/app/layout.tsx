@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Manrope } from "next/font/google";
 import Script from "next/script";
-import AppDrawer from "@/components/AppDrawer";
 import BottomNav from "@/components/BottomNav";
+import AppDrawer from "@/components/AppDrawer";
 import GlobalOverlays from "@/components/GlobalOverlays";
 import LaunchSplash from "@/components/LaunchSplash";
 import ScrollContainer from "@/components/ScrollContainer";
@@ -13,6 +13,7 @@ import { SearchProvider } from "@/lib/search-context";
 import { CardLayoutProvider } from "@/lib/card-layout-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
+import { SubscriptionProvider } from "@/lib/subscription-context";
 import { WatchlistProvider } from "@/lib/watchlist-context";
 import { NavigationDrawerProvider } from "@/lib/navigation-drawer-context";
 import "./globals.css";
@@ -67,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,play_circle,search,search_check_2,settings,warning,workspace_premium&display=block"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,search,search_check_2,settings,warning,workspace_premium&display=block"
         />
       </head>
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">
@@ -75,10 +76,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           id="theme-initialization"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"?"dark":"light";var root=document.documentElement;root.dataset.theme=theme;root.style.colorScheme=theme;var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute("content",theme==="dark"?"#171513":"#faf8f4");}catch(e){document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";}})();`,
+            __html: `(function(){try{var stored=window.localStorage.getItem("dodgey-deals-theme");var theme=stored==="dark"?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";}})();`,
           }}
         />
         <AuthProvider>
+          <SubscriptionProvider>
           <NotificationsProvider>
           <WatchlistProvider>
           <ThemeProvider>
@@ -92,8 +94,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 override. */}
               <CardLayoutProvider>
                 <SearchProvider>
-                <NavigationDrawerProvider>
-              <LaunchSplash />
+                  <NavigationDrawerProvider>
+                    <LaunchSplash />
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
                   normal flex sibling (its own row, reserving space below
                   this scroll container) to `fixed` (see that component's
@@ -156,20 +158,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   `BottomNav.tsx`'s own doc comments for the full pairing --
                   same ask, two files, hiding the nav is the mount site the
                   other half lives at. */}
-              <ScrollContainer>{children}</ScrollContainer>
-              <BottomNav />
-              <AppDrawer />
+                    <ScrollContainer>{children}</ScrollContainer>
+                    <BottomNav />
+                    <AppDrawer />
               {/* Mounted once, globally, so FullScreenSearch/ScannerModal are
                   available regardless of which route is active -- previously
                   both only existed inside Home's own page.tsx. */}
-                <GlobalOverlays />
-                </NavigationDrawerProvider>
+                    <GlobalOverlays />
+                  </NavigationDrawerProvider>
                 </SearchProvider>
               </CardLayoutProvider>
             </HeaderOverrideProvider>
           </ThemeProvider>
           </WatchlistProvider>
           </NotificationsProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </body>
     </html>
