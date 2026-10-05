@@ -43,6 +43,7 @@ function recommendationCopy(signal: PriceTimingSignal, currentIsSpecial: boolean
 function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore: boolean }) {
   const signal = buildPriceTimingSignal(series.points, series.currentPrice, series.currentIsSpecial);
   const action = ACTION_STYLE[signal.action];
+  const bodyCopyClassName = "text-sm leading-5 font-normal text-stone-700";
 
   return (
     <div className="rounded-xl border border-stone-200/80 bg-white p-4">
@@ -52,9 +53,9 @@ function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore
           {action.label}
         </span>
       </div>
-      <p className="mt-3 text-sm font-semibold text-stone-700">{movementCopy(signal)}</p>
-      <p className="mt-2 text-sm leading-5 text-stone-600">{recommendationCopy(signal, series.currentIsSpecial)}</p>
-      <p className="mt-3 text-sm leading-5 font-normal text-stone-500">
+      <p className={`mt-3 ${bodyCopyClassName}`}>{movementCopy(signal)}</p>
+      <p className={`mt-2 ${bodyCopyClassName}`}>{recommendationCopy(signal, series.currentIsSpecial)}</p>
+      <p className={`mt-3 ${bodyCopyClassName}`}>
         Based on {signal.observationCount} distinct recorded price{signal.observationCount === 1 ? "" : "s"}. History is a guide, not a guarantee.
       </p>
     </div>

@@ -68,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,search,search_check_2,settings,warning,workspace_premium&display=block"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,play_circle,search,search_check_2,settings,warning,workspace_premium&display=block"
         />
       </head>
       <body className="h-dvh flex flex-col overflow-hidden bg-stone-100">

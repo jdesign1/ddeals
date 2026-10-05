@@ -32,7 +32,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     href: "/",
-    target: '[data-onboarding="search-button"]',
+    target: '[data-onboarding="search-bar"]',
     title: "Find a product",
     body: "Search for grocery items to see current specials and compare across supermarkets.",
   },
@@ -215,14 +215,11 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     if (!targetRect || targetRect.width === 0 || targetRect.height === 0) {
       return { top: -100, left: -100, width: 0, height: 0, borderRadius: 18 };
     }
-    const viewportWidth = typeof window === "undefined" ? 480 : window.innerWidth;
-    const cardWidth = Math.min(448, viewportWidth - 32);
-    const cardLeft = Math.max(16, (viewportWidth - cardWidth) / 2);
     const verdictCardLeftOffset = stepIndex === 4 ? 12 : 0;
     return {
       top: Math.max(8, targetRect.top - 8),
-      left: stepIndex === 1 ? cardLeft : Math.max(8, targetRect.left - 8 - verdictCardLeftOffset),
-      width: stepIndex === 1 ? cardWidth : targetRect.width + 16 + verdictCardLeftOffset,
+      left: Math.max(8, targetRect.left - 8 - verdictCardLeftOffset),
+      width: targetRect.width + 16 + verdictCardLeftOffset,
       height: targetRect.height + 16,
       borderRadius: 18,
     };
