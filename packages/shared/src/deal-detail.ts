@@ -140,7 +140,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
           : "";
         return {
           heading: "Fair price based on 90-day history",
-          body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis price is below the typical 90-day price, but it has been cheaper before.${averageCopy}${highCopy}`,
+          body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis price sits in the lower part of the observed 90-day range, but it has been cheaper before.${averageCopy}${highCopy}`,
         };
       }
       return {

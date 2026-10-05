@@ -414,6 +414,66 @@ test("stable low with enough history can classify an early read as Fair Price", 
   assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
 });
 
+test("robust 90-day history can classify the Rokeby-style early read as Fair Price", () => {
+  const candidate = row({
+    product_id: "7d4dfe5f-d8cb-4d76-b06a-1d6305680dc6",
+    product_name: "Double Espresso Protein Smoothie",
+    brand: "Rokeby",
+    store_id: "paknsave",
+    store_name: "Pak'nSave",
+    sale_price: 4.69,
+    normal_price: 4.94,
+    saving_pct: 5.1,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    evidence_strength: "EARLY",
+    price_history_90d_low: 3.79,
+    price_history_90d_high: 5.19,
+    price_history_90d_avg: 4.73,
+    price_history_90d_samples: 12,
+    price_history_90d_special_samples: 6,
+    price_history_90d_price_changes: 5,
+    price_history_90d_days_tracked: 74,
+    price_history_90d_special_days: 33,
+    regular_history_days: 41,
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
+});
+
+test("robust history still calls a no-saving Rokeby price Fair when the weighted average is within 1%", () => {
+  const candidate = row({
+    product_id: "03d9da18-e079-4070-9e54-1fe577365b4b",
+    product_name: "Dutch Chocolate Protein Smoothie",
+    brand: "Rokeby",
+    store_id: "paknsave",
+    store_name: "Pak'nSave",
+    sale_price: 4.69,
+    normal_price: 4.69,
+    saving_pct: 0,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    evidence_strength: "EARLY",
+    price_history_90d_low: 3.79,
+    price_history_90d_high: 5.19,
+    price_history_90d_avg: 4.65,
+    price_history_90d_samples: 11,
+    price_history_90d_special_samples: 6,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 63,
+    price_history_90d_special_days: 33,
+    regular_history_days: 30,
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
+});
+
 test("repeated 90-day lows can upgrade a recent MARGINAL read to Real Deal", () => {
   const candidate = row({
     sale_price: 15.99,

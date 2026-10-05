@@ -270,12 +270,16 @@ export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 /** A broader Fair Price read needs more observations than a near-low read. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES = 8;
-/** Even a modest average discount can support a fair read when history is robust. */
-export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = 1;
+/** A small average premium is still fair when the independent history is robust. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = -1;
 /** Keep the fair read below a meaningfully higher observed high. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT = 5;
 /** Never promote a price that is materially above the current normal reference. */
 export const HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM = 1;
+/** A fair-history signal needs more than one special observation. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_SPECIAL_SAMPLES = 2;
+/** Do not call a price fair when it sits in the top quarter of its observed range. */
+export const HISTORICAL_ESTABLISHED_FAIR_MAX_RANGE_POSITION = 0.75;
 /** A genuine recent discount is not a Real Saver when it is this far above the 90-day average. */
 export const HISTORICAL_ABOVE_AVERAGE_MIN_GAP = 5;
 
@@ -319,12 +323,15 @@ type HistoricalAssessmentRow = Pick<PublishedAssessmentRow, "verdict">
  * a real regular-price period, a meaningful average/high separation, and a
  * current price at or near the recorded low. A separate established-Fair
  * branch permits a wider position in the observed range only when the
- * current normal reference and a larger observation count support that
- * interpretation. A final above-average branch can also downgrade a recent
- * GENUINE read when the full window clearly disagrees. The published
- * aggregate does not expose low-specific recurrence yet, so the final gate
- * uses repeated special-state observations or a current low held for at least
- * two calendar days. A one-off low remains neutral.
+ * current normal reference, repeated special observations, and a larger
+ * observation count support that interpretation. This branch allows a small
+ * average premium (up to 1%) because a product can still be a fair buy
+ * without being close to its absolute low. A final above-average branch can
+ * also downgrade a recent GENUINE read when the full window clearly
+ * disagrees. The published aggregate does not expose low-specific recurrence
+ * yet, so the low/near-low gate uses repeated special-state observations or
+ * a current low held for at least two calendar days. A one-off low remains
+ * neutral.
  */
 function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalAssessmentBasis | null {
   if (
@@ -375,38 +382,47 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     || (currentLowDays != null && currentLowDays >= HISTORICAL_SAVER_MIN_CURRENT_LOW_DAYS);
   const averageDiscount = ((average - salePrice) / average) * 100;
   const highDiscount = ((high - salePrice) / high) * 100;
-  if (!hasRepeatedOrHeldLow) return null;
-  if (
-    currentIsAtLow
-    && averageDiscount >= HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT
-    && highDiscount >= HISTORICAL_SAVER_MIN_HIGH_DISCOUNT
-  ) {
-    return "NINETY_DAY_LOW";
-  }
-
   const lowGapPct = ((salePrice - low) / low) * 100;
-  if (
-    lowGapPct >= 0
-    && lowGapPct <= HISTORICAL_FAIR_MAX_LOW_GAP
-    && averageDiscount >= HISTORICAL_FAIR_MIN_AVERAGE_DISCOUNT
-    && highDiscount >= HISTORICAL_FAIR_MIN_HIGH_DISCOUNT
-  ) {
-    return "NINETY_DAY_NEAR_LOW";
+  if (hasRepeatedOrHeldLow) {
+    if (
+      currentIsAtLow
+      && averageDiscount >= HISTORICAL_SAVER_MIN_AVERAGE_DISCOUNT
+      && highDiscount >= HISTORICAL_SAVER_MIN_HIGH_DISCOUNT
+    ) {
+      return "NINETY_DAY_LOW";
+    }
+
+    if (
+      lowGapPct >= 0
+      && lowGapPct <= HISTORICAL_FAIR_MAX_LOW_GAP
+      && averageDiscount >= HISTORICAL_FAIR_MIN_AVERAGE_DISCOUNT
+      && highDiscount >= HISTORICAL_FAIR_MIN_HIGH_DISCOUNT
+    ) {
+      return "NINETY_DAY_NEAR_LOW";
+    }
   }
 
   const normalPrice = row.normal_price == null ? null : Number(row.normal_price);
+  const rangePosition = (salePrice - low) / (high - low);
   if (
     samples >= HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES
+    && specialSamples != null
+    && specialSamples >= HISTORICAL_ESTABLISHED_FAIR_MIN_SPECIAL_SAMPLES
     && normalPrice != null
     && Number.isFinite(normalPrice)
     && normalPrice > 0
     && salePrice <= normalPrice * (1 + HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM / 100)
-    && (salePrice - low) / (high - low) <= 0.5
+    && rangePosition <= HISTORICAL_ESTABLISHED_FAIR_MAX_RANGE_POSITION
     && averageDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT
     && highDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT
   ) {
     return "NINETY_DAY_ESTABLISHED_FAIR";
   }
+
+  // Keep the older above-average tempering rule conservative: unlike the
+  // established-Fair branch above it still needs a repeated/held special
+  // signal, so a sparse legacy row cannot be re-labelled from one aggregate.
+  if (!hasRepeatedOrHeldLow) return null;
 
   if (
     row.verdict === "GENUINE"
