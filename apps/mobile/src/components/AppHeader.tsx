@@ -50,7 +50,7 @@ export default function AppHeader({
   const { isAnonymousSession, user, profile } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { products, loadingProducts, query, openSearch, openSearchForFilter } = useSearch();
+  const { products, loadingProducts, query, setQuery, openSearch, openSearchForFilter } = useSearch();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
@@ -149,10 +149,24 @@ export default function AppHeader({
                   <Menu className="h-5 w-5" aria-hidden="true" />
                 )}
               </button>
-              <button type="button" onClick={openSearch} aria-label="Search Dodgy Deal" data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors hover:bg-stone-50 focus:outline-none focus-visible:border-stone-900">
+              <label data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors focus-within:border-stone-900">
                 <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mr-3 h-8 w-8 flex-shrink-0 animate-mascot-header-blink" />
-                <span className={`min-w-0 flex-1 truncate text-base ${query ? "font-medium text-stone-700" : "font-normal text-stone-400"}`}>{query || "Search Dodgy Deal"}</span>
-              </button>
+                <input
+                  id="global-search-input"
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setQuery(value);
+                    if (value.length > 0) openSearch();
+                  }}
+                  onFocus={openSearch}
+                  aria-label="Search Dodgy Deal"
+                  placeholder="Search Dodgy Deal"
+                  className="mobile-zoom-safe-input h-11 min-w-0 flex-1 border-none bg-transparent p-0 font-sans text-base text-stone-700 placeholder:text-stone-400 focus:outline-none"
+                  enterKeyHint="search"
+                />
+              </label>
               {isWatchlist && (
                 <button
                   type="button"

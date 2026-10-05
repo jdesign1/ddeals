@@ -299,6 +299,18 @@ export default function FullScreenSearch() {
     };
   }, [shouldRenderOverlay, preserveSearchStateOnOpen, dealFilter]);
 
+  // The top-nav control is a real input so iOS can open the keyboard directly
+  // from the user's tap. Once the overlay is visible, move focus to its full
+  // search field while the keyboard session is already active; relying only
+  // on changing the `autoFocus` prop does not focus an already-mounted input.
+  useLayoutEffect(() => {
+    if (!shouldRenderOverlay || !focusSearchOnOpen) return;
+    const input = fullSearchInputRef.current;
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(input.value.length, input.value.length);
+  }, [focusSearchOnOpen, shouldRenderOverlay]);
+
   // Toolbar (the tab track + StorePill row above each list) show/hide on
   // scroll (2026-08-17, per Jay: "on scroll up from a long list, display the
   // supermarket pills and the tabs, on downward scroll hide them") -- shown
