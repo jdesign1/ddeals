@@ -815,6 +815,50 @@ test("buildProductCardsFromSpecials: EARLY evidence stays neutral but carries it
   assert.equal(deal.discountPercentage, 20);
 });
 
+test("buildProductCardsFromSpecials: promotes a measured inflated reference price to Dodgy", () => {
+  const rows = [row({
+    store_id: "paknsave",
+    store_name: "Pak'nSave",
+    sale_price: 14.99,
+    normal_price: 13.59,
+    saving_pct: -10.3,
+    was_price: 16.99,
+    inflate_pct: 25,
+    regular_price_samples: 4,
+    regular_history_days: 59,
+    evidence_status: "EARLY",
+    evidence_strength: "EARLY",
+    store_history_ready: true,
+    verdict: "UNKNOWN",
+    reason: "Early read based on older regular prices",
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  const deal = cards[0].currentDeals[0];
+  assert.equal(deal.dealType, "Dodgy Deal");
+  assert.equal(deal.wasArtificiallyInflated, true);
+  assert.equal(deal.originalPrice, 13.59);
+});
+
+test("buildProductCardsFromSpecials: does not promote an early row without a measured reference lift", () => {
+  const rows = [row({
+    sale_price: 14.99,
+    normal_price: 13.59,
+    saving_pct: -10.3,
+    was_price: 16.99,
+    inflate_pct: null,
+    regular_price_samples: 4,
+    regular_history_days: 59,
+    evidence_status: "EARLY",
+    evidence_strength: "EARLY",
+    store_history_ready: true,
+    verdict: "UNKNOWN",
+    reason: "Early read based on older regular prices",
+  })];
+  const cards = buildProductCardsFromSpecials([["group-1", rows]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
+  assert.equal(cards[0].currentDeals[0].wasArtificiallyInflated, false);
+});
+
 test("buildProductCardsFromSpecials: insufficient evidence keeps a legacy DODGY row neutral", () => {
   const rows = [row({
     verdict: "DODGY",

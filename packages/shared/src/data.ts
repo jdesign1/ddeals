@@ -39,7 +39,10 @@ import {
 } from "./catalogue-artifact.ts";
 import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
 import {
+  INFLATED_REFERENCE_MIN_APPARENT_SAVING,
   MATERIAL_OVER_NORMAL_THRESHOLD,
+  MIN_REGULAR_HISTORY_DAYS,
+  MIN_REGULAR_PRICE_SAMPLES,
   PUMP_INFLATION_THRESHOLD,
   REAL_SAVER_THRESHOLD,
   SHRINKFLATION_THRESHOLD,
@@ -305,6 +308,10 @@ export type PublishedAssessmentRow = {
   sale_started_at?: string | null;
   /** Pre-sale lift signal; historical refinement stays conservative when present. */
   inflate_pct?: number | null;
+  /** Published older regular baseline used by the narrow inflated-reference promotion. */
+  was_price?: number | null;
+  regular_price_samples?: number | null;
+  regular_history_days?: number | null;
   /** Structured unit-price signal; historical refinement must not override it. */
   unit_price_change_pct?: number | null;
   unit_price_samples?: number | null;
@@ -514,6 +521,40 @@ export function isDodgyReviewCandidate(row: PublishedAssessmentRow): boolean {
 }
 
 /**
+ * Promotes the narrow inflated-reference signal for published rows while the
+ * upstream cache rolls forward to the matching classifier. The row must carry
+ * an established older baseline, a measured pre-sale lift, and a retailer
+ * reference price that is both short-lived and materially above the current
+ * price. This deliberately does not treat a price above the 90-day average as
+ * Dodgy on its own.
+ */
+function hasInflatedReferencePriceSignal(row: PublishedAssessmentRow): boolean {
+  if (row.verdict !== "UNKNOWN" || row.evidence_status !== "EARLY") return false;
+  if (row.store_history_ready === false) return false;
+
+  const salePrice = Number(row.sale_price);
+  const olderNormalPrice = Number(row.normal_price);
+  const referencePrice = Number(row.was_price);
+  const inflatePct = Number(row.inflate_pct);
+  const regularSamples = Number(row.regular_price_samples);
+  const regularDays = Number(row.regular_history_days);
+  if (![salePrice, olderNormalPrice, referencePrice, inflatePct, regularSamples, regularDays].every(Number.isFinite)) return false;
+  if (salePrice <= 0 || olderNormalPrice <= 0 || referencePrice <= 0) return false;
+  if (regularSamples < MIN_REGULAR_PRICE_SAMPLES || regularDays < MIN_REGULAR_HISTORY_DAYS) return false;
+
+  const referenceLiftPct = ((referencePrice - olderNormalPrice) / olderNormalPrice) * 100;
+  const apparentSavingPct = ((referencePrice - salePrice) / referencePrice) * 100;
+  return inflatePct >= PUMP_INFLATION_THRESHOLD
+    && referenceLiftPct >= PUMP_INFLATION_THRESHOLD
+    && apparentSavingPct >= INFLATED_REFERENCE_MIN_APPARENT_SAVING
+    && salePrice > olderNormalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)
+    // The published row does not expose the exact recent span. A measured
+    // inflate_pct is required, while the regular-history gates above keep a
+    // single sparse baseline from being promoted.
+    && referencePrice > salePrice;
+}
+
+/**
  * Keeps client-side compatibility during the view/cache rollout. Evidence-aware
  * rows trust the backend's reason-specific verdict. Older evidence-aware cache
  * rows that called a duration-only unit signal Dodgy are downgraded until the
@@ -521,6 +562,7 @@ export function isDodgyReviewCandidate(row: PublishedAssessmentRow): boolean {
  * Completely legacy rows retain their old text fallback until they are replaced.
  */
 function effectiveViewVerdict(row: PublishedAssessmentRow): DodgyDealsRow["verdict"] {
+  if (hasInflatedReferencePriceSignal(row)) return "DODGY";
   // Rows from the migration window have no evidence_status at all; preserve
   // their legacy verdict contract. Once the field is present, only SUFFICIENT
   // evidence may publish a directional verdict.
@@ -572,8 +614,11 @@ export interface PublishedDealAssessment {
  * before mapping a verdict to display copy.
  */
 export function resolvePublishedDealAssessment(row: PublishedAssessmentRow): PublishedDealAssessment {
-  const assessmentBasis = getHistoricalAssessmentBasis(row);
-  const verdict = assessmentBasis === "NINETY_DAY_LOW"
+  const inflatedReferenceSignal = hasInflatedReferencePriceSignal(row);
+  const assessmentBasis = inflatedReferenceSignal ? null : getHistoricalAssessmentBasis(row);
+  const verdict = inflatedReferenceSignal
+    ? "DODGY"
+    : assessmentBasis === "NINETY_DAY_LOW"
     ? "GENUINE"
     : assessmentBasis === "NINETY_DAY_NEAR_LOW"
       || assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"

@@ -165,6 +165,10 @@ test("getAssessmentVerdict: keeps incomplete evidence neutral instead of calling
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal" })), "Limited history");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })), "Early read");
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })), "Limited history");
+  assert.equal(
+    getAssessmentVerdict(fakeDeal({ dealType: "Dodgy Deal", wasArtificiallyInflated: true, evidenceStatus: "EARLY" })),
+    "Dodgy Deal"
+  );
   assert.equal(getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", isOnSpecial: false })), "Fair Price");
   assert.equal(
     getAssessmentVerdict(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY", assessmentBasis: "NINETY_DAY_LOW" })),

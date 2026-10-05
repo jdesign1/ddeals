@@ -65,6 +65,12 @@ export const EARLY_READ_MIN_REGULAR_HISTORY_DAYS = 7;
 export const EARLY_READ_LOOKBACK_DAYS = 90;
 /** Maximum recent-vs-extended baseline difference for a confirmed read. */
 export const BASELINE_STABILITY_THRESHOLD = 0.05;
+/** Minimum apparent discount from a short-lived raised reference price. */
+export const INFLATED_REFERENCE_MIN_APPARENT_SAVING = FAIR_THRESHOLD;
+/** Minimum duration for a raised reference price to be treated as observed rather than a scrape blip. */
+export const INFLATED_REFERENCE_MIN_HOLD_DAYS = 2;
+/** A reference held this long is treated as a new baseline, not a short-lived inflated reference. */
+export const INFLATED_REFERENCE_MAX_HOLD_DAYS = MIN_REGULAR_HISTORY_DAYS;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function median(nums: number[]): number | null {
@@ -241,11 +247,61 @@ export function classifySpecial(
     fallbackRegularCoverageDays >= EARLY_READ_MIN_REGULAR_HISTORY_DAYS &&
     (hasLongFallbackRegularSpan || fallbackPreSale.length >= EARLY_READ_MIN_REGULAR_PRICE_SAMPLES);
 
+  // A short-lived reference-price jump is a distinct Dodgy signal from the
+  // existing "sale price is above the current normal" check. It catches the
+  // was/now pattern where an established older price is lifted immediately
+  // before the special, and the special remains above that older price. The
+  // signal is intentionally narrow: the older baseline needs the same
+  // duration/sample support as an indicative read, the raised reference must
+  // be held for at least two days but less than a full recent-baseline window,
+  // and the apparent discount must be material. A price held for 14+ days is
+  // allowed to become a new normal price instead of being accused of gaming.
+  const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
+  const olderRegularRows = preSale.filter((r) => new Date(r.scraped_at) < sevenDayCutoff);
+  const recentReferenceRows = preSale.filter((r) => new Date(r.scraped_at) >= sevenDayCutoff);
+  const olderNormalPrice = median(olderRegularRows.map((r) => r.price as number));
+  const recentReferencePrice = median(recentReferenceRows.map((r) => r.price as number));
+  const recentReferenceMaxHoldDays = recentReferencePrice == null
+    ? 0
+    : regularSpans
+      .filter(({ row, start, end }) =>
+        pricesMatch(row.price, recentReferencePrice)
+        && end > start
+        && end > sevenDayCutoff
+      )
+      .reduce(
+        (max, { start, end }) => Math.max(max, (end.getTime() - start.getTime()) / DAY_MS),
+        0
+      );
+  const hasInflatedReferencePriceSignal =
+    hasEarlyEvidence
+    && olderNormalPrice != null
+    && recentReferencePrice != null
+    && fallbackRegularCoverageDays >= MIN_REGULAR_HISTORY_DAYS
+    && fallbackPreSale.length >= MIN_REGULAR_PRICE_SAMPLES
+    && recentReferenceMaxHoldDays >= INFLATED_REFERENCE_MIN_HOLD_DAYS
+    && recentReferenceMaxHoldDays < INFLATED_REFERENCE_MAX_HOLD_DAYS
+    && recentReferencePrice >= olderNormalPrice * (1 + PUMP_INFLATION_THRESHOLD / 100)
+    && salePrice > olderNormalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)
+    && salePrice <= recentReferencePrice * (1 - INFLATED_REFERENCE_MIN_APPARENT_SAVING / 100);
+
   // A short-lived regular scrape is not enough to provide even an indicative
   // comparison. A long-held regular price can qualify on duration alone. A
   // wider 90-day history can also confirm when its baseline is stable against
   // the recent anchor; conflicting or incomplete history remains Early.
   if (!hasSufficientEvidence) {
+    if (hasInflatedReferencePriceSignal) {
+      const savingPct = ((olderNormalPrice! - salePrice) / olderNormalPrice!) * 100;
+      return {
+        verdict: "DODGY",
+        reason: `Reference price rose from $${olderNormalPrice!.toFixed(2)} to $${recentReferencePrice!.toFixed(2)} just before the sale -- the current price is still ${(((salePrice - olderNormalPrice!) / olderNormalPrice!) * 100).toFixed(1)}% above the established price`,
+        normalPrice: olderNormalPrice,
+        savingPct: Math.round(savingPct * 10) / 10,
+        saleStartedAt,
+        evidenceStatus: "SUFFICIENT",
+        evidenceStrength: "STRONG",
+      };
+    }
     if (hasEarlyEvidence) {
       const normalPrice = median(fallbackPreSale.map((r) => r.price as number));
       const savingPct = normalPrice ? ((normalPrice - salePrice) / normalPrice) * 100 : null;
@@ -277,13 +333,8 @@ export function classifySpecial(
 
   const normalPrice = usesStableExtendedEvidence ? fallbackNormalPrice : recentNormalPrice;
 
-  const sevenDayCutoff = new Date(saleStartedAt.getTime() - 7 * DAY_MS);
-  const veryEarly = preSale
-    .filter((r) => new Date(r.scraped_at) < sevenDayCutoff)
-    .map((r) => r.price as number);
-  const preSaleRecent = preSale
-    .filter((r) => new Date(r.scraped_at) >= sevenDayCutoff)
-    .map((r) => r.price as number);
+  const veryEarly = olderRegularRows.map((r) => r.price as number);
+  const preSaleRecent = recentReferenceRows.map((r) => r.price as number);
   let inflatePct = 0;
   if (veryEarly.length && preSaleRecent.length) {
     const baseline = median(veryEarly);

@@ -241,6 +241,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
  */
 export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   if (deal.isOnSpecial === false) return "Fair Price";
+  if (deal.dealType === "Dodgy Deal" && deal.wasArtificiallyInflated) return "Dodgy Deal";
   if (deal.assessmentBasis === "NINETY_DAY_LOW") return "Real Saver";
   if (
     deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"

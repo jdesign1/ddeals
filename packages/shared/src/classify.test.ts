@@ -46,6 +46,52 @@ test("EARLY when older regular history supports an indicative read but recent ev
   assert.equal(result.savingPct, 20);
 });
 
+test("DODGY when a short-lived raised reference price leaves the special above the established baseline", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -80), price: 13.59, is_special: false },
+    { scraped_at: day(now, -60), price: 13.59, is_special: false },
+    { scraped_at: day(now, -40), price: 13.59, is_special: false },
+    { scraped_at: day(now, -35), price: 13.59, is_special: true },
+    { scraped_at: day(now, -3), price: 16.99, is_special: false },
+    { scraped_at: day(now, -1), price: 14.99, is_special: true },
+  ];
+  const result = classifySpecial(14.99, rows);
+  assert.equal(result.verdict, "DODGY");
+  assert.equal(result.normalPrice, 13.59);
+  assert.equal(result.evidenceStatus, "SUFFICIENT");
+  assert.match(result.reason, /Reference price rose from \$13\.59 to \$16\.99/);
+});
+
+test("does not call a sustained new reference price an inflated reference", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -80), price: 13.59, is_special: false },
+    { scraped_at: day(now, -60), price: 13.59, is_special: false },
+    { scraped_at: day(now, -40), price: 13.59, is_special: true },
+    { scraped_at: day(now, -20), price: 16.99, is_special: false },
+    { scraped_at: day(now, -1), price: 14.99, is_special: true },
+  ];
+  const result = classifySpecial(14.99, rows);
+  assert.equal(result.verdict, "REAL_SAVER");
+  assert.equal(result.normalPrice, 16.99);
+});
+
+test("does not call a short high scrape inflated when the special is still below the old baseline", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -80), price: 13.59, is_special: false },
+    { scraped_at: day(now, -60), price: 13.59, is_special: false },
+    { scraped_at: day(now, -40), price: 13.59, is_special: false },
+    { scraped_at: day(now, -35), price: 13.59, is_special: true },
+    { scraped_at: day(now, -3), price: 16.99, is_special: false },
+    { scraped_at: day(now, -1), price: 12.99, is_special: true },
+  ];
+  const result = classifySpecial(12.99, rows);
+  assert.equal(result.verdict, "UNKNOWN");
+  assert.equal(result.evidenceStatus, "EARLY");
+});
+
 test("REAL_SAVER when stable regular history is split across earlier special periods", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [
