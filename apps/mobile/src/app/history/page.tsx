@@ -5,7 +5,6 @@ import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import {
   collapseConsecutiveDealChecks,
-  fetchDealCheckHistory,
   fetchNonSpecialProductCards,
   describeFetchError,
   type DealCheckRow,
@@ -15,8 +14,8 @@ import {
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
+import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import { useSearch } from "@/lib/search-context";
-import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
 import MascotImage from "@/components/MascotImage";
@@ -64,7 +63,7 @@ import MascotImage from "@/components/MascotImage";
  * search input), plus the month filter described above.
  */
 export default function HistoryPage() {
-  const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
 
   const [history, setHistory] = useState<DealCheckRow[] | null>(null);
@@ -80,10 +79,13 @@ export default function HistoryPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session?.access_token) return;
     let cancelled = false;
     const range = selectedMonth ? monthRange(selectedMonth) : null;
-    fetchDealCheckHistory(requireAccountsSupabaseClient(), range ? { ...range, limit: 500 } : 500)
+    fetchDealCheckHistoryFromApi(session.access_token, {
+      scope: "history",
+      ...(range ?? {}),
+    })
       .then((rows) => {
         if (!cancelled) {
           // A month change can leave fallback product metadata from the
@@ -100,7 +102,7 @@ export default function HistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, retryTick, selectedMonth]);
+  }, [user, session?.access_token, retryTick, selectedMonth]);
 
   // Gap-fill: any checked product not in the currently-loaded live specials
   // set (rolled off special since it was checked) gets looked up

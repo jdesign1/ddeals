@@ -4,19 +4,17 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
-  fetchDealCheckHistory,
   computeDealStats,
   buildPriceChangeStats,
   describeFetchError,
   matchesAnySelectedStore,
   STORE_DISPLAY_FALLBACK,
   type CurrentDeal,
-  type DealCheckRow,
   type DealStats,
   type ProductCard,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
-import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
+import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
@@ -213,10 +211,9 @@ function buildMonthlyStats(products: ProductCard[]): MonthlyStats[] {
  * name, so it isn't the kind of duplicate this request was about.
  */
 export default function MePage() {
-  const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { products, loadingProducts, toggleStore, setDealFilter } = useSearch();
   const [stats, setStats] = useState<DealStats | null>(null);
-  const [history, setHistory] = useState<DealCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBreakdownOpen, setIsBreakdownOpen] = useState(true);
@@ -236,12 +233,11 @@ export default function MePage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session?.access_token) return;
     let cancelled = false;
-    fetchDealCheckHistory(requireAccountsSupabaseClient(), { limit: 1000 })
+    fetchDealCheckHistoryFromApi(session.access_token, { scope: "stats" })
       .then((history) => {
         if (!cancelled) {
-          setHistory(history);
           setStats(computeDealStats(history));
           setError(null);
         }
@@ -255,7 +251,7 @@ export default function MePage() {
     return () => {
       cancelled = true;
     };
-  }, [user, retryTick]);
+  }, [user, session?.access_token, retryTick]);
 
   const currentStoreStats = useMemo(() => buildCurrentStoreStats(products), [products]);
   const monthlyStats = useMemo(() => buildMonthlyStats(products), [products]);
