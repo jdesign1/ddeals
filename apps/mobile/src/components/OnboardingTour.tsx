@@ -3,8 +3,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
-import MascotImage from "@/components/MascotImage";
 
 export interface OnboardingTourProps {
   onClose: () => void;
@@ -227,7 +227,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
 
   const cardStyle = useMemo(() => {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
-    if (step.welcome) return { top: "54%", transform: "translateY(-50%)" };
+    if (step.welcome) return { top: "50%", transform: "translateY(-50%)" };
     if (step.position === "top") return { top: 16 };
     if (step.position === "middle") {
       return { top: Math.max(96, Math.min(viewportHeight - 276, viewportHeight * 0.56)) };
@@ -352,7 +352,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
         {!isClosing && (
         <motion.section
           key={stepIndex}
-          className="absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white px-5 py-4 shadow-2xl"
+          className={`absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white px-5 py-4 shadow-2xl ${step.welcome ? "max-h-[calc(100dvh-2rem)] overflow-y-auto" : ""}`}
           style={cardStyle}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -370,16 +370,16 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
-              <div className="mb-0 flex justify-center">
-                <MascotImage
-                  src="/auth-wave.webp"
-                  darkSrc="/auth-wave-dark.webp"
-                  alt="Dodgy Deal mascot waving"
-                  width={192}
-                  height={222}
-                  sizes="80px"
+              <div className="mb-3 flex justify-center">
+                <Image
+                  src="/onboarding-mascot-supermarket.webp"
+                  alt="Dodgy Deal mascot comparing Weet-Bix and Marmite specials in a supermarket"
+                  width={840}
+                  height={840}
+                  sizes="(max-width: 448px) calc(100vw - 40px), 408px"
+                  preload
                   unoptimized
-                  className="mascot-wave h-20 w-20 object-contain"
+                  className="h-auto w-full max-w-[23rem] object-contain"
                 />
               </div>
               <h2 className="whitespace-nowrap text-center font-display text-xl font-extrabold leading-tight text-ink-900">{step.title}</h2>
