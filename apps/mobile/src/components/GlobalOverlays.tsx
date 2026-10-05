@@ -19,13 +19,12 @@ function OverlayChunkFallback() {
 // loading state transparent so a slow initial module fetch never replaces the
 // current screen with an opaque white flash before that transition begins.
 function SearchChunkFallback() {
-  return <div className="pointer-events-none fixed inset-0 z-[50]" role="status" aria-label="Loading search" />;
+  return <div className="pointer-events-none fixed inset-0 z-[50]" aria-hidden="true" />;
 }
 
-// These surfaces are not needed for the first paint of any route. Keep their
-// chunks out of the initial WebView bundle, then keep each component mounted
-// after first use so its local filters/animation state still persists while
-// the user moves between open and closed states.
+// Keep the heavier surfaces in separate chunks. FullScreenSearch is mounted
+// as a transparent shell from the first paint so the first tap never has to
+// wait for a chunk mount; the other surfaces remain lazy until requested.
 const FullScreenSearch = dynamic(() => import("@/components/FullScreenSearch"), {
   ssr: false,
   loading: SearchChunkFallback,
@@ -76,7 +75,7 @@ function hasSeenOnboardingTour(userId: string): boolean {
  *
  */
 export default function GlobalOverlays() {
-  const { isActive, hasOpenedSearch, isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearch();
+  const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearch();
   const {
     user,
     isAuthSheetOpen,
@@ -92,13 +91,6 @@ export default function GlobalOverlays() {
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("preview") === "onboarding"
   );
-
-  // Warm the search sheet chunk immediately after the shell hydrates. The
-  // sheet remains off-screen until requested, but its first opening no
-  // longer waits on a separate network/module load before the fade begins.
-  useEffect(() => {
-    void import("@/components/FullScreenSearch");
-  }, []);
 
   useEffect(() => {
     if (user && onboardingTourRequest === "new" && hasSeenOnboardingTour(user.id)) {
@@ -126,7 +118,11 @@ export default function GlobalOverlays() {
 
   return (
     <>
-      {(hasOpenedSearch || isActive) && <FullScreenSearch />}
+      {/* Keep the search component mounted from the first shell render. Its
+          own fixed surface stays transparent and pointer-inert while closed,
+          so opening it only changes one opacity transition instead of also
+          waiting for a lazy chunk and remounting the results fade. */}
+      <FullScreenSearch />
       {(hasOpenedScanner || isScannerOpen) && (
         <ScannerModal
           isOpen={isScannerOpen}

@@ -657,8 +657,6 @@ export default function FullScreenSearch() {
   };
 
   return (
-    <AnimatePresence>
-      {shouldRenderOverlay && (
         <motion.div
           // Opacity-only (no x/y), matching Prototype/index.html's own
           // comment on this exact animation: a `transform` on any ancestor
@@ -685,10 +683,11 @@ export default function FullScreenSearch() {
           // the same locked mobile column every other screen already has,
           // instead of true edge-to-edge full-viewport coverage.
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          animate={{ opacity: shouldRenderOverlay ? 1 : 0 }}
           transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-          style={{ willChange: "opacity" }}
+          style={{ willChange: "opacity", pointerEvents: shouldRenderOverlay ? "auto" : "none" }}
+          aria-hidden={!shouldRenderOverlay}
+          inert={!shouldRenderOverlay}
           className={`fixed inset-0 mx-auto flex w-full max-w-[480px] flex-col transition-[background-color] duration-300 ease-out ${
             dealFilterTintClass || "page-paper-surface"
           } ${categorySheetTarget !== null ? "z-[70]" : "z-50"}`}
@@ -819,7 +818,7 @@ export default function FullScreenSearch() {
               <input
                 id="full-search-input"
                 ref={fullSearchInputRef}
-                autoFocus={focusSearchOnOpen}
+                autoFocus={shouldRenderOverlay && focusSearchOnOpen}
                 className="mobile-zoom-safe-input h-11 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
                 placeholder="Search for a product or brand"
                 type="text"
@@ -1472,7 +1471,5 @@ export default function FullScreenSearch() {
           </BottomSheetPortal>
 
         </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
