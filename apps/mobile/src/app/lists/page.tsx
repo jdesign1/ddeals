@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 import {
   canonicalStoreKey,
   describeFetchError,
-  FREE_WATCHLIST_LIMIT,
   groupCategory,
   getSearchSynonymRule,
   invalidateListsPageCache,
@@ -26,7 +25,6 @@ import { useAuth } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import { useNotifications } from "@/lib/notifications-context";
-import { useSubscriptions } from "@/lib/subscription-context";
 import ErrorState from "@/components/ErrorState";
 import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
@@ -100,7 +98,6 @@ function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<st
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
-  const { isPremium, products: subscriptionProducts, isNativeAvailable, openSubscriptionSheet } = useSubscriptions();
   const router = useRouter();
   const {
     unreadListItemKeys,
@@ -337,8 +334,6 @@ export default function ListsPage() {
     () => filteredItems.filter((item) => itemDeal(item, itemCards, selectedSupermarkets)?.isOnSpecial !== true),
     [filteredItems, itemCards, selectedSupermarkets],
   );
-  const canOfferSubscriptions = isNativeAvailable && subscriptionProducts.length > 0;
-
   const renderItem = (entry: WatchlistItem) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
@@ -398,14 +393,11 @@ export default function ListsPage() {
       <div className="watchlist-top-chrome pt-2">
         <WatchlistSummaryCard
           itemCount={watchlistItems.length}
-          isPremium={isPremium}
-          canOfferSubscriptions={canOfferSubscriptions}
           newPriceItemCount={newPriceItemCount}
           showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
           notificationPermissionDenied={pushPermissionState === "denied"}
           isSettingUpNotifications={isSettingUpNotifications}
           onSetupNotifications={() => void handleNotificationSetup()}
-          onUpgrade={openSubscriptionSheet}
         />
       </div>
 
@@ -561,24 +553,18 @@ function ClearWatchlistSheet({
 
 function WatchlistSummaryCard({
   itemCount,
-  isPremium,
-  canOfferSubscriptions,
   newPriceItemCount,
   showNotificationSetup,
   notificationPermissionDenied,
   isSettingUpNotifications,
   onSetupNotifications,
-  onUpgrade,
 }: {
   itemCount: number;
-  isPremium: boolean;
-  canOfferSubscriptions: boolean;
   newPriceItemCount: number;
   showNotificationSetup: boolean;
   notificationPermissionDenied: boolean;
   isSettingUpNotifications: boolean;
   onSetupNotifications: () => void;
-  onUpgrade: () => void;
 }) {
   const hasNewPrices = newPriceItemCount > 0;
   const isEmpty = itemCount === 0;
@@ -599,16 +585,6 @@ function WatchlistSummaryCard({
           ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
           : "Below are the best specials currently available for the products you’re watching."}
       </p>
-      {!isPremium && canOfferSubscriptions && itemCount >= FREE_WATCHLIST_LIMIT && (
-        <button type="button" onClick={onUpgrade} className="mt-3 w-full rounded-xl bg-fair-100 px-3 py-2.5 text-left text-[13px] font-extrabold text-ink-900 transition-colors hover:bg-fair-200">
-          Unlock unlimited Watchlist items <span aria-hidden="true">→</span>
-        </button>
-      )}
-      {!isPremium && !canOfferSubscriptions && itemCount >= FREE_WATCHLIST_LIMIT && (
-        <p className="mt-3 border-t border-stone-100 pt-3 text-[12px] leading-4 text-stone-500">
-          Your existing saved items are still available. The free Watchlist limit is {FREE_WATCHLIST_LIMIT} new items.
-        </p>
-      )}
       {showNotificationSetup && (
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
           <p className="text-[12px] leading-4 text-stone-500">

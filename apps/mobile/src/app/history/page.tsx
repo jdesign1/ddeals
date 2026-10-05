@@ -18,6 +18,7 @@ import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import { useSearch } from "@/lib/search-context";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
+import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
 
 /**
@@ -161,7 +162,11 @@ export default function HistoryPage() {
   const firstRenderableHistoryIndex = filteredHistory.findIndex((row) => productById.has(row.product_id));
 
   if (authLoading) {
-    return <main className="pb-8" />;
+    return (
+      <main className="relative min-h-[160px] pb-8">
+        <LoadingMascot loading />
+      </main>
+    );
   }
 
   // 2026-08-19, per Jay: bottom sheet, not a full-page swap -- see
@@ -236,32 +241,36 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {error && <ErrorState message="Couldn't load your check history." detail={error} onRetry={retry} />}
+      <div className={`relative ${history === null && !error ? "min-h-[160px]" : ""}`}>
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <LoadingMascot loading={history === null && !error} />
+        </div>
+        {error && <ErrorState message="Couldn't load your check history." detail={error} onRetry={retry} />}
 
-      {history !== null && !error && (
-        history.length === 0 ? (
-          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white py-12 text-center">
-            <p className="max-w-xs px-4 dd-type-control text-stone-500">
-              Your checking history is empty
-            </p>
-            <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
-              Search for a product or scan a barcode from Home to check your first deal.
-            </p>
-          </div>
-        ) : filteredHistory.length === 0 ? (
-          <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white py-12 text-center">
-            <p className="max-w-xs px-4 dd-type-control text-stone-500">
-              No matching checks found
-            </p>
-            <p className="max-w-xs px-4 dd-type-secondary text-stone-500">Try searching for a different product name or brand.</p>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="flex flex-col gap-3 px-5"
-          >
+        {history !== null && !error && (
+          history.length === 0 ? (
+            <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white py-12 text-center">
+              <p className="max-w-xs px-4 dd-type-control text-stone-500">
+                Your checking history is empty
+              </p>
+              <p className="max-w-xs px-4 dd-type-secondary text-stone-500">
+                Search for a product or scan a barcode from Home to check your first deal.
+              </p>
+            </div>
+          ) : filteredHistory.length === 0 ? (
+            <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white py-12 text-center">
+              <p className="max-w-xs px-4 dd-type-control text-stone-500">
+                No matching checks found
+              </p>
+              <p className="max-w-xs px-4 dd-type-secondary text-stone-500">Try searching for a different product name or brand.</p>
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="flex flex-col gap-3 px-5"
+            >
             {filteredHistory.map((h, index) => {
               const product = productById.get(h.product_id);
               if (!product) return null;
@@ -326,9 +335,10 @@ export default function HistoryPage() {
                 </div>
               );
             })}
-          </motion.div>
-        )
-      )}
+            </motion.div>
+          )
+        )}
+      </div>
     </main>
   );
 }

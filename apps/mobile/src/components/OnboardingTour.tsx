@@ -15,7 +15,7 @@ type TourStep = {
   target: string;
   title: string;
   body: string;
-  position?: "top" | "bottom" | "middle" | "lower";
+  position?: "top" | "search" | "bottom" | "middle" | "lower";
   welcome?: boolean;
   scrim?: "below-card";
 };
@@ -35,6 +35,7 @@ const TOUR_STEPS: TourStep[] = [
     target: '[data-onboarding="search-bar"]',
     title: "Find a product",
     body: "Search for grocery items to see current specials and compare across supermarkets.",
+    position: "search",
   },
   {
     href: "/",
@@ -61,7 +62,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-save"]',
-    title: "Save something useful",
+    title: "Add items to your Watchlist",
     body: "Use the plus button to save this product to your Watchlist. You can then keep an eye out for a better price.",
     position: "middle",
   },
@@ -216,11 +217,12 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       return { top: -100, left: -100, width: 0, height: 0, borderRadius: 18 };
     }
     const verdictCardLeftOffset = stepIndex === 4 ? 12 : 0;
+    const searchBarTopOffset = stepIndex === 1 ? 12 : 8;
     return {
-      top: Math.max(8, targetRect.top - 8),
+      top: Math.max(8, targetRect.top - searchBarTopOffset),
       left: Math.max(8, targetRect.left - 8 - verdictCardLeftOffset),
       width: targetRect.width + 16 + verdictCardLeftOffset,
-      height: targetRect.height + 16,
+      height: targetRect.height + (stepIndex === 1 ? 20 : 16),
       borderRadius: 18,
     };
   }, [stepIndex, targetRect]);
@@ -229,6 +231,10 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
     if (step.welcome) return { top: "50%", transform: "translateY(-50%)" };
     if (step.position === "top") return { top: 16 };
+    if (step.position === "search") {
+      const targetBottom = targetRect?.bottom ?? viewportHeight * 0.2;
+      return { top: Math.min(viewportHeight - 284, targetBottom + 40) };
+    }
     if (step.position === "middle") {
       return { top: Math.max(96, Math.min(viewportHeight - 276, viewportHeight * 0.56)) };
     }
@@ -365,7 +371,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               <button
                 type="button"
                 onClick={closeTour}
-                className="absolute right-5 top-4 flex h-6 w-6 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                className="absolute right-5 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900 shadow transition-colors hover:bg-stone-50"
                 aria-label="Skip app tour"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
