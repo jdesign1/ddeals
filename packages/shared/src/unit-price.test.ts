@@ -24,6 +24,10 @@ test("assessment unit-price display stays focused on useful comparisons", () => 
   assert.equal(shouldDisplayAssessmentUnitPrice("Fruit & Veg", "Loose carrots", "$/kg"), true);
   assert.equal(shouldDisplayAssessmentUnitPrice("Meat, Poultry & Seafood > Chicken", "Chicken thighs", "per 100g"), true);
   assert.equal(shouldDisplayAssessmentUnitPrice("Fridge, Deli & Eggs", "Anchor milk", "$/L"), true);
+  assert.equal(shouldDisplayAssessmentUnitPrice("Drinks", "V Energy Drink", "$/L"), false);
+  assert.equal(shouldDisplayAssessmentUnitPrice("Drinks", "Chocolate Protein Shake", "$/L"), false);
+  assert.equal(shouldDisplayAssessmentUnitPrice("Pantry", "Strawberry Protein Smoothie", "$/L"), false);
+  assert.equal(shouldDisplayAssessmentUnitPrice("Pantry", "Ground coffee", "$/kg"), true);
   assert.equal(shouldDisplayAssessmentUnitPrice("Pantry", "Almonds", "$/100g"), true);
   assert.equal(shouldDisplayAssessmentUnitPrice("Pantry", "Potato chips", "$/100g"), false);
   assert.equal(shouldDisplayAssessmentUnitPrice("Household & Cleaning", "Laundry detergent", "$/L"), true);

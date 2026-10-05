@@ -63,12 +63,34 @@ const ALWAYS_COMPARABLE_CATEGORIES = new Set([
   "Fish & Seafood",
   "Fridge & Deli",
   "Dairy & Eggs",
-  "Drinks",
   "Pets",
 ]);
 
 const PANTRY_STAPLE_TERMS = /\b(?:almond(?:s)?|cashew(?:s)?|hazelnut(?:s)?|macadamia(?:s)?|peanut(?:s)?|pecan(?:s)?|pistachio(?:s)?|walnut(?:s)?|nut(?:s)?|seed(?:s)?|dried fruit|rice|pasta|cereal|oat(?:s|meal)?|flour|sugar|coffee|tea|cocoa|protein|powder|oil)\b/i;
 const HOUSEHOLD_COMPARISON_TERMS = /\b(?:detergent|laundry|washing powder|dishwasher|dishwash|fabric softener|bleach|cleaner|cleaning|disinfectant)\b/i;
+const READY_TO_DRINK_TERMS = /\b(?:drink|beverage|smooth(?:ie|ies)|kombucha|juice(?:\/drink)?|(?:vitamin|flavou?red|electrolyte|sparkling)\s+water|(?:energy|sports|soft|sparkling)\s+drink|protein\s+(?:shake|smooth(?:ie|ies)|drink|beverage)|(?:flavou?red|chocolate)\s+milk|milk\s+drink|iced\s+(?:coffee|tea)|cold\s+brew|(?:cola|lemonade|cordial|ginger\s+beer)\b)/i;
+const DRY_DRINK_TERMS = /\b(?:coffee|tea|cocoa|chocolate)\b/i;
+
+function isNonComparableBeverage(
+  shopperCategory: string,
+  category: string | null | undefined,
+  productName: string,
+): boolean {
+  // Ready-to-drink products are already compared by their shelf price and
+  // pack size. Unit pricing adds noise for these items, especially protein
+  // shakes, smoothies, juice, water and soft drinks. Keep dry coffee/tea and
+  // similar pantry staples eligible because their unit price is useful when
+  // comparing pack sizes.
+  if (shopperCategory === "Drinks" && !DRY_DRINK_TERMS.test(productName)) return true;
+
+  const childCategories = (category || "")
+    .split(">")
+    .slice(1)
+    .join(" ");
+  if (/drink|beverage|juice|smooth(?:ie|ies)|kombucha|water/i.test(childCategories)) return true;
+
+  return READY_TO_DRINK_TERMS.test(productName);
+}
 
 /**
  * Whether a retailer's comparative price is useful to show on a deal
@@ -86,9 +108,10 @@ export function shouldDisplayAssessmentUnitPrice(
   if (!unit || unit === "each") return false;
 
   const shopperCategory = groupCategory(category, productName);
+  const name = productName || "";
+  if (isNonComparableBeverage(shopperCategory, category, name)) return false;
   if (ALWAYS_COMPARABLE_CATEGORIES.has(shopperCategory)) return true;
 
-  const name = productName || "";
   if (shopperCategory === "Pantry") return PANTRY_STAPLE_TERMS.test(name);
   if (shopperCategory === "Household & Cleaning") return HOUSEHOLD_COMPARISON_TERMS.test(name);
   return false;
