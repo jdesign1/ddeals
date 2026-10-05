@@ -100,7 +100,7 @@ function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<st
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
-  const { isPremium, openSubscriptionSheet } = useSubscriptions();
+  const { isPremium, products: subscriptionProducts, isNativeAvailable, openSubscriptionSheet } = useSubscriptions();
   const router = useRouter();
   const {
     unreadListItemKeys,
@@ -337,6 +337,7 @@ export default function ListsPage() {
     () => filteredItems.filter((item) => itemDeal(item, itemCards, selectedSupermarkets)?.isOnSpecial !== true),
     [filteredItems, itemCards, selectedSupermarkets],
   );
+  const canOfferSubscriptions = isNativeAvailable && subscriptionProducts.length > 0;
 
   const renderItem = (entry: WatchlistItem) => {
     const card = itemCards.get(entry.productId);
@@ -398,6 +399,7 @@ export default function ListsPage() {
         <WatchlistSummaryCard
           itemCount={watchlistItems.length}
           isPremium={isPremium}
+          canOfferSubscriptions={canOfferSubscriptions}
           newPriceItemCount={newPriceItemCount}
           showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
           notificationPermissionDenied={pushPermissionState === "denied"}
@@ -560,6 +562,7 @@ function ClearWatchlistSheet({
 function WatchlistSummaryCard({
   itemCount,
   isPremium,
+  canOfferSubscriptions,
   newPriceItemCount,
   showNotificationSetup,
   notificationPermissionDenied,
@@ -569,6 +572,7 @@ function WatchlistSummaryCard({
 }: {
   itemCount: number;
   isPremium: boolean;
+  canOfferSubscriptions: boolean;
   newPriceItemCount: number;
   showNotificationSetup: boolean;
   notificationPermissionDenied: boolean;
@@ -582,7 +586,7 @@ function WatchlistSummaryCard({
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div className="flex items-center justify-between gap-3">
-        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist - {itemCount}{!isPremium && ` / ${FREE_WATCHLIST_LIMIT}`} {itemCount === 1 ? "item" : "items"}</h1>
+        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist - {itemCount} {itemCount === 1 ? "item" : "items"}</h1>
         {!isEmpty && hasNewPrices && (
           <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
             <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
@@ -595,10 +599,15 @@ function WatchlistSummaryCard({
           ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
           : "Below are the best specials currently available for the products you’re watching."}
       </p>
-      {!isPremium && itemCount >= FREE_WATCHLIST_LIMIT && (
+      {!isPremium && canOfferSubscriptions && itemCount >= FREE_WATCHLIST_LIMIT && (
         <button type="button" onClick={onUpgrade} className="mt-3 w-full rounded-xl bg-fair-100 px-3 py-2.5 text-left text-[13px] font-extrabold text-ink-900 transition-colors hover:bg-fair-200">
           Unlock unlimited Watchlist items <span aria-hidden="true">→</span>
         </button>
+      )}
+      {!isPremium && !canOfferSubscriptions && itemCount >= FREE_WATCHLIST_LIMIT && (
+        <p className="mt-3 border-t border-stone-100 pt-3 text-[12px] leading-4 text-stone-500">
+          Your existing saved items are still available. The free Watchlist limit is {FREE_WATCHLIST_LIMIT} new items.
+        </p>
       )}
       {showNotificationSetup && (
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
