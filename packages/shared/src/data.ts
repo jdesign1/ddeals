@@ -38,7 +38,13 @@ import {
   type CatalogueVersion,
 } from "./catalogue-artifact.ts";
 import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
-import { MATERIAL_OVER_NORMAL_THRESHOLD, REAL_SAVER_THRESHOLD, SHRINKFLATION_THRESHOLD, type EvidenceStrength } from "./classify.ts";
+import {
+  MATERIAL_OVER_NORMAL_THRESHOLD,
+  PUMP_INFLATION_THRESHOLD,
+  REAL_SAVER_THRESHOLD,
+  SHRINKFLATION_THRESHOLD,
+  type EvidenceStrength,
+} from "./classify.ts";
 
 export interface DodgyDealsRow {
   product_id: string;
@@ -270,12 +276,12 @@ export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 /** A broader Fair Price read needs more observations than a near-low read. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES = 8;
-/** A small average premium is still fair when the independent history is robust. */
-export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = -1;
+/** A modest average premium is still fair when the independent history is robust. */
+export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = -5;
 /** Keep the fair read below a meaningfully higher observed high. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT = 5;
-/** Never promote a price that is materially above the current normal reference. */
-export const HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM = 1;
+/** Keep Fair Price below the material 5% over-normal Dodgy threshold. */
+export const HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM = 5;
 /** A fair-history signal needs more than one special observation. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_SPECIAL_SAMPLES = 2;
 /** Do not call a price fair when it sits in the top quarter of its observed range. */
@@ -297,6 +303,9 @@ export type PublishedAssessmentRow = {
   saving_pct?: number | null;
   reason?: string | null;
   sale_started_at?: string | null;
+  /** Pre-sale lift signal; historical refinement stays conservative when present. */
+  inflate_pct?: number | null;
+  /** Structured unit-price signal; historical refinement must not override it. */
   unit_price_change_pct?: number | null;
   unit_price_samples?: number | null;
   classifier_version?: string | null;
@@ -324,14 +333,14 @@ type HistoricalAssessmentRow = Pick<PublishedAssessmentRow, "verdict">
  * current price at or near the recorded low. A separate established-Fair
  * branch permits a wider position in the observed range only when the
  * current normal reference, repeated special observations, and a larger
- * observation count support that interpretation. This branch allows a small
- * average premium (up to 1%) because a product can still be a fair buy
- * without being close to its absolute low. A final above-average branch can
- * also downgrade a recent GENUINE read when the full window clearly
- * disagrees. The published aggregate does not expose low-specific recurrence
- * yet, so the low/near-low gate uses repeated special-state observations or
- * a current low held for at least two calendar days. A one-off low remains
- * neutral.
+ * observation count support that interpretation. This branch allows a modest
+ * average premium (up to 5%) because a product can still be a fair buy
+ * without being close to its absolute low. A separate above-average branch
+ * keeps a robust but non-standout price out of the "Needs more history"
+ * state, including when the primary classifier is still UNKNOWN. The
+ * published aggregate does not expose low-specific recurrence yet, so the
+ * low/near-low gate uses repeated special-state observations or a current low
+ * held for at least two calendar days. A one-off low remains neutral.
  */
 function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalAssessmentBasis | null {
   if (
@@ -355,6 +364,39 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     : null;
 
   if (![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)) return null;
+
+  // The backend view excludes any long-history refinement when the current
+  // unit-price evidence indicates shrinkflation. Keep the client resolver in
+  // lockstep so Watchlist/deal-card reads cannot turn a known unit-value trap
+  // into Fair Price merely because the 90-day aggregate looks attractive.
+  const savingPct = row.saving_pct == null ? null : Number(row.saving_pct);
+  const inflatePct = row.inflate_pct == null ? null : Number(row.inflate_pct);
+  const unitPriceChangePct = row.unit_price_change_pct == null ? null : Number(row.unit_price_change_pct);
+  if (
+    savingPct != null
+    && Number.isFinite(savingPct)
+    && savingPct >= 3
+    && unitPriceChangePct != null
+    && Number.isFinite(unitPriceChangePct)
+    && unitPriceChangePct > -SHRINKFLATION_THRESHOLD
+  ) {
+    return null;
+  }
+  // The published row does not expose the pump signal's repeated-lift detail,
+  // so be conservative when its aggregate pre-sale lift is already material:
+  // the backend only promotes this class when the saving is a real-saver-sized
+  // discount or when repeated-lift checks prove it is safe.
+  if (
+    savingPct != null
+    && Number.isFinite(savingPct)
+    && savingPct < REAL_SAVER_THRESHOLD
+    && inflatePct != null
+    && Number.isFinite(inflatePct)
+    && inflatePct >= PUMP_INFLATION_THRESHOLD
+  ) {
+    return null;
+  }
+
   if (
     salePrice <= 0
     || low <= 0
@@ -425,9 +467,13 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
   if (!hasRepeatedOrHeldLow) return null;
 
   if (
-    row.verdict === "GENUINE"
-    && averageDiscount <= -HISTORICAL_ABOVE_AVERAGE_MIN_GAP
-    && highDiscount >= 0
+    averageDiscount <= -HISTORICAL_ABOVE_AVERAGE_MIN_GAP
+    && highDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT
+    && rangePosition <= HISTORICAL_ESTABLISHED_FAIR_MAX_RANGE_POSITION
+    && (normalPrice == null
+      || (Number.isFinite(normalPrice)
+        && normalPrice > 0
+        && salePrice <= normalPrice * (1 + MATERIAL_OVER_NORMAL_THRESHOLD / 100)))
   ) {
     return "NINETY_DAY_ABOVE_AVERAGE";
   }
@@ -441,7 +487,9 @@ export function isStrongHistoricalSaver(row: HistoricalAssessmentRow): boolean {
 
 export function isStrongHistoricalFairPrice(row: HistoricalAssessmentRow): boolean {
   const basis = getHistoricalAssessmentBasis(row);
-  return basis === "NINETY_DAY_NEAR_LOW" || basis === "NINETY_DAY_ESTABLISHED_FAIR";
+  return basis === "NINETY_DAY_NEAR_LOW"
+    || basis === "NINETY_DAY_ESTABLISHED_FAIR"
+    || basis === "NINETY_DAY_ABOVE_AVERAGE";
 }
 
 /**

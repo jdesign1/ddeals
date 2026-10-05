@@ -474,6 +474,84 @@ test("robust history still calls a no-saving Rokeby price Fair when the weighted
   assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ESTABLISHED_FAIR");
 });
 
+test("robust history can explain an early price that is above average without calling it limited", () => {
+  const candidate = row({
+    product_id: "0498d2f9-3b89-4570-bf98-426abd3f30be",
+    product_name: "Antibacterial Gentle For Sensitive Skin Bar Soap",
+    brand: "Protex",
+    store_id: "paknsave",
+    store_name: "Pak'nSave",
+    sale_price: 1.69,
+    normal_price: 1.69,
+    saving_pct: 0,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    evidence_strength: "EARLY",
+    price_history_90d_low: 0.99,
+    price_history_90d_high: 2.19,
+    price_history_90d_avg: 1.49,
+    price_history_90d_samples: 9,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 74,
+    price_history_90d_special_days: 40,
+    regular_history_days: 34,
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), true);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Fair Price");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, "NINETY_DAY_ABOVE_AVERAGE");
+});
+
+test("long-history refinement never overrides a structured unit-price warning", () => {
+  const candidate = row({
+    sale_price: 1.69,
+    normal_price: 1.90,
+    saving_pct: 11.1,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 0.99,
+    price_history_90d_high: 2.19,
+    price_history_90d_avg: 1.49,
+    price_history_90d_samples: 9,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 74,
+    price_history_90d_special_days: 40,
+    unit_price_change_pct: 0,
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), false);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, null);
+});
+
+test("long-history refinement stays conservative when a pre-sale lift is reported", () => {
+  const candidate = row({
+    sale_price: 1.69,
+    normal_price: 1.85,
+    saving_pct: 8.6,
+    verdict: "UNKNOWN",
+    evidence_status: "EARLY",
+    price_history_90d_low: 0.99,
+    price_history_90d_high: 2.19,
+    price_history_90d_avg: 1.49,
+    price_history_90d_samples: 9,
+    price_history_90d_special_samples: 5,
+    price_history_90d_price_changes: 4,
+    price_history_90d_days_tracked: 74,
+    price_history_90d_special_days: 40,
+    inflate_pct: 12,
+  });
+
+  assert.equal(isStrongHistoricalFairPrice(candidate), false);
+  const cards = buildProductCardsFromSpecials([["group-1", [candidate]]]);
+  assert.equal(cards[0].currentDeals[0].dealType, "Unverified Deal");
+  assert.equal(cards[0].currentDeals[0].assessmentBasis, null);
+});
+
 test("repeated 90-day lows can upgrade a recent MARGINAL read to Real Deal", () => {
   const candidate = row({
     sale_price: 15.99,
