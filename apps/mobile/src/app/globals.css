@@ -1668,15 +1668,17 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   mix-blend-mode: normal;
 }
 
-/* Dark-mode selected controls use the inverse of the light appearance: a
-   light elevated fill with dark ink. This keeps the selected state obvious
-   without making the control look like a primary action button. */
-[data-theme="dark"] .dd-segmented-control-active,
+/* Top segmented filters keep the same dark selected state in both themes so
+   the active deal tab is never mistaken for an unselected white surface.
+   Authentication tabs retain their separate inverse treatment below. */
+[data-theme="dark"] .dd-segmented-control-active {
+  color: #f5f1e8 !important;
+}
 [data-theme="dark"] .dd-auth-tab-active {
   color: #171513 !important;
 }
 [data-theme="dark"] .dd-segmented-control-active-fill {
-  background-color: #f5f1e8;
+  background-color: #0c0b09;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
 }
 [data-theme="dark"] .dd-auth-tab-active-fill {
