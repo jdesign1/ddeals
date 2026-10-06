@@ -52,14 +52,15 @@ export default function DealFilterTabs({
               {isActive && (
                 <motion.span
                   layoutId={activeFillId}
-                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-x-0 inset-y-0.5 rounded-full bg-ink-900 shadow-sm"
-                  style={{ zIndex: -1 }}
+                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-x-0 inset-y-0.5 z-0 rounded-full bg-ink-900 shadow-sm"
                   initial={false}
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}
                 />
               )}
             </AnimatePresence>
-            {tab.id === "all" ? allLabel ?? tab.label : tab.label}
+            <span className="relative z-10">
+              {tab.id === "all" ? allLabel ?? tab.label : tab.label}
+            </span>
           </button>
         );
       })}
