@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
 import { DEAL_FILTER_OPTIONS, type DealFilter } from "@/lib/deal-filters";
 
 /**
@@ -22,18 +21,12 @@ export default function DealFilterTabs({
   allLabel?: string;
   backgroundClassName?: string;
 }) {
-  const activeFillId = `${buttonIdPrefix ?? "deal-filter"}-active-fill`;
-
   return (
     <div
       role="radiogroup"
       aria-label="Deal filters"
-      className="dd-segmented-control relative flex h-11 items-center gap-0.5"
+      className={`dd-segmented-control relative flex h-11 items-center gap-0.5 rounded-full shadow-sm shadow-black/5 ${backgroundClassName}`}
     >
-      <span
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-x-0 inset-y-0.5 rounded-full shadow-sm shadow-black/5 transition-[background-color] duration-300 ease-out ${backgroundClassName}`}
-      />
       {DEAL_FILTER_OPTIONS.map((tab) => {
         const isActive = value === tab.id;
         return (
@@ -45,22 +38,10 @@ export default function DealFilterTabs({
             aria-checked={isActive}
             onClick={() => onChange(tab.id)}
             className={`relative z-0 flex h-11 flex-1 cursor-pointer appearance-none items-center justify-center rounded-full px-3 py-1 text-center dd-type-control transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
-              isActive ? "dd-segmented-control-active text-white shadow-sm" : "text-stone-600 hover:text-stone-900"
+              isActive ? "dd-segmented-control-active bg-ink-900 text-white shadow-sm" : "text-stone-600 hover:text-stone-900"
             }`}
           >
-            <AnimatePresence initial={false}>
-              {isActive && (
-                <motion.span
-                  layoutId={activeFillId}
-                  className="dd-segmented-control-active-fill pointer-events-none absolute inset-x-0 inset-y-0.5 z-0 rounded-full bg-ink-900 shadow-sm"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                />
-              )}
-            </AnimatePresence>
-            <span className="relative z-10">
-              {tab.id === "all" ? allLabel ?? tab.label : tab.label}
-            </span>
+            {tab.id === "all" ? allLabel ?? tab.label : tab.label}
           </button>
         );
       })}
