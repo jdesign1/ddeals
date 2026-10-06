@@ -11,7 +11,6 @@ import {
   invalidateListsPageCache,
   LIST_MEMBERSHIP_CHANGED_EVENT,
   removeItemFromList,
-  FREE_WATCHLIST_LIMIT,
   type ListRow,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
@@ -19,7 +18,6 @@ import { useNotifications } from "@/lib/notifications-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { describeFetchError } from "@dodgey-deals/shared";
 import WatchlistNotificationSheet from "@/components/WatchlistNotificationSheet";
-import { useSubscriptions } from "@/lib/subscription-context";
 
 interface WatchlistContextValue {
   savedProductIds: ReadonlySet<string>;
@@ -53,7 +51,6 @@ function isWatchlist(list: ListRow): boolean {
  */
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
   const {
     pushEnabled,
     pushReady,
@@ -206,19 +203,6 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     setError(null);
     const pendingIds = [...selectedProductIds].filter((productId) => !savedProductIds.has(productId));
 
-    if (subscriptionLoading) {
-      setError("Checking your subscription status. Please try again in a moment.");
-      setIsCommitting(false);
-      return;
-    }
-
-    if (!isPremium && savedProductIds.size + pendingIds.length > FREE_WATCHLIST_LIMIT) {
-      setError(`Free accounts can save up to ${FREE_WATCHLIST_LIMIT} Watchlist items. Subscribe to keep watching more.`);
-      setIsCommitting(false);
-      openSubscriptionSheet();
-      return;
-    }
-
     const client = requireAccountsSupabaseClient();
 
     try {
@@ -255,7 +239,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsCommitting(false);
     }
-  }, [isCommitting, isPremium, openSubscriptionSheet, pushEnabled, savedProductIds, selectedProductIds, subscriptionLoading, user]);
+  }, [isCommitting, pushEnabled, savedProductIds, selectedProductIds, user]);
 
   const value = useMemo<WatchlistContextValue>(() => ({
     savedProductIds,
