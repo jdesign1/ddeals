@@ -24,11 +24,11 @@ export default function CheaperOptionsCarousel({
 
   return (
     <div
-      className="mt-2 border-t border-stone-100 bg-stone-50/70 px-3 pb-3 pt-3"
+      className="mt-2 border-t border-stone-100 bg-stone-50/70 pb-3 pt-3"
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+      <div className="mb-2 flex items-center justify-between gap-3 px-3">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-stone-500">Cheaper options</p>
         {visibleAlternatives.length > 0 && (
           <span className="text-[11px] font-bold text-stone-500">{visibleAlternatives.length} found</span>
@@ -48,7 +48,7 @@ export default function CheaperOptionsCarousel({
           No cheaper options found for {originalProductName} right now.
         </p>
       ) : (
-        <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
+        <InsightCarousel slideWidthClassName="w-[88%]">
           {visibleAlternatives.map(({ product: alternativeProduct, store, price, saving }) => (
             <div key={[alternativeProduct.id, store].join("-")}>
               <div className="dd-deal-assessment-card relative flex min-h-52 flex-col gap-2 rounded-2xl border border-stone-300 bg-white px-3 pb-3 pt-5 shadow-xs">
@@ -78,8 +78,8 @@ export default function CheaperOptionsCarousel({
                     </div>
                   </div>
                 </div>
-                <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2 py-1.5 text-[11px] font-semibold leading-4 text-white">
-                  Save <strong className="font-extrabold">{"$"}{saving.toFixed(2)}</strong> compared with saved item
+                <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2 py-1.5 text-xs font-semibold leading-4 text-white">
+                  Save <strong className="font-extrabold">{"$"}{saving.toFixed(2)}</strong>
                 </span>
                 <a
                   href={findDealForStore(alternativeProduct.currentDeals, store)?.productUrl || getStoreProductUrl(store, alternativeProduct.name)}

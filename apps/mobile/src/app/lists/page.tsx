@@ -642,7 +642,7 @@ function WatchlistSummaryCard({
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div
-        className="dd-segmented-control flex h-11 w-full items-center gap-0.5 rounded-full bg-stone-100 p-0.5 shadow-sm shadow-black/5"
+        className="dd-segmented-control relative flex h-11 w-full items-center gap-0.5 rounded-full bg-white ring-1 ring-stone-200 shadow-sm shadow-black/5"
         role="tablist"
         aria-label="Watchlist views"
       >
@@ -659,7 +659,7 @@ function WatchlistSummaryCard({
               aria-selected={isActive}
               onClick={() => onTabChange(tab)}
               className={[
-                "relative z-0 flex h-10 flex-1 items-center justify-center rounded-full px-3 text-center text-[13px] font-extrabold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1",
+                "relative z-0 flex h-11 flex-1 cursor-pointer appearance-none items-center justify-center rounded-full px-3 py-1 text-center dd-type-control transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1",
                 isActive
                   ? "dd-segmented-control-active bg-ink-900 text-white shadow-sm"
                   : "text-stone-600 hover:text-stone-900",

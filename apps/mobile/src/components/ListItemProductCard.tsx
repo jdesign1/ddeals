@@ -305,7 +305,7 @@ export default function ListItemProductCard({
           onKeyDown={(event) => event.stopPropagation()}
           aria-expanded={isCheaperOptionsExpanded}
           aria-label={(isCheaperOptionsExpanded ? "Hide" : "Show") + " cheaper options for " + product.name}
-          className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          className="absolute right-0 top-0 z-10 flex h-12 w-12 touch-manipulation items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
         >
           <ChevronDown
             className={["h-5 w-5 transition-transform duration-200", isCheaperOptionsExpanded ? "rotate-180" : ""].join(" ")}
