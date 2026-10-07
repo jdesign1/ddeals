@@ -64,7 +64,7 @@ export default function CheaperOptionsCarousel({
                     />
                   </div>
                   <div className="min-w-0 flex-grow py-0.5">
-                    <p className="dd-type-secondary dd-type-secondary-strong text-ink-600">
+                    <p className="dd-type-meta text-stone-600">
                       {alternativeProduct.brand
                         ? alternativeProduct.brand.charAt(0).toUpperCase() + alternativeProduct.brand.slice(1).toLowerCase()
                         : alternativeProduct.brand}{" "}
