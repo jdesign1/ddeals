@@ -491,6 +491,12 @@ export default function ListsPage() {
 
       {error && <ErrorState message="Something went wrong with your Watchlist." detail={error} onRetry={() => void reload()} />}
 
+      <div className="mx-5 pt-1">
+        <p className="text-sm font-extrabold text-stone-900">
+          {watchlistItems.length} {watchlistItems.length === 1 ? "item" : "items"}
+        </p>
+      </div>
+
       <div className={`relative ${loadingWatchlist ? "min-h-[160px]" : ""}`}>
         <div className="pointer-events-none absolute inset-0 z-10"><LoadingMascot loading={loadingWatchlist} /></div>
         {!loadingWatchlist && !error && watchlistItems.length === 0 && (
@@ -666,8 +672,6 @@ function WatchlistSummaryCard({
       </div>
       <h1 id="watchlist-intro-title" className="sr-only">Your Watchlist</h1>
       <p className="mt-3 text-[13px] leading-5 text-stone-600">
-        <span className="font-extrabold text-stone-900">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
-        {" · "}
         {subtitle}
       </p>
       {!isEmpty && hasNewPrices && (
