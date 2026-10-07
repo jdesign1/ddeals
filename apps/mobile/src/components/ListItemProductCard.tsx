@@ -3,9 +3,10 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, X } from "lucide-react";
-import { getAssessmentVerdict, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
+import { Check, ChevronDown, X } from "lucide-react";
+import { getAssessmentVerdict, type CheaperAlternative, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CheaperOptionsCarousel from "@/components/CheaperOptionsCarousel";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
@@ -147,6 +148,14 @@ export interface ListItemProductCardProps {
   onBeforeNavigate?: () => void;
   /** Refresh the list data after the not-on-special sheet is dismissed. */
   onAfterNotOnSpecial?: () => void;
+  /** The Cheaper Options tab supplies ranked alternatives for this saved item. */
+  cheaperAlternatives?: CheaperAlternative[];
+  /** Shows the expand affordance only on the Watchlist page's Cheaper Options tab. */
+  showCheaperOptions?: boolean;
+  cheaperOptionsExpanded?: boolean;
+  onToggleCheaperOptions?: () => void;
+  cheaperOptionsLoading?: boolean;
+  cheaperOptionsError?: string | null;
 }
 
 // How far left (px) a swipe must travel before it counts as "remove this"
@@ -163,6 +172,12 @@ export default function ListItemProductCard({
   removeLabel,
   onBeforeNavigate,
   onAfterNotOnSpecial,
+  cheaperAlternatives = [],
+  showCheaperOptions = false,
+  cheaperOptionsExpanded = false,
+  onToggleCheaperOptions,
+  cheaperOptionsLoading = false,
+  cheaperOptionsError = null,
 }: ListItemProductCardProps) {
   const router = useRouter();
   // Same sentence-case transform ProductListCard.tsx applies to `brand`
@@ -195,6 +210,7 @@ export default function ListItemProductCard({
   const isFairPrice = assessmentVerdict === "Fair Price";
   const isAssessmentPending = assessmentVerdict === "Early read" || assessmentVerdict === "Limited history";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
+  const isCheaperOptionsExpanded = showCheaperOptions && cheaperOptionsExpanded;
 
   const goToDeal = () => {
     onBeforeNavigate?.();
@@ -228,7 +244,7 @@ export default function ListItemProductCard({
       // is true, so the tick/cross buttons below aren't fighting a live
       // drag gesture. See this file's own top-of-file doc comment for the
       // full "why swipe, not a tap-to-reveal X" design.
-      drag={confirmingRemove ? false : "x"}
+      drag={confirmingRemove || isCheaperOptionsExpanded ? false : "x"}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.5}
       onDragEnd={(_event, info) => {
@@ -261,22 +277,43 @@ export default function ListItemProductCard({
       // Keep inactive products visibly grey without lowering text contrast;
       // the retained current price still needs to be easy to scan. This is
       // excluded during remove confirmation, which has its own alert state.
-      className={`dd-compact-product-card group flex min-h-[76px] items-stretch overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50 ${
+      className={[
+        "dd-compact-product-card group relative flex min-h-[76px] flex-col overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
         isNotOnSpecial && !confirmingRemove
           ? "border-stone-200/80 grayscale bg-stone-50"
           : isRealSaver
             ? "border-fair-600"
             : isDodgyDeal
               ? "border-alert-600"
-              : "border-stone-200/80"
-      }`}
+              : "border-stone-200/80",
+      ].join(" ")}
       ref={cardRef}
       style={{
         cursor: confirmingRemove ? "default" : "pointer",
-        touchAction: "pan-y",
+        touchAction: isCheaperOptionsExpanded ? "auto" : "pan-y",
         ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
       }}
     >
+      <div className="relative flex min-h-[76px] items-stretch">
+      {showCheaperOptions && onToggleCheaperOptions && !confirmingRemove && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleCheaperOptions();
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+          aria-expanded={isCheaperOptionsExpanded}
+          aria-label={(isCheaperOptionsExpanded ? "Hide" : "Show") + " cheaper options for " + product.name}
+          className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+        >
+          <ChevronDown
+            className={["h-5 w-5 transition-transform duration-200", isCheaperOptionsExpanded ? "rotate-180" : ""].join(" ")}
+            strokeWidth={2.5}
+            aria-hidden="true"
+          />
+        </button>
+      )}
       <div className="product-image-frame flex min-h-[76px] w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50">
         <ProductImage
           src={product.image}
@@ -313,7 +350,7 @@ export default function ListItemProductCard({
           </div>
         </div>
       ) : (
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2">
+        <div className={["flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2", showCheaperOptions ? "pr-12" : ""].join(" ")}>
           {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
             <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
               {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
@@ -345,6 +382,26 @@ export default function ListItemProductCard({
           </div>
         </div>
       )}
+      </div>
+      <AnimatePresence initial={false}>
+        {isCheaperOptionsExpanded && (
+          <motion.div
+            key="watchlist-cheaper-options"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            className="overflow-hidden"
+          >
+            <CheaperOptionsCarousel
+              alternatives={cheaperAlternatives}
+              originalProductName={product.name}
+              loading={cheaperOptionsLoading}
+              error={cheaperOptionsError}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
 
     <NotOnSpecialSheet

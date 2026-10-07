@@ -6,9 +6,11 @@ import { X } from "lucide-react";
 import {
   canonicalStoreKey,
   describeFetchError,
+  findCheaperAlternatives,
   groupCategory,
   getSearchSynonymRule,
   invalidateListsPageCache,
+  loadLiveProducts,
   loadListsPageData,
   LIST_MEMBERSHIP_CHANGED_EVENT,
   matchesAnySelectedStore,
@@ -40,6 +42,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 
 type SortMode = "best" | "dodgy" | "recent";
+type WatchlistTab = "watchlist" | "cheaper-options";
 
 interface WatchlistItem {
   productId: string;
@@ -122,6 +125,11 @@ export default function ListsPage() {
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
   const [isSettingUpNotifications, setIsSettingUpNotifications] = useState(false);
+  const [activeWatchlistTab, setActiveWatchlistTab] = useState<WatchlistTab>("watchlist");
+  const [catalogueProducts, setCatalogueProducts] = useState<ProductCardData[] | null>(null);
+  const [loadingCheaperOptions, setLoadingCheaperOptions] = useState(false);
+  const [cheaperOptionsError, setCheaperOptionsError] = useState<string | null>(null);
+  const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleShare = () => setIsShareSheetOpen(true);
@@ -134,6 +142,34 @@ export default function ListsPage() {
     setProductMeta(data.productMeta);
     setItemCards(data.itemCards);
     setLowestPriceByProduct(data.lowestPriceByProduct);
+  }, []);
+
+  const loadCheaperOptions = useCallback(() => {
+    if (catalogueProducts !== null || loadingCheaperOptions) return;
+    setLoadingCheaperOptions(true);
+    setCheaperOptionsError(null);
+    void loadLiveProducts(supabaseConfig)
+      .then((products) => setCatalogueProducts(products))
+      .catch((loadError) => setCheaperOptionsError(describeFetchError(loadError, "We couldn't load cheaper options.")))
+      .finally(() => setLoadingCheaperOptions(false));
+  }, [catalogueProducts, loadingCheaperOptions]);
+
+  const handleWatchlistTabChange = useCallback((tab: WatchlistTab) => {
+    setActiveWatchlistTab(tab);
+    if (tab === "cheaper-options") {
+      loadCheaperOptions();
+    } else {
+      setExpandedCheaperProductIds(new Set());
+    }
+  }, [loadCheaperOptions]);
+
+  const toggleCheaperOptions = useCallback((productId: string) => {
+    setExpandedCheaperProductIds((current) => {
+      const next = new Set(current);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
   }, []);
 
   const reload = useCallback(async (showLoading = true) => {
@@ -334,6 +370,16 @@ export default function ListsPage() {
     () => filteredItems.filter((item) => itemDeal(item, itemCards, selectedSupermarkets)?.isOnSpecial !== true),
     [filteredItems, itemCards, selectedSupermarkets],
   );
+  const cheaperAlternativesByProduct = useMemo(() => {
+    if (activeWatchlistTab !== "cheaper-options" || !catalogueProducts) return new Map<string, ReturnType<typeof findCheaperAlternatives>>();
+    const alternatives = new Map<string, ReturnType<typeof findCheaperAlternatives>>();
+    for (const item of filteredItems) {
+      const card = itemCards.get(item.productId);
+      const deal = card ? itemDeal(item, itemCards, selectedSupermarkets) : undefined;
+      if (card && deal) alternatives.set(item.productId, findCheaperAlternatives(card, catalogueProducts, deal.price, ["all"]).slice(0, 5));
+    }
+    return alternatives;
+  }, [activeWatchlistTab, catalogueProducts, filteredItems, itemCards, selectedSupermarkets]);
   const renderItem = (entry: WatchlistItem) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
@@ -341,6 +387,7 @@ export default function ListsPage() {
     const sourceItem = entry.sourceItems[0];
     const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
     const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
+    const cheaperAlternatives = cheaperAlternativesByProduct.get(entry.productId) ?? [];
     return (
       <div key={entry.productId} data-watchlist-product-id={entry.productId}>
         <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
@@ -353,6 +400,12 @@ export default function ListsPage() {
               onRemove={() => void removeProduct(entry.productId)}
               removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
               onAfterNotOnSpecial={() => void reload(false)}
+              showCheaperOptions={activeWatchlistTab === "cheaper-options"}
+              cheaperAlternatives={cheaperAlternatives}
+              cheaperOptionsExpanded={expandedCheaperProductIds.has(entry.productId)}
+              onToggleCheaperOptions={() => toggleCheaperOptions(entry.productId)}
+              cheaperOptionsLoading={loadingCheaperOptions && catalogueProducts === null}
+              cheaperOptionsError={cheaperOptionsError}
             />
           ) : (
             <FallbackWatchlistRow label={meta?.name ?? "Product"} image={card?.image ?? meta?.image_url} onRemove={() => void removeProduct(entry.productId)} />
@@ -392,6 +445,8 @@ export default function ListsPage() {
     <main className="flex min-h-full flex-col gap-2 pb-24">
       <div className="watchlist-top-chrome pt-2">
         <WatchlistSummaryCard
+          activeTab={activeWatchlistTab}
+          onTabChange={handleWatchlistTabChange}
           itemCount={watchlistItems.length}
           newPriceItemCount={newPriceItemCount}
           showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
@@ -552,6 +607,8 @@ function ClearWatchlistSheet({
 }
 
 function WatchlistSummaryCard({
+  activeTab,
+  onTabChange,
   itemCount,
   newPriceItemCount,
   showNotificationSetup,
@@ -559,6 +616,8 @@ function WatchlistSummaryCard({
   isSettingUpNotifications,
   onSetupNotifications,
 }: {
+  activeTab: WatchlistTab;
+  onTabChange: (tab: WatchlistTab) => void;
   itemCount: number;
   newPriceItemCount: number;
   showNotificationSetup: boolean;
@@ -568,23 +627,55 @@ function WatchlistSummaryCard({
 }) {
   const hasNewPrices = newPriceItemCount > 0;
   const isEmpty = itemCount === 0;
+  const subtitle = isEmpty
+    ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
+    : activeTab === "cheaper-options"
+      ? "Browse cheaper specials for the products you’re watching."
+      : "Below are the best specials currently available for the products you’re watching.";
 
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
-      <div className="flex items-center justify-between gap-3">
-        <h1 id="watchlist-intro-title" className="font-display text-lg font-extrabold text-stone-900">Your Watchlist - {itemCount} {itemCount === 1 ? "item" : "items"}</h1>
-        {!isEmpty && hasNewPrices && (
-          <div className={`flex shrink-0 items-center gap-2 pt-0.5 text-right text-[13px] font-extrabold ${hasNewPrices ? "text-stone-900" : "text-stone-500"}`} aria-live="polite">
-            <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
-            {`${newPriceItemCount} ${newPriceItemCount === 1 ? "item" : "items"} with new prices`}
-          </div>
-        )}
+      <div
+        className="dd-segmented-control flex h-11 w-full items-center gap-0.5 rounded-full bg-stone-100 p-0.5 shadow-sm shadow-black/5"
+        role="tablist"
+        aria-label="Watchlist views"
+      >
+        {([
+          ["watchlist", "Watchlist"],
+          ["cheaper-options", "Cheaper Options"],
+        ] as const).map(([tab, label]) => {
+          const isActive = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onTabChange(tab)}
+              className={[
+                "relative z-0 flex h-10 flex-1 items-center justify-center rounded-full px-3 text-center text-[13px] font-extrabold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1",
+                isActive
+                  ? "dd-segmented-control-active bg-ink-900 text-white shadow-sm"
+                  : "text-stone-600 hover:text-stone-900",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
-      <p className="mt-2 text-[13px] leading-5 text-stone-600">
-        {isEmpty
-          ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
-          : "Below are the best specials currently available for the products you’re watching."}
+      <h1 id="watchlist-intro-title" className="sr-only">Your Watchlist</h1>
+      <p className="mt-3 text-[13px] leading-5 text-stone-600">
+        <span className="font-extrabold text-stone-900">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
+        {" · "}
+        {subtitle}
       </p>
+      {!isEmpty && hasNewPrices && (
+        <div className="mt-2 flex items-center gap-2 text-[13px] font-extrabold text-stone-900" aria-live="polite">
+          <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
+          {newPriceItemCount} {newPriceItemCount === 1 ? "item" : "items"} with new prices
+        </div>
+      )}
       {showNotificationSetup && (
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
           <p className="text-[12px] leading-4 text-stone-500">
