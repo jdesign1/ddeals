@@ -30,9 +30,6 @@ export default function CheaperOptionsCarousel({
     >
       <div className="mb-2 flex items-center justify-between gap-3 px-3">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-stone-500">Cheaper options</p>
-        {visibleAlternatives.length > 0 && (
-          <span className="text-[11px] font-bold text-stone-500">{visibleAlternatives.length} found</span>
-        )}
       </div>
 
       {loading ? (
