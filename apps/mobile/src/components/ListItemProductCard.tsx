@@ -278,7 +278,10 @@ export default function ListItemProductCard({
       // the retained current price still needs to be easy to scan. This is
       // excluded during remove confirmation, which has its own alert state.
       className={[
-        "dd-compact-product-card group relative flex min-h-[76px] flex-col overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
+        "dd-compact-product-card group relative min-h-[76px] overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
+        isCheaperOptionsExpanded
+          ? "grid grid-cols-[6rem_minmax(0,1fr)]"
+          : "flex flex-col",
         isNotOnSpecial && !confirmingRemove
           ? "border-stone-200/80 grayscale bg-stone-50"
           : isRealSaver
@@ -294,7 +297,7 @@ export default function ListItemProductCard({
         ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
       }}
     >
-      <div className="relative flex min-h-[76px] items-stretch">
+      <div className={isCheaperOptionsExpanded ? "contents" : "relative flex min-h-[76px] items-stretch"}>
       {showCheaperOptions && onToggleCheaperOptions && !confirmingRemove && (
         <button
           type="button"
@@ -314,7 +317,12 @@ export default function ListItemProductCard({
           />
         </button>
       )}
-      <div className="product-image-frame flex min-h-[76px] w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50">
+      <div
+        className={[
+          "product-image-frame flex min-h-[76px] w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50",
+          isCheaperOptionsExpanded ? "row-span-2 self-stretch" : "",
+        ].join(" ")}
+      >
         <ProductImage
           src={product.image}
           alt={product.name}
@@ -322,7 +330,10 @@ export default function ListItemProductCard({
           height={96}
           sizes="96px"
           loading="lazy"
-          className="product-image-content h-3/4 w-3/4 object-contain"
+          className={[
+            "product-image-content object-contain",
+            isCheaperOptionsExpanded ? "h-20 w-20" : "h-3/4 w-3/4",
+          ].join(" ")}
         />
       </div>
       {confirmingRemove ? (
@@ -350,7 +361,13 @@ export default function ListItemProductCard({
           </div>
         </div>
       ) : (
-        <div className={["flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2", showCheaperOptions ? "pr-12" : ""].join(" ")}>
+        <div
+          className={[
+            "flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2",
+            showCheaperOptions ? "pr-12" : "",
+            isCheaperOptionsExpanded ? "col-start-2 min-h-[76px]" : "",
+          ].join(" ")}
+        >
           {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
             <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
               {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
@@ -391,7 +408,7 @@ export default function ListItemProductCard({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 260 }}
-            className="overflow-hidden"
+            className="col-start-2 min-w-0 overflow-hidden"
           >
             <CheaperOptionsCarousel
               alternatives={cheaperAlternatives}
