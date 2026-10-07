@@ -69,6 +69,18 @@ function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, 
   return deals[0];
 }
 
+type CheaperAlternativeList = ReturnType<typeof findCheaperAlternatives>;
+type CheaperAlternativeCacheEntry = {
+  contextKey: string;
+  alternatives: CheaperAlternativeList;
+};
+
+function cheaperOptionsContextKey(product: ProductCardData, deal: ReturnType<typeof itemDeal>): string {
+  return deal
+    ? [product.id, product.name, product.brand, product.category, canonicalStoreKey(deal.store), deal.price].join(":")
+    : "";
+}
+
 function otherSpecialStoreCount(product: ProductCardData, displayedStore: string): number {
   const displayedKey = canonicalStoreKey(displayedStore);
   return new Set(
@@ -129,6 +141,8 @@ export default function ListsPage() {
   const [catalogueProducts, setCatalogueProducts] = useState<ProductCardData[] | null>(null);
   const [loadingCheaperOptions, setLoadingCheaperOptions] = useState(false);
   const [cheaperOptionsError, setCheaperOptionsError] = useState<string | null>(null);
+  const [cheaperAlternativesCache, setCheaperAlternativesCache] = useState<Map<string, CheaperAlternativeCacheEntry>>(new Map());
+  const [loadingCheaperProductIds, setLoadingCheaperProductIds] = useState<Set<string>>(new Set());
   const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -154,6 +168,38 @@ export default function ListsPage() {
       .finally(() => setLoadingCheaperOptions(false));
   }, [catalogueProducts, loadingCheaperOptions]);
 
+  const prepareCheaperOptions = useCallback((productId: string) => {
+    if (!catalogueProducts || loadingCheaperProductIds.has(productId)) return;
+    const item = watchlistItems.find((entry) => entry.productId === productId);
+    const card = itemCards.get(productId);
+    const deal = item ? itemDeal(item, itemCards, selectedSupermarkets) : undefined;
+    if (!card || !deal) return;
+
+    const contextKey = cheaperOptionsContextKey(card, deal);
+    const cached = cheaperAlternativesCache.get(productId);
+    if (cached?.contextKey === contextKey) return;
+
+    setLoadingCheaperProductIds((current) => {
+      const next = new Set(current);
+      next.add(productId);
+      return next;
+    });
+
+    window.setTimeout(() => {
+      const alternatives = findCheaperAlternatives(card, catalogueProducts, deal.price, ["all"]).slice(0, 5);
+      setCheaperAlternativesCache((current) => {
+        const next = new Map(current);
+        next.set(productId, { contextKey, alternatives });
+        return next;
+      });
+      setLoadingCheaperProductIds((current) => {
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+    }, 0);
+  }, [catalogueProducts, cheaperAlternativesCache, itemCards, loadingCheaperProductIds, selectedSupermarkets, watchlistItems]);
+
   const handleWatchlistTabChange = useCallback((tab: WatchlistTab) => {
     setActiveWatchlistTab(tab);
     if (tab === "cheaper-options") {
@@ -164,13 +210,22 @@ export default function ListsPage() {
   }, [loadCheaperOptions]);
 
   const toggleCheaperOptions = useCallback((productId: string) => {
+    const shouldExpand = !expandedCheaperProductIds.has(productId);
     setExpandedCheaperProductIds((current) => {
       const next = new Set(current);
       if (next.has(productId)) next.delete(productId);
       else next.add(productId);
       return next;
     });
-  }, []);
+    if (!shouldExpand) return;
+    if (catalogueProducts) prepareCheaperOptions(productId);
+    else loadCheaperOptions();
+  }, [catalogueProducts, expandedCheaperProductIds, loadCheaperOptions, prepareCheaperOptions]);
+
+  useEffect(() => {
+    if (activeWatchlistTab !== "cheaper-options" || !catalogueProducts) return;
+    for (const productId of expandedCheaperProductIds) prepareCheaperOptions(productId);
+  }, [activeWatchlistTab, catalogueProducts, expandedCheaperProductIds, prepareCheaperOptions]);
 
   const reload = useCallback(async (showLoading = true) => {
     if (!user) return;
@@ -238,6 +293,12 @@ export default function ListsPage() {
     }
     return [...byProduct.values()];
   }, [itemsByList]);
+
+  useEffect(() => {
+    if (!user || loadingWatchlist || error || watchlistItems.length === 0 || catalogueProducts !== null || loadingCheaperOptions) return;
+    const timer = window.setTimeout(() => loadCheaperOptions(), 400);
+    return () => window.clearTimeout(timer);
+  }, [catalogueProducts, error, loadCheaperOptions, loadingCheaperOptions, loadingWatchlist, user, watchlistItems.length]);
 
   const newPriceItemCount = useMemo(
     () => watchlistItems.reduce(
@@ -370,16 +431,6 @@ export default function ListsPage() {
     () => filteredItems.filter((item) => itemDeal(item, itemCards, selectedSupermarkets)?.isOnSpecial !== true),
     [filteredItems, itemCards, selectedSupermarkets],
   );
-  const cheaperAlternativesByProduct = useMemo(() => {
-    if (activeWatchlistTab !== "cheaper-options" || !catalogueProducts) return new Map<string, ReturnType<typeof findCheaperAlternatives>>();
-    const alternatives = new Map<string, ReturnType<typeof findCheaperAlternatives>>();
-    for (const item of filteredItems) {
-      const card = itemCards.get(item.productId);
-      const deal = card ? itemDeal(item, itemCards, selectedSupermarkets) : undefined;
-      if (card && deal) alternatives.set(item.productId, findCheaperAlternatives(card, catalogueProducts, deal.price, ["all"]).slice(0, 5));
-    }
-    return alternatives;
-  }, [activeWatchlistTab, catalogueProducts, filteredItems, itemCards, selectedSupermarkets]);
   const renderItem = (entry: WatchlistItem) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
@@ -387,7 +438,9 @@ export default function ListsPage() {
     const sourceItem = entry.sourceItems[0];
     const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
     const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
-    const cheaperAlternatives = cheaperAlternativesByProduct.get(entry.productId) ?? [];
+    const currentCheaperOptionsKey = card ? cheaperOptionsContextKey(card, deal) : "";
+    const cachedCheaperOptions = cheaperAlternativesCache.get(entry.productId);
+    const cheaperAlternatives = cachedCheaperOptions?.contextKey === currentCheaperOptionsKey ? cachedCheaperOptions.alternatives : [];
     return (
       <div key={entry.productId} data-watchlist-product-id={entry.productId}>
         <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
@@ -404,7 +457,7 @@ export default function ListsPage() {
               cheaperAlternatives={cheaperAlternatives}
               cheaperOptionsExpanded={expandedCheaperProductIds.has(entry.productId)}
               onToggleCheaperOptions={() => toggleCheaperOptions(entry.productId)}
-              cheaperOptionsLoading={loadingCheaperOptions && catalogueProducts === null}
+              cheaperOptionsLoading={(loadingCheaperOptions && catalogueProducts === null) || loadingCheaperProductIds.has(entry.productId)}
               cheaperOptionsError={cheaperOptionsError}
             />
           ) : (
