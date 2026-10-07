@@ -40,8 +40,8 @@ import { usePageHeader } from "@/lib/header-context";
  * -> "Empowering shoppers", the `<h1>`/page-header title "How Dodgy Deal
  * Works" -> "How Dodgy Deal works", "Our Deal Rating System" -> "Our deal
  * rating system", "How To Use Dodgy Deal" -> "How to use Dodgy Deal",
- * "Best Buy" tag -> "Best buy"). Left the 3 `RatingCard` `label` values
- * ("Dodgy Deal", "Fair Price", "Real Saver") in Title Case on purpose --
+ * "Best Buy" tag -> "Best buy"). Left the 3 rating badge labels
+ * ("Dodgy Deal", "Fair Price", "Real Saver") in the rating badges in Title Case on purpose --
  * these are the app's actual verdict category names (same 3 terms
  * `getAssessmentVerdict` produces and every other verdict badge/heading in
  * the app already renders), not ordinary phrase text, so they get the same
@@ -82,16 +82,16 @@ export default function HowItWorksPage() {
         }`}
       >
       <div className="space-y-2">
-        <div className="-mx-2 -mt-2 mb-1 flex justify-center">
+        <div className="-mx-5 -mt-6 mb-1 flex justify-center">
           <Image
             src="/how-it-works-dodgy-deal.webp"
             alt="Dodgy Deal mascot spotting a dodgy supermarket deal on his phone beside a shopping basket"
             width={840}
             height={840}
-            sizes="(max-width: 480px) 288px, 320px"
+            sizes="100vw"
             preload
             unoptimized
-            className="how-it-works-mascot h-auto w-full max-w-[18rem]"
+            className="how-it-works-mascot h-auto w-full max-w-none"
           />
         </div>
         <h2 className="dd-type-section text-center text-stone-900">Empowering shoppers</h2>
@@ -106,24 +106,18 @@ export default function HowItWorksPage() {
         <div className="flex flex-col gap-3">
           <RatingCard
             icon={AlertTriangle}
-            label="Dodgy Deal"
-            labelClassName="text-alert-700"
             tag="Dodgy Deal"
             tagClassName="dd-badge-alert"
             description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
           />
           <RatingCard
             icon={Info}
-            label="Fair Price"
-            labelClassName="text-dodgy-700"
             tag="Fair Price"
             tagClassName="dd-badge-dodgy"
             description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
           />
           <RatingCard
             icon={ShieldCheck}
-            label="Real Saver"
-            labelClassName="text-fair-700"
             tag="Real Saver"
             tagClassName="dd-badge-fair"
             description="A deep, authentic discount well below the recent average price. A genuinely outstanding deal."
@@ -158,15 +152,11 @@ export default function HowItWorksPage() {
 
 function RatingCard({
   icon: Icon,
-  label,
-  labelClassName,
   tag,
   tagClassName,
   description,
 }: {
   icon: LucideIcon;
-  label: string;
-  labelClassName: string;
   tag: string;
   tagClassName: string;
   description: string;
@@ -175,7 +165,6 @@ function RatingCard({
     <div className="rounded-2xl bg-white p-4.5 shadow-sm">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className={`dd-type-control ${labelClassName}`}>{label}</span>
           <span className={`dd-badge ${tagClassName}`}>
             <Icon className="h-3.5 w-3.5" aria-hidden="true" />
             {tag}
