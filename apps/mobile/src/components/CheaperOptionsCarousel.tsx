@@ -79,7 +79,7 @@ export default function CheaperOptionsCarousel({
                   </div>
                 </div>
                 <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2 py-1.5 text-xs font-semibold leading-4 text-white">
-                  Save <strong className="font-extrabold">{"$"}{saving.toFixed(2)}</strong>
+                  Save <strong className="font-extrabold">{"$"}{saving.toFixed(2)}</strong> compared with saved item
                 </span>
                 <a
                   href={findDealForStore(alternativeProduct.currentDeals, store)?.productUrl || getStoreProductUrl(store, alternativeProduct.name)}
