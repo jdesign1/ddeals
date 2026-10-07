@@ -277,24 +277,26 @@ export default function ListItemProductCard({
       // Keep inactive products visibly grey without lowering text contrast;
       // the retained current price still needs to be easy to scan. This is
       // excluded during remove confirmation, which has its own alert state.
-      className={[
-        "dd-compact-product-card group relative flex min-h-[76px] flex-col overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
-        isNotOnSpecial && !confirmingRemove
-          ? "border-stone-200/80 grayscale bg-stone-50"
-          : isRealSaver
-            ? "border-fair-600"
-            : isDodgyDeal
-              ? "border-alert-600"
-              : "border-stone-200/80",
-      ].join(" ")}
+      className="dd-compact-product-card group relative flex min-h-[76px] flex-col"
       ref={cardRef}
       style={{
         cursor: confirmingRemove ? "default" : "pointer",
         touchAction: isCheaperOptionsExpanded ? "auto" : "pan-y",
-        ...(confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : {}),
       }}
     >
-      <div className="relative flex min-h-[76px] items-stretch">
+      <div
+        className={[
+          "relative flex min-h-[76px] items-stretch overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
+          isNotOnSpecial && !confirmingRemove
+            ? "border-stone-200/80 grayscale bg-stone-50"
+            : isRealSaver
+              ? "border-fair-600"
+              : isDodgyDeal
+                ? "border-alert-600"
+                : "border-stone-200/80",
+        ].join(" ")}
+        style={confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : undefined}
+      >
       {showCheaperOptions && onToggleCheaperOptions && !confirmingRemove && (
         <button
           type="button"
