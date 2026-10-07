@@ -48,7 +48,7 @@ export default function CheaperOptionsCarousel({
           No cheaper options found for {originalProductName} right now.
         </p>
       ) : (
-        <InsightCarousel slideWidthClassName="w-[88%]">
+        <InsightCarousel slideWidthClassName="w-[88%]" trackPaddingClassName="px-3">
           {visibleAlternatives.map(({ product: alternativeProduct, store, price, saving }) => (
             <div key={[alternativeProduct.id, store].join("-")}>
               <div className="dd-deal-assessment-card relative flex min-h-52 flex-col gap-2 rounded-2xl border border-stone-300 bg-white px-3 pb-3 pt-5 shadow-xs">
