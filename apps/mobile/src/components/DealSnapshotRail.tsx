@@ -12,10 +12,55 @@ import {
   type DealSnapshotKind,
 } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
+import {
+  createTop20Snapshot,
+  getTop20DealKey,
+  getTop20StorageKey,
+  readTop20Snapshot,
+  resolveTop20Snapshot,
+  writeTop20Snapshot,
+  type Top20Snapshot,
+} from "@/lib/top20-freshness";
 
 interface FlatDeal {
   product: ProductCard;
   deal: CurrentDeal;
+}
+
+function getLatestPublishedAt(deals: readonly FlatDeal[]): string | null {
+  let latestTimestamp = Number.NEGATIVE_INFINITY;
+  let latestPublishedAt: string | null = null;
+
+  for (const { deal } of deals) {
+    for (const candidate of [deal.scrapedAt, deal.specialsVerifiedAt]) {
+      const timestamp = Date.parse(candidate ?? "");
+      if (Number.isFinite(timestamp) && timestamp > latestTimestamp) {
+        latestTimestamp = timestamp;
+        latestPublishedAt = new Date(timestamp).toISOString();
+      }
+    }
+  }
+
+  return latestPublishedAt;
+}
+
+function formatUpdatedText(publishedAt: string | null): string | null {
+  if (!publishedAt) return null;
+
+  const ageMinutes = Math.max(0, Math.floor((Date.now() - Date.parse(publishedAt)) / 60_000));
+  if (ageMinutes < 1) return "Updated just now";
+  if (ageMinutes < 60) return `Updated ${ageMinutes} min ago`;
+
+  const ageHours = Math.floor(ageMinutes / 60);
+  if (ageHours < 24) return `Updated ${ageHours} ${ageHours === 1 ? "hour" : "hours"} ago`;
+
+  const ageDays = Math.floor(ageHours / 24);
+  return `Updated ${ageDays} ${ageDays === 1 ? "day" : "days"} ago`;
+}
+
+function arraysMatch(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
+  if (!left || !right || left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
 }
 
 export default function DealSnapshotRail({
@@ -35,7 +80,6 @@ export default function DealSnapshotRail({
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
-  const description = isSavings ? "Biggest savings" : "Biggest price hikes";
   const emptyMessage = isSavings
     ? "No real specials in this category right now, check again later"
     : "No dodgy specials in this category right now, check again later";
@@ -55,6 +99,63 @@ export default function DealSnapshotRail({
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const selectedCategoryKey = selectedCategories.join("|");
+  const snapshotScopeKey = useMemo(() => {
+    const stores = refreshKey.split(",").filter(Boolean).sort().join(",") || "all";
+    const categories = [...selectedCategories].sort().join(",") || "all";
+    return `${stores}:${categories}`;
+  }, [refreshKey, selectedCategories]);
+  const snapshotStorageKey = useMemo(
+    () => getTop20StorageKey(kind, snapshotScopeKey),
+    [kind, snapshotScopeKey],
+  );
+  const latestPublishedAt = useMemo(() => getLatestPublishedAt(deals), [deals]);
+  const snapshotDeals = useMemo(
+    () => rankedDeals.filter(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
+    [kind, rankedDeals],
+  );
+  const currentSnapshot = useMemo(
+    () => createTop20Snapshot(
+      snapshotDeals.map(({ product, deal }) => ({ productId: product.id, store: deal.store })),
+      latestPublishedAt,
+    ),
+    [latestPublishedAt, snapshotDeals],
+  );
+  const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
+  const [storedSnapshot, setStoredSnapshot] = useState<Top20Snapshot | null>(null);
+
+  useEffect(() => {
+    setLoadedStorageKey(snapshotStorageKey);
+    setStoredSnapshot(readTop20Snapshot(snapshotStorageKey));
+  }, [snapshotStorageKey]);
+
+  const snapshotReady = loadedStorageKey === snapshotStorageKey;
+  const resolvedSnapshot = useMemo(() => {
+    if (!snapshotReady || !currentSnapshot) return null;
+    return resolveTop20Snapshot(currentSnapshot, storedSnapshot);
+  }, [currentSnapshot, snapshotReady, storedSnapshot]);
+
+  useEffect(() => {
+    if (!snapshotReady || !resolvedSnapshot) return;
+
+    const isUnchanged = storedSnapshot
+      && storedSnapshot.publishedAt === resolvedSnapshot.publishedAt
+      && arraysMatch(storedSnapshot.keys, resolvedSnapshot.keys)
+      && arraysMatch(storedSnapshot.newKeys, resolvedSnapshot.newKeys);
+    if (isUnchanged) return;
+
+    writeTop20Snapshot(snapshotStorageKey, resolvedSnapshot);
+    setStoredSnapshot(resolvedSnapshot);
+  }, [resolvedSnapshot, snapshotReady, snapshotStorageKey, storedSnapshot]);
+
+  const newTop20Keys = useMemo(
+    () => new Set(resolvedSnapshot?.newKeys ?? []),
+    [resolvedSnapshot],
+  );
+  const freshnessText = formatUpdatedText(latestPublishedAt);
+  const fallbackDescription = isSavings ? "Biggest savings" : "Biggest price hikes";
+  const sectionSubtext = freshnessText
+    ? `${freshnessText}${newTop20Keys.size > 0 ? ` · ${newTop20Keys.size} new deal${newTop20Keys.size === 1 ? "" : "s"}` : ""}`
+    : fallbackDescription;
   const firstRenderableIndex = useMemo(
     () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
@@ -84,7 +185,7 @@ export default function DealSnapshotRail({
           <h2 id={`${kind}-snapshot-title`} className={`dd-type-section ${isSavings ? "text-fair-800" : "text-alert-700"}`}>
             {title}
           </h2>
-          <p className="dd-type-secondary mt-1 max-w-[18rem] text-stone-600">{description}</p>
+          <p className="dd-type-secondary mt-1 max-w-[18rem] text-stone-600" aria-live="polite">{sectionSubtext}</p>
         </div>
         <button
           type="button"
@@ -137,6 +238,7 @@ export default function DealSnapshotRail({
                   rank: index + 1,
                   kind,
                   amount,
+                  isNew: newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
                 }}
               />
             );

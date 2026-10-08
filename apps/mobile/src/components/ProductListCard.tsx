@@ -77,6 +77,7 @@ export interface ProductListCardProps {
     rank: number;
     kind: DealSnapshotKind;
     amount: number;
+    isNew?: boolean;
   };
   /** Optional onboarding anchor for the first useful card/action in a view. */
   dataOnboarding?: string;
@@ -325,6 +326,11 @@ export default function ProductListCard({
 
       {snapshot ? (
         <div className="absolute bottom-2 left-3 right-3 z-10 flex min-w-0 items-center justify-start gap-1">
+          {snapshot.isNew && (
+            <span className="shrink-0 select-none whitespace-nowrap rounded-md bg-stone-900 px-1.5 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
+              New
+            </span>
+          )}
           <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
             {snapshot.kind === "savings" ? "Save" : "Up"} ${snapshot.amount.toFixed(2)}
           </span>
