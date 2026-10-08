@@ -408,6 +408,7 @@ export default function ListItemProductCard({
             <CheaperOptionsCarousel
               alternatives={cheaperAlternatives}
               originalProductName={product.name}
+              watchlistProductId={product.id}
               loading={cheaperOptionsLoading}
               error={cheaperOptionsError}
             />

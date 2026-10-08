@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import {
@@ -40,6 +40,7 @@ import SortDropdown from "@/components/SortDropdown";
 import SupermarketPicker from "@/components/SupermarketPicker";
 import { AnimatePresence, motion } from "motion/react";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
+import { consumeWatchlistReturnContext, type WatchlistReturnContext } from "@/lib/watchlist-navigation";
 
 type SortMode = "best" | "dodgy" | "recent";
 type WatchlistTab = "watchlist" | "cheaper-options";
@@ -144,6 +145,8 @@ export default function ListsPage() {
   const [cheaperAlternativesCache, setCheaperAlternativesCache] = useState<Map<string, CheaperAlternativeCacheEntry>>(new Map());
   const [loadingCheaperProductIds, setLoadingCheaperProductIds] = useState<Set<string>>(new Set());
   const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
+  const watchlistReturnContextRef = useRef<WatchlistReturnContext | null>(null);
+  const watchlistReturnRestoredRef = useRef(false);
 
   useEffect(() => {
     const handleShare = () => setIsShareSheetOpen(true);
@@ -282,6 +285,17 @@ export default function ListsPage() {
     }
   }, [loadCheaperOptions]);
 
+  useEffect(() => {
+    if (!user) return;
+    const returnContext = consumeWatchlistReturnContext();
+    if (!returnContext) return;
+
+    watchlistReturnContextRef.current = returnContext;
+    setActiveWatchlistTab(returnContext.tab);
+    setExpandedCheaperProductIds(new Set([returnContext.expandedProductId]));
+    loadCheaperOptions();
+  }, [loadCheaperOptions, user]);
+
   const toggleCheaperOptions = useCallback((productId: string) => {
     const shouldExpand = !expandedCheaperProductIds.has(productId);
     setExpandedCheaperProductIds((current) => {
@@ -299,6 +313,54 @@ export default function ListsPage() {
     if (activeWatchlistTab !== "cheaper-options" || !catalogueProducts) return;
     for (const productId of expandedCheaperProductIds) prepareCheaperOptions(productId);
   }, [activeWatchlistTab, catalogueProducts, expandedCheaperProductIds, prepareCheaperOptions]);
+
+  useEffect(() => {
+    const returnContext = watchlistReturnContextRef.current;
+    if (
+      !returnContext ||
+      watchlistReturnRestoredRef.current ||
+      loadingWatchlist ||
+      loadingCheaperProductIds.has(returnContext.expandedProductId)
+    ) {
+      return;
+    }
+
+    const item = watchlistItems.find((entry) => entry.productId === returnContext.expandedProductId);
+    const card = itemCards.get(returnContext.expandedProductId);
+    const deal = item ? itemDeal(item, itemCards, selectedSupermarkets) : undefined;
+    const cached = cheaperAlternativesCache.get(returnContext.expandedProductId);
+    if (!item || !card || !deal) return;
+
+    const expectedContextKey = cheaperOptionsContextKey(card, deal);
+    if (catalogueProducts && (!cached || cached.contextKey !== expectedContextKey)) return;
+    if (!catalogueProducts && !cheaperOptionsError) return;
+
+    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
+    if (!scrollSurface) return;
+
+    const restoreScrollPosition = () => {
+      scrollSurface.scrollTop = Math.min(
+        returnContext.scrollTop,
+        Math.max(0, scrollSurface.scrollHeight - scrollSurface.clientHeight),
+      );
+    };
+
+    restoreScrollPosition();
+    let secondFrame: number | null = null;
+    const firstFrame = window.requestAnimationFrame(() => {
+      restoreScrollPosition();
+      secondFrame = window.requestAnimationFrame(() => {
+        restoreScrollPosition();
+        watchlistReturnRestoredRef.current = true;
+        watchlistReturnContextRef.current = null;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [catalogueProducts, cheaperAlternativesCache, cheaperOptionsError, itemCards, loadingCheaperProductIds, loadingWatchlist, selectedSupermarkets, watchlistItems]);
 
   const newPriceItemCount = useMemo(
     () => watchlistItems.reduce(

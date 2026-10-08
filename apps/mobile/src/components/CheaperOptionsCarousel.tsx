@@ -6,22 +6,31 @@ import { findDealForStore, getStoreProductUrl, type CheaperAlternative } from "@
 import InsightCarousel from "@/components/InsightCarousel";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
+import { saveWatchlistReturnContext } from "@/lib/watchlist-navigation";
 
 const MAX_CHEAPER_OPTIONS = 5;
 
 export default function CheaperOptionsCarousel({
   alternatives,
   originalProductName,
+  watchlistProductId,
   loading = false,
   error,
 }: {
   alternatives: CheaperAlternative[];
   originalProductName: string;
+  watchlistProductId: string;
   loading?: boolean;
   error?: string | null;
 }) {
   const router = useRouter();
   const visibleAlternatives = alternatives.slice(0, MAX_CHEAPER_OPTIONS);
+
+  const openAlternativeDeal = (alternativeProductId: string, store: string) => {
+    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
+    saveWatchlistReturnContext(watchlistProductId, scrollSurface?.scrollTop ?? 0);
+    router.push(`/deal/${encodeURIComponent(alternativeProductId)}/${encodeURIComponent(store)}`);
+  };
 
   return (
     <div
@@ -55,7 +64,7 @@ export default function CheaperOptionsCarousel({
               <div className="dd-deal-assessment-card relative flex min-h-52 flex-col gap-2 rounded-2xl border border-stone-300 bg-white px-3 pb-3 pt-5 shadow-xs">
                 <button
                   type="button"
-                  onClick={() => router.push(`/deal/${encodeURIComponent(alternativeProduct.id)}/${encodeURIComponent(store)}`)}
+                  onClick={() => openAlternativeDeal(alternativeProduct.id, store)}
                   aria-label={`View deal assessment for ${alternativeProduct.name} at ${store}`}
                   className="flex min-w-0 flex-1 cursor-pointer flex-col gap-2 border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
                 >
