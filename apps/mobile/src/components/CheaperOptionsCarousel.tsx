@@ -1,8 +1,8 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { findDealForStore, getStoreProductUrl, type CheaperAlternative } from "@dodgey-deals/shared";
-import AddToListButton from "@/components/AddToListButton";
 import InsightCarousel from "@/components/InsightCarousel";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -20,6 +20,7 @@ export default function CheaperOptionsCarousel({
   loading?: boolean;
   error?: string | null;
 }) {
+  const router = useRouter();
   const visibleAlternatives = alternatives.slice(0, MAX_CHEAPER_OPTIONS);
 
   return (
@@ -52,35 +53,41 @@ export default function CheaperOptionsCarousel({
           {visibleAlternatives.map(({ product: alternativeProduct, store, price, saving }) => (
             <div key={[alternativeProduct.id, store].join("-")}>
               <div className="dd-deal-assessment-card relative flex min-h-52 flex-col gap-2 rounded-2xl border border-stone-300 bg-white px-3 pb-3 pt-5 shadow-xs">
-                <AddToListButton productId={alternativeProduct.id} productName={alternativeProduct.name} />
-                <div className="flex items-start gap-3">
-                  <div className="product-image-frame deal-assessment-image flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
-                    <ProductImage
-                      src={alternativeProduct.image}
-                      alt={alternativeProduct.name}
-                      width={64}
-                      height={64}
-                      className="product-image-content h-full w-full object-contain"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-grow py-0.5">
-                    <p className="dd-type-meta text-stone-600">
-                      {alternativeProduct.brand
-                        ? alternativeProduct.brand.charAt(0).toUpperCase() + alternativeProduct.brand.slice(1).toLowerCase()
-                        : alternativeProduct.brand}{" "}
-                      {alternativeProduct.unit}
-                    </p>
-                    <h3 className="mt-1 line-clamp-2 font-display text-sm font-bold leading-snug text-stone-900">
-                      {alternativeProduct.name}
-                    </h3>
-                    <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
-                      <span className="font-display text-sm font-extrabold text-stone-900">{"$"}{price.toFixed(2)}</span>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/deal/${encodeURIComponent(alternativeProduct.id)}/${encodeURIComponent(store)}`)}
+                  aria-label={`View deal assessment for ${alternativeProduct.name} at ${store}`}
+                  className="flex min-w-0 flex-1 cursor-pointer flex-col gap-2 border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="product-image-frame deal-assessment-image flex h-16 w-16 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
+                      <ProductImage
+                        src={alternativeProduct.image}
+                        alt={alternativeProduct.name}
+                        width={64}
+                        height={64}
+                        className="product-image-content h-full w-full object-contain"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-grow py-0.5">
+                      <p className="dd-type-meta text-stone-600">
+                        {alternativeProduct.brand
+                          ? alternativeProduct.brand.charAt(0).toUpperCase() + alternativeProduct.brand.slice(1).toLowerCase()
+                          : alternativeProduct.brand}{" "}
+                        {alternativeProduct.unit}
+                      </p>
+                      <h3 className="mt-1 line-clamp-2 font-display text-sm font-bold leading-snug text-stone-900">
+                        {alternativeProduct.name}
+                      </h3>
+                      <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
+                        <span className="font-display text-sm font-extrabold text-stone-900">{"$"}{price.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2 py-1.5 text-xs font-semibold leading-4 text-white">
-                  Save <strong className="font-extrabold">{"$"}{saving.toFixed(2)}</strong> compared with saved item
-                </span>
+                  <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2 py-1.5 text-xs font-semibold leading-4 text-white">
+                    Save <strong className="font-extrabold">{"$"}{saving.toFixed(2)}</strong> compared with saved item
+                  </span>
+                </button>
                 <a
                   href={findDealForStore(alternativeProduct.currentDeals, store)?.productUrl || getStoreProductUrl(store, alternativeProduct.name)}
                   target="_blank"
