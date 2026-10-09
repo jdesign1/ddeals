@@ -1231,7 +1231,11 @@ function WatchlistSupermarketSection({
         aria-label={`${storeLabel}, ${itemCount} ${itemCount === 1 ? "product" : "products"}. ${isExpanded ? "Collapse" : "Expand"} section. Hold to reorder.`}
         aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
         title="Tap to expand or collapse. Hold to reorder."
-        className="flex min-h-11 w-full touch-none items-center gap-2 border-b border-stone-100 px-4 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
+        style={{
+          WebkitUserSelect: "none",
+          WebkitTouchCallout: "none",
+        }}
+        className="flex min-h-11 w-full touch-none select-none items-center gap-2 border-b border-stone-100 px-4 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
       >
         <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-stone-900">{storeLabel}</span>
         <span className="shrink-0 text-xs font-semibold text-stone-400">{itemCount} {itemCount === 1 ? "product" : "products"}</span>
