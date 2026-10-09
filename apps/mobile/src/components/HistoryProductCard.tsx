@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Check, Plus } from "lucide-react";
 import type { CurrentDeal, ProductCard as ProductCardData } from "@dodgey-deals/shared";
-import { useWatchlist } from "@/lib/watchlist-context";
+import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
@@ -20,9 +19,6 @@ interface HistoryProductCardProps {
  */
 export default function HistoryProductCard({ product, deal }: HistoryProductCardProps) {
   const router = useRouter();
-  const { savedProductIds, selectedProductIds, toggleProduct } = useWatchlist();
-  const isSaved = savedProductIds.has(product.id);
-  const isSelected = selectedProductIds.has(product.id);
   const goToDeal = () => {
     router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
   };
@@ -58,23 +54,14 @@ export default function HistoryProductCard({ product, deal }: HistoryProductCard
           </div>
         </div>
       </button>
-      <div className="flex w-[6.5rem] shrink-0 flex-col items-stretch justify-center gap-1">
-        {isSaved ? (
-          <span className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-fair-50 px-2 text-[11px] font-extrabold text-fair-800">
-            <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
-            Saved
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => toggleProduct(product.id)}
-            aria-pressed={isSelected}
-            className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-ink-900 px-2 text-[11px] font-extrabold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
-            {isSelected ? "Selected" : "Add to Watchlist"}
-          </button>
-        )}
+      <div className="flex w-11 shrink-0 items-center justify-center">
+        <AddToListButton
+          productId={product.id}
+          productName={product.name}
+          containerClassName=""
+          buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900 shadow-sm"
+          iconClassName="h-4 w-4"
+        />
       </div>
     </div>
   );

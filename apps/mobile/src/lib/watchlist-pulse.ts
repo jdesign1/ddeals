@@ -93,20 +93,24 @@ export function buildWatchlistPulse(
     const displayedOffer = product.offers[0];
     const displayedPrice = displayedOffer?.price;
     const displayedStore = displayedOffer?.storeId;
-    const hasCheaperDifferentStore = product.offers.some(
-      (offer, index) => index > 0
-        && Boolean(displayedStore)
+    const cheaperOffer = product.offers
+      .filter((offer) =>
+        Boolean(displayedStore)
         && Boolean(offer.storeId)
         && offer.storeId !== displayedStore
         && Number.isFinite(offer.price)
         && Number.isFinite(displayedPrice)
         && offer.price < Number(displayedPrice),
-    );
-    if (hasCheaperDifferentStore) {
-      // The first offer is the price currently shown on the Watchlist card.
-      // Compare it with the lowest exact per-store offer; the UI will show
-      // the stores and prices when the filtered product is opened.
-      addProduct("cheaper-elsewhere", productId, displayedStore);
+      )
+      .reduce<WatchlistPulseOffer | undefined>((cheapest, offer) => (
+        !cheapest || offer.price < cheapest.price ? offer : cheapest
+      ), undefined);
+    if (cheaperOffer) {
+      // Store the lower offer, not the card's displayed store. Selecting the
+      // pill must show the supermarket that actually makes the product
+      // cheaper; otherwise the pulse appears to work while leaving the same
+      // Real Saver card in place.
+      addProduct("cheaper-elsewhere", productId, cheaperOffer.storeId);
     }
   }
 

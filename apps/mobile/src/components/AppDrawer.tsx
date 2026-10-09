@@ -9,12 +9,12 @@ import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 
-function alertFreshnessLabel(createdAt: string): string {
+function alertFreshnessLabel(createdAt: string): string | null {
   const ageHours = Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 3_600_000);
   if (!Number.isFinite(ageHours) || ageHours < 1) return "verified just now";
   if (ageHours < 24) return `verified ${Math.floor(ageHours)}h ago`;
   if (ageHours < 48) return "verified yesterday";
-  return "verification may be stale";
+  return null;
 }
 
 export default function AppDrawer() {
@@ -136,15 +136,19 @@ export default function AppDrawer() {
                   {unreadCount === 1 ? "One watched item has a new deal update." : `${unreadCount} watched items have new deal updates.`}
                 </p>
                 <ul className="mt-2 space-y-1.5" aria-label="Unread Watchlist updates">
-                  {unreadAlerts.slice(0, 3).map((alert) => (
-                    <li key={alert.id} className="dd-type-meta leading-4 text-alert-800">
-                      {alert.event_type === "dodgy_special"
-                        ? `${alert.product_name} now looks dodgy at ${alert.store_name} (${alertFreshnessLabel(alert.created_at)}).`
-                        : alert.verdict === "GENUINE"
-                          ? `${alert.product_name} is a verified special at ${alert.store_name} (${alertFreshnessLabel(alert.created_at)}).`
-                          : `${alert.product_name} has a better price at ${alert.store_name} (${alertFreshnessLabel(alert.created_at)}).`}
-                    </li>
-                  ))}
+                  {unreadAlerts.slice(0, 3).map((alert) => {
+                    const freshness = alertFreshnessLabel(alert.created_at);
+                    const message = alert.event_type === "dodgy_special"
+                      ? `${alert.product_name} now looks dodgy at ${alert.store_name}`
+                      : alert.verdict === "GENUINE"
+                        ? `${alert.product_name} is a verified special at ${alert.store_name}`
+                        : `${alert.product_name} has a better price at ${alert.store_name}`;
+                    return (
+                      <li key={alert.id} className="dd-type-meta leading-4 text-alert-800">
+                        {message}{freshness ? ` (${freshness})` : ""}.
+                      </li>
+                    );
+                  })}
                 </ul>
                 {unreadCount > 3 && <p className="mt-1 dd-type-meta text-alert-700">Plus {unreadCount - 3} more updates.</p>}
                 <Link href="/lists" onClick={closeDrawer} className="mt-2 inline-flex dd-type-meta font-bold text-alert-800 underline decoration-alert-300 underline-offset-2">

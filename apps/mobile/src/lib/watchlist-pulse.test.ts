@@ -26,6 +26,7 @@ test("counts verdicts and cheaper offers by unique Watchlist product", () => {
   assert.equal(result.counts["dodgy-deals"], 1);
   assert.equal(result.counts["cheaper-elsewhere"], 1);
   assert.deepEqual([...result.productIds["real-savers"]], ["milk"]);
+  assert.equal(result.preferredStoreIds["cheaper-elsewhere"].get("milk"), "newworld");
 });
 
 test("deduplicates repeated unread events for the same product", () => {
@@ -96,4 +97,21 @@ test("keeps the supermarket that produced a verdict for pulse navigation", () =>
   );
 
   assert.equal(result.preferredStoreIds["real-savers"].get("milk"), "paknsave");
+});
+
+test("uses the cheapest different supermarket for the cheaper-elsewhere pulse", () => {
+  const result = buildWatchlistPulse(
+    [{
+      productId: "coffee",
+      verdicts: [],
+      offers: [
+        { storeId: "woolworths", price: 7 },
+        { storeId: "newworld", price: 6 },
+        { storeId: "paknsave", price: 5 },
+      ],
+    }],
+    [],
+  );
+
+  assert.equal(result.preferredStoreIds["cheaper-elsewhere"].get("coffee"), "paknsave");
 });

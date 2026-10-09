@@ -43,8 +43,8 @@ import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react"
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import { consumeWatchlistReturnContext, type WatchlistReturnContext } from "@/lib/watchlist-navigation";
 import { buildWatchlistPulse, type WatchlistPulseKind, type WatchlistPulseSummary } from "@/lib/watchlist-pulse";
+import { sortWatchlistItems, watchlistItemDeal, type WatchlistSortMode } from "@/lib/watchlist-sort";
 
-type SortMode = "best" | "dodgy" | "recent";
 type WatchlistTab = "watchlist" | "cheaper-options";
 type WatchlistView = "all" | "by-supermarket";
 
@@ -63,27 +63,13 @@ function watchlistCategory(product: Pick<ListItemProductMeta, "name" | "brand" |
   return isDairy ? "Dairy" : groupCategory(product.category);
 }
 
-function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[], preferredStore?: string) {
-  const deals = itemCards.get(item.productId)?.currentDeals ?? [];
-  if (preferredStore && (selectedSupermarkets.includes("all") || selectedSupermarkets.some((store) => canonicalStoreKey(store) === preferredStore))) {
-    const preferredDeal = deals.find((deal) => canonicalStoreKey(deal.store) === preferredStore);
-    if (preferredDeal) return preferredDeal;
-  }
-  if (selectedSupermarkets.includes("all")) return deals[0];
-  for (const supermarket of selectedSupermarkets) {
-    const preferredDeal = deals.find((deal) => matchesAnySelectedStore(deal.store, [supermarket]));
-    if (preferredDeal) return preferredDeal;
-  }
-  return undefined;
-}
-
 type CheaperAlternativeList = ReturnType<typeof findCheaperAlternatives>;
 type CheaperAlternativeCacheEntry = {
   contextKey: string;
   alternatives: CheaperAlternativeList;
 };
 
-function cheaperOptionsContextKey(product: ProductCardData, deal: ReturnType<typeof itemDeal>): string {
+function cheaperOptionsContextKey(product: ProductCardData, deal: ReturnType<typeof watchlistItemDeal>): string {
   return deal
     ? [product.id, product.name, product.brand, product.category, canonicalStoreKey(deal.store), deal.price].join(":")
     : "";
@@ -122,29 +108,6 @@ function normalizeStoreOrder(savedOrder: string[], currentKeys: string[]): strin
   return [...ordered, ...currentKeys.filter((key) => !ordered.includes(key))];
 }
 
-function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[], preferredStoreIds?: ReadonlyMap<string, string>, priorityProductIds?: ReadonlySet<string>) {
-  return [...items].sort((a, b) => {
-    const pulsePriorityDifference = Number(priorityProductIds?.has(b.productId)) - Number(priorityProductIds?.has(a.productId));
-    if (pulsePriorityDifference !== 0) return pulsePriorityDifference;
-    const dealA = itemDeal(a, itemCards, selectedSupermarkets, preferredStoreIds?.get(a.productId));
-    const dealB = itemDeal(b, itemCards, selectedSupermarkets, preferredStoreIds?.get(b.productId));
-    const inactiveDifference = Number(dealA?.isOnSpecial !== true) - Number(dealB?.isOnSpecial !== true);
-    if (inactiveDifference !== 0) return inactiveDifference;
-    if (sortMode === "best") {
-      const realSaverDifference = Number(dealB?.dealType === "Real Deal") - Number(dealA?.dealType === "Real Deal");
-      if (realSaverDifference !== 0) return realSaverDifference;
-      const discountDifference = (dealB?.discountPercentage ?? 0) - (dealA?.discountPercentage ?? 0);
-      if (discountDifference !== 0) return discountDifference;
-    } else if (sortMode === "dodgy") {
-      const dodgyDifference = Number(dealB?.dealType === "Dodgy Deal" || dealB?.isDodgyReviewCandidate === true) - Number(dealA?.dealType === "Dodgy Deal" || dealA?.isDodgyReviewCandidate === true);
-      if (dodgyDifference !== 0) return dodgyDifference;
-      const priceIncreaseDifference = ((dealB?.price ?? 0) - (dealB?.originalPrice ?? dealB?.price ?? 0)) - ((dealA?.price ?? 0) - (dealA?.originalPrice ?? dealA?.price ?? 0));
-      if (priceIncreaseDifference !== 0) return priceIncreaseDifference;
-    }
-    return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
-  });
-}
-
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
   const router = useRouter();
@@ -165,7 +128,7 @@ export default function ListsPage() {
   const [lowestPriceByProduct, setLowestPriceByProduct] = useState<Map<string, ListItemLowestPrice>>(new Map());
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<SortMode>("best");
+  const [sortMode, setSortMode] = useState<WatchlistSortMode>("best");
   const [watchlistView, setWatchlistView] = useState<WatchlistView>("all");
   const [activePulse, setActivePulse] = useState<WatchlistPulseKind | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -288,7 +251,7 @@ export default function ListsPage() {
     if (!catalogueProducts || loadingCheaperProductIds.has(productId)) return;
     const item = watchlistItems.find((entry) => entry.productId === productId);
     const card = itemCards.get(productId);
-    const deal = item ? itemDeal(item, itemCards, selectedSupermarkets) : undefined;
+    const deal = item ? watchlistItemDeal(item, itemCards, selectedSupermarkets, undefined, sortMode) : undefined;
     if (!card || !deal) return;
 
     const contextKey = cheaperOptionsContextKey(card, deal);
@@ -314,7 +277,7 @@ export default function ListsPage() {
         return next;
       });
     }, 0);
-  }, [catalogueProducts, cheaperAlternativesCache, itemCards, loadingCheaperProductIds, selectedSupermarkets, watchlistItems]);
+  }, [catalogueProducts, cheaperAlternativesCache, itemCards, loadingCheaperProductIds, selectedSupermarkets, sortMode, watchlistItems]);
 
   const handleWatchlistTabChange = useCallback((tab: WatchlistTab) => {
     setActiveWatchlistTab(tab);
@@ -377,7 +340,7 @@ export default function ListsPage() {
 
     const item = watchlistItems.find((entry) => entry.productId === returnContext.expandedProductId);
     const card = itemCards.get(returnContext.expandedProductId);
-    const deal = item ? itemDeal(item, itemCards, selectedSupermarkets) : undefined;
+    const deal = item ? watchlistItemDeal(item, itemCards, selectedSupermarkets, undefined, sortMode) : undefined;
     const cached = cheaperAlternativesCache.get(returnContext.expandedProductId);
     if (!item || !card || !deal) return;
 
@@ -410,7 +373,7 @@ export default function ListsPage() {
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
     };
-  }, [catalogueProducts, cheaperAlternativesCache, cheaperOptionsError, itemCards, loadingCheaperProductIds, loadingWatchlist, selectedSupermarkets, watchlistItems]);
+  }, [catalogueProducts, cheaperAlternativesCache, cheaperOptionsError, itemCards, loadingCheaperProductIds, loadingWatchlist, selectedSupermarkets, sortMode, watchlistItems]);
 
   const newPriceItemCount = useMemo(
     () => watchlistItems.reduce(
@@ -449,30 +412,34 @@ export default function ListsPage() {
   const pulseSummary = useMemo<WatchlistPulseSummary>(() => buildWatchlistPulse(
     watchlistItems.map((item) => {
       const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+      const displayedDeal = watchlistItemDeal(item, itemCards, ["all"], undefined, "best");
+      const orderedDeals = displayedDeal
+        ? [displayedDeal, ...deals.filter((deal) => deal !== displayedDeal)]
+        : deals;
       return {
         productId: item.productId,
-        verdicts: deals.map((deal) => getAssessmentVerdict(deal)),
-        offers: deals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), price: deal.price })),
-        verdictOffers: deals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), verdict: getAssessmentVerdict(deal) })),
+        verdicts: orderedDeals.map((deal) => getAssessmentVerdict(deal)),
+        offers: orderedDeals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), price: deal.price })),
+        verdictOffers: orderedDeals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), verdict: getAssessmentVerdict(deal) })),
       };
     }),
     unreadAlerts.map((alert) => ({ productId: alert.product_id, eventType: alert.event_type })),
   ), [itemCards, unreadAlerts, watchlistItems]);
 
   const filteredItems = useMemo(
-    () => sortItems(
+    () => sortWatchlistItems(
       watchlistItems.filter((item) => {
         const category = watchlistCategory(productMeta.get(item.productId));
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
         const deals = itemCards.get(item.productId)?.currentDeals ?? [];
         const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
-        return matchesCategory && matchesSupermarket;
+        const matchesPulse = !activePulse || pulseSummary.productIds[activePulse].has(item.productId);
+        return matchesCategory && matchesSupermarket && matchesPulse;
       }),
       sortMode,
       itemCards,
       filterSupermarkets,
       activePulse ? pulseSummary.preferredStoreIds[activePulse] : undefined,
-      activePulse ? pulseSummary.productIds[activePulse] : undefined,
     ),
     [activePulse, filterSupermarkets, itemCards, productMeta, pulseSummary.preferredStoreIds, pulseSummary.productIds, selectedCategories, selectedSupermarkets, sortMode, watchlistItems],
   );
@@ -643,20 +610,12 @@ export default function ListsPage() {
   }, [isClearingWatchlist, reload, watchlistItems]);
 
   const activeItems = useMemo(
-    () => filteredItems.filter((item) => itemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined)?.isOnSpecial === true),
-    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds],
+    () => filteredItems.filter((item) => watchlistItemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode)?.isOnSpecial === true),
+    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds, sortMode],
   );
   const inactiveItems = useMemo(
-    () => filteredItems.filter((item) => itemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined)?.isOnSpecial !== true),
-    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds],
-  );
-  const pulseItems = useMemo(
-    () => activePulse ? filteredItems.filter((item) => pulseSummary.productIds[activePulse].has(item.productId)) : [],
-    [activePulse, filteredItems, pulseSummary.productIds],
-  );
-  const otherPulseItems = useMemo(
-    () => activePulse ? filteredItems.filter((item) => !pulseSummary.productIds[activePulse].has(item.productId)) : [],
-    [activePulse, filteredItems, pulseSummary.productIds],
+    () => filteredItems.filter((item) => watchlistItemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode)?.isOnSpecial !== true),
+    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds, sortMode],
   );
   const groupedSupermarkets = useMemo(
     () => orderedSupermarkets.filter(([storeKey]) => filteredItems.some((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey))),
@@ -666,7 +625,7 @@ export default function ListsPage() {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
     const preferredPulseStore = !storeKey && activePulse ? pulseSummary.preferredStoreIds[activePulse].get(entry.productId) : undefined;
-    const deal = card ? itemDeal(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets, preferredPulseStore) : undefined;
+    const deal = card ? watchlistItemDeal(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets, preferredPulseStore, sortMode) : undefined;
     const sourceItem = entry.sourceItems[0];
     const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
     const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
@@ -795,7 +754,7 @@ export default function ListsPage() {
 
       <div className="sr-only" aria-live="polite">
         {activePulse
-          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${filteredItems.length} ${filteredItems.length === 1 ? "item" : "items"}, with Pulse matches first and all other items after them; ${viewStatusDescription}.`
+          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${filteredItems.length} matching ${filteredItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
           : selectedCategories.length > 0
             ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
             : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`}
@@ -823,41 +782,22 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
           <div className="flex flex-col gap-2 px-5">
-            {activePulse ? (
-              <AnimatePresence initial={false}>
-                {pulseItems.map((entry) => renderItem(entry))}
-                {otherPulseItems.length > 0 && (
-                  <motion.h2
-                    key="other-watchlist-heading"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
-                  >
-                    Other Watchlist items
-                  </motion.h2>
-                )}
-                {otherPulseItems.map((entry) => renderItem(entry))}
-              </AnimatePresence>
-            ) : (
-              <AnimatePresence initial={false}>
-                {activeItems.map((entry) => renderItem(entry))}
-                {inactiveItems.length > 0 && (
-                  <motion.h2
-                    key="not-on-special-heading"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
-                  >
-                    Not on special
-                  </motion.h2>
-                )}
-                {inactiveItems.map((entry) => renderItem(entry))}
-              </AnimatePresence>
-            )}
+            <AnimatePresence initial={false}>
+              {activeItems.map((entry) => renderItem(entry))}
+              {inactiveItems.length > 0 && (
+                <motion.h2
+                  key="not-on-special-heading"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                >
+                  Not on special
+                </motion.h2>
+              )}
+              {inactiveItems.map((entry) => renderItem(entry))}
+            </AnimatePresence>
           </div>
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "by-supermarket" && (

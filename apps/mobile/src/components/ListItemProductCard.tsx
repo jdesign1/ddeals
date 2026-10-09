@@ -170,7 +170,7 @@ function freshnessLabel(verifiedAt: string | null | undefined): string | null {
   if (ageHours < 1) return "just now";
   if (ageHours < 24) return `${Math.floor(ageHours)}h ago`;
   if (ageHours < 48) return "yesterday";
-  return "Verification may be stale";
+  return null;
 }
 
 export default function ListItemProductCard({
@@ -220,7 +220,6 @@ export default function ListItemProductCard({
   const isFairPrice = assessmentVerdict === "Fair Price";
   const isAssessmentPending = assessmentVerdict === "Early read" || assessmentVerdict === "Limited history";
   const dealFreshnessLabel = deal.isOnSpecial ? freshnessLabel(deal.specialsVerifiedAt) : null;
-  const dealFreshnessIsStale = dealFreshnessLabel === "Verification may be stale";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
   const isCheaperOptionsExpanded = showCheaperOptions && cheaperOptionsExpanded;
 
@@ -391,7 +390,7 @@ export default function ListItemProductCard({
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <StoreLogoBadge store={deal.store} variant="compact" />
             {dealFreshnessLabel && (
-              <span className={`text-[10px] font-bold ${dealFreshnessIsStale ? "text-alert-700" : "text-stone-500"}`}>
+              <span className="text-[10px] font-bold text-stone-500">
                 {dealFreshnessLabel}
               </span>
             )}
