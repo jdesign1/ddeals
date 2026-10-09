@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/* Native-like interaction surfaces should not enter the browser's text
+   selection/copy mode on a long press. Keep this scoped to controls and
+   tappable cards; ordinary copyable content, inputs, and textareas remain
+   selectable. */
+:where(
+  button,
+  [role="button"],
+  nav a,
+  .dd-btn,
+  .dd-product-card,
+  .dd-compact-product-card,
+  .dd-deal-assessment-card,
+  [draggable="true"],
+  a[aria-label="Dodgy Deal home"]
+) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* iOS touch targets: icon-only actions must remain comfortably tappable even
    when their visible glyph is intentionally compact. Keep this shared rule
    close to the app root so every sheet/header close control inherits it. */
