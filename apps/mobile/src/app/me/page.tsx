@@ -225,6 +225,7 @@ export default function MePage() {
   const [isPriceChangeOpen, setIsPriceChangeOpen] = useState(false);
   const [isTopChangedItemsOpen, setIsTopChangedItemsOpen] = useState(false);
   const [isSavingsOpen, setIsSavingsOpen] = useState(true);
+  const [activeStatsTab, setActiveStatsTab] = useState<"activity" | "trends">("activity");
   // Same plain-counter retry pattern established across this app on
   // 2026-08-11 (search-context.tsx/specials/page.tsx/lists/page.tsx) —
   // lets ErrorState's Try Again button re-run the fetch below.
@@ -348,6 +349,36 @@ export default function MePage() {
       {/* `blurred`, 2026-08-20 -- see this file's other 2 `<SearchBar>` call
           sites for the full "why" (same change, same reasoning, all 3
           branches of this page). */}
+      <div
+        className="dd-segmented-control relative mx-5 mt-4 flex h-11 items-center gap-0.5 rounded-full bg-white ring-1 ring-stone-200 shadow-sm shadow-black/5"
+        role="tablist"
+        aria-label="Deal stats views"
+      >
+        {([
+          ["activity", "Your Activity"],
+          ["trends", "NZ Trends"],
+        ] as const).map(([tab, label]) => {
+          const isActive = activeStatsTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              id={`deal-stats-tab-${tab}`}
+              aria-selected={isActive}
+              aria-controls={`deal-stats-panel-${tab}`}
+              onClick={() => setActiveStatsTab(tab)}
+              className={`relative z-0 flex h-11 flex-1 cursor-pointer appearance-none items-center justify-center rounded-full px-3 py-1 text-center dd-type-control transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+                isActive
+                  ? "dd-segmented-control-active bg-ink-900 text-white shadow-sm"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
       <header className="px-5 pt-6 text-center">
         {/* The stats mascot gently floats so the detailed calculating pose
             feels alive without reading as a loading indicator. This local
@@ -386,15 +417,21 @@ export default function MePage() {
         </div>
       )}
 
-      <div className={`relative ${loading ? "min-h-[112px]" : ""}`}>
+      <div
+        id={`deal-stats-panel-${activeStatsTab}`}
+        role="tabpanel"
+        aria-labelledby={`deal-stats-tab-${activeStatsTab}`}
+        className={`relative ${activeStatsTab === "activity" && loading ? "min-h-[112px]" : ""}`}
+      >
         <div className="pointer-events-none absolute inset-0 z-10">
-          <LoadingMascot loading={loading} />
+          <LoadingMascot loading={activeStatsTab === "activity" && loading} />
         </div>
 
-        {error && <ErrorState message="Couldn't load your deal stats." detail={error} onRetry={retry} />}
+        {activeStatsTab === "activity" && error && <ErrorState message="Couldn't load your deal stats." detail={error} onRetry={retry} />}
 
-        {!loading && !error && stats && (
+        {(activeStatsTab === "trends" || (!loading && !error && stats)) && (
           <div className="flex flex-col gap-4 px-5">
+            {activeStatsTab === "activity" && stats && (
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
               <div>
                 <h2 className="dd-type-section text-stone-900">Your activity</h2>
@@ -429,11 +466,14 @@ export default function MePage() {
                 </span>
               </Link>
             </div>
+            )}
 
-            <div className="border-t border-stone-200 pt-2">
-              <h2 className="dd-type-section text-stone-900">Market trends</h2>
-              <p className="mt-1 dd-type-secondary text-stone-500">Catalogue-wide patterns across current and recent supermarket deals.</p>
-            </div>
+            {activeStatsTab === "trends" && (
+            <div className="flex flex-col gap-4">
+              <div className="border-t border-stone-200 pt-2">
+                <h2 className="dd-type-section text-stone-900">NZ trends</h2>
+                <p className="mt-1 dd-type-secondary text-stone-500">NZ-wide patterns across current and recent supermarket deals.</p>
+              </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
               <button
@@ -791,7 +831,12 @@ export default function MePage() {
               )}
             </div>
 
-            <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
+            </div>
+            )}
+
+            {activeStatsTab === "activity" && stats && (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 rounded-2xl border border-fair-100/80 bg-fair-50/40 p-5 shadow-xs">
               <button
                 type="button"
                 onClick={() => setIsSavingsOpen((open) => !open)}
@@ -819,15 +864,17 @@ export default function MePage() {
                   </p>
                 </div>
               )}
-            </div>
+              </div>
 
-            <Link
-              href="/history"
-              className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 dd-type-control text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
-            >
-              <span>View your deal check history</span>
-              <ChevronRight className="h-4 w-4 text-stone-400" aria-hidden="true" />
-            </Link>
+              <Link
+                href="/history"
+                className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-5 py-4 dd-type-control text-stone-800 shadow-xs transition-colors hover:bg-stone-50"
+              >
+                <span>View your deal check history</span>
+                <ChevronRight className="h-4 w-4 text-stone-400" aria-hidden="true" />
+              </Link>
+            </div>
+            )}
           </div>
         )}
       </div>

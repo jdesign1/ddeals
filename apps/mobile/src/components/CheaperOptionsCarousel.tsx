@@ -34,12 +34,12 @@ export default function CheaperOptionsCarousel({
 
   return (
     <div
-      className="mt-2 border-t border-stone-100 bg-stone-50/70 pb-3 pt-3"
+      className="mt-2 border-t border-fair-100 bg-fair-50/60 pb-3 pt-3"
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
       <div className="mb-2 flex items-center justify-between gap-3 px-3">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-stone-500">Cheaper options</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-fair-700">Cheaper options</p>
       </div>
 
       {loading ? (

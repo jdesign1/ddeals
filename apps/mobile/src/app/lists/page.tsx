@@ -155,6 +155,7 @@ export default function ListsPage() {
   const [cheaperAlternativesCache, setCheaperAlternativesCache] = useState<Map<string, CheaperAlternativeCacheEntry>>(new Map());
   const [loadingCheaperProductIds, setLoadingCheaperProductIds] = useState<Set<string>>(new Set());
   const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
+  const cheaperOptionsDefaultExpansionPendingRef = useRef(false);
   const watchlistReturnContextRef = useRef<WatchlistReturnContext | null>(null);
   const watchlistReturnRestoredRef = useRef(false);
   const storeOrderHydratedRef = useRef<string | null>(null);
@@ -290,15 +291,24 @@ export default function ListsPage() {
   const handleWatchlistTabChange = useCallback((tab: WatchlistTab) => {
     setActiveWatchlistTab(tab);
     if (tab === "cheaper-options") {
+      cheaperOptionsDefaultExpansionPendingRef.current = true;
+      setExpandedCheaperProductIds(new Set(watchlistItems.map((entry) => entry.productId)));
       // Cheaper Options is anchored to the product's primary offer. Keep it
       // in the flat product view so a supermarket section can never show
       // alternatives calculated from another store's price.
       setWatchlistView("all");
       loadCheaperOptions();
     } else {
+      cheaperOptionsDefaultExpansionPendingRef.current = false;
       setExpandedCheaperProductIds(new Set());
     }
-  }, [loadCheaperOptions]);
+  }, [loadCheaperOptions, watchlistItems]);
+
+  useEffect(() => {
+    if (!cheaperOptionsDefaultExpansionPendingRef.current || activeWatchlistTab !== "cheaper-options" || watchlistItems.length === 0) return;
+    setExpandedCheaperProductIds(new Set(watchlistItems.map((entry) => entry.productId)));
+    cheaperOptionsDefaultExpansionPendingRef.current = false;
+  }, [activeWatchlistTab, watchlistItems]);
 
   useEffect(() => {
     if (!user) return;
@@ -1062,7 +1072,7 @@ function WatchlistSummaryCard({
                 onClick={() => onPulseSelect(kind)}
                 aria-pressed={isActive}
                 aria-label={`${isActive ? "Clear" : "Show"} ${pulseLabel(kind, count)} in your Watchlist${kind === "cheaper-elsewhere" ? " — a lower current price at another supermarket than the offer shown" : ""}`}
-                className={`inline-flex min-h-9 items-center gap-1 rounded-full border px-3 py-1 text-left text-xs font-extrabold transition-[filter,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${verdictTone} ${isActive ? "brightness-95 shadow-inner" : "hover:brightness-95"}`}
+                className={`box-border inline-flex h-9 min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1 text-left text-xs font-extrabold leading-4 transition-[filter,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${verdictTone} ${isActive ? "brightness-95 shadow-inner" : "hover:brightness-95"}`}
               >
                 <span>{pulseLabel(kind, count)}</span>
                 <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
@@ -1119,29 +1129,41 @@ function WatchlistSupermarketSection({
 }) {
   const dragControls = useDragControls();
   const longPressTimerRef = useRef<number | null>(null);
+  const longPressDragTimerRef = useRef<number | null>(null);
+  const pointerActiveRef = useRef(false);
   const didLongPressRef = useRef(false);
   const longPressOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const [isLongPressReady, setIsLongPressReady] = useState(false);
   const sectionContentId = `watchlist-store-section-${storeKey.replace(/[^a-z0-9_-]/gi, "-")}`;
 
-  const clearLongPress = () => {
+  const clearLongPressTimers = () => {
     if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
+    if (longPressDragTimerRef.current !== null) window.clearTimeout(longPressDragTimerRef.current);
     longPressTimerRef.current = null;
+    longPressDragTimerRef.current = null;
   };
 
   useEffect(() => () => {
-    clearLongPress();
+    clearLongPressTimers();
+    pointerActiveRef.current = false;
     didLongPressRef.current = false;
     longPressOriginRef.current = null;
   }, []);
 
   const startLongPress = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    clearLongPress();
+    clearLongPressTimers();
+    pointerActiveRef.current = true;
+    setIsLongPressReady(false);
     didLongPressRef.current = false;
     longPressOriginRef.current = { x: event.clientX, y: event.clientY };
     const nativeEvent = event.nativeEvent;
     longPressTimerRef.current = window.setTimeout(() => {
+      if (!pointerActiveRef.current) return;
       didLongPressRef.current = true;
-      dragControls.start(nativeEvent);
+      setIsLongPressReady(true);
+      longPressDragTimerRef.current = window.setTimeout(() => {
+        if (pointerActiveRef.current) dragControls.start(nativeEvent);
+      }, 180);
     }, 420);
   };
 
@@ -1150,13 +1172,17 @@ function WatchlistSupermarketSection({
     const origin = longPressOriginRef.current;
     if (!origin) return;
     if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 8) {
-      clearLongPress();
+      clearLongPressTimers();
+      pointerActiveRef.current = false;
+      setIsLongPressReady(false);
       longPressOriginRef.current = null;
     }
   };
 
   const stopLongPress = () => {
-    clearLongPress();
+    clearLongPressTimers();
+    pointerActiveRef.current = false;
+    setIsLongPressReady(false);
     longPressOriginRef.current = null;
   };
 
@@ -1184,6 +1210,11 @@ function WatchlistSupermarketSection({
       dragControls={dragControls}
       className="overflow-hidden rounded-2xl border border-stone-200/80 bg-white"
       layout
+      animate={isLongPressReady ? {
+        rotate: [0, -1.1, 1.1, -0.7, 0],
+        scale: [1, 1.01, 1.01, 1.01, 1],
+      } : { rotate: 0, scale: 1 }}
+      transition={{ duration: isLongPressReady ? 0.32 : 0.12, ease: "easeInOut" }}
     >
       <button
         type="button"
