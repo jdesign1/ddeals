@@ -1072,7 +1072,7 @@ function WatchlistSummaryCard({
                 onClick={() => onPulseSelect(kind)}
                 aria-pressed={isActive}
                 aria-label={`${isActive ? "Clear" : "Show"} ${pulseLabel(kind, count)} in your Watchlist${kind === "cheaper-elsewhere" ? " — a lower current price at another supermarket than the offer shown" : ""}`}
-                className={`box-border inline-flex h-9 min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1 text-left text-xs font-extrabold leading-4 transition-[filter,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${verdictTone} ${isActive ? "brightness-95 shadow-inner" : "hover:brightness-95"}`}
+                className={`box-border inline-flex h-9 min-h-9 max-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1 text-left text-xs font-extrabold leading-4 shadow-none transition-[filter] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${verdictTone} ${isActive ? "brightness-95" : "hover:brightness-95"}`}
               >
                 <span>{pulseLabel(kind, count)}</span>
                 <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
