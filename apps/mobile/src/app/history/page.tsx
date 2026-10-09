@@ -237,7 +237,7 @@ export default function HistoryPage() {
             ? "Your checks that found Real Savers."
             : verdictFilter === "dodgy"
               ? "Your checks that spotted Dodgy Deals."
-              : "Every supermarket deal you&rsquo;ve checked so far."}
+              : "Every supermarket deal you've checked so far."}
         </p>
         {verdictFilter && (
           <button
