@@ -108,7 +108,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     try {
       const client = requireAccountsSupabaseClient();
       const lists = await fetchUserLists(client);
-      const items = await fetchItemsForLists(client, lists.map((list) => list.id));
+      const watchlist = lists.find(isWatchlist);
+      const items = watchlist ? await fetchItemsForLists(client, [watchlist.id]) : [];
       setSavedProductIds(new Set(items.map((item) => item.product_id)));
       setError(null);
     } catch (loadError) {
@@ -157,7 +158,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     try {
       const client = requireAccountsSupabaseClient();
       const lists = await fetchUserLists(client);
-      const items = await fetchItemsForLists(client, lists.map((list) => list.id));
+      const watchlist = lists.find(isWatchlist);
+      const items = watchlist ? await fetchItemsForLists(client, [watchlist.id]) : [];
       const matchingItems = items.filter((item) => item.product_id === productId);
 
       await Promise.all(matchingItems.map((item) => removeItemFromList(client, item.list_id, productId)));

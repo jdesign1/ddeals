@@ -8,13 +8,21 @@ export interface DealCheckHistoryApiOptions {
 
 interface DealCheckHistoryApiResponse {
   rows?: DealCheckRow[];
+  isPremium?: boolean;
+  limited?: boolean;
   error?: string;
+}
+
+export interface DealCheckHistoryResult {
+  rows: DealCheckRow[];
+  isPremium: boolean;
+  limited: boolean;
 }
 
 export async function fetchDealCheckHistoryFromApi(
   accessToken: string,
   options: DealCheckHistoryApiOptions,
-): Promise<DealCheckRow[]> {
+): Promise<DealCheckHistoryResult> {
   const params = new URLSearchParams({ scope: options.scope });
   if (options.startAt) params.set("startAt", options.startAt);
   if (options.endAt) params.set("endAt", options.endAt);
@@ -25,5 +33,9 @@ export async function fetchDealCheckHistoryFromApi(
   });
   const payload = await response.json().catch(() => null) as DealCheckHistoryApiResponse | null;
   if (!response.ok) throw new Error(payload?.error || "We could not load your deal history.");
-  return payload?.rows ?? [];
+  return {
+    rows: payload?.rows ?? [],
+    isPremium: payload?.isPremium === true,
+    limited: payload?.limited === true,
+  };
 }

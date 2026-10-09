@@ -18,6 +18,7 @@ interface UnreadListAlert {
   event_type: "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
   verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
   price: number;
+  created_at: string;
 }
 
 interface NotificationsContextValue {
@@ -74,7 +75,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     for (let offset = 0; ; offset += 500) {
       const unreadResult = await client
         .from("list_price_alert_events")
-        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,price")
+        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,price,created_at")
         .is("viewed_at", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + 499);

@@ -9,6 +9,14 @@ import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 
+function alertFreshnessLabel(createdAt: string): string {
+  const ageHours = Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 3_600_000);
+  if (!Number.isFinite(ageHours) || ageHours < 1) return "verified just now";
+  if (ageHours < 24) return `verified ${Math.floor(ageHours)}h ago`;
+  if (ageHours < 48) return "verified yesterday";
+  return "verification may be stale";
+}
+
 export default function AppDrawer() {
   const { isOpen, closeDrawer } = useNavigationDrawer();
   const { user, profile, loading, openAuthSheet, requestOnboardingTour } = useAuth();
@@ -131,10 +139,10 @@ export default function AppDrawer() {
                   {unreadAlerts.slice(0, 3).map((alert) => (
                     <li key={alert.id} className="dd-type-meta leading-4 text-alert-800">
                       {alert.event_type === "dodgy_special"
-                        ? `${alert.product_name} now looks dodgy at ${alert.store_name}.`
+                        ? `${alert.product_name} now looks dodgy at ${alert.store_name} (${alertFreshnessLabel(alert.created_at)}).`
                         : alert.verdict === "GENUINE"
-                          ? `${alert.product_name} is a verified special at ${alert.store_name}.`
-                          : `${alert.product_name} has a better price at ${alert.store_name}.`}
+                          ? `${alert.product_name} is a verified special at ${alert.store_name} (${alertFreshnessLabel(alert.created_at)}).`
+                          : `${alert.product_name} has a better price at ${alert.store_name} (${alertFreshnessLabel(alert.created_at)}).`}
                     </li>
                   ))}
                 </ul>

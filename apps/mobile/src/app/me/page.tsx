@@ -19,6 +19,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { useSearch } from "@/lib/search-context";
+import { useWatchlist } from "@/lib/watchlist-context";
 import MascotImage from "@/components/MascotImage";
 
 const STATS_STORES = Object.entries(STORE_DISPLAY_FALLBACK)
@@ -213,7 +214,9 @@ function buildMonthlyStats(products: ProductCard[]): MonthlyStats[] {
 export default function MePage() {
   const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { products, loadingProducts, toggleStore, setDealFilter } = useSearch();
+  const { savedProductIds } = useWatchlist();
   const [stats, setStats] = useState<DealStats | null>(null);
+  const [statsLimited, setStatsLimited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBreakdownOpen, setIsBreakdownOpen] = useState(true);
@@ -236,9 +239,10 @@ export default function MePage() {
     if (!user || !session?.access_token) return;
     let cancelled = false;
     fetchDealCheckHistoryFromApi(session.access_token, { scope: "stats" })
-      .then((history) => {
+      .then(({ rows, limited }) => {
         if (!cancelled) {
-          setStats(computeDealStats(history));
+          setStats(computeDealStats(rows));
+          setStatsLimited(limited);
           setError(null);
         }
       })
@@ -391,7 +395,14 @@ export default function MePage() {
 
         {!loading && !error && stats && (
           <div className="flex flex-col gap-4 px-5">
-            <div className="grid grid-cols-3 divide-x divide-stone-100 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+              <div>
+                <h2 className="dd-type-section text-stone-900">Your activity</h2>
+                <p className="mt-1 dd-type-secondary text-stone-500">
+                  {statsLimited ? "Based on the recent checks returned for your account and your current Watchlist." : "Personal numbers from your checks and Watchlist."}
+                </p>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-stone-100">
               <StatCell
                 label={
                   <>
@@ -401,9 +412,27 @@ export default function MePage() {
                 }
                 value={stats.totalChecked}
                 valueClassName="text-stone-900"
+                href="/history"
+                ariaLabel="View all your deal checks"
               />
-              <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" />
-              <StatCell label="Dodgy Deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" />
+              <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" href="/history?verdict=real" ariaLabel="View checks where you found Real Savers" />
+              <StatCell label="Dodgy Deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" href="/history?verdict=dodgy" ariaLabel="View checks where you spotted Dodgy Deals" />
+              </div>
+              <Link href="/lists" className="flex items-center justify-between rounded-xl border border-ink-100 bg-ink-50/50 px-4 py-3 text-left transition-colors hover:bg-ink-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">
+                <span>
+                  <span className="block dd-type-control text-stone-900">Your Watchlist</span>
+                  <span className="mt-0.5 block dd-type-meta text-stone-500">Saved products with live verdicts and price alerts</span>
+                </span>
+                <span className="flex items-center gap-1 text-base font-black tabular-nums text-ink-700">
+                  {savedProductIds.size}
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </Link>
+            </div>
+
+            <div className="border-t border-stone-200 pt-2">
+              <h2 className="dd-type-section text-stone-900">Market trends</h2>
+              <p className="mt-1 dd-type-secondary text-stone-500">Catalogue-wide patterns across current and recent supermarket deals.</p>
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
@@ -495,13 +524,13 @@ export default function MePage() {
                           <p className="mt-1 dd-type-secondary text-fair-800">In the last 90 days</p>
                         </div>
                         <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
-                          <span className="text-2xl font-black leading-none tabular-nums text-fair-700">{monthlySpotlight.real}</span>
+                          <Link href="/" onClick={() => openFilteredDeals(STATS_STORES.find((store) => store.label === monthlySpotlight.store)?.key ?? "all", "real")} aria-label={`Browse current Real Saver deals from ${monthlySpotlight.store}`} className="text-2xl font-black leading-none tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2">{monthlySpotlight.real}</Link>
                           <span className="mt-1 text-[11px] font-bold leading-tight text-fair-800">Real Saver specials</span>
                         </div>
                       </div>
                       <div className="mt-4 flex items-center justify-between gap-3 border-t border-fair-100 pt-3">
                         <span className="dd-type-meta text-fair-800">Dodgy specials</span>
-                        <span className="text-sm font-bold tabular-nums text-alert-700">{monthlySpotlight.dodgy}</span>
+                          <Link href="/" onClick={() => openFilteredDeals(STATS_STORES.find((store) => store.label === monthlySpotlight.store)?.key ?? "all", "dodgy")} aria-label={`Browse current Dodgy Deals from ${monthlySpotlight.store}`} className="text-sm font-bold tabular-nums text-alert-700 underline decoration-alert-300 underline-offset-2">{monthlySpotlight.dodgy}</Link>
                       </div>
                     </div>
                   )}
@@ -524,8 +553,8 @@ export default function MePage() {
                           {month.stores.map((store) => (
                             <div key={store.key} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 py-2 last:pb-0">
                               <span className="truncate dd-type-secondary dd-type-secondary-strong text-stone-700">{store.store}</span>
-                              <span className="text-center text-base font-black tabular-nums text-fair-700">{store.real}</span>
-                              <span className="text-center text-base font-black tabular-nums text-alert-700">{store.dodgy}</span>
+                              <Link href="/" onClick={() => openFilteredDeals(store.key, "real")} aria-label={`Browse current Real Saver deals from ${store.store}`} className="rounded-md py-1 text-center text-base font-black tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">{store.real}</Link>
+                              <Link href="/" onClick={() => openFilteredDeals(store.key, "dodgy")} aria-label={`Browse current Dodgy Deals from ${store.store}`} className="rounded-md py-1 text-center text-base font-black tabular-nums text-alert-700 underline decoration-alert-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">{store.dodgy}</Link>
                             </div>
                           ))}
                         </div>
@@ -568,9 +597,9 @@ export default function MePage() {
                         <p className="text-lg font-bold leading-tight text-fair-950">{storeRankings[0].store}</p>
                         <p className="dd-type-meta text-fair-800">Last 90 days</p>
                       </div>
-                      <p className="mt-4 text-3xl font-black leading-none tabular-nums text-fair-700">
+                      <Link href="/" onClick={() => openFilteredDeals(storeRankings[0].key, "real")} aria-label={`Browse current Real Saver deals at ${storeRankings[0].store}`} className="mt-4 block text-3xl font-black leading-none tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2">
                         {formatPercent(storeRankings[0].averageDiscount)}
-                      </p>
+                      </Link>
                       <p className="mt-1 text-[12px] font-semibold text-fair-800">average discount</p>
                       <p className="mt-3 dd-type-meta text-fair-800">
                         Based on {storeRankings[0].realDeals} {storeRankings[0].realDeals === 1 ? "deal" : "deals"}
@@ -583,9 +612,9 @@ export default function MePage() {
                           <p className="text-lg font-semibold leading-tight text-stone-800">{lowestValueRanking.store}</p>
                           <p className="dd-type-meta text-stone-500">Last 90 days</p>
                         </div>
-                        <p className="mt-4 text-3xl font-bold leading-none tabular-nums text-stone-700">
+                        <Link href="/" onClick={() => openFilteredDeals(lowestValueRanking.key, "real")} aria-label={`Browse current Real Saver deals at ${lowestValueRanking.store}`} className="mt-4 block text-3xl font-bold leading-none tabular-nums text-stone-700 underline decoration-stone-300 underline-offset-2">
                           {formatPercent(lowestValueRanking.averageDiscount)}
-                        </p>
+                        </Link>
                         <p className="mt-1 text-[12px] font-semibold text-stone-500">average discount</p>
                         <p className="mt-3 dd-type-meta text-stone-500">
                           Based on {lowestValueRanking.realDeals} {lowestValueRanking.realDeals === 1 ? "deal" : "deals"}
@@ -606,9 +635,9 @@ export default function MePage() {
                             {store.realDeals} {store.realDeals === 1 ? "deal" : "deals"} &middot; {formatCurrency(store.totalSavings)} combined discounts
                           </p>
                         </div>
-                        <span className="text-right text-base font-black tabular-nums text-fair-700">
+                        <Link href="/" onClick={() => openFilteredDeals(store.key, "real")} aria-label={`Browse current Real Saver deals at ${store.store}`} className="rounded-md px-1 py-1 text-right text-base font-black tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">
                           {formatPercent(store.averageDiscount)}
-                        </span>
+                        </Link>
                       </div>
                     ))}
                   </div>
@@ -659,9 +688,9 @@ export default function MePage() {
                             <p className="mt-1 dd-type-secondary text-stone-500">More of its specials changed price than at other supermarkets</p>
                           </div>
                           <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
-                            <span className="text-2xl font-black leading-none tabular-nums text-ink-700">
+                            <Link href="/" onClick={() => { toggleStore("all"); toggleStore(priceChangeStats.stores[0].key); }} aria-label={`Browse current deals at ${priceChangeStats.stores[0].store}`} className="text-2xl font-black leading-none tabular-nums text-ink-700 underline decoration-ink-300 underline-offset-2">
                               {priceChangeStats.stores[0].changeRatePct}%
-                            </span>
+                            </Link>
                             <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">of items changed</span>
                           </div>
                         </div>
@@ -678,9 +707,9 @@ export default function MePage() {
                           <div key={store.key}>
                             <div className="mb-1.5 flex items-baseline justify-between gap-3">
                               <p className="dd-type-control text-stone-800">{store.store}</p>
-                              <p className="dd-type-meta font-bold tabular-nums text-stone-600">
+                              <Link href="/" onClick={() => { toggleStore("all"); toggleStore(store.key); }} aria-label={`Browse current deals at ${store.store}`} className="dd-type-meta font-bold tabular-nums text-stone-600 underline decoration-stone-300 underline-offset-2">
                                 {store.changeRatePct}% of items
-                              </p>
+                              </Link>
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
                               <div
@@ -748,9 +777,9 @@ export default function MePage() {
                           </Link>
                           <p className="dd-type-meta text-stone-500">Across {product.storeCount} {product.storeCount === 1 ? "supermarket" : "supermarkets"}</p>
                         </div>
-                        <span className="flex-shrink-0 text-right text-base font-black tabular-nums text-ink-700">
+                        <Link href={`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(product.store)}`} aria-label={`View ${product.name} deal assessment`} className="flex-shrink-0 text-right text-base font-black tabular-nums text-ink-700 underline decoration-ink-300 underline-offset-2">
                           {product.totalChanges} {product.totalChanges === 1 ? "change" : "changes"}
-                        </span>
+                        </Link>
                       </div>
                     ))}
                   </div>
@@ -819,13 +848,17 @@ function StatCell({
   value,
   valueClassName,
   labelClassName = "text-stone-500",
+  href,
+  ariaLabel,
 }: {
   label: ReactNode;
   value: number;
   valueClassName: string;
   labelClassName?: string;
+  href?: string;
+  ariaLabel?: string;
 }) {
-  return (
+  const content = (
     <div className="flex flex-col items-center justify-between gap-2 px-1 text-center">
       <span className={`flex min-h-[32px] w-full flex-col items-center justify-start dd-type-meta dd-type-meta-strong leading-tight ${labelClassName}`}>
         {label}
@@ -833,4 +866,9 @@ function StatCell({
       <span className={`dd-type-page-title tabular-nums ${valueClassName}`}>{value}</span>
     </div>
   );
+  return href ? (
+    <Link href={href} aria-label={ariaLabel} className="rounded-lg outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1">
+      {content}
+    </Link>
+  ) : content;
 }

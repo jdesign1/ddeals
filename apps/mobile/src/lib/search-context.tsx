@@ -172,7 +172,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [hasOpenedScanner, setHasOpenedScanner] = useState(false);
   const pathname = usePathname();
-  const shouldLoadCatalogue = pathname === "/" || pathname === "/specials" || isActive;
+  // All Checks and Deal Stats also need the shared catalogue: the former
+  // gap-fills checked products that have rolled off specials, while the
+  // latter computes current market trends. Loading it on direct visits keeps
+  // those routes correct without relying on Home having mounted first.
+  const shouldLoadCatalogue = pathname === "/" || pathname === "/specials" || pathname === "/history" || pathname === "/me" || isActive;
   // Bumped by `retry()` below to force the effect to re-run. A plain counter
   // rather than calling the fetch directly from `retry()` so there's still
   // exactly one place (`fetchProducts` below) that owns the load-products

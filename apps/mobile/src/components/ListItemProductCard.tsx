@@ -163,6 +163,16 @@ export interface ListItemProductCardProps {
 // doc comment for the full swipe-gesture design.
 const SWIPE_THRESHOLD = 70;
 
+function freshnessLabel(verifiedAt: string | null | undefined): string | null {
+  if (!verifiedAt) return null;
+  const ageHours = Math.max(0, (Date.now() - new Date(verifiedAt).getTime()) / 3_600_000);
+  if (!Number.isFinite(ageHours)) return null;
+  if (ageHours < 1) return "Verified just now";
+  if (ageHours < 24) return `Verified ${Math.floor(ageHours)}h ago`;
+  if (ageHours < 48) return "Verified yesterday";
+  return "Verification may be stale";
+}
+
 export default function ListItemProductCard({
   product,
   deal,
@@ -209,6 +219,8 @@ export default function ListItemProductCard({
   const isDodgyDeal = assessmentVerdict === "Dodgy Deal";
   const isFairPrice = assessmentVerdict === "Fair Price";
   const isAssessmentPending = assessmentVerdict === "Early read" || assessmentVerdict === "Limited history";
+  const dealFreshnessLabel = deal.isOnSpecial ? freshnessLabel(deal.specialsVerifiedAt) : null;
+  const dealFreshnessIsStale = dealFreshnessLabel === "Verification may be stale";
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
   const isCheaperOptionsExpanded = showCheaperOptions && cheaperOptionsExpanded;
 
@@ -253,20 +265,6 @@ export default function ListItemProductCard({
           setConfirmingRemove(true);
         }
       }}
-      onClick={confirmingRemove ? undefined : handleActivate}
-      onKeyDown={
-        confirmingRemove
-          ? undefined
-          : (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleActivate();
-              }
-            }
-      }
-      role={confirmingRemove ? undefined : "button"}
-      tabIndex={confirmingRemove ? undefined : 0}
-      aria-label={isNotOnSpecial && !confirmingRemove ? `${product.name}: not currently on special` : undefined}
       // Same box, always -- normal state and the remove-warning state are
       // ONE element with the SAME classes/image, only the right-hand
       // column's children differ below. That's what makes "keep the card
@@ -283,7 +281,7 @@ export default function ListItemProductCard({
         cursor: confirmingRemove ? "default" : "pointer",
         touchAction: isCheaperOptionsExpanded ? "auto" : "pan-y",
       }}
-    >
+      >
       <div
         className={[
           "relative flex min-h-[76px] items-stretch overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
@@ -297,6 +295,14 @@ export default function ListItemProductCard({
         ].join(" ")}
         style={confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : undefined}
       >
+      {!confirmingRemove && (
+        <button
+          type="button"
+          onClick={handleActivate}
+          aria-label={isNotOnSpecial ? `${product.name}: not currently on special` : `Open ${product.name} deal at ${deal.store}`}
+          className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
+        />
+      )}
       {showCheaperOptions && onToggleCheaperOptions && !confirmingRemove && (
         <button
           type="button"
@@ -307,7 +313,7 @@ export default function ListItemProductCard({
           onKeyDown={(event) => event.stopPropagation()}
           aria-expanded={isCheaperOptionsExpanded}
           aria-label={(isCheaperOptionsExpanded ? "Hide" : "Show") + " cheaper options for " + product.name}
-          className="absolute right-0 top-0 z-10 flex h-12 w-12 touch-manipulation items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          className="absolute right-0 top-0 z-20 flex h-12 w-12 touch-manipulation items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
         >
           <ChevronDown
             className={["h-5 w-5 transition-transform duration-200", isCheaperOptionsExpanded ? "rotate-180" : ""].join(" ")}
@@ -320,6 +326,7 @@ export default function ListItemProductCard({
         className={[
           "product-image-frame flex min-h-[76px] w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-l-xl rounded-r-none bg-stone-50",
           "self-stretch",
+          "pointer-events-none",
         ].join(" ")}
       >
         <ProductImage
@@ -361,6 +368,7 @@ export default function ListItemProductCard({
           className={[
             "flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2",
             showCheaperOptions ? "pr-12" : "",
+            "pointer-events-none",
           ].join(" ")}
         >
           {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
@@ -382,6 +390,11 @@ export default function ListItemProductCard({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <StoreLogoBadge store={deal.store} variant="compact" />
+            {dealFreshnessLabel && (
+              <span className={`text-[10px] font-bold ${dealFreshnessIsStale ? "text-alert-700" : "text-stone-500"}`}>
+                {dealFreshnessLabel}
+              </span>
+            )}
             {otherSpecialCount > 0 && (
               <span
                 className="dd-badge dd-badge-compact dd-badge-neutral"

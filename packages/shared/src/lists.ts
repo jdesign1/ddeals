@@ -208,7 +208,7 @@ export async function fetchListIdsContainingProduct(
   return ((data as { list_id: string }[]) ?? []).map((row) => row.list_id);
 }
 
-interface CurrentPriceLookupRow {
+export interface CurrentPriceLookupRow {
   product_id: string;
   store_id: string;
   price: number;
@@ -276,6 +276,8 @@ const EMPTY_SUMMARY: ListSummary = {
  */
 export interface ListPriceLookups {
   cheapestByProduct: Map<string, CurrentPriceLookupRow>;
+  /** Every current price row per product, including regular prices. */
+  pricesByProduct?: Map<string, CurrentPriceLookupRow[]>;
   /** Cheapest currently-special price per product, when any store has one. */
   specialByProduct?: Map<string, CurrentPriceLookupRow>;
   /** Every verified live special per product, ordered with the primary offer first. */
@@ -288,6 +290,7 @@ export interface ListPriceLookups {
 
 const EMPTY_LOOKUPS: ListPriceLookups = {
   cheapestByProduct: new Map(),
+  pricesByProduct: new Map(),
   specialByProduct: new Map(),
   specialsByProduct: new Map(),
   dealByProductStore: new Map(),
@@ -336,7 +339,11 @@ export async function fetchListPriceLookups(
 
   // Cheapest current price per product, across any store.
   const cheapestByProduct = new Map<string, CurrentPriceLookupRow>();
+  const pricesByProduct = new Map<string, CurrentPriceLookupRow[]>();
   for (const row of priceRows) {
+    const productRows = pricesByProduct.get(row.product_id) ?? [];
+    productRows.push(row);
+    pricesByProduct.set(row.product_id, productRows);
     const existing = cheapestByProduct.get(row.product_id);
     if (!existing || row.price < existing.price) cheapestByProduct.set(row.product_id, row);
   }
@@ -385,7 +392,7 @@ export async function fetchListPriceLookups(
   }
   const allStoreIds = new Set(priceRows.map((r) => r.store_id));
 
-  return { cheapestByProduct, specialByProduct, specialsByProduct, dealByProductStore, storesByProduct, priceAtStore, allStoreIds };
+  return { cheapestByProduct, pricesByProduct, specialByProduct, specialsByProduct, dealByProductStore, storesByProduct, priceAtStore, allStoreIds };
 }
 
 /** Pure -- no network calls -- computes one list's summary from lookups already fetched (possibly shared across several lists via `fetchListPriceLookups`). */
@@ -577,18 +584,44 @@ export function buildListItemProductCard(
   const legacyPrimarySpecial = lookups.specialByProduct?.get(productId);
   const liveSpecials = lookups.specialsByProduct?.get(productId)
     ?? (legacyPrimarySpecial ? [legacyPrimarySpecial] : []);
-  const displayedPrice = liveSpecials[0] ?? cheapest;
-  const currentDeals = liveSpecials.length > 0
-    ? liveSpecials.map((special) => buildListCurrentDeal(
-        special,
-        lookups.dealByProductStore.get(`${productId}:${special.store_id}`),
-        true,
-      ))
-    : [buildListCurrentDeal(
-        displayedPrice,
-        lookups.dealByProductStore.get(`${productId}:${displayedPrice.store_id}`),
-        lookups.specialByProduct === undefined && !!displayedPrice.is_special,
-      )];
+  const rowsByStore = new Map<string, CurrentPriceLookupRow>();
+  for (const row of lookups.pricesByProduct?.get(productId) ?? []) rowsByStore.set(row.store_id, row);
+  // Keep the pure card-builder tests and older callers useful when they only
+  // provide the derived special maps rather than the new all-store map.
+  for (const row of liveSpecials) rowsByStore.set(row.store_id, row);
+  rowsByStore.set(cheapest.store_id, cheapest);
+
+  const currentRows = [...rowsByStore.values()];
+  const verifiedSpecialRows = currentRows.filter(
+    (row) => row.is_special === true && lookups.dealByProductStore.has(`${productId}:${row.store_id}`),
+  );
+  const verifiedSpecialStoreIds = new Set(verifiedSpecialRows.map((row) => row.store_id));
+  // Preserve the legacy pure-builder contract: callers that omit the derived
+  // special map are asking us to trust the raw special flag, so an unmatched
+  // row remains visibly unverified. The live fetch path always supplies the
+  // map, allowing an orphaned special flag to fall back to a regular price.
+  const legacyUnverifiedSpecialStoreIds = lookups.specialByProduct === undefined
+    ? new Set(currentRows.filter((row) => row.is_special === true).map((row) => row.store_id))
+    : new Set<string>();
+  const regularRows = currentRows.filter((row) => !verifiedSpecialStoreIds.has(row.store_id));
+  const sortByPriceThenStore = (a: CurrentPriceLookupRow, b: CurrentPriceLookupRow) =>
+    a.price - b.price || a.store_id.localeCompare(b.store_id);
+  verifiedSpecialRows.sort((a, b) => {
+    const priceDifference = sortByPriceThenStore(a, b);
+    if (priceDifference !== 0) return priceDifference;
+    const dealA = lookups.dealByProductStore.get(`${productId}:${a.store_id}`);
+    const dealB = lookups.dealByProductStore.get(`${productId}:${b.store_id}`);
+    return Math.max(0, (dealB?.normal_price ?? b.price) - b.price)
+      - Math.max(0, (dealA?.normal_price ?? a.price) - a.price);
+  });
+  regularRows.sort(sortByPriceThenStore);
+  const orderedRows = [...verifiedSpecialRows, ...regularRows];
+  const displayedPrice = orderedRows[0] ?? cheapest;
+  const currentDeals = orderedRows.map((row) => buildListCurrentDeal(
+    row,
+    lookups.dealByProductStore.get(`${productId}:${row.store_id}`),
+    verifiedSpecialStoreIds.has(row.store_id) || legacyUnverifiedSpecialStoreIds.has(row.store_id),
+  ));
 
   return {
     id: productId,
@@ -628,6 +661,8 @@ export interface ListsPageData {
   summaries: Map<string, ListSummary>;
   productMeta: Map<string, ListItemProductMeta>;
   itemCards: Map<string, ProductCard>;
+  /** All current per-store offers needed for exact cross-supermarket comparisons. */
+  pricesByProduct: Map<string, CurrentPriceLookupRow[]>;
   lowestPriceByProduct: Map<string, ListItemLowestPrice>;
 }
 
@@ -706,7 +741,7 @@ async function loadListsPageDataUncached(
     if (card) itemCards.set(productId, card);
   }
 
-  return { rows, grouped, summaries, productMeta, itemCards, lowestPriceByProduct };
+  return { rows, grouped, summaries, productMeta, itemCards, pricesByProduct: lookups.pricesByProduct ?? new Map(), lowestPriceByProduct };
 }
 
 /**

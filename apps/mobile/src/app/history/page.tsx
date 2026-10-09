@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import {
@@ -65,7 +66,17 @@ import MascotImage from "@/components/MascotImage";
  */
 export default function HistoryPage() {
   const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const router = useRouter();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
+  const [verdictFilter, setVerdictFilter] = useState<"real" | "dodgy" | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const value = new URLSearchParams(window.location.search).get("verdict");
+      setVerdictFilter(value === "real" || value === "dodgy" ? value : null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const [history, setHistory] = useState<DealCheckRow[] | null>(null);
   const [availableMonthKeys, setAvailableMonthKeys] = useState<string[]>([]);
@@ -87,7 +98,7 @@ export default function HistoryPage() {
       scope: "history",
       ...(range ?? {}),
     })
-      .then((rows) => {
+      .then(({ rows }) => {
         if (!cancelled) {
           // A month change can leave fallback product metadata from the
           // previous result briefly in memory. Clear it with the new history
@@ -151,13 +162,15 @@ export default function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const displayHistory = useMemo(() => collapseConsecutiveDealChecks(history || []), [history]);
   const filteredHistory = useMemo(() => {
-    if (!searchQuery.trim()) return displayHistory;
     return displayHistory.filter((h) => {
+      const matchesVerdict = !verdictFilter
+        || (verdictFilter === "real" ? h.deal_type === "Real Deal" : h.deal_type === "Dodgy Deal");
+      if (!matchesVerdict) return false;
+      if (!searchQuery.trim()) return true;
       const product = productById.get(h.product_id);
-      if (!product) return false;
-      return productMatchesSearch(product, searchQuery);
+      return Boolean(product && productMatchesSearch(product, searchQuery));
     });
-  }, [displayHistory, searchQuery, productById]);
+  }, [displayHistory, productById, searchQuery, verdictFilter]);
   const monthOptions = useMemo(() => buildHistoryMonthOptions(availableMonthKeys), [availableMonthKeys]);
   const firstRenderableHistoryIndex = filteredHistory.findIndex((row) => productById.has(row.product_id));
 
@@ -220,8 +233,24 @@ export default function HistoryPage() {
           />
         </div>
         <p className="text-center text-sm leading-relaxed text-stone-600">
-          Every supermarket deal you&rsquo;ve checked so far.
+          {verdictFilter === "real"
+            ? "Your checks that found Real Savers."
+            : verdictFilter === "dodgy"
+              ? "Your checks that spotted Dodgy Deals."
+              : "Every supermarket deal you&rsquo;ve checked so far."}
         </p>
+        {verdictFilter && (
+          <button
+            type="button"
+            onClick={() => {
+              setVerdictFilter(null);
+              router.replace("/history", { scroll: false });
+            }}
+            className="mx-auto inline-flex min-h-9 items-center rounded-full bg-stone-100 px-3 text-xs font-extrabold text-stone-700 hover:bg-stone-200"
+          >
+            Clear verdict filter
+          </button>
+        )}
       </header>
 
       {isAnonymousSession && (

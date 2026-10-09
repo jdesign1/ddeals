@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronRight, GripVertical, MoveDown, MoveUp, X } from "lucide-react";
 import {
   canonicalStoreKey,
   describeFetchError,
   findCheaperAlternatives,
   groupCategory,
+  getAssessmentVerdict,
   getSearchSynonymRule,
   invalidateListsPageCache,
   loadLiveProducts,
@@ -38,12 +39,14 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CategoryPicker from "@/components/CategoryPicker";
 import SortDropdown from "@/components/SortDropdown";
 import SupermarketPicker from "@/components/SupermarketPicker";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import { consumeWatchlistReturnContext, type WatchlistReturnContext } from "@/lib/watchlist-navigation";
+import { buildWatchlistPulse, type WatchlistPulseKind, type WatchlistPulseSummary } from "@/lib/watchlist-pulse";
 
 type SortMode = "best" | "dodgy" | "recent";
 type WatchlistTab = "watchlist" | "cheaper-options";
+type WatchlistView = "all" | "by-supermarket";
 
 interface WatchlistItem {
   productId: string;
@@ -67,7 +70,7 @@ function itemDeal(item: WatchlistItem, itemCards: Map<string, ProductCardData>, 
     const preferredDeal = deals.find((deal) => matchesAnySelectedStore(deal.store, [supermarket]));
     if (preferredDeal) return preferredDeal;
   }
-  return deals[0];
+  return undefined;
 }
 
 type CheaperAlternativeList = ReturnType<typeof findCheaperAlternatives>;
@@ -89,6 +92,30 @@ function otherSpecialStoreCount(product: ProductCardData, displayedStore: string
       .filter((deal) => deal.isOnSpecial && canonicalStoreKey(deal.store) !== displayedKey)
       .map((deal) => canonicalStoreKey(deal.store)),
   ).size;
+}
+
+const WATCHLIST_STORE_ORDER_KEY = "dodgey-deals:watchlist-store-order";
+
+const WATCHLIST_PULSE_ORDER: WatchlistPulseKind[] = [
+  "real-savers",
+  "dodgy-deals",
+  "back-on-special",
+  "price-drops",
+  "cheaper-elsewhere",
+];
+
+function pulseLabel(kind: WatchlistPulseKind, count: number): string {
+  if (kind === "real-savers") return `${count} Real Saver${count === 1 ? "" : "s"}`;
+  if (kind === "dodgy-deals") return `${count} Dodgy Deal${count === 1 ? "" : "s"}`;
+  if (kind === "back-on-special") return `${count} Back on special`;
+  if (kind === "price-drops") return `${count} Price drop${count === 1 ? "" : "s"}`;
+  return `${count} Cheaper elsewhere`;
+}
+
+function normalizeStoreOrder(savedOrder: string[], currentKeys: string[]): string[] {
+  const current = new Set(currentKeys);
+  const ordered = savedOrder.filter((key, index) => current.has(key) && savedOrder.indexOf(key) === index);
+  return [...ordered, ...currentKeys.filter((key) => !ordered.includes(key))];
 }
 
 function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[]) {
@@ -117,6 +144,7 @@ export default function ListsPage() {
   const router = useRouter();
   const {
     unreadListItemKeys,
+    unreadAlerts,
     markListItemViewed,
     pushEnabled,
     pushReady,
@@ -132,8 +160,14 @@ export default function ListsPage() {
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("best");
+  const [watchlistView, setWatchlistView] = useState<WatchlistView>("all");
+  const [activePulse, setActivePulse] = useState<WatchlistPulseKind | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSupermarkets, setSelectedSupermarkets] = useState<string[]>(["all"]);
+  const [expandedStoreKeys, setExpandedStoreKeys] = useState<Set<string>>(new Set());
+  const [orderedStoreKeys, setOrderedStoreKeys] = useState<string[]>([]);
+  const [isReorderingStores, setIsReorderingStores] = useState(false);
+  const [reorderAnnouncement, setReorderAnnouncement] = useState("");
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
@@ -147,6 +181,7 @@ export default function ListsPage() {
   const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
   const watchlistReturnContextRef = useRef<WatchlistReturnContext | null>(null);
   const watchlistReturnRestoredRef = useRef(false);
+  const storeOrderHydratedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const handleShare = () => setIsShareSheetOpen(true);
@@ -279,6 +314,10 @@ export default function ListsPage() {
   const handleWatchlistTabChange = useCallback((tab: WatchlistTab) => {
     setActiveWatchlistTab(tab);
     if (tab === "cheaper-options") {
+      // Cheaper Options is anchored to the product's primary offer. Keep it
+      // in the flat product view so a supermarket section can never show
+      // alternatives calculated from another store's price.
+      setWatchlistView("all");
       loadCheaperOptions();
     } else {
       setExpandedCheaperProductIds(new Set());
@@ -291,9 +330,12 @@ export default function ListsPage() {
     if (!returnContext) return;
 
     watchlistReturnContextRef.current = returnContext;
-    setActiveWatchlistTab(returnContext.tab);
-    setExpandedCheaperProductIds(new Set([returnContext.expandedProductId]));
-    loadCheaperOptions();
+    const timer = window.setTimeout(() => {
+      setActiveWatchlistTab(returnContext.tab);
+      setExpandedCheaperProductIds(new Set([returnContext.expandedProductId]));
+      loadCheaperOptions();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadCheaperOptions, user]);
 
   const toggleCheaperOptions = useCallback((productId: string) => {
@@ -311,7 +353,10 @@ export default function ListsPage() {
 
   useEffect(() => {
     if (activeWatchlistTab !== "cheaper-options" || !catalogueProducts) return;
-    for (const productId of expandedCheaperProductIds) prepareCheaperOptions(productId);
+    const timer = window.setTimeout(() => {
+      for (const productId of expandedCheaperProductIds) prepareCheaperOptions(productId);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [activeWatchlistTab, catalogueProducts, expandedCheaperProductIds, prepareCheaperOptions]);
 
   useEffect(() => {
@@ -394,20 +439,38 @@ export default function ListsPage() {
     return [...values].sort((a, b) => a.localeCompare(b));
   }, [productMeta, watchlistItems]);
 
+  const filterSupermarkets = useMemo(
+    () => watchlistView === "by-supermarket" ? ["all"] : selectedSupermarkets,
+    [selectedSupermarkets, watchlistView],
+  );
+
+  const pulseSummary = useMemo<WatchlistPulseSummary>(() => buildWatchlistPulse(
+    watchlistItems.map((item) => {
+      const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+      return {
+        productId: item.productId,
+        verdicts: deals.map((deal) => getAssessmentVerdict(deal)),
+        offers: deals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), price: deal.price })),
+      };
+    }),
+    unreadAlerts.map((alert) => ({ productId: alert.product_id, eventType: alert.event_type })),
+  ), [itemCards, unreadAlerts, watchlistItems]);
+
   const filteredItems = useMemo(
     () => sortItems(
       watchlistItems.filter((item) => {
+        const pulseMatches = !activePulse || pulseSummary.productIds[activePulse].has(item.productId);
         const category = watchlistCategory(productMeta.get(item.productId));
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
         const deals = itemCards.get(item.productId)?.currentDeals ?? [];
         const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
-        return matchesCategory && matchesSupermarket;
+        return pulseMatches && matchesCategory && (watchlistView === "by-supermarket" || matchesSupermarket);
       }),
       sortMode,
       itemCards,
-      selectedSupermarkets,
+      filterSupermarkets,
     ),
-    [itemCards, productMeta, selectedCategories, selectedSupermarkets, sortMode, watchlistItems],
+    [activePulse, filterSupermarkets, itemCards, productMeta, pulseSummary.productIds, selectedCategories, selectedSupermarkets, sortMode, watchlistItems, watchlistView],
   );
 
   const supermarkets = useMemo(() => {
@@ -420,6 +483,82 @@ export default function ListsPage() {
     }
     return [...labels.entries()].sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB));
   }, [itemCards, watchlistItems]);
+
+  const storeKeys = useMemo(() => supermarkets.map(([key]) => key), [supermarkets]);
+
+  useEffect(() => {
+    if (!user) {
+      storeOrderHydratedRef.current = null;
+      const timer = window.setTimeout(() => {
+        setOrderedStoreKeys([]);
+        setExpandedStoreKeys(new Set());
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    if (storeOrderHydratedRef.current === user.id) return;
+    storeOrderHydratedRef.current = user.id;
+    let savedOrder: string[] = [];
+    try {
+      const raw = window.localStorage.getItem(`${WATCHLIST_STORE_ORDER_KEY}:${user.id}`);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) savedOrder = parsed.filter((value): value is string => typeof value === "string");
+    } catch {
+      // A storage restriction should not prevent the grouped view from working.
+    }
+    const nextOrder = normalizeStoreOrder(savedOrder, storeKeys);
+    setOrderedStoreKeys(nextOrder);
+    setExpandedStoreKeys(new Set(nextOrder));
+  }, [storeKeys, user]);
+
+  useEffect(() => {
+    if (!user || storeOrderHydratedRef.current !== user.id) return;
+    setOrderedStoreKeys((current) => normalizeStoreOrder(current, storeKeys));
+    setExpandedStoreKeys((current) => {
+      const next = new Set([...current].filter((key) => storeKeys.includes(key)));
+      for (const key of storeKeys) if (!current.size) next.add(key);
+      return next;
+    });
+  }, [storeKeys, user]);
+
+  const orderedSupermarkets = useMemo(() => {
+    const byKey = new Map(supermarkets);
+    return normalizeStoreOrder(orderedStoreKeys, storeKeys).map((key) => [key, byKey.get(key) ?? key] as const);
+  }, [orderedStoreKeys, storeKeys, supermarkets]);
+
+  const persistStoreOrder = useCallback((nextOrder: string[]) => {
+    setOrderedStoreKeys(nextOrder);
+    setReorderAnnouncement("Supermarket order updated.");
+    if (!user) return;
+    try {
+      window.localStorage.setItem(`${WATCHLIST_STORE_ORDER_KEY}:${user.id}`, JSON.stringify(nextOrder));
+    } catch {
+      // Reordering remains available for this session when storage is unavailable.
+    }
+  }, [user]);
+
+  const persistVisibleStoreOrder = useCallback((visibleOrder: string[]) => {
+    const current = normalizeStoreOrder(orderedStoreKeys, storeKeys);
+    const visible = new Set(visibleOrder);
+    let visibleIndex = 0;
+    const next = current.map((key) => visible.has(key) ? visibleOrder[visibleIndex++] : key);
+    persistStoreOrder(next);
+  }, [orderedStoreKeys, persistStoreOrder, storeKeys]);
+
+  const moveStore = useCallback((key: string, direction: -1 | 1) => {
+    const current = normalizeStoreOrder(orderedStoreKeys, storeKeys);
+    const index = current.indexOf(key);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return;
+    const next = [...current];
+    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    persistStoreOrder(next);
+  }, [orderedStoreKeys, persistStoreOrder, storeKeys]);
+
+  const handlePulseSelect = useCallback((kind: WatchlistPulseKind) => {
+    setActivePulse((current) => current === kind ? null : kind);
+    setSelectedCategories([]);
+    setSelectedSupermarkets(["all"]);
+  }, []);
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -486,17 +625,21 @@ export default function ListsPage() {
   }, [isClearingWatchlist, reload, watchlistItems]);
 
   const activeItems = useMemo(
-    () => filteredItems.filter((item) => itemDeal(item, itemCards, selectedSupermarkets)?.isOnSpecial === true),
-    [filteredItems, itemCards, selectedSupermarkets],
+    () => filteredItems.filter((item) => itemDeal(item, itemCards, filterSupermarkets)?.isOnSpecial === true),
+    [filterSupermarkets, filteredItems, itemCards],
   );
   const inactiveItems = useMemo(
-    () => filteredItems.filter((item) => itemDeal(item, itemCards, selectedSupermarkets)?.isOnSpecial !== true),
-    [filteredItems, itemCards, selectedSupermarkets],
+    () => filteredItems.filter((item) => itemDeal(item, itemCards, filterSupermarkets)?.isOnSpecial !== true),
+    [filterSupermarkets, filteredItems, itemCards],
   );
-  const renderItem = (entry: WatchlistItem) => {
+  const groupedSupermarkets = useMemo(
+    () => orderedSupermarkets.filter(([storeKey]) => filteredItems.some((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey))),
+    [filteredItems, itemCards, orderedSupermarkets],
+  );
+  const renderItem = (entry: WatchlistItem, storeKey?: string) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
-    const deal = card ? itemDeal(entry, itemCards, selectedSupermarkets) : undefined;
+    const deal = card ? itemDeal(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets) : undefined;
     const sourceItem = entry.sourceItems[0];
     const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
     const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
@@ -515,7 +658,7 @@ export default function ListsPage() {
               onRemove={() => void removeProduct(entry.productId)}
               removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
               onAfterNotOnSpecial={() => void reload(false)}
-              showCheaperOptions={activeWatchlistTab === "cheaper-options"}
+              showCheaperOptions={activeWatchlistTab === "cheaper-options" && watchlistView === "all"}
               cheaperAlternatives={cheaperAlternatives}
               cheaperOptionsExpanded={expandedCheaperProductIds.has(entry.productId)}
               onToggleCheaperOptions={() => toggleCheaperOptions(entry.productId)}
@@ -564,6 +707,9 @@ export default function ListsPage() {
           onTabChange={handleWatchlistTabChange}
           itemCount={watchlistItems.length}
           newPriceItemCount={newPriceItemCount}
+          pulseSummary={pulseSummary}
+          activePulse={activePulse}
+          onPulseSelect={handlePulseSelect}
           showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
           notificationPermissionDenied={pushPermissionState === "denied"}
           isSettingUpNotifications={isSettingUpNotifications}
@@ -571,13 +717,22 @@ export default function ListsPage() {
         />
       </div>
 
+      <WatchlistViewToggle value={watchlistView} onChange={(view) => {
+        setWatchlistView(view);
+        setActivePulse(null);
+        if (view === "by-supermarket") setSelectedSupermarkets(["all"]);
+        if (view === "by-supermarket" && activeWatchlistTab === "cheaper-options") setActiveWatchlistTab("watchlist");
+      }} />
+
       <div className="watchlist-filter-bar">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden px-5">
-          <SupermarketPicker
-            stores={supermarkets.map(([id, label]) => ({ id, label }))}
-            selectedStoreIds={selectedSupermarkets}
-            onToggleStore={toggleSupermarket}
-          />
+        <div className={`grid min-w-0 gap-1.5 overflow-hidden px-5 ${watchlistView === "by-supermarket" ? "grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]" : "grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)]"}`}>
+          {watchlistView === "all" && (
+            <SupermarketPicker
+              stores={supermarkets.map(([id, label]) => ({ id, label }))}
+              selectedStoreIds={selectedSupermarkets}
+              onToggleStore={toggleSupermarket}
+            />
+          )}
           <CategoryPicker
             selectedCategories={selectedCategories}
             onChange={setSelectedCategories}
@@ -599,9 +754,11 @@ export default function ListsPage() {
       </div>
 
       <div className="sr-only" aria-live="polite">
-        {selectedCategories.length > 0
-          ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`
-          : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`}
+        {activePulse
+          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${filteredItems.length} ${filteredItems.length === 1 ? "item" : "items"}.`
+          : selectedCategories.length > 0
+            ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`
+            : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}`}
       </div>
 
       {error && <ErrorState message="Something went wrong with your Watchlist." detail={error} onRetry={() => void reload()} />}
@@ -624,13 +781,56 @@ export default function ListsPage() {
         {!loadingWatchlist && !error && watchlistItems.length > 0 && filteredItems.length === 0 && (
           <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match these filters.</p>
         )}
-        {!loadingWatchlist && !error && filteredItems.length > 0 && (
+        {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
           <div className="flex flex-col gap-2 px-5">
-            {activeItems.map(renderItem)}
+            {activeItems.map((entry) => renderItem(entry))}
             {inactiveItems.length > 0 && (
               <h2 className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400">Not on special</h2>
             )}
-            {inactiveItems.map(renderItem)}
+            {inactiveItems.map((entry) => renderItem(entry))}
+          </div>
+        )}
+        {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "by-supermarket" && (
+          <div className="px-5">
+            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+              <p className="text-xs font-semibold text-stone-500">Items can appear in more than one supermarket.</p>
+              <button
+                type="button"
+                onClick={() => setIsReorderingStores((current) => !current)}
+                className="shrink-0 text-xs font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2"
+                aria-pressed={isReorderingStores}
+              >
+                {isReorderingStores ? "Done" : "Edit order"}
+              </button>
+            </div>
+            <p className="sr-only" aria-live="polite">{reorderAnnouncement}</p>
+            <Reorder.Group axis="y" values={groupedSupermarkets.map(([key]) => key)} onReorder={persistVisibleStoreOrder} aria-label="Reorder supermarkets" className="flex flex-col gap-2">
+              {groupedSupermarkets.map(([storeKey, storeLabel], index) => {
+                const storeItems = filteredItems.filter((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey));
+                return (
+                  <WatchlistSupermarketSection
+                    key={storeKey}
+                    storeKey={storeKey}
+                    storeLabel={storeLabel}
+                    itemCount={storeItems.length}
+                    entries={storeItems}
+                    isExpanded={expandedStoreKeys.has(storeKey)}
+                    isReordering={isReorderingStores}
+                    canMoveUp={index > 0}
+                    canMoveDown={index < groupedSupermarkets.length - 1}
+                    onToggle={() => setExpandedStoreKeys((current) => {
+                      const next = new Set(current);
+                      if (next.has(storeKey)) next.delete(storeKey);
+                      else next.add(storeKey);
+                      return next;
+                    })}
+                    onMoveUp={() => moveStore(storeKey, -1)}
+                    onMoveDown={() => moveStore(storeKey, 1)}
+                    renderItem={renderItem}
+                  />
+                );
+              })}
+            </Reorder.Group>
           </div>
         )}
       </div>
@@ -732,6 +932,9 @@ function WatchlistSummaryCard({
   onTabChange,
   itemCount,
   newPriceItemCount,
+  pulseSummary,
+  activePulse,
+  onPulseSelect,
   showNotificationSetup,
   notificationPermissionDenied,
   isSettingUpNotifications,
@@ -741,6 +944,9 @@ function WatchlistSummaryCard({
   onTabChange: (tab: WatchlistTab) => void;
   itemCount: number;
   newPriceItemCount: number;
+  pulseSummary: WatchlistPulseSummary;
+  activePulse: WatchlistPulseKind | null;
+  onPulseSelect: (kind: WatchlistPulseKind) => void;
   showNotificationSetup: boolean;
   notificationPermissionDenied: boolean;
   isSettingUpNotifications: boolean;
@@ -758,7 +964,7 @@ function WatchlistSummaryCard({
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
       <div
         className="dd-segmented-control relative flex h-11 w-full items-center gap-0.5 rounded-full bg-white ring-1 ring-stone-200 shadow-sm shadow-black/5"
-        role="tablist"
+        role="group"
         aria-label="Watchlist views"
       >
         {([
@@ -770,8 +976,7 @@ function WatchlistSummaryCard({
             <button
               key={tab}
               type="button"
-              role="tab"
-              aria-selected={isActive}
+              aria-pressed={isActive}
               onClick={() => onTabChange(tab)}
               className={[
                 "relative z-0 flex h-11 flex-1 cursor-pointer appearance-none items-center justify-center rounded-full px-3 py-1 text-center dd-type-control transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1",
@@ -789,6 +994,34 @@ function WatchlistSummaryCard({
       <p className="mt-3 text-[13px] leading-5 text-stone-600">
         {subtitle}
       </p>
+      {!isEmpty && pulseSummary.counts && (
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Watchlist updates">
+          {WATCHLIST_PULSE_ORDER.map((kind) => {
+            const count = pulseSummary.counts[kind];
+            if (count < 1) return null;
+            const isActive = activePulse === kind;
+            const verdictTone = kind === "real-savers"
+              ? "border-fair-600 bg-fair-50 text-fair-800"
+              : kind === "dodgy-deals"
+                ? "border-alert-600 bg-alert-50 text-alert-800"
+                : "border-stone-200 bg-stone-50 text-stone-700";
+            return (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => onPulseSelect(kind)}
+                aria-pressed={isActive}
+                aria-label={`${isActive ? "Clear" : "Show"} ${pulseLabel(kind, count)} in your Watchlist${kind === "cheaper-elsewhere" ? " — a lower current price at another supermarket than the offer shown" : ""}`}
+                className={`inline-flex min-h-9 items-center gap-1 rounded-full border px-3 py-1 text-left text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${verdictTone} ${isActive ? "ring-2 ring-ink-900/20" : "hover:brightness-95"}`}
+              >
+                <span>{pulseLabel(kind, count)}</span>
+                <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!isEmpty && <p className="sr-only">Real Saver and Dodgy Deal pills describe the current verdicts. Back on special and Price drop pills describe new updates since your last visit.</p>}
       {!isEmpty && hasNewPrices && (
         <div className="mt-2 flex items-center gap-2 text-[13px] font-extrabold text-stone-900" aria-live="polite">
           <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
@@ -806,6 +1039,125 @@ function WatchlistSummaryCard({
         </div>
       )}
     </section>
+  );
+}
+
+function WatchlistViewToggle({ value, onChange }: { value: WatchlistView; onChange: (value: WatchlistView) => void }) {
+  return (
+    <div className="mx-5 flex items-center justify-between gap-3 pt-1" role="group" aria-label="Watchlist layout">
+      <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-stone-400">View</span>
+      <div className="flex items-center gap-1 rounded-full bg-stone-100 p-1">
+        {([[
+          "all", "All items",
+        ], [
+          "by-supermarket", "By supermarket",
+        ]] as const).map(([nextValue, label]) => {
+          const isActive = value === nextValue;
+          return (
+            <button
+              key={nextValue}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onChange(nextValue)}
+              className={`min-h-8 rounded-full px-3 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${isActive ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-900"}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WatchlistSupermarketSection({
+  storeKey,
+  storeLabel,
+  itemCount,
+  entries,
+  isExpanded,
+  isReordering,
+  canMoveUp,
+  canMoveDown,
+  onToggle,
+  onMoveUp,
+  onMoveDown,
+  renderItem,
+}: {
+  storeKey: string;
+  storeLabel: string;
+  itemCount: number;
+  entries: WatchlistItem[];
+  isExpanded: boolean;
+  isReordering: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onToggle: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  renderItem: (entry: WatchlistItem, storeKey?: string) => ReactNode;
+}) {
+  const dragControls = useDragControls();
+  const longPressTimerRef = useRef<number | null>(null);
+  const sectionContentId = `watchlist-store-section-${storeKey.replace(/[^a-z0-9_-]/gi, "-")}`;
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  useEffect(() => clearLongPress, []);
+
+  return (
+    <Reorder.Item
+      value={storeKey}
+      dragListener={false}
+      dragControls={dragControls}
+      className="overflow-hidden rounded-2xl border border-stone-200/80 bg-white"
+      layout
+    >
+      <div className="flex items-center gap-1 border-b border-stone-100 px-2 py-1">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          aria-controls={sectionContentId}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
+        >
+          {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />}
+          <span className="min-w-0 truncate text-sm font-extrabold text-stone-900">{storeLabel}</span>
+          <span className="shrink-0 text-xs font-semibold text-stone-400">{itemCount} {itemCount === 1 ? "product" : "products"}</span>
+        </button>
+        {isReordering && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button type="button" onClick={onMoveUp} disabled={!canMoveUp} aria-label={`Move ${storeLabel} up`} className="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <MoveUp className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button type="button" onClick={onMoveDown} disabled={!canMoveDown} aria-label={`Move ${storeLabel} down`} className="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <MoveDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label={`Drag ${storeLabel} to reorder supermarkets`}
+              className="flex h-9 w-9 touch-none items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
+              onPointerDown={(event) => {
+                clearLongPress();
+                const nativeEvent = event.nativeEvent;
+                longPressTimerRef.current = window.setTimeout(() => {
+                  dragControls.start(nativeEvent);
+                }, 350);
+              }}
+              onPointerUp={clearLongPress}
+              onPointerCancel={clearLongPress}
+              onPointerLeave={clearLongPress}
+            >
+              <GripVertical className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </div>
+      {isExpanded && <div id={sectionContentId} className="flex flex-col gap-2 p-2">{entries.map((entry) => renderItem(entry, storeKey))}</div>}
+    </Reorder.Item>
   );
 }
 
