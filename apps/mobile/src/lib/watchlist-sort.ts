@@ -82,8 +82,12 @@ export function sortWatchlistItems<T extends WatchlistSortItem>(
   itemCards: Map<string, ProductCard>,
   selectedSupermarkets: string[],
   preferredStoreIds?: ReadonlyMap<string, string>,
+  priorityProductIds?: ReadonlySet<string>,
 ): T[] {
   return [...items].sort((a, b) => {
+    const pulsePriorityDifference = Number(priorityProductIds?.has(b.productId) ?? false) - Number(priorityProductIds?.has(a.productId) ?? false);
+    if (pulsePriorityDifference !== 0) return pulsePriorityDifference;
+
     const dealA = watchlistItemDeal(a, itemCards, selectedSupermarkets, preferredStoreIds?.get(a.productId), sortMode);
     const dealB = watchlistItemDeal(b, itemCards, selectedSupermarkets, preferredStoreIds?.get(b.productId), sortMode);
     const inactiveDifference = Number(dealA?.isOnSpecial !== true) - Number(dealB?.isOnSpecial !== true);

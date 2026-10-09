@@ -84,3 +84,19 @@ test("pulse-selected supermarket overrides the default best-offer choice", () =>
 
   assert.equal(watchlistItemDeal(item, itemCards, ["all"], "woolworths")?.store, "Woolworths");
 });
+
+test("pulse priority moves matching items first without removing the rest", () => {
+  const itemCards = new Map([
+    ["match", product("match", [deal({ price: 4 })])],
+    ["other", product("other", [deal({ price: 6 })])],
+  ]);
+  const items = [
+    { productId: "other", addedAt: "2026-10-10T00:00:00Z" },
+    { productId: "match", addedAt: "2026-10-09T00:00:00Z" },
+  ];
+
+  assert.deepEqual(
+    sortWatchlistItems(items, "best", itemCards, ["all"], undefined, new Set(["match"])).map((item) => item.productId),
+    ["match", "other"],
+  );
+});

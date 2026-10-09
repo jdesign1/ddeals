@@ -102,6 +102,14 @@ function pulseLabel(kind: WatchlistPulseKind, count: number): string {
   return `${count} Cheaper elsewhere`;
 }
 
+function pulseHeading(kind: WatchlistPulseKind, count: number): string {
+  if (kind === "real-savers") return `${count} Real Saver${count === 1 ? "" : "s"}`;
+  if (kind === "dodgy-deals") return `${count} Dodgy Deal${count === 1 ? "" : "s"}`;
+  if (kind === "back-on-special") return `${count} Back on special`;
+  if (kind === "price-drops") return `${count} recent price drop${count === 1 ? "" : "s"}`;
+  return `${count} Cheaper elsewhere`;
+}
+
 function normalizeStoreOrder(savedOrder: string[], currentKeys: string[]): string[] {
   const current = new Set(currentKeys);
   const ordered = savedOrder.filter((key, index) => current.has(key) && savedOrder.indexOf(key) === index);
@@ -437,13 +445,13 @@ export default function ListsPage() {
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
         const deals = itemCards.get(item.productId)?.currentDeals ?? [];
         const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
-        const matchesPulse = !activePulse || pulseSummary.productIds[activePulse].has(item.productId);
-        return matchesCategory && matchesSupermarket && matchesPulse;
+        return matchesCategory && matchesSupermarket;
       }),
       sortMode,
       itemCards,
       filterSupermarkets,
       activePulse ? pulseSummary.preferredStoreIds[activePulse] : undefined,
+      activePulse ? pulseSummary.productIds[activePulse] : undefined,
     ),
     [activePulse, filterSupermarkets, itemCards, productMeta, pulseSummary.preferredStoreIds, pulseSummary.productIds, selectedCategories, selectedSupermarkets, sortMode, watchlistItems],
   );
@@ -546,6 +554,7 @@ export default function ListsPage() {
 
   const handlePulseSelect = useCallback((kind: WatchlistPulseKind) => {
     setActiveWatchlistTab("watchlist");
+    setWatchlistView("all");
     setActivePulse((current) => current === kind ? null : kind);
   }, []);
 
@@ -620,6 +629,14 @@ export default function ListsPage() {
   const inactiveItems = useMemo(
     () => filteredItems.filter((item) => watchlistItemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode)?.isOnSpecial !== true),
     [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds, sortMode],
+  );
+  const pulseItems = useMemo(
+    () => activePulse ? filteredItems.filter((item) => pulseSummary.productIds[activePulse].has(item.productId)) : [],
+    [activePulse, filteredItems, pulseSummary.productIds],
+  );
+  const otherPulseItems = useMemo(
+    () => activePulse ? filteredItems.filter((item) => !pulseSummary.productIds[activePulse].has(item.productId)) : [],
+    [activePulse, filteredItems, pulseSummary.productIds],
   );
   const groupedSupermarkets = useMemo(
     () => orderedSupermarkets.filter(([storeKey]) => filteredItems.some((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey))),
@@ -758,7 +775,7 @@ export default function ListsPage() {
 
       <div className="sr-only" aria-live="polite">
         {activePulse
-          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${filteredItems.length} matching ${filteredItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
+          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${pulseItems.length} matching ${pulseItems.length === 1 ? "item" : "items"} first, followed by ${otherPulseItems.length} other Watchlist ${otherPulseItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
           : selectedCategories.length > 0
             ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
             : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`}
@@ -786,22 +803,53 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
           <div className="flex flex-col gap-2 px-5">
-            <AnimatePresence initial={false}>
-              {activeItems.map((entry) => renderItem(entry))}
-              {inactiveItems.length > 0 && (
-                <motion.h2
-                  key="not-on-special-heading"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
-                >
-                  Not on special
-                </motion.h2>
-              )}
-              {inactiveItems.map((entry) => renderItem(entry))}
-            </AnimatePresence>
+            {activePulse ? (
+              <AnimatePresence initial={false}>
+                {pulseItems.length > 0 && (
+                  <motion.p
+                    key="pulse-heading"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                  >
+                    {pulseHeading(activePulse, pulseItems.length)}
+                  </motion.p>
+                )}
+                {pulseItems.map((entry) => renderItem(entry))}
+                {otherPulseItems.length > 0 && (
+                  <motion.h2
+                    key="other-watchlist-heading"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                  >
+                    Other Watchlist items
+                  </motion.h2>
+                )}
+                {otherPulseItems.map((entry) => renderItem(entry))}
+              </AnimatePresence>
+            ) : (
+              <AnimatePresence initial={false}>
+                {activeItems.map((entry) => renderItem(entry))}
+                {inactiveItems.length > 0 && (
+                  <motion.h2
+                    key="not-on-special-heading"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                  >
+                    Not on special
+                  </motion.h2>
+                )}
+                {inactiveItems.map((entry) => renderItem(entry))}
+              </AnimatePresence>
+            )}
           </div>
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "by-supermarket" && (
