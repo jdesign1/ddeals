@@ -753,7 +753,7 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden px-5">
+        <div className="grid min-w-0 grid-cols-3 gap-1.5 overflow-hidden px-5">
           <div className="min-w-0">
             <WatchlistViewPicker
               view={watchlistView}

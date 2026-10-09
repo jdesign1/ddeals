@@ -167,9 +167,9 @@ function freshnessLabel(verifiedAt: string | null | undefined): string | null {
   if (!verifiedAt) return null;
   const ageHours = Math.max(0, (Date.now() - new Date(verifiedAt).getTime()) / 3_600_000);
   if (!Number.isFinite(ageHours)) return null;
-  if (ageHours < 1) return "Verified just now";
-  if (ageHours < 24) return `Verified ${Math.floor(ageHours)}h ago`;
-  if (ageHours < 48) return "Verified yesterday";
+  if (ageHours < 1) return "just now";
+  if (ageHours < 24) return `${Math.floor(ageHours)}h ago`;
+  if (ageHours < 48) return "yesterday";
   return "Verification may be stale";
 }
 
