@@ -77,3 +77,23 @@ test("requires a lower offer at a different supermarket", () => {
 
   assert.equal(result.counts["cheaper-elsewhere"], 0);
 });
+
+test("keeps the supermarket that produced a verdict for pulse navigation", () => {
+  const result = buildWatchlistPulse(
+    [{
+      productId: "milk",
+      verdicts: ["Real Saver", "Fair Price"],
+      verdictOffers: [
+        { storeId: "paknsave", verdict: "Real Saver" },
+        { storeId: "newworld", verdict: "Fair Price" },
+      ],
+      offers: [
+        { storeId: "newworld", price: 5 },
+        { storeId: "paknsave", price: 6 },
+      ],
+    }],
+    [],
+  );
+
+  assert.equal(result.preferredStoreIds["real-savers"].get("milk"), "paknsave");
+});

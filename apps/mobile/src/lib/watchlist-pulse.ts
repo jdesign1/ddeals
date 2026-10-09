@@ -10,10 +10,16 @@ export interface WatchlistPulseOffer {
   price: number;
 }
 
+export interface WatchlistPulseVerdictOffer {
+  storeId: string | null | undefined;
+  verdict: string;
+}
+
 export interface WatchlistPulseProduct {
   productId: string;
   verdicts: readonly string[];
   offers: readonly WatchlistPulseOffer[];
+  verdictOffers?: readonly WatchlistPulseVerdictOffer[];
 }
 
 export interface WatchlistPulseAlert {
@@ -24,6 +30,7 @@ export interface WatchlistPulseAlert {
 export interface WatchlistPulseSummary {
   counts: Record<WatchlistPulseKind, number>;
   productIds: Record<WatchlistPulseKind, ReadonlySet<string>>;
+  preferredStoreIds: Record<WatchlistPulseKind, ReadonlyMap<string, string>>;
 }
 
 const PULSE_KINDS: readonly WatchlistPulseKind[] = [
@@ -36,6 +43,10 @@ const PULSE_KINDS: readonly WatchlistPulseKind[] = [
 
 function emptyProductSets(): Record<WatchlistPulseKind, Set<string>> {
   return Object.fromEntries(PULSE_KINDS.map((kind) => [kind, new Set<string>()])) as Record<WatchlistPulseKind, Set<string>>;
+}
+
+function emptyPreferredStores(): Record<WatchlistPulseKind, Map<string, string>> {
+  return Object.fromEntries(PULSE_KINDS.map((kind) => [kind, new Map<string, string>()])) as Record<WatchlistPulseKind, Map<string, string>>;
 }
 
 /**
@@ -52,15 +63,32 @@ export function buildWatchlistPulse(
   alerts: readonly WatchlistPulseAlert[],
 ): WatchlistPulseSummary {
   const productIds = emptyProductSets();
+  const preferredStoreIds = emptyPreferredStores();
   const watchedProductIds = new Set<string>();
+
+  const addProduct = (kind: WatchlistPulseKind, productId: string, storeId?: string | null) => {
+    productIds[kind].add(productId);
+    if (storeId && !preferredStoreIds[kind].has(productId)) preferredStoreIds[kind].set(productId, storeId);
+  };
 
   for (const product of products) {
     const productId = product.productId.trim();
     if (!productId) continue;
     watchedProductIds.add(productId);
 
-    if (product.verdicts.includes("Real Saver")) productIds["real-savers"].add(productId);
-    if (product.verdicts.includes("Dodgy Deal")) productIds["dodgy-deals"].add(productId);
+    if (product.verdictOffers?.length) {
+      for (const offer of product.verdictOffers) {
+        if (offer.verdict === "Real Saver") addProduct("real-savers", productId, offer.storeId);
+        if (offer.verdict === "Dodgy Deal") addProduct("dodgy-deals", productId, offer.storeId);
+      }
+    } else {
+      // Keep the pure helper backwards-compatible for callers that only have
+      // product-level verdicts. The page supplies verdictOffers so a tapped
+      // pulse can still select the supermarket that produced the verdict.
+      const firstStoreId = product.offers[0]?.storeId;
+      if (product.verdicts.includes("Real Saver")) addProduct("real-savers", productId, firstStoreId);
+      if (product.verdicts.includes("Dodgy Deal")) addProduct("dodgy-deals", productId, firstStoreId);
+    }
 
     const displayedOffer = product.offers[0];
     const displayedPrice = displayedOffer?.price;
@@ -78,7 +106,7 @@ export function buildWatchlistPulse(
       // The first offer is the price currently shown on the Watchlist card.
       // Compare it with the lowest exact per-store offer; the UI will show
       // the stores and prices when the filtered product is opened.
-      productIds["cheaper-elsewhere"].add(productId);
+      addProduct("cheaper-elsewhere", productId, displayedStore);
     }
   }
 
@@ -89,13 +117,13 @@ export function buildWatchlistPulse(
     const eventKey = `${alert.eventType}:${productId}`;
     if (uniqueEvents.has(eventKey)) continue;
     uniqueEvents.add(eventKey);
-    if (alert.eventType === "returned_to_special") productIds["back-on-special"].add(productId);
-    if (alert.eventType === "better_special_price") productIds["price-drops"].add(productId);
+    if (alert.eventType === "returned_to_special") addProduct("back-on-special", productId);
+    if (alert.eventType === "better_special_price") addProduct("price-drops", productId);
   }
 
   const counts = Object.fromEntries(
     PULSE_KINDS.map((kind) => [kind, productIds[kind].size]),
   ) as Record<WatchlistPulseKind, number>;
 
-  return { counts, productIds };
+  return { counts, productIds, preferredStoreIds };
 }
