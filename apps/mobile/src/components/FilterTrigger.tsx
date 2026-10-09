@@ -19,6 +19,7 @@ export default function FilterTrigger({
   compact = false,
   hasPopup = "dialog",
   fill = false,
+  align = "center",
   leading,
 }: {
   label: string;
@@ -30,6 +31,7 @@ export default function FilterTrigger({
   compact?: boolean;
   hasPopup?: "dialog" | "listbox";
   fill?: boolean;
+  align?: "left" | "center";
   leading?: ReactNode;
 }) {
   return (
@@ -54,7 +56,7 @@ export default function FilterTrigger({
         aria-label={ariaLabel}
         className="absolute inset-0 z-0 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
       />
-      <span className={`pointer-events-none relative z-10 flex h-11 w-full min-w-0 items-center justify-center dd-type-control text-stone-700 ${compact ? "pl-3 pr-8" : "px-2 pr-8"}`}>
+      <span className={`pointer-events-none relative z-10 flex h-11 w-full min-w-0 items-center dd-type-control text-stone-700 ${align === "left" ? "justify-start pl-3 pr-8" : `justify-center ${compact ? "pl-3 pr-8" : "px-2 pr-8"}`}`}>
         <span className="flex min-w-0 items-center gap-1">
           {leading}
           <span className="whitespace-nowrap">{label}</span>

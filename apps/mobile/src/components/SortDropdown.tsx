@@ -12,12 +12,14 @@ export default function SortDropdown<T extends string>({
   onChange,
   options,
   fill = false,
+  align = "center",
 }: {
   value: T;
   defaultValue: T;
   onChange: (value: T) => void;
   options: { value: T; label: string }[];
   fill?: boolean;
+  align?: "left" | "center";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const isActive = value !== defaultValue;
@@ -34,6 +36,7 @@ export default function SortDropdown<T extends string>({
         compact
         hasPopup="listbox"
         fill={fill}
+        align={align}
       />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>

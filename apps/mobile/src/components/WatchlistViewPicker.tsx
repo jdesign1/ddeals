@@ -93,6 +93,7 @@ export default function WatchlistViewPicker({
         ariaLabel={viewAriaLabel}
         expanded={isOpen}
         fill
+        align="left"
       />
 
       <BottomSheetPortal open={isOpen}>

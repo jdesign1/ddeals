@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, GripVertical, X } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 import {
   canonicalStoreKey,
   describeFetchError,
@@ -122,8 +122,10 @@ function normalizeStoreOrder(savedOrder: string[], currentKeys: string[]): strin
   return [...ordered, ...currentKeys.filter((key) => !ordered.includes(key))];
 }
 
-function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[], preferredStoreIds?: ReadonlyMap<string, string>) {
+function sortItems(items: WatchlistItem[], sortMode: SortMode, itemCards: Map<string, ProductCardData>, selectedSupermarkets: string[], preferredStoreIds?: ReadonlyMap<string, string>, priorityProductIds?: ReadonlySet<string>) {
   return [...items].sort((a, b) => {
+    const pulsePriorityDifference = Number(priorityProductIds?.has(b.productId)) - Number(priorityProductIds?.has(a.productId));
+    if (pulsePriorityDifference !== 0) return pulsePriorityDifference;
     const dealA = itemDeal(a, itemCards, selectedSupermarkets, preferredStoreIds?.get(a.productId));
     const dealB = itemDeal(b, itemCards, selectedSupermarkets, preferredStoreIds?.get(b.productId));
     const inactiveDifference = Number(dealA?.isOnSpecial !== true) - Number(dealB?.isOnSpecial !== true);
@@ -460,17 +462,17 @@ export default function ListsPage() {
   const filteredItems = useMemo(
     () => sortItems(
       watchlistItems.filter((item) => {
-        const pulseMatches = !activePulse || pulseSummary.productIds[activePulse].has(item.productId);
         const category = watchlistCategory(productMeta.get(item.productId));
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
         const deals = itemCards.get(item.productId)?.currentDeals ?? [];
         const matchesSupermarket = selectedSupermarkets.includes("all") || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
-        return pulseMatches && matchesCategory && matchesSupermarket;
+        return matchesCategory && matchesSupermarket;
       }),
       sortMode,
       itemCards,
       filterSupermarkets,
       activePulse ? pulseSummary.preferredStoreIds[activePulse] : undefined,
+      activePulse ? pulseSummary.productIds[activePulse] : undefined,
     ),
     [activePulse, filterSupermarkets, itemCards, productMeta, pulseSummary.preferredStoreIds, pulseSummary.productIds, selectedCategories, selectedSupermarkets, sortMode, watchlistItems],
   );
@@ -574,8 +576,6 @@ export default function ListsPage() {
   const handlePulseSelect = useCallback((kind: WatchlistPulseKind) => {
     setActiveWatchlistTab("watchlist");
     setActivePulse((current) => current === kind ? null : kind);
-    setSelectedCategories([]);
-    setSelectedSupermarkets(["all"]);
   }, []);
 
   const categoryCounts = useMemo(() => {
@@ -649,6 +649,14 @@ export default function ListsPage() {
   const inactiveItems = useMemo(
     () => filteredItems.filter((item) => itemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined)?.isOnSpecial !== true),
     [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds],
+  );
+  const pulseItems = useMemo(
+    () => activePulse ? filteredItems.filter((item) => pulseSummary.productIds[activePulse].has(item.productId)) : [],
+    [activePulse, filteredItems, pulseSummary.productIds],
+  );
+  const otherPulseItems = useMemo(
+    () => activePulse ? filteredItems.filter((item) => !pulseSummary.productIds[activePulse].has(item.productId)) : [],
+    [activePulse, filteredItems, pulseSummary.productIds],
   );
   const groupedSupermarkets = useMemo(
     () => orderedSupermarkets.filter(([storeKey]) => filteredItems.some((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey))),
@@ -745,7 +753,7 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,7rem)_minmax(0,4.5rem)] gap-1.5 overflow-hidden px-5">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden px-5">
           <div className="min-w-0">
             <WatchlistViewPicker
               view={watchlistView}
@@ -765,6 +773,7 @@ export default function ListsPage() {
               onChange={setSelectedCategories}
               availableCategories={categories}
               categoryCounts={categoryCounts}
+              align="left"
             />
           </div>
           <div className="min-w-0">
@@ -778,6 +787,7 @@ export default function ListsPage() {
                 { value: "recent" as const, label: "Latest added" },
               ]}
               fill
+              align="left"
             />
           </div>
         </div>
@@ -785,7 +795,7 @@ export default function ListsPage() {
 
       <div className="sr-only" aria-live="polite">
         {activePulse
-          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${filteredItems.length} ${filteredItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
+          ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${filteredItems.length} ${filteredItems.length === 1 ? "item" : "items"}, with Pulse matches first and all other items after them; ${viewStatusDescription}.`
           : selectedCategories.length > 0
             ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
             : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`}
@@ -813,22 +823,41 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
           <div className="flex flex-col gap-2 px-5">
-            <AnimatePresence initial={false}>
-              {activeItems.map((entry) => renderItem(entry))}
-              {inactiveItems.length > 0 && (
-                <motion.h2
-                  key="not-on-special-heading"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
-                >
-                  Not on special
-                </motion.h2>
-              )}
-              {inactiveItems.map((entry) => renderItem(entry))}
-            </AnimatePresence>
+            {activePulse ? (
+              <AnimatePresence initial={false}>
+                {pulseItems.map((entry) => renderItem(entry))}
+                {otherPulseItems.length > 0 && (
+                  <motion.h2
+                    key="other-watchlist-heading"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                  >
+                    Other Watchlist items
+                  </motion.h2>
+                )}
+                {otherPulseItems.map((entry) => renderItem(entry))}
+              </AnimatePresence>
+            ) : (
+              <AnimatePresence initial={false}>
+                {activeItems.map((entry) => renderItem(entry))}
+                {inactiveItems.length > 0 && (
+                  <motion.h2
+                    key="not-on-special-heading"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                  >
+                    Not on special
+                  </motion.h2>
+                )}
+                {inactiveItems.map((entry) => renderItem(entry))}
+              </AnimatePresence>
+            )}
           </div>
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "by-supermarket" && (
@@ -1124,7 +1153,7 @@ function WatchlistSupermarketSection({
     }, 420);
   };
 
-  const handleGripPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const handleSectionPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (didLongPressRef.current) return;
     const origin = longPressOriginRef.current;
     if (!origin) return;
@@ -1139,14 +1168,17 @@ function WatchlistSupermarketSection({
     longPressOriginRef.current = null;
   };
 
-  const handleGripClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    if (!didLongPressRef.current) return;
-    event.preventDefault();
-    event.stopPropagation();
-    didLongPressRef.current = false;
+  const handleSectionClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (didLongPressRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      didLongPressRef.current = false;
+      return;
+    }
+    onToggle();
   };
 
-  const handleGripKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+  const handleSectionKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
     event.preventDefault();
     if (event.key === "ArrowUp" && canMoveUp) onMoveUp();
@@ -1161,36 +1193,27 @@ function WatchlistSupermarketSection({
       className="overflow-hidden rounded-2xl border border-stone-200/80 bg-white"
       layout
     >
-      <div className="flex items-center gap-1 border-b border-stone-100 px-2 py-1">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={isExpanded}
-          aria-controls={sectionContentId}
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
-        >
-          {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />}
-          <span className="min-w-0 truncate text-sm font-extrabold text-stone-900">{storeLabel}</span>
-          <span className="shrink-0 text-xs font-semibold text-stone-400">{itemCount} {itemCount === 1 ? "product" : "products"}</span>
-        </button>
-        <button
-          type="button"
-          aria-label={`Hold to reorder ${storeLabel}. Use Alt plus arrow keys to move it.`}
-          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-          title="Hold to reorder"
-          className="flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600"
-          onPointerDown={startLongPress}
-          onPointerMove={handleGripPointerMove}
-          onPointerUp={stopLongPress}
-          onPointerCancel={stopLongPress}
-          onPointerLeave={stopLongPress}
-          onClick={handleGripClick}
-          onKeyDown={handleGripKeyDown}
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          <GripVertical className="h-5 w-5" aria-hidden="true" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleSectionClick}
+        onPointerDown={startLongPress}
+        onPointerMove={handleSectionPointerMove}
+        onPointerUp={stopLongPress}
+        onPointerCancel={stopLongPress}
+        onPointerLeave={stopLongPress}
+        onKeyDown={handleSectionKeyDown}
+        onContextMenu={(event) => event.preventDefault()}
+        aria-expanded={isExpanded}
+        aria-controls={sectionContentId}
+        aria-label={`${storeLabel}, ${itemCount} ${itemCount === 1 ? "product" : "products"}. ${isExpanded ? "Collapse" : "Expand"} section. Hold to reorder.`}
+        aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+        title="Tap to expand or collapse. Hold to reorder."
+        className="flex min-h-11 w-full touch-none items-center gap-2 border-b border-stone-100 px-4 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
+      >
+        <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-stone-900">{storeLabel}</span>
+        <span className="shrink-0 text-xs font-semibold text-stone-400">{itemCount} {itemCount === 1 ? "product" : "products"}</span>
+        {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />}
+      </button>
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div

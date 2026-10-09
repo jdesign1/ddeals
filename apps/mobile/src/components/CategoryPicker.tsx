@@ -15,6 +15,7 @@ export default function CategoryPicker({
   label = "Category",
   emptyMessage = "No deals in this category right now.",
   ariaLabel = "Filter by category",
+  align = "center",
 }: {
   selectedCategories: string[];
   onChange: (categories: string[]) => void;
@@ -24,6 +25,7 @@ export default function CategoryPicker({
   emptyMessage?: string;
   ariaLabel?: string;
   singleCategoryLabel?: string;
+  align?: "left" | "center";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedLabel = label;
@@ -46,6 +48,7 @@ export default function CategoryPicker({
         ariaLabel={`${ariaLabel}: ${selectedLabel}`}
         expanded={isOpen}
         fill
+        align={align}
       />
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>
