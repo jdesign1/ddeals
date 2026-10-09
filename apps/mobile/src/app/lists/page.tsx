@@ -419,7 +419,11 @@ export default function ListsPage() {
       return {
         productId: item.productId,
         verdicts: orderedDeals.map((deal) => getAssessmentVerdict(deal)),
-        offers: orderedDeals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), price: deal.price })),
+        offers: orderedDeals.map((deal) => ({
+          storeId: canonicalStoreKey(deal.store),
+          price: deal.price,
+          isOnSpecial: deal.isOnSpecial === true,
+        })),
         verdictOffers: orderedDeals.map((deal) => ({ storeId: canonicalStoreKey(deal.store), verdict: getAssessmentVerdict(deal) })),
       };
     }),

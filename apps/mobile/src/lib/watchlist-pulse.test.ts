@@ -115,3 +115,35 @@ test("uses the cheapest different supermarket for the cheaper-elsewhere pulse", 
 
   assert.equal(result.preferredStoreIds["cheaper-elsewhere"].get("coffee"), "paknsave");
 });
+
+test("does not create a cheaper-elsewhere pulse for regular-price offers", () => {
+  const result = buildWatchlistPulse(
+    [{
+      productId: "tea",
+      verdicts: [],
+      offers: [
+        { storeId: "woolworths", price: 7, isOnSpecial: false },
+        { storeId: "paknsave", price: 6, isOnSpecial: false },
+      ],
+    }],
+    [],
+  );
+
+  assert.equal(result.counts["cheaper-elsewhere"], 0);
+});
+
+test("does not point cheaper-elsewhere at a regular price", () => {
+  const result = buildWatchlistPulse(
+    [{
+      productId: "coffee",
+      verdicts: [],
+      offers: [
+        { storeId: "woolworths", price: 7, isOnSpecial: true },
+        { storeId: "paknsave", price: 6, isOnSpecial: false },
+      ],
+    }],
+    [],
+  );
+
+  assert.equal(result.counts["cheaper-elsewhere"], 0);
+});

@@ -8,6 +8,8 @@ export type WatchlistPulseKind =
 export interface WatchlistPulseOffer {
   storeId: string | null | undefined;
   price: number;
+  /** Whether this offer is an active special. Omitted by legacy callers. */
+  isOnSpecial?: boolean;
 }
 
 export interface WatchlistPulseVerdictOffer {
@@ -55,8 +57,9 @@ function emptyPreferredStores(): Record<WatchlistPulseKind, Map<string, string>>
  * return-visit summary, and viewing the corresponding Watchlist item clears
  * the same alert that powers the existing red "New" marker. The cheaper-
  * elsewhere signal is anchored to the card's first/current offer and only
- * fires for a lower exact price at another supermarket; saved-store
- * provenance is not currently part of list membership.
+ * fires when both compared offers are active specials with a lower exact
+ * price at another supermarket; saved-store provenance is not currently part
+ * of list membership.
  */
 export function buildWatchlistPulse(
   products: readonly WatchlistPulseProduct[],
@@ -95,7 +98,9 @@ export function buildWatchlistPulse(
     const displayedStore = displayedOffer?.storeId;
     const cheaperOffer = product.offers
       .filter((offer) =>
-        Boolean(displayedStore)
+        displayedOffer?.isOnSpecial !== false
+        && offer.isOnSpecial !== false
+        && Boolean(displayedStore)
         && Boolean(offer.storeId)
         && offer.storeId !== displayedStore
         && Number.isFinite(offer.price)
