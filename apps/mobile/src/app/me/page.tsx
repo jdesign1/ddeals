@@ -216,7 +216,6 @@ export default function MePage() {
   const { products, loadingProducts, toggleStore, setDealFilter } = useSearch();
   const { savedProductIds } = useWatchlist();
   const [stats, setStats] = useState<DealStats | null>(null);
-  const [statsLimited, setStatsLimited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBreakdownOpen, setIsBreakdownOpen] = useState(true);
@@ -240,10 +239,9 @@ export default function MePage() {
     if (!user || !session?.access_token) return;
     let cancelled = false;
     fetchDealCheckHistoryFromApi(session.access_token, { scope: "stats" })
-      .then(({ rows, limited }) => {
+      .then(({ rows }) => {
         if (!cancelled) {
           setStats(computeDealStats(rows));
-          setStatsLimited(limited);
           setError(null);
         }
       })
@@ -396,7 +394,7 @@ export default function MePage() {
           className="animate-deal-stats-mascot mx-auto mb-2 h-auto w-36 sm:w-40"
         />
         <h1 className="dd-type-section text-stone-900">
-          How Dodgy Deal works for you
+          {activeStatsTab === "trends" ? "NZ Trends in supermarket specials" : "How Dodgy Deal works for you"}
         </h1>
       </header>
 
@@ -435,9 +433,7 @@ export default function MePage() {
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
               <div>
                 <h2 className="dd-type-section text-stone-900">Your activity</h2>
-                <p className="mt-1 dd-type-secondary text-stone-500">
-                  {statsLimited ? "Based on the recent checks returned for your account and your current Watchlist." : "Personal numbers from your checks and Watchlist."}
-                </p>
+                <p className="mt-1 dd-type-secondary text-stone-500">Your stats below based on your app usage.</p>
               </div>
               <div className="grid grid-cols-3 divide-x divide-stone-100">
               <StatCell
@@ -455,17 +451,19 @@ export default function MePage() {
               <StatCell label="Real savers found" value={stats.realSavers} valueClassName="text-fair-600" labelClassName="text-fair-600" href="/history?verdict=real" ariaLabel="View checks where you found Real Savers" />
               <StatCell label="Dodgy Deals spotted" value={stats.dodgySpotted} valueClassName="text-alert-600" labelClassName="text-alert-600" href="/history?verdict=dodgy" ariaLabel="View checks where you spotted Dodgy Deals" />
               </div>
-              <Link href="/lists" className="flex items-center justify-between rounded-xl border border-ink-100 bg-ink-50/50 px-4 py-3 text-left transition-colors hover:bg-ink-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">
-                <span>
-                  <span className="block dd-type-control text-stone-900">Your Watchlist</span>
-                  <span className="mt-0.5 block dd-type-meta text-stone-500">Saved products with live verdicts and price alerts</span>
-                </span>
-                <span className="flex items-center gap-1 text-base font-black tabular-nums text-ink-700">
-                  {savedProductIds.size}
-                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </Link>
             </div>
+
+            <Link
+              href="/lists"
+              className="flex w-full items-center justify-between rounded-2xl border border-ink-100 bg-ink-50/60 px-5 py-4 text-left shadow-xs transition-colors hover:bg-ink-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600"
+            >
+              <span className="min-w-0">
+                <span className="block dd-type-control text-stone-900">Your Watchlist</span>
+                <span className="mt-1 block text-2xl font-black leading-none tabular-nums text-ink-700">{savedProductIds.size}</span>
+                <span className="mt-1 block dd-type-meta text-stone-500">Saved products with live verdicts and price alerts</span>
+              </span>
+              <ChevronRight className="h-5 w-5 flex-shrink-0 text-ink-700" aria-hidden="true" />
+            </Link>
             )}
 
             {activeStatsTab === "trends" && (
@@ -483,9 +481,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Current deals by supermarket</span>
+                  <span className="block dd-type-section text-stone-900">Total specials in NZ</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Current specials from the last 90 days. Tap a number to browse that supermarket&rsquo;s deals.
+                    See how many total real &amp; dodgy specials are at each supermarket from the past 90 days.
                   </span>
                 </span>
                 <ChevronDown
@@ -615,7 +613,7 @@ export default function MePage() {
                 <span>
                   <span className="block dd-type-section text-stone-900">Best value by supermarket</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Ranks supermarkets by average discount on current Real Saver specials over the last 90 days. The dollar total adds one discount per deal.
+                    See the best average discount by supermarket in NZ in the past 90 days.
                   </span>
                 </span>
                 <ChevronDown
@@ -701,7 +699,7 @@ export default function MePage() {
                 <span>
                   <span className="block dd-type-section text-stone-900">How often prices change</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    How many current specials changed price in the last 90 days.
+                    See how often prices change at supermarkets across NZ.
                   </span>
                 </span>
                 <ChevronDown
@@ -713,7 +711,7 @@ export default function MePage() {
               {isPriceChangeOpen && (
                 <div className="flex flex-col gap-4">
                   <p className="dd-type-secondary text-stone-500">
-                    Bars show the share of items with at least one price change. We need at least two recorded prices to compare.
+                    This shows the share of items with a price change. We need at least two prices to compare.
                   </p>
 
                   {loadingProducts ? (
@@ -725,7 +723,7 @@ export default function MePage() {
                           <div className="min-w-0">
                             <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most often</p>
                             <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-stone-900">{priceChangeStats.stores[0].store}</p>
-                            <p className="mt-1 dd-type-secondary text-stone-500">More of its specials changed price than at other supermarkets</p>
+                            <p className="mt-1 dd-type-secondary text-stone-500">More price changes than elsewhere in NZ</p>
                           </div>
                           <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
                             <Link href="/" onClick={() => { toggleStore("all"); toggleStore(priceChangeStats.stores[0].key); }} aria-label={`Browse current deals at ${priceChangeStats.stores[0].store}`} className="text-2xl font-black leading-none tabular-nums text-ink-700 underline decoration-ink-300 underline-offset-2">
@@ -735,7 +733,7 @@ export default function MePage() {
                           </div>
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3 border-t border-ink-100 pt-3">
-                          <span className="dd-type-meta text-stone-500">Items with a price change</span>
+                          <span className="dd-type-meta text-stone-500">Items changed</span>
                           <span className="text-sm font-bold tabular-nums text-stone-700">
                             {priceChangeStats.stores[0].itemsChanged} of {priceChangeStats.stores[0].itemsTracked}
                           </span>
@@ -768,7 +766,7 @@ export default function MePage() {
                     </>
                   ) : (
                     <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                      We&rsquo;ll show this once more current specials have at least two recorded prices to compare.
+                      Not enough price history yet — we need two prices to compare.
                     </p>
                   )}
                 </div>
@@ -783,9 +781,9 @@ export default function MePage() {
                 className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
               >
                 <span>
-                  <span className="block dd-type-section text-stone-900">Items with the most price changes</span>
+                  <span className="block dd-type-section text-stone-900">Items changed most often</span>
                   <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Current specials with the most price changes across supermarkets in the last 90 days.
+                    See which current specials changed price most across NZ.
                   </span>
                 </span>
                 <ChevronDown
@@ -825,7 +823,7 @@ export default function MePage() {
                   </div>
                 ) : (
                   <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                    No price changes recorded for current specials yet. We need at least two prices to spot a change.
+                    No price changes yet — we need two prices to spot a change.
                   </p>
                 )
               )}
@@ -845,7 +843,6 @@ export default function MePage() {
               >
                 <span>
                   <span className="block dd-type-section text-fair-950">Estimated savings</span>
-                  <span className="mt-1 block dd-type-secondary text-fair-800">Estimated price drops across the deals you checked.</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="dd-type-display tabular-nums text-fair-700">${stats.moneySaved.toFixed(2)}</span>
