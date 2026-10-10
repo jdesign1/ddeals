@@ -430,6 +430,7 @@ export default function MePage() {
         {(activeStatsTab === "trends" || (!loading && !error && stats)) && (
           <div className="flex flex-col gap-4 px-5">
             {activeStatsTab === "activity" && stats && (
+            <>
             <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
               <div>
                 <h2 className="dd-type-section text-stone-900">Your activity</h2>
@@ -464,6 +465,7 @@ export default function MePage() {
               </span>
               <ChevronRight className="h-5 w-5 flex-shrink-0 text-ink-700" aria-hidden="true" />
             </Link>
+            </>
             )}
 
             {activeStatsTab === "trends" && (
