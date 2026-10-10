@@ -1,9 +1,13 @@
 import { normalizeStoreKey, type CurrentDeal, type ProductCard } from "@dodgey-deals/shared";
 import { matchesDealFilter } from "./deal-filters.ts";
 
-const SNAPSHOT_VERSION = 1;
-const SNAPSHOT_STORAGE_KEY = "dd-semantic-specials-snapshot-v1";
+const SNAPSHOT_VERSION = 2;
+const SNAPSHOT_STORAGE_PREFIX = "dd-semantic-specials-snapshot-v2:";
+export const NEW_SPECIALS_PENDING_VERSION = 1;
+const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v1:";
 const PRICE_CHANGE_EPSILON = 0.005;
+export const MAX_NEW_SPECIALS_PREVIEW_ITEMS = 3;
+export const MAX_NEW_SPECIALS_DISPLAY_COUNT = 50;
 
 type SnapshotEntry = {
   price: number;
@@ -30,7 +34,30 @@ export type NewSpecialsSummary = {
   allDealKeys: string[];
   realDealKeys: string[];
   dodgyDealKeys: string[];
+  previewItems: NewSpecialsPreviewItem[];
 };
+
+export type NewSpecialsPreviewItem = {
+  productId: string;
+  name: string;
+  store: string;
+  price: number;
+  change: "new" | "price-drop";
+};
+
+export type NewSpecialsPending = {
+  version: number;
+  summary: NewSpecialsSummary;
+  snapshot: NewSpecialsSnapshot;
+};
+
+export function getNewSpecialsStorageScope(userId: string | null | undefined, isAnonymousSession = false): string {
+  return userId && !isAnonymousSession ? `user:${userId}` : "device";
+}
+
+function scopedStorageKey(prefix: string, scope: string): string {
+  return `${prefix}${encodeURIComponent(scope)}`;
+}
 
 export function getNewSpecialDealKey(productId: string, store: string): string {
   return `${productId}::${normalizeStoreKey(store)}`;
@@ -50,10 +77,10 @@ export function createNewSpecialsSnapshot(products: ProductCard[]): NewSpecialsS
   return { version: SNAPSHOT_VERSION, deals };
 }
 
-export function readNewSpecialsSnapshot(): NewSpecialsSnapshot | null {
+export function readNewSpecialsSnapshot(scope = "device"): NewSpecialsSnapshot | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    const raw = window.localStorage.getItem(scopedStorageKey(SNAPSHOT_STORAGE_PREFIX, scope));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<NewSpecialsSnapshot>;
     if (parsed.version !== SNAPSHOT_VERSION || !parsed.deals || typeof parsed.deals !== "object") return null;
@@ -63,10 +90,50 @@ export function readNewSpecialsSnapshot(): NewSpecialsSnapshot | null {
   }
 }
 
-export function writeNewSpecialsSnapshot(snapshot: NewSpecialsSnapshot): boolean {
+export function writeNewSpecialsSnapshot(snapshot: NewSpecialsSnapshot, scope = "device"): boolean {
   if (typeof window === "undefined") return false;
   try {
-    window.localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+    window.localStorage.setItem(scopedStorageKey(SNAPSHOT_STORAGE_PREFIX, scope), JSON.stringify(snapshot));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readNewSpecialsPending(scope = "device"): NewSpecialsPending | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(scopedStorageKey(PENDING_STORAGE_PREFIX, scope));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<NewSpecialsPending>;
+    if (parsed.version !== NEW_SPECIALS_PENDING_VERSION || !parsed.summary || !parsed.snapshot) return null;
+    return {
+      version: NEW_SPECIALS_PENDING_VERSION,
+      summary: {
+        ...(parsed.summary as NewSpecialsSummary),
+        previewItems: Array.isArray(parsed.summary.previewItems) ? parsed.summary.previewItems : [],
+      },
+      snapshot: parsed.snapshot as NewSpecialsSnapshot,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeNewSpecialsPending(pending: NewSpecialsPending, scope = "device"): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(scopedStorageKey(PENDING_STORAGE_PREFIX, scope), JSON.stringify(pending));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearNewSpecialsPending(scope = "device"): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.removeItem(scopedStorageKey(PENDING_STORAGE_PREFIX, scope));
     return true;
   } catch {
     return false;
@@ -95,6 +162,7 @@ export function summarizeNewSpecials(products: ProductCard[], previous: NewSpeci
     allDealKeys: [],
     realDealKeys: [],
     dodgyDealKeys: [],
+    previewItems: [],
   };
 
   for (const product of products) {
@@ -110,6 +178,16 @@ export function summarizeNewSpecials(products: ProductCard[], previous: NewSpeci
       summary.allDealKeys.push(key);
       if (hasStarted) summary.newlyStarted += 1;
       else summary.priceDrops += 1;
+
+      if (summary.previewItems.length < MAX_NEW_SPECIALS_PREVIEW_ITEMS) {
+        summary.previewItems.push({
+          productId: product.id,
+          name: product.name,
+          store: deal.store,
+          price: deal.price,
+          change: hasStarted ? "new" : "price-drop",
+        });
+      }
 
       const storeKey = normalizeStoreKey(deal.store);
       if (storeKey.includes("woolworths")) summary.byStore.woolworths += 1;

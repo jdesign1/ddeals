@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
-import { createNewSpecialsSnapshot, getNewSpecialDealKey, summarizeNewSpecials } from "./new-specials.ts";
+import {
+  createNewSpecialsSnapshot,
+  getNewSpecialDealKey,
+  getNewSpecialsStorageScope,
+  summarizeNewSpecials,
+} from "./new-specials.ts";
 
 function deal(overrides: Partial<CurrentDeal> = {}): CurrentDeal {
   return {
@@ -72,4 +77,27 @@ test("a new special and a lower price are surfaced with exact product-store keys
   ]);
   assert.deepEqual(summary.realDealKeys, [getNewSpecialDealKey("p1", "woolworths")]);
   assert.deepEqual(summary.dodgyDealKeys, [getNewSpecialDealKey("p2", "newworld")]);
+  assert.equal(summary.previewItems.length, 2);
+});
+
+test("a price increase does not create a new-specials update", () => {
+  const previous = createNewSpecialsSnapshot([product("p1", [deal({ price: 5 })])]);
+  const refreshed = [product("p1", [deal({ price: 6 })])];
+
+  const summary = summarizeNewSpecials(refreshed, previous);
+
+  assert.equal(summary.total, 0);
+  assert.deepEqual(summary.previewItems, []);
+});
+
+test("previews are capped and account scopes stay separate", () => {
+  const products = Array.from({ length: 5 }, (_, index) => product(`p${index}`, [deal({ price: 4 - index / 10 })]));
+  const previous = createNewSpecialsSnapshot([]);
+  const summary = summarizeNewSpecials(products, previous);
+
+  assert.equal(summary.total, 5);
+  assert.equal(summary.previewItems.length, 3);
+  assert.equal(getNewSpecialsStorageScope("user-1"), "user:user-1");
+  assert.equal(getNewSpecialsStorageScope("user-1", true), "device");
+  assert.equal(getNewSpecialsStorageScope(null), "device");
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -11,16 +11,11 @@ import { useAuth } from "@/lib/auth-context";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
+import { useNewSpecials } from "@/lib/new-specials-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
-import {
-  createNewSpecialsSnapshot,
-  readNewSpecialsSnapshot,
-  summarizeNewSpecials,
-  writeNewSpecialsSnapshot,
-  type NewSpecialsSummary,
-} from "@/lib/new-specials";
+import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 const CONTEXT_HEADER_ROUTES = ["/account", "/how-it-works", "/settings", "/privacy", "/terms", "/support", "/report-deal"];
 const ROUTE_TITLES: Record<string, string> = {
@@ -50,16 +45,12 @@ export default function AppHeader({
   const { isAnonymousSession, user, profile } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { products, loadingProducts, query, setQuery, openSearch, openSearchForFilter } = useSearch();
+  const { query, setQuery, openSearch, openSearchForFilter } = useSearch();
+  const { digest, openRequested, consumeOpenRequest, acknowledge } = useNewSpecials();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
-  const [newSpecialsSnapshot, replaceNewSpecialsSnapshot] = useReducer(
-    (_current: ReturnType<typeof readNewSpecialsSnapshot>, next: NonNullable<ReturnType<typeof readNewSpecialsSnapshot>>) => next,
-    null,
-    readNewSpecialsSnapshot,
-  );
   const hasPresentedNewSpecialsThisMount = useRef(false);
 
   useEffect(() => {
@@ -72,33 +63,19 @@ export default function AppHeader({
 
   useEffect(() => subscribeToCheckDealsHeaderVisibility(setIsHiddenOnCheckDeals), []);
 
-  const currentSpecialsSnapshot = useMemo(() => createNewSpecialsSnapshot(products), [products]);
-  const newSpecials = useMemo(
-    () => (newSpecialsSnapshot ? summarizeNewSpecials(products, newSpecialsSnapshot) : null),
-    [products, newSpecialsSnapshot],
-  );
-
+  const shouldPresentNewSpecialsModal = isLaunchSplashFinished && (digest?.total ?? 0) > 0 && pathname === "/";
   useEffect(() => {
-    if (loadingProducts || products.length === 0) return;
-    if (newSpecialsSnapshot && newSpecials?.total) return;
-    writeNewSpecialsSnapshot(currentSpecialsSnapshot);
-    replaceNewSpecialsSnapshot(currentSpecialsSnapshot);
-  }, [currentSpecialsSnapshot, loadingProducts, newSpecials?.total, newSpecialsSnapshot, products.length]);
-
-  const shouldPresentNewSpecialsModal = !loadingProducts && isLaunchSplashFinished && (newSpecials?.total ?? 0) > 0 && pathname === "/";
-  useEffect(() => {
-    if (!shouldPresentNewSpecialsModal || hasPresentedNewSpecialsThisMount.current) return;
+    if (!shouldPresentNewSpecialsModal || (!openRequested && hasPresentedNewSpecialsThisMount.current)) return;
     const presentationTimer = window.setTimeout(() => {
-      if (hasPresentedNewSpecialsThisMount.current) return;
+      if (!openRequested && hasPresentedNewSpecialsThisMount.current) return;
       hasPresentedNewSpecialsThisMount.current = true;
-      if (!newSpecials) return;
-      setNewSpecialsModalSummary(newSpecials);
-      writeNewSpecialsSnapshot(currentSpecialsSnapshot);
-      replaceNewSpecialsSnapshot(currentSpecialsSnapshot);
+      consumeOpenRequest();
+      if (!digest) return;
+      setNewSpecialsModalSummary(digest);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [currentSpecialsSnapshot, newSpecials, shouldPresentNewSpecialsModal]);
+  }, [consumeOpenRequest, digest, openRequested, shouldPresentNewSpecialsModal]);
 
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
@@ -183,7 +160,7 @@ export default function AppHeader({
       </div>
 
       {newSpecialsModalSummary && (
-        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={() => setIsNewSpecialsModalOpen(false)} onSelectFilter={(filter, dealKeys) => { setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} />
+        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={() => setIsNewSpecialsModalOpen(false)} onSelectFilter={(filter, dealKeys) => { acknowledge(); setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} />
       )}
     </>
   );

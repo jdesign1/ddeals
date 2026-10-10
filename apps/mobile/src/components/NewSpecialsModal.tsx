@@ -2,10 +2,11 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
+import { MAX_NEW_SPECIALS_DISPLAY_COUNT } from "@/lib/new-specials";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 interface NewSpecialsModalProps {
@@ -22,24 +23,64 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const [isClosing, setIsClosing] = useState(false);
   const hasNewSpecials = summary.total > 0;
   const hasRatedSpecials = summary.realDeals > 0 || summary.dodgyDeals > 0;
-  const storeSummary = [
-    { count: summary.byStore.woolworths, store: "Woolworths" },
-    { count: summary.byStore.newworld, store: "New World" },
-    { count: summary.byStore.paknsave, store: "PAK'nSAVE" },
-    { count: summary.byStore.foursquare, store: "Four Square" },
-  ]
-    .filter(({ count }) => count > 0)
-    .map(({ count, store }) => `${count} at ${store}`)
-    .join(", ");
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const onSelectFilterRef = useRef(onSelectFilter);
+  onCloseRef.current = onClose;
+  onSelectFilterRef.current = onSelectFilter;
 
-  const handleClose = () => {
-    setIsClosing(true);
-    onClose();
-  };
+  const displayCount = (count: number) => count > MAX_NEW_SPECIALS_DISPLAY_COUNT ? `${MAX_NEW_SPECIALS_DISPLAY_COUNT}+` : String(count);
+  const pluralLabel = (count: number, singular: string) => `${displayCount(count)} ${singular}${count === 1 ? "" : "s"}`;
+  const changeSummary = [
+    summary.newlyStarted > 0 ? `${pluralLabel(summary.newlyStarted, "new special")}` : "",
+    summary.priceDrops > 0 ? `${pluralLabel(summary.priceDrops, "price drop")}` : "",
+  ].filter(Boolean).join(" · ");
 
-  const handleSelectFilter = (filter: DealFilter, dealKeys: string[]) => {
+  const handleClose = useCallback(() => {
     setIsClosing(true);
-    onSelectFilter(filter, dealKeys);
+    onCloseRef.current();
+  }, []);
+
+  const handleSelectFilter = useCallback((filter: DealFilter, dealKeys: string[]) => {
+    setIsClosing(true);
+    onSelectFilterRef.current(filter, dealKeys);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      handleClose();
+    };
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handleEscape);
+      if (previouslyFocusedRef.current && document.contains(previouslyFocusedRef.current)) previouslyFocusedRef.current.focus();
+    };
+  }, [handleClose, open]);
+
+  const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])") ?? [],
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   return (
@@ -69,6 +110,9 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               role="dialog"
               aria-modal="true"
               aria-labelledby="new-specials-title"
+              aria-describedby="new-specials-description"
+              ref={dialogRef}
+              onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
               className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-1/2 mx-auto flex max-h-[calc(100dvh-2rem)] w-auto max-w-[27rem] -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-stone-200 px-5 pb-6 pt-5 shadow-2xl"
             >
@@ -76,6 +120,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 type="button"
                 onClick={handleClose}
                 aria-label="Close new specials message"
+                ref={closeButtonRef}
                 className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
               >
                 <span className="text-2xl leading-none" aria-hidden="true">×</span>
@@ -97,27 +142,34 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               <div className="text-center">
                 <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                   {!hasNewSpecials
-                    ? "You’re all caught up"
-                    : "New deals since your last visit"}
+                    ? "All caught up"
+                    : "New deals landed"}
                 </h2>
                 {!hasNewSpecials ? (
-                  <p className="mt-3 text-sm leading-6 text-stone-600">
-                    There aren&rsquo;t any new specials to show right now. We&rsquo;ll let you know when fresh deals land.
-                  </p>
+                  <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">No fresh deals just yet.</p>
                 ) : (
                   <>
-                    <p className="mt-3 text-sm leading-6 text-stone-600">
-                      {storeSummary ? `New specials at ${storeSummary}.` : `${summary.total} new specials are ready to check.`}
+                    <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">
+                      {`${displayCount(summary.total)} fresh ${summary.total === 1 ? "deal" : "deals"} to check.`}
                     </p>
-                    <p className="mt-3 text-sm leading-6 text-stone-600">
-                      {summary.newlyStarted > 0 && `${summary.newlyStarted} newly started special${summary.newlyStarted === 1 ? "" : "s"}`}
-                      {summary.newlyStarted > 0 && summary.priceDrops > 0 && " and "}
-                      {summary.priceDrops > 0 && `${summary.priceDrops} price drop${summary.priceDrops === 1 ? "" : "s"}`}
-                      {" since your last visit."}
-                    </p>
+                    {changeSummary && <p className="mt-2 text-sm leading-6 text-stone-600">{changeSummary}.</p>}
                   </>
                 )}
               </div>
+
+              {hasNewSpecials && summary.previewItems.length > 0 && (
+                <div className="mt-5 rounded-2xl bg-stone-50 px-3 py-3 text-left">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-stone-500">A few to check</p>
+                  <ul className="mt-2 space-y-2" aria-label="New deal previews">
+                    {summary.previewItems.map((item) => (
+                      <li key={`${item.productId}-${item.store}`} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="min-w-0 truncate font-semibold text-stone-800">{item.name}</span>
+                        <span className="shrink-0 text-xs font-semibold text-stone-500">{item.store} · ${item.price.toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {hasNewSpecials && (
                 <div className="mt-6 flex flex-col gap-3">
@@ -126,7 +178,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     onClick={() => handleSelectFilter("all", summary.allDealKeys)}
                     className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
                   >
-                    <span>View {summary.total} new special{summary.total === 1 ? "" : "s"}</span>
+                    <span>See {pluralLabel(summary.total, "deal")}</span>
                     <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                   </button>
                   {hasRatedSpecials && (
@@ -137,7 +189,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                           onClick={() => handleSelectFilter("real", summary.realDealKeys)}
                           className="dd-btn dd-btn-outline new-specials-real-button min-h-12 w-full cursor-pointer"
                         >
-                          <span>{summary.realDeals} Real deals</span>
+                          <span>{pluralLabel(summary.realDeals, "Real Saver")}</span>
                         </button>
                       )}
                       {summary.dodgyDeals > 0 && (
@@ -146,7 +198,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                           onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
                           className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-12 w-full cursor-pointer"
                         >
-                          <span>{summary.dodgyDeals} Dodgy deals</span>
+                          <span>{pluralLabel(summary.dodgyDeals, "Dodgy Deal")}</span>
                         </button>
                       )}
                     </div>

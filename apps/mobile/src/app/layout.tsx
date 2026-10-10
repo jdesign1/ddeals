@@ -16,6 +16,7 @@ import { NotificationsProvider } from "@/lib/notifications-context";
 import { SubscriptionProvider } from "@/lib/subscription-context";
 import { WatchlistProvider } from "@/lib/watchlist-context";
 import { NavigationDrawerProvider } from "@/lib/navigation-drawer-context";
+import { NewSpecialsProvider } from "@/lib/new-specials-context";
 import "./globals.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
@@ -94,6 +95,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 override. */}
               <CardLayoutProvider>
                 <SearchProvider>
+                  <NewSpecialsProvider>
                   <NavigationDrawerProvider>
                     <LaunchSplash />
               {/* This bottom padding (2026-08-12) -- BottomNav went from a
@@ -166,6 +168,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   both only existed inside Home's own page.tsx. */}
                     <GlobalOverlays />
                   </NavigationDrawerProvider>
+                  </NewSpecialsProvider>
                 </SearchProvider>
               </CardLayoutProvider>
             </HeaderOverrideProvider>

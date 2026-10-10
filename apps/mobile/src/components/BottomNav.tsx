@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useSearch } from "@/lib/search-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
+import { useNewSpecials } from "@/lib/new-specials-context";
 
 type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
@@ -230,6 +231,7 @@ export default function BottomNav() {
   const { isActive: isSearchActive, closeSearch } = useSearch();
   const { unreadCount } = useNotifications();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
+  const { hasPendingDigest, requestOpen } = useNewSpecials();
 
   if (pathname.startsWith("/deal/") || pathname === "/settings" || CONTACT_ROUTES.includes(pathname)) return null;
 
@@ -249,6 +251,7 @@ export default function BottomNav() {
         {TABS.map(({ href, label, icon }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const hasUnreadUpdates = href === "/lists" && unreadCount > 0;
+          const hasNewSpecials = href === "/" && hasPendingDigest;
           return (
             <Link
               key={href}
@@ -263,9 +266,10 @@ export default function BottomNav() {
                       : "stats-tab"
               }
               aria-current={isActive ? "page" : undefined}
-              aria-label={hasUnreadUpdates ? `${label}, new deal updates` : undefined}
+              aria-label={hasUnreadUpdates || hasNewSpecials ? `${label}, new deal updates` : undefined}
               onClick={() => {
                 if (isSearchActive) closeSearch();
+                if (hasNewSpecials) requestOpen();
               }}
               className="flex min-w-0 flex-1 items-center justify-center py-1.5"
             >
@@ -307,7 +311,7 @@ export default function BottomNav() {
                   >
                     {icon}
                   </span>
-                  {hasUnreadUpdates && (
+                  {(hasUnreadUpdates || hasNewSpecials) && (
                     <span
                       className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white"
                       aria-hidden="true"
