@@ -190,7 +190,7 @@ export default function ProductListCard({
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
       }}
-      className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border border-stone-200/80 bg-white ${
+      className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border ${snapshot?.isNew ? "border-black" : "border-stone-200/80"} bg-white ${
         isCompactLayout
           ? "dd-compact-product-card flex min-h-28 items-stretch gap-3 p-2"
           : isSnapshotLayout
