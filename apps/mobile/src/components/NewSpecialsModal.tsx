@@ -114,7 +114,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-1/2 mx-auto flex max-h-[calc(100dvh-2rem)] w-auto max-w-[27rem] -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-stone-200 px-5 pb-6 pt-5 shadow-2xl"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-1/2 mx-auto flex max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-stone-200 px-5 pb-6 pt-4 shadow-2xl"
             >
               <button
                 type="button"
@@ -126,16 +126,16 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <span className="text-2xl leading-none" aria-hidden="true">×</span>
               </button>
 
-              <div className="flex justify-center pr-3">
+              <div className="flex justify-center px-1">
                 <MascotImage
-                  src="/all-checks-login.webp"
-                  darkSrc="/all-checks-login-dark.webp"
-                  alt="Dodgy Deal mascot looking for new specials"
-                  width={288}
-                  height={305}
-                  sizes="160px"
+                  src="/new-specials-mascot.webp"
+                  darkSrc="/new-specials-mascot.webp"
+                  alt="Dodgy Deal mascot investigating new supermarket specials"
+                  width={1024}
+                  height={1024}
+                  sizes="(max-width: 480px) calc(100vw - 72px), 320px"
                   unoptimized
-                  className="mascot-wave h-auto w-36"
+                  className="mascot-wave h-auto w-full max-w-[20rem]"
                 />
               </div>
 
