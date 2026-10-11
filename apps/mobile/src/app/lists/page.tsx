@@ -293,6 +293,7 @@ export default function ListsPage() {
     setActiveWatchlistTab(tab);
     setSelectedCheaperOption(null);
     if (tab === "cheaper-options") {
+      setActivePulse(null);
       cheaperOptionsDefaultExpansionPendingRef.current = true;
       setExpandedCheaperProductIds(new Set(watchlistItems.map((entry) => entry.productId)));
       // Cheaper Options is anchored to the product's primary offer. Keep it
@@ -1067,7 +1068,7 @@ function WatchlistSummaryCard({
       <p className="mt-3 text-[13px] leading-5 text-stone-600">
         {subtitle}
       </p>
-      {!isEmpty && pulseSummary.counts && (
+      {activeTab !== "cheaper-options" && !isEmpty && pulseSummary.counts && (
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Watchlist updates">
           {WATCHLIST_PULSE_ORDER.map((kind) => {
             const count = pulseSummary.counts[kind];
@@ -1094,7 +1095,7 @@ function WatchlistSummaryCard({
           })}
         </div>
       )}
-      {!isEmpty && <p className="sr-only">Real Saver and Dodgy Deal pills describe the current verdicts. Back on special and Price drop pills describe new updates since your last visit.</p>}
+      {activeTab !== "cheaper-options" && !isEmpty && <p className="sr-only">Real Saver and Dodgy Deal pills describe the current verdicts. Back on special and Price drop pills describe new updates since your last visit.</p>}
       {!isEmpty && hasNewPrices && (
         <div className="mt-2 flex items-center gap-2 text-[13px] font-extrabold text-stone-900" aria-live="polite">
           <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
