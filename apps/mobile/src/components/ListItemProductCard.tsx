@@ -388,16 +388,20 @@ export default function ListItemProductCard({
             "pointer-events-none",
           ].join(" ")}
         >
-          {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
-            <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
-              {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
-              {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
-              {isFairPrice && <span className="dd-badge dd-badge-compact dd-badge-dodgy whitespace-nowrap">It&apos;s been cheaper</span>}
-              {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral whitespace-nowrap">Checking deal</span>}
-            </div>
-          )}
-          <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
-          <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{displayedProduct.name}</h4>
+          {/* Keep the main row's vertical slots stable when a cheaper thumbnail
+              swaps in a shorter product name or a product without a brand. */}
+          <div className="mb-0.5 flex min-h-5 flex-wrap items-center gap-1.5">
+            {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
+              <>
+                {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
+                {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
+                {isFairPrice && <span className="dd-badge dd-badge-compact dd-badge-dodgy whitespace-nowrap">It&apos;s been cheaper</span>}
+                {isAssessmentPending && <span className="dd-badge dd-badge-compact dd-badge-neutral whitespace-nowrap">Checking deal</span>}
+              </>
+            )}
+          </div>
+          <span className="block min-h-[1.125rem] truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
+          <h4 className="min-h-10 line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{displayedProduct.name}</h4>
           <div className="mt-1 flex flex-wrap items-end gap-1.5">
             <span className="font-display text-base font-extrabold text-stone-900">
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
