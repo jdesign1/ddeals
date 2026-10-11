@@ -197,6 +197,9 @@ export default function ListItemProductCard({
   const selectedAlternativeDeal = selectedCheaperAlternative
     ? findDealForStore(selectedCheaperAlternative.product.currentDeals, selectedCheaperAlternative.store)
     : undefined;
+  const selectedAlternativeSaving = selectedAlternativeDeal && Number.isFinite(deal.price) && Number.isFinite(selectedAlternativeDeal.price)
+    ? Math.max(0, Math.round((deal.price - selectedAlternativeDeal.price) * 100) / 100)
+    : null;
   const displayedProduct = selectedAlternativeDeal && selectedCheaperAlternative ? selectedCheaperAlternative.product : product;
   const displayedDeal = selectedAlternativeDeal ?? deal;
   // Same sentence-case transform ProductListCard.tsx applies to `brand`
@@ -400,6 +403,13 @@ export default function ListItemProductCard({
               </>
             )}
           </div>
+          {showCheaperOptions && (
+            <div className="flex min-h-5 items-center text-xs font-bold leading-4 text-fair-700">
+              {selectedAlternativeSaving != null && selectedAlternativeSaving > 0
+                ? `Save $${selectedAlternativeSaving.toFixed(2)} vs saved item`
+                : "\u00a0"}
+            </div>
+          )}
           <span className="block min-h-[1.125rem] truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
           <h4 className="min-h-10 line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{displayedProduct.name}</h4>
           <div className="mt-1 flex flex-wrap items-end gap-1.5">
