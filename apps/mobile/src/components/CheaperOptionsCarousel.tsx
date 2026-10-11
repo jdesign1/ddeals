@@ -108,7 +108,7 @@ function CheaperOptionsThumbnailBelt({
                 }}
                 aria-label={`${index === 0 ? "Saved item: " : "Cheaper option: "}${product.name} at ${store}, $${price.toFixed(2)}`}
                 aria-pressed={isSelected}
-                className={`relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border bg-white p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${isSelected ? "border-stone-900 ring-1 ring-stone-900" : "border-stone-200"}`}
+                className={`relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border bg-white p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${isSelected ? "border-2 border-stone-900" : "border-stone-200"}`}
               >
                 <ProductImage
                   src={product.image}
