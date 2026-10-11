@@ -47,6 +47,14 @@ interface MonthlyStats {
   stores: MonthlyStoreStats[];
 }
 
+interface MonthlySummary {
+  key: string;
+  label: string;
+  real: number;
+  dodgy: number;
+  total: number;
+}
+
 interface StoreRanking {
   key: string;
   store: string;
@@ -260,14 +268,22 @@ export default function MePage() {
   );
   const bestValueRanking = storeRankings.find((store) => store.realDeals > 0);
   const mostPriceChangeStore = priceChangeStats.stores.find((store) => store.itemsTracked > 0);
-  const chronologicalMonthlyStats = useMemo(() => [...monthlyStats].reverse(), [monthlyStats]);
+  const chronologicalMonthlySummaries = useMemo<MonthlySummary[]>(
+    () =>
+      [...monthlyStats].reverse().map((month) => {
+        const real = month.stores.reduce((sum, store) => sum + store.real, 0);
+        const dodgy = month.stores.reduce((sum, store) => sum + store.dodgy, 0);
+        return { key: month.key, label: month.label, real, dodgy, total: real + dodgy };
+      }),
+    [monthlyStats]
+  );
   const maxCurrentSpecials = useMemo(
     () => Math.max(1, ...currentStoreStats.map((store) => store.real + store.dodgy)),
     [currentStoreStats]
   );
   const maxMonthlySpecials = useMemo(
-    () => Math.max(1, ...monthlyStats.flatMap((month) => month.stores.map((store) => store.real + store.dodgy))),
-    [monthlyStats]
+    () => Math.max(1, ...chronologicalMonthlySummaries.map((month) => month.total)),
+    [chronologicalMonthlySummaries]
   );
   const maxAverageDiscount = useMemo(
     () => Math.max(1, ...storeRankings.map((store) => store.averageDiscount)),
@@ -288,6 +304,10 @@ export default function MePage() {
     }).sort((a, b) => b.real - a.real || b.dodgy - a.dodgy)[0];
     return spotlight?.real ? spotlight : null;
   }, [monthlyStats]);
+  const busiestMonth = useMemo(
+    () => chronologicalMonthlySummaries.reduce<MonthlySummary | null>((busiest, month) => (!busiest || month.total > busiest.total ? month : busiest), null),
+    [chronologicalMonthlySummaries]
+  );
 
   const openFilteredDeals = useCallback(
     (storeKey: string, filter: Extract<DealFilter, "real" | "dodgy">) => {
@@ -557,47 +577,44 @@ export default function MePage() {
 
                   <div className="flex flex-col gap-5 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
                     <div>
-                      <h2 className="dd-type-section text-stone-900">When specials started</h2>
-                      <p className="mt-1 dd-type-secondary text-stone-500">Current specials grouped by their start month.</p>
+                      <h2 className="dd-type-section text-stone-900">When did current specials start?</h2>
+                      <p className="mt-1 dd-type-secondary text-stone-500">The month each current special was first recorded.</p>
                     </div>
-                    <div className="overflow-x-auto">
-                      <div className="min-w-[300px]">
-                        <div className="grid grid-cols-[minmax(0,5.25rem)_repeat(3,minmax(0,1fr))] items-end gap-x-2 border-b border-stone-100 pb-2 dd-type-meta dd-type-meta-strong text-stone-500">
-                          <span>Store</span>
-                          {chronologicalMonthlyStats.map((month) => <span key={month.key} className="text-center leading-tight">{month.label}</span>)}
-                        </div>
-                        <div className="flex flex-col gap-3 pt-3">
-                          {STATS_STORES.map(({ key, label }) => {
-                            const storeMonths = chronologicalMonthlyStats.map((month) => month.stores.find((store) => store.key === key) ?? { real: 0, dodgy: 0 });
-                            return (
-                              <div key={key} className="grid grid-cols-[minmax(0,5.25rem)_repeat(3,minmax(0,1fr))] items-end gap-x-2">
-                                <span className="truncate dd-type-meta dd-type-meta-strong text-stone-700">{label}</span>
-                                {storeMonths.map((store, index) => {
-                                  const total = store.real + store.dodgy;
-                                  const barHeight = total ? Math.max(10, (total / maxMonthlySpecials) * 100) : 0;
-                                  const realHeight = total ? (store.real / total) * 100 : 0;
-                                  return (
-                                    <div key={key + "-" + chronologicalMonthlyStats[index].key} className="flex h-16 flex-col items-center justify-end gap-1" role="img" aria-label={label + ", " + chronologicalMonthlyStats[index].label + ": " + total + " specials, " + store.real + " Real Savers and " + store.dodgy + " Dodgy Deals"}>
-                                      <span className="dd-type-meta font-bold tabular-nums text-stone-600">{total || "–"}</span>
-                                      <div className="flex h-11 w-8 items-end overflow-hidden rounded-t-lg bg-stone-100" aria-hidden="true">
-                                        <div className="flex w-full flex-col justify-end transition-[height]" style={{ height: String(barHeight) + "%" }}>
-                                          <span className="bg-fair-400" style={{ height: String(realHeight) + "%" }} />
-                                          <span className="flex-1 bg-alert-400" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                    {busiestMonth?.total ? (
+                      <p className="rounded-xl bg-ink-50 px-3.5 py-3 dd-type-secondary text-ink-900">
+                        <span className="font-bold">{busiestMonth.label}</span> has the most current specials still running ({busiestMonth.total}).
+                      </p>
+                    ) : (
+                      <p className="rounded-xl bg-stone-50 px-3.5 py-3 dd-type-secondary text-stone-500">No current specials to chart yet.</p>
+                    )}
+                    {busiestMonth?.total ? (
+                      <div className="flex flex-col gap-5" role="list" aria-label="Current specials by start month">
+                        {chronologicalMonthlySummaries.map((month) => {
+                          const realWidth = (month.real / maxMonthlySpecials) * 100;
+                          const dodgyWidth = (month.dodgy / maxMonthlySpecials) * 100;
+                          return (
+                            <div key={month.key} role="listitem">
+                              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                                <span className="dd-type-control text-stone-800">{month.label}</span>
+                                <span className="dd-type-meta font-bold tabular-nums text-stone-600">{month.total} {month.total === 1 ? "special" : "specials"}</span>
                               </div>
-                            );
-                          })}
-                        </div>
+                              <div
+                                role="img"
+                                aria-label={month.label + ": " + month.total + " current specials, " + month.real + " Real Savers and " + month.dodgy + " Dodgy Deals"}
+                                className="flex h-3 overflow-hidden rounded-full bg-stone-100"
+                              >
+                                <span className="bg-fair-500 transition-[width]" style={{ width: String(realWidth) + "%" }} />
+                                <span className="bg-alert-500 transition-[width]" style={{ width: String(dodgyWidth) + "%" }} />
+                              </div>
+                              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 dd-type-meta">
+                                <span className="text-fair-700"><span className="font-bold tabular-nums">{month.real}</span> Real Savers</span>
+                                <span className="text-alert-700"><span className="font-bold tabular-nums">{month.dodgy}</span> Dodgy Deals</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 dd-type-meta text-stone-500">
-                      <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-fair-400" aria-hidden="true" />Real Saver</span>
-                      <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-alert-400" aria-hidden="true" />Dodgy Deal</span>
-                    </div>
+                    ) : null}
                   </div>
 
                   <div className="flex flex-col gap-5 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
