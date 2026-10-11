@@ -1,10 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { type CheaperAlternative, type CurrentDeal, type ProductCard as ProductCardData } from "@dodgey-deals/shared";
 import ProductImage from "@/components/ProductImage";
-import { saveWatchlistReturnContext } from "@/lib/watchlist-navigation";
 
 const MAX_CHEAPER_OPTIONS = 5;
 
@@ -13,7 +10,8 @@ export default function CheaperOptionsCarousel({
   originalProduct,
   originalDeal,
   originalProductName,
-  watchlistProductId,
+  selectedAlternative,
+  onSelectAlternative,
   loading = false,
   error,
 }: {
@@ -21,7 +19,8 @@ export default function CheaperOptionsCarousel({
   originalProduct: ProductCardData;
   originalDeal: CurrentDeal;
   originalProductName: string;
-  watchlistProductId: string;
+  selectedAlternative: CheaperAlternative | null;
+  onSelectAlternative: (alternative: CheaperAlternative | null) => void;
   loading?: boolean;
   error?: string | null;
 }) {
@@ -29,7 +28,7 @@ export default function CheaperOptionsCarousel({
 
   return (
     <div
-      className="mt-2 border-t border-fair-100 bg-fair-50/60 pb-3 pt-3"
+      className="mt-2 bg-fair-50/60 pb-3 pt-3"
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
@@ -51,7 +50,8 @@ export default function CheaperOptionsCarousel({
           alternatives={visibleAlternatives}
           originalProduct={originalProduct}
           originalDeal={originalDeal}
-          watchlistProductId={watchlistProductId}
+          selectedAlternative={selectedAlternative}
+          onSelectAlternative={onSelectAlternative}
         />
       )}
     </div>
@@ -62,22 +62,15 @@ function CheaperOptionsThumbnailBelt({
   alternatives,
   originalProduct,
   originalDeal,
-  watchlistProductId,
+  selectedAlternative,
+  onSelectAlternative,
 }: {
   alternatives: CheaperAlternative[];
   originalProduct: ProductCardData;
   originalDeal: CurrentDeal;
-  watchlistProductId: string;
+  selectedAlternative: CheaperAlternative | null;
+  onSelectAlternative: (alternative: CheaperAlternative | null) => void;
 }) {
-  const router = useRouter();
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const openAlternativeDeal = (alternative: CheaperAlternative) => {
-    const scrollSurface = document.querySelector<HTMLElement>(".mobile-scroll-surface");
-    saveWatchlistReturnContext(watchlistProductId, scrollSurface?.scrollTop ?? 0);
-    router.push(`/deal/${encodeURIComponent(alternative.product.id)}/${encodeURIComponent(alternative.store)}`);
-  };
-
   const thumbnailOptions = [
     { product: originalProduct, store: originalDeal.store, price: originalDeal.price, alternative: null },
     ...alternatives.map((alternative) => ({
@@ -97,15 +90,14 @@ function CheaperOptionsThumbnailBelt({
         </div>
         <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Cheaper options">
           {thumbnailOptions.map(({ product, store, price, alternative }, index) => {
-            const isSelected = index === selectedIndex;
+            const isSelected = alternative === null
+              ? selectedAlternative === null
+              : selectedAlternative?.product.id === alternative.product.id && selectedAlternative.store === alternative.store;
             return (
               <button
                 key={[product.id, store].join("-")}
                 type="button"
-                onClick={() => {
-                  setSelectedIndex(index);
-                  if (alternative) openAlternativeDeal(alternative);
-                }}
+                onClick={() => onSelectAlternative(alternative)}
                 aria-label={`${index === 0 ? "Saved item: " : "Cheaper option: "}${product.name} at ${store}, $${price.toFixed(2)}`}
                 aria-pressed={isSelected}
                 className={`relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border bg-white p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${isSelected ? "border-2 border-stone-900" : "border-stone-200"}`}

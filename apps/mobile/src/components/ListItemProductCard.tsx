@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, X } from "lucide-react";
-import { getAssessmentVerdict, type CheaperAlternative, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
+import { findDealForStore, getAssessmentVerdict, type CheaperAlternative, type ProductCard as ProductCardData, type CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CheaperOptionsCarousel from "@/components/CheaperOptionsCarousel";
 import MascotImage from "@/components/MascotImage";
@@ -154,6 +154,8 @@ export interface ListItemProductCardProps {
   showCheaperOptions?: boolean;
   cheaperOptionsExpanded?: boolean;
   onToggleCheaperOptions?: () => void;
+  selectedCheaperAlternative?: CheaperAlternative | null;
+  onSelectCheaperAlternative?: (alternative: CheaperAlternative | null) => void;
   cheaperOptionsLoading?: boolean;
   cheaperOptionsError?: string | null;
 }
@@ -186,17 +188,24 @@ export default function ListItemProductCard({
   showCheaperOptions = false,
   cheaperOptionsExpanded = false,
   onToggleCheaperOptions,
+  selectedCheaperAlternative = null,
+  onSelectCheaperAlternative,
   cheaperOptionsLoading = false,
   cheaperOptionsError = null,
 }: ListItemProductCardProps) {
   const router = useRouter();
+  const selectedAlternativeDeal = selectedCheaperAlternative
+    ? findDealForStore(selectedCheaperAlternative.product.currentDeals, selectedCheaperAlternative.store)
+    : undefined;
+  const displayedProduct = selectedAlternativeDeal && selectedCheaperAlternative ? selectedCheaperAlternative.product : product;
+  const displayedDeal = selectedAlternativeDeal ?? deal;
   // Same sentence-case transform ProductListCard.tsx applies to `brand`
   // (that file's own doc comment has the full "why": Title Case from
   // data.ts isn't the same thing as real sentence case, and there's no CSS
   // text-transform that produces it).
-  const brandSentenceCase = product.brand
-    ? product.brand.charAt(0).toUpperCase() + product.brand.slice(1).toLowerCase()
-    : product.brand;
+  const brandSentenceCase = displayedProduct.brand
+    ? displayedProduct.brand.charAt(0).toUpperCase() + displayedProduct.brand.slice(1).toLowerCase()
+    : displayedProduct.brand;
 
   // Inline "are you sure?" state (2026-08-20, see this file's own doc
   // comment above) -- local to this one card, not lifted, same as
@@ -210,22 +219,30 @@ export default function ListItemProductCard({
   // "why" -- local to this one card, same reasoning as `confirmingRemove`
   // just above (only one row's sheet is ever open at a time, nothing
   // outside this card needs to know).
-  const isNotOnSpecial = deal.isOnSpecial === false;
+  const isNotOnSpecial = displayedDeal.isOnSpecial === false;
   // Use the same public assessment resolver as the deal page. Watchlist copy
   // stays compact, but its state must not diverge (especially for near-low
   // historical reads and unconfirmed Dodgy review candidates).
-  const assessmentVerdict = isNotOnSpecial ? "Fair Price" : getAssessmentVerdict(deal);
+  const assessmentVerdict = isNotOnSpecial ? "Fair Price" : getAssessmentVerdict(displayedDeal);
   const isRealSaver = assessmentVerdict === "Real Saver";
   const isDodgyDeal = assessmentVerdict === "Dodgy Deal";
   const isFairPrice = assessmentVerdict === "Fair Price";
   const isAssessmentPending = assessmentVerdict === "Early read" || assessmentVerdict === "Limited history";
-  const dealFreshnessLabel = deal.isOnSpecial ? freshnessLabel(deal.specialsVerifiedAt) : null;
+  const dealFreshnessLabel = displayedDeal.isOnSpecial ? freshnessLabel(displayedDeal.specialsVerifiedAt) : null;
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
   const isCheaperOptionsExpanded = showCheaperOptions && cheaperOptionsExpanded;
+  const isMergedCheaperOptionsCard = isCheaperOptionsExpanded;
+  const verdictBorderClass = isNotOnSpecial && !confirmingRemove
+    ? "border-stone-200/80 grayscale bg-stone-50"
+    : isRealSaver
+      ? "border-fair-600"
+      : isDodgyDeal
+        ? "border-alert-600"
+        : "border-stone-200/80";
 
   const goToDeal = () => {
     onBeforeNavigate?.();
-    router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+    router.push(`/deal/${encodeURIComponent(displayedProduct.id)}/${encodeURIComponent(displayedDeal.store)}`);
   };
 
   // Tap/Enter/Space activation on the row itself -- replaces the old direct
@@ -234,6 +251,7 @@ export default function ListItemProductCard({
   // "on" right now.
   const handleActivate = () => {
     if (isNotOnSpecial) {
+      onBeforeNavigate?.();
       setShowNotOnSpecialSheet(true);
       return;
     }
@@ -274,7 +292,10 @@ export default function ListItemProductCard({
       // Keep inactive products visibly grey without lowering text contrast;
       // the retained current price still needs to be easy to scan. This is
       // excluded during remove confirmation, which has its own alert state.
-      className="dd-compact-product-card group relative flex min-h-[76px] flex-col"
+      className={[
+        "dd-compact-product-card group relative flex min-h-[76px] flex-col",
+        isMergedCheaperOptionsCard ? `overflow-hidden rounded-xl border ${verdictBorderClass}` : "",
+      ].join(" ")}
       ref={cardRef}
       style={{
         cursor: confirmingRemove ? "default" : "pointer",
@@ -283,14 +304,10 @@ export default function ListItemProductCard({
       >
       <div
         className={[
-          "relative flex min-h-[76px] items-stretch overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
-          isNotOnSpecial && !confirmingRemove
-            ? "border-stone-200/80 grayscale bg-stone-50"
-            : isRealSaver
-              ? "border-fair-600"
-              : isDodgyDeal
-                ? "border-alert-600"
-                : "border-stone-200/80",
+          isMergedCheaperOptionsCard
+            ? "relative flex min-h-[76px] items-stretch overflow-hidden rounded-t-xl border-b border-stone-100 bg-white transition-colors hover:bg-stone-50"
+            : "relative flex min-h-[76px] items-stretch overflow-hidden rounded-xl border bg-white transition-colors hover:bg-stone-50",
+          isMergedCheaperOptionsCard ? "" : verdictBorderClass,
         ].join(" ")}
         style={confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : undefined}
       >
@@ -298,7 +315,7 @@ export default function ListItemProductCard({
         <button
           type="button"
           onClick={handleActivate}
-          aria-label={isNotOnSpecial ? `${product.name}: not currently on special` : `Open ${product.name} deal at ${deal.store}`}
+          aria-label={isNotOnSpecial ? `${displayedProduct.name}: not currently on special` : `Open ${displayedProduct.name} deal at ${displayedDeal.store}`}
           className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
         />
       )}
@@ -307,6 +324,7 @@ export default function ListItemProductCard({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
+            onBeforeNavigate?.();
             onToggleCheaperOptions();
           }}
           onKeyDown={(event) => event.stopPropagation()}
@@ -329,8 +347,8 @@ export default function ListItemProductCard({
         ].join(" ")}
       >
         <ProductImage
-          src={product.image}
-          alt={product.name}
+          src={displayedProduct.image}
+          alt={displayedProduct.name}
           width={96}
           height={96}
           sizes="96px"
@@ -379,22 +397,22 @@ export default function ListItemProductCard({
             </div>
           )}
           <span className="truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
-          <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{product.name}</h4>
+          <h4 className="line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{displayedProduct.name}</h4>
           <div className="mt-1 flex flex-wrap items-end gap-1.5">
             <span className="font-display text-base font-extrabold text-stone-900">
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
-              ${deal.price.toFixed(2)}
+              ${displayedDeal.price.toFixed(2)}
             </span>
-            {!isNotOnSpecial && <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact bare />}
+            {!isNotOnSpecial && <PriceChangeBadge currentPrice={displayedDeal.price} comparisonPrice={displayedDeal.originalPrice} format="amount" compact bare />}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <StoreLogoBadge store={deal.store} variant="compact" />
+            <StoreLogoBadge store={displayedDeal.store} variant="compact" />
             {dealFreshnessLabel && (
               <span className="text-[10px] font-bold text-stone-500">
                 {dealFreshnessLabel}
               </span>
             )}
-            {otherSpecialCount > 0 && (
+            {!selectedAlternativeDeal && otherSpecialCount > 0 && (
               <span
                 className="dd-badge dd-badge-compact dd-badge-neutral"
                 aria-label={`Also on special at ${otherSpecialCount} other ${otherSpecialCount === 1 ? "supermarket" : "supermarkets"}`}
@@ -422,7 +440,8 @@ export default function ListItemProductCard({
               originalProduct={product}
               originalDeal={deal}
               originalProductName={product.name}
-              watchlistProductId={product.id}
+              selectedAlternative={selectedCheaperAlternative}
+              onSelectAlternative={onSelectCheaperAlternative ?? (() => {})}
               loading={cheaperOptionsLoading}
               error={cheaperOptionsError}
             />
@@ -433,7 +452,7 @@ export default function ListItemProductCard({
 
     <NotOnSpecialSheet
       open={showNotOnSpecialSheet}
-      productName={product.name}
+      productName={displayedProduct.name}
       onClose={handleNotOnSpecialClose}
     />
     </>

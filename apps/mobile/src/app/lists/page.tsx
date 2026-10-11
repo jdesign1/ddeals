@@ -155,6 +155,7 @@ export default function ListsPage() {
   const [cheaperAlternativesCache, setCheaperAlternativesCache] = useState<Map<string, CheaperAlternativeCacheEntry>>(new Map());
   const [loadingCheaperProductIds, setLoadingCheaperProductIds] = useState<Set<string>>(new Set());
   const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
+  const [selectedCheaperOption, setSelectedCheaperOption] = useState<{ productId: string; alternative: CheaperAlternativeList[number] } | null>(null);
   const cheaperOptionsDefaultExpansionPendingRef = useRef(false);
   const watchlistReturnContextRef = useRef<WatchlistReturnContext | null>(null);
   const watchlistReturnRestoredRef = useRef(false);
@@ -290,6 +291,7 @@ export default function ListsPage() {
 
   const handleWatchlistTabChange = useCallback((tab: WatchlistTab) => {
     setActiveWatchlistTab(tab);
+    setSelectedCheaperOption(null);
     if (tab === "cheaper-options") {
       cheaperOptionsDefaultExpansionPendingRef.current = true;
       setExpandedCheaperProductIds(new Set(watchlistItems.map((entry) => entry.productId)));
@@ -318,11 +320,13 @@ export default function ListsPage() {
     watchlistReturnContextRef.current = returnContext;
     const timer = window.setTimeout(() => {
       setActiveWatchlistTab(returnContext.tab);
-      setExpandedCheaperProductIds(new Set([returnContext.expandedProductId]));
+      cheaperOptionsDefaultExpansionPendingRef.current = true;
+      setExpandedCheaperProductIds(new Set(watchlistItems.map((entry) => entry.productId)));
+      setSelectedCheaperOption(null);
       loadCheaperOptions();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadCheaperOptions, user]);
+  }, [loadCheaperOptions, user, watchlistItems]);
 
   const toggleCheaperOptions = useCallback((productId: string) => {
     const shouldExpand = !expandedCheaperProductIds.has(productId);
@@ -663,6 +667,9 @@ export default function ListsPage() {
     const currentCheaperOptionsKey = card && deal ? cheaperOptionsContextKey(card, deal) : "";
     const cachedCheaperOptions = cheaperAlternativesCache.get(entry.productId);
     const cheaperAlternatives = cachedCheaperOptions?.contextKey === currentCheaperOptionsKey ? cachedCheaperOptions.alternatives : [];
+    const selectedCheaperAlternative = selectedCheaperOption?.productId === entry.productId
+      ? selectedCheaperOption.alternative
+      : null;
     return (
       <motion.div
         key={entry.productId}
@@ -686,7 +693,13 @@ export default function ListsPage() {
               showCheaperOptions={activeWatchlistTab === "cheaper-options" && watchlistView === "all"}
               cheaperAlternatives={cheaperAlternatives}
               cheaperOptionsExpanded={expandedCheaperProductIds.has(entry.productId)}
-              onToggleCheaperOptions={() => toggleCheaperOptions(entry.productId)}
+              onToggleCheaperOptions={() => {
+                setSelectedCheaperOption(null);
+                toggleCheaperOptions(entry.productId);
+              }}
+              selectedCheaperAlternative={selectedCheaperAlternative}
+              onSelectCheaperAlternative={(alternative) => setSelectedCheaperOption(alternative ? { productId: entry.productId, alternative } : null)}
+              onBeforeNavigate={() => setSelectedCheaperOption(null)}
               cheaperOptionsLoading={(loadingCheaperOptions && catalogueProducts === null) || loadingCheaperProductIds.has(entry.productId)}
               cheaperOptionsError={cheaperOptionsError}
             />
@@ -812,7 +825,7 @@ export default function ListsPage() {
           <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match these filters.</p>
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
-          <div className="flex flex-col gap-2 px-5">
+          <div className={`flex flex-col px-5 ${activeWatchlistTab === "cheaper-options" ? "gap-3" : "gap-2"}`}>
             {activePulse ? (
               <AnimatePresence initial={false}>
                 {pulseItems.length > 0 && (
