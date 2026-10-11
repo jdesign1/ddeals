@@ -419,6 +419,8 @@ export default function ListItemProductCard({
           >
             <CheaperOptionsCarousel
               alternatives={cheaperAlternatives}
+              originalProduct={product}
+              originalDeal={deal}
               originalProductName={product.name}
               watchlistProductId={product.id}
               loading={cheaperOptionsLoading}
