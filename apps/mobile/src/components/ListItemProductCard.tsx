@@ -403,21 +403,20 @@ export default function ListItemProductCard({
               </>
             )}
           </div>
-          {showCheaperOptions && (
-            <div className="flex min-h-5 items-center text-xs font-bold leading-4 text-fair-700">
-              {selectedAlternativeSaving != null && selectedAlternativeSaving > 0
-                ? `Save $${selectedAlternativeSaving.toFixed(2)} vs saved item`
-                : "\u00a0"}
-            </div>
-          )}
           <span className="block min-h-[1.125rem] truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
           <h4 className="min-h-10 line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{displayedProduct.name}</h4>
-          <div className="mt-1 flex flex-wrap items-end gap-1.5">
+          <div className="mt-1 flex min-h-6 flex-wrap items-baseline gap-1.5">
             <span className="font-display text-base font-extrabold text-stone-900">
               {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
               ${displayedDeal.price.toFixed(2)}
             </span>
-            {!isNotOnSpecial && <PriceChangeBadge currentPrice={displayedDeal.price} comparisonPrice={displayedDeal.originalPrice} format="amount" compact bare />}
+            {selectedAlternativeDeal && selectedAlternativeSaving != null ? (
+              <span className="text-[11px] font-bold leading-4 text-fair-700">
+                Save ${selectedAlternativeSaving.toFixed(2)} vs saved item
+              </span>
+            ) : !isNotOnSpecial ? (
+              <PriceChangeBadge currentPrice={displayedDeal.price} comparisonPrice={displayedDeal.originalPrice} format="amount" compact bare />
+            ) : null}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <StoreLogoBadge store={displayedDeal.store} variant="compact" />
