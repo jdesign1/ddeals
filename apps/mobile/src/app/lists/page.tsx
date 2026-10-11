@@ -69,9 +69,10 @@ type CheaperAlternativeCacheEntry = {
   alternatives: CheaperAlternativeList;
 };
 
-function cheaperOptionsContextKey(product: ProductCardData, deal: ReturnType<typeof watchlistItemDeal>): string {
+function cheaperOptionsContextKey(product: ProductCardData, deal: ReturnType<typeof watchlistItemDeal>, selectedStores: string[]): string {
+  const storeScope = selectedStores.includes("all") ? "all" : [...selectedStores].sort().join(",");
   return deal
-    ? [product.id, product.name, product.brand, product.category, canonicalStoreKey(deal.store), deal.price].join(":")
+    ? [product.id, product.name, product.brand, product.category, canonicalStoreKey(deal.store), deal.price, storeScope].join(":")
     : "";
 }
 
@@ -264,7 +265,7 @@ export default function ListsPage() {
     const deal = item ? watchlistItemDeal(item, itemCards, selectedSupermarkets, undefined, sortMode) : undefined;
     if (!card || !deal) return;
 
-    const contextKey = cheaperOptionsContextKey(card, deal);
+    const contextKey = cheaperOptionsContextKey(card, deal, selectedSupermarkets);
     const cached = cheaperAlternativesCache.get(productId);
     if (cached?.contextKey === contextKey) return;
 
@@ -275,7 +276,7 @@ export default function ListsPage() {
     });
 
     window.setTimeout(() => {
-      const alternatives = findCheaperAlternatives(card, catalogueProducts, deal.price, ["all"]).slice(0, 5);
+      const alternatives = findCheaperAlternatives(card, catalogueProducts, deal.price, selectedSupermarkets).slice(0, 5);
       setCheaperAlternativesCache((current) => {
         const next = new Map(current);
         next.set(productId, { contextKey, alternatives });
@@ -367,7 +368,7 @@ export default function ListsPage() {
     const cached = cheaperAlternativesCache.get(returnContext.expandedProductId);
     if (!item || !card || !deal) return;
 
-    const expectedContextKey = cheaperOptionsContextKey(card, deal);
+    const expectedContextKey = cheaperOptionsContextKey(card, deal, selectedSupermarkets);
     if (catalogueProducts && (!cached || cached.contextKey !== expectedContextKey)) return;
     if (!catalogueProducts && !cheaperOptionsError) return;
 
@@ -583,6 +584,7 @@ export default function ListsPage() {
   }, [productMeta, watchlistItems]);
 
   const toggleSupermarket = useCallback((key: string) => {
+    setSelectedCheaperOption(null);
     setSelectedSupermarkets((current) => {
       if (key === "all") return ["all"];
       if (current.includes("all")) return [key];
@@ -665,7 +667,7 @@ export default function ListsPage() {
     const sourceItem = entry.sourceItems[0];
     const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
     const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
-    const currentCheaperOptionsKey = card && deal ? cheaperOptionsContextKey(card, deal) : "";
+    const currentCheaperOptionsKey = card && deal ? cheaperOptionsContextKey(card, deal, selectedSupermarkets) : "";
     const cachedCheaperOptions = cheaperAlternativesCache.get(entry.productId);
     const cheaperAlternatives = cachedCheaperOptions?.contextKey === currentCheaperOptionsKey ? cachedCheaperOptions.alternatives : [];
     const selectedCheaperAlternative = selectedCheaperOption?.productId === entry.productId
@@ -774,7 +776,10 @@ export default function ListsPage() {
           <div className="min-w-0">
             <CategoryPicker
               selectedCategories={selectedCategories}
-              onChange={setSelectedCategories}
+              onChange={(categories) => {
+                setSelectedCheaperOption(null);
+                setSelectedCategories(categories);
+              }}
               availableCategories={categories}
               categoryCounts={categoryCounts}
               align="left"
@@ -784,7 +789,10 @@ export default function ListsPage() {
             <SortDropdown
               value={sortMode}
               defaultValue="best"
-              onChange={setSortMode}
+              onChange={(nextSortMode) => {
+                setSelectedCheaperOption(null);
+                setSortMode(nextSortMode);
+              }}
               options={[
                 { value: "best" as const, label: "Best deals first" },
                 { value: "dodgy" as const, label: "Dodgy deals first" },
@@ -827,8 +835,12 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
           <div className={`flex flex-col px-5 ${activeWatchlistTab === "cheaper-options" ? "gap-3" : "gap-2"}`}>
-            {activePulse ? (
-              <AnimatePresence initial={false}>
+            {activeWatchlistTab === "cheaper-options" ? (
+              <AnimatePresence initial={false} mode="popLayout">
+                {filteredItems.map((entry) => renderItem(entry))}
+              </AnimatePresence>
+            ) : activePulse ? (
+              <AnimatePresence initial={false} mode="popLayout">
                 {pulseItems.length > 0 && (
                   <motion.p
                     key="pulse-heading"
@@ -857,7 +869,7 @@ export default function ListsPage() {
                 {otherPulseItems.map((entry) => renderItem(entry))}
               </AnimatePresence>
             ) : (
-              <AnimatePresence initial={false}>
+              <AnimatePresence initial={false} mode="popLayout">
                 {activeItems.map((entry) => renderItem(entry))}
                 {inactiveItems.length > 0 && (
                   <motion.h2
