@@ -218,11 +218,6 @@ export default function MePage() {
   const [stats, setStats] = useState<DealStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isBreakdownOpen, setIsBreakdownOpen] = useState(true);
-  const [isMonthlyPulseOpen, setIsMonthlyPulseOpen] = useState(false);
-  const [isValueRankingOpen, setIsValueRankingOpen] = useState(true);
-  const [isPriceChangeOpen, setIsPriceChangeOpen] = useState(false);
-  const [isTopChangedItemsOpen, setIsTopChangedItemsOpen] = useState(false);
   const [isSavingsOpen, setIsSavingsOpen] = useState(true);
   const [activeStatsTab, setActiveStatsTab] = useState<"activity" | "trends">("activity");
   // Same plain-counter retry pattern established across this app on
@@ -263,9 +258,27 @@ export default function MePage() {
     () => buildPriceChangeStats(products, STATS_STORES.map(({ key, label }) => ({ key, store: label }))),
     [products]
   );
-  const lowestValueRanking = [...storeRankings].reverse().find((store) => store.realDeals > 0);
+  const bestValueRanking = storeRankings.find((store) => store.realDeals > 0);
+  const mostPriceChangeStore = priceChangeStats.stores.find((store) => store.itemsTracked > 0);
+  const chronologicalMonthlyStats = useMemo(() => [...monthlyStats].reverse(), [monthlyStats]);
+  const maxCurrentSpecials = useMemo(
+    () => Math.max(1, ...currentStoreStats.map((store) => store.real + store.dodgy)),
+    [currentStoreStats]
+  );
+  const maxMonthlySpecials = useMemo(
+    () => Math.max(1, ...monthlyStats.flatMap((month) => month.stores.map((store) => store.real + store.dodgy))),
+    [monthlyStats]
+  );
+  const maxAverageDiscount = useMemo(
+    () => Math.max(1, ...storeRankings.map((store) => store.averageDiscount)),
+    [storeRankings]
+  );
+  const maxPriceChangeRate = useMemo(
+    () => Math.max(1, ...priceChangeStats.stores.map((store) => store.changeRatePct)),
+    [priceChangeStats.stores]
+  );
   const monthlySpotlight = useMemo(() => {
-    return STATS_STORES.map(({ key, label }) => {
+    const spotlight = STATS_STORES.map(({ key, label }) => {
       const storeMonths = monthlyStats.flatMap((month) => month.stores.filter((store) => store.key === key));
       return {
         store: label,
@@ -273,6 +286,7 @@ export default function MePage() {
         dodgy: storeMonths.reduce((sum, month) => sum + month.dodgy, 0),
       };
     }).sort((a, b) => b.real - a.real || b.dodgy - a.dodgy)[0];
+    return spotlight?.real ? spotlight : null;
   }, [monthlyStats]);
 
   const openFilteredDeals = useCallback(
@@ -470,367 +484,198 @@ export default function MePage() {
 
             {activeStatsTab === "trends" && (
             <div className="flex flex-col gap-4">
-              <div className="border-t border-stone-200 pt-2">
-                <h2 className="dd-type-section text-stone-900">NZ trends</h2>
-                <p className="mt-1 dd-type-secondary text-stone-500">NZ-wide patterns across current and recent supermarket deals.</p>
-              </div>
-
-            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsBreakdownOpen((open) => !open)}
-                aria-expanded={isBreakdownOpen}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
-              >
-                <span>
-                  <span className="block dd-type-section text-stone-900">Total specials in NZ</span>
-                  <span className="mt-1 block dd-type-secondary text-stone-500">
-                    See how many total real &amp; dodgy specials are at each supermarket from the past 90 days.
-                  </span>
-                </span>
-                <ChevronDown
-                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isBreakdownOpen ? "rotate-180" : ""}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isBreakdownOpen && (
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-12 gap-2 border-b border-stone-100 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
-                    <span className="col-span-6">Supermarket</span>
-                    <span className="col-span-3 text-center">Real savers</span>
-                    <span className="col-span-3 text-center">Dodgy Deals</span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {currentStoreStats.map((store) => (
-                      <div key={store.key} className="grid grid-cols-12 items-center gap-2 border-b border-stone-100 py-1.5 last:border-0">
-                        <span className="col-span-6 dd-type-secondary dd-type-secondary-strong text-stone-800">{store.store}</span>
-                        <div className="col-span-3 text-center">
-                          <Link
-                            href="/"
-                            onClick={() => openFilteredDeals(store.key, "real")}
-                            aria-label={`View ${store.real} real saver deals at ${store.store}`}
-                            className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-fair-50 px-2 py-1 text-base font-black tabular-nums text-fair-700 transition-colors hover:bg-fair-100"
-                          >
-                            {loadingProducts ? "…" : store.real}
-                            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                          </Link>
-                        </div>
-                        <div className="col-span-3 text-center">
-                          <Link
-                            href="/"
-                            onClick={() => openFilteredDeals(store.key, "dodgy")}
-                            aria-label={`View ${store.dodgy} dodgy deals at ${store.store}`}
-                            className="inline-flex min-w-[42px] items-center justify-center gap-0.5 rounded-md bg-alert-50 px-2 py-1 text-base font-black tabular-nums text-alert-700 transition-colors hover:bg-alert-100"
-                          >
-                            {loadingProducts ? "…" : store.dodgy}
-                            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                          </Link>
-                        </div>
+              {loadingProducts ? (
+                <p className="rounded-2xl border border-stone-100 bg-white p-5 text-center dd-type-secondary text-stone-500">
+                  Loading NZ trends&hellip;
+                </p>
+              ) : (
+                <>
+                  <div className="rounded-2xl bg-ink-900 p-5 text-white shadow-xs">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-200">NZ market pulse</p>
+                        <p className="mt-1 text-sm font-semibold text-white/75">Current specials · 90-day view</p>
                       </div>
-                    ))}
+                      <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/70">Live</span>
+                    </div>
+                    <div className="mt-5 grid grid-cols-3 divide-x divide-white/15">
+                      <TrendInsightStat
+                        label="Most real savers"
+                        value={monthlySpotlight ? String(monthlySpotlight.real) : "—"}
+                        detail={monthlySpotlight?.store ?? "No data yet"}
+                      />
+                      <TrendInsightStat
+                        label="Best avg discount"
+                        value={bestValueRanking ? formatPercent(bestValueRanking.averageDiscount) : "—"}
+                        detail={bestValueRanking?.store ?? "No data yet"}
+                      />
+                      <TrendInsightStat
+                        label="Most price movement"
+                        value={mostPriceChangeStore ? String(mostPriceChangeStore.changeRatePct) + "%" : "—"}
+                        detail={mostPriceChangeStore?.store ?? "No data yet"}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
 
-            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsMonthlyPulseOpen((open) => !open)}
-                aria-expanded={isMonthlyPulseOpen}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
-              >
-                <span>
-                  <span className="block dd-type-section text-stone-900">Specials by month</span>
-                  <span className="mt-1 block dd-type-secondary text-stone-500">
-                    Current specials, grouped by the month they started.
-                  </span>
-                </span>
-                <ChevronDown
-                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isMonthlyPulseOpen ? "rotate-180" : ""}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isMonthlyPulseOpen && (
-                <div className="flex flex-col gap-4">
-                  {monthlySpotlight && monthlySpotlight.real > 0 && (
-                    <div className="rounded-2xl border border-fair-100 bg-fair-50 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Most Real Saver specials</p>
-                          <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-fair-950">{monthlySpotlight.store}</p>
-                          <p className="mt-1 dd-type-secondary text-fair-800">In the last 90 days</p>
-                        </div>
-                        <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
-                          <Link href="/" onClick={() => openFilteredDeals(STATS_STORES.find((store) => store.label === monthlySpotlight.store)?.key ?? "all", "real")} aria-label={`Browse current Real Saver deals from ${monthlySpotlight.store}`} className="text-2xl font-black leading-none tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2">{monthlySpotlight.real}</Link>
-                          <span className="mt-1 text-[11px] font-bold leading-tight text-fair-800">Real Saver specials</span>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-fair-100 pt-3">
-                        <span className="dd-type-meta text-fair-800">Dodgy specials</span>
-                          <Link href="/" onClick={() => openFilteredDeals(STATS_STORES.find((store) => store.label === monthlySpotlight.store)?.key ?? "all", "dodgy")} aria-label={`Browse current Dodgy Deals from ${monthlySpotlight.store}`} className="text-sm font-bold tabular-nums text-alert-700 underline decoration-alert-300 underline-offset-2">{monthlySpotlight.dodgy}</Link>
+                  <div className="flex flex-col gap-5 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+                    <div>
+                      <h2 className="dd-type-section text-stone-900">Deal mix by supermarket</h2>
+                      <p className="mt-1 dd-type-secondary text-stone-500">Real Savers and Dodgy Deals in the current 90-day view.</p>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 dd-type-meta text-stone-500">
+                        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-fair-500" aria-hidden="true" />Real Saver</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-alert-500" aria-hidden="true" />Dodgy Deal</span>
                       </div>
                     </div>
-                  )}
-
-                  <div className="flex flex-col gap-3">
-                    {monthlyStats.map((month) => (
-                      <div key={month.key} className="rounded-xl border border-stone-100 bg-stone-50/70 p-3">
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <p className="dd-type-control text-stone-800">{month.label}</p>
-                          <p className="dd-type-meta text-stone-500">
-                            {month.stores.reduce((sum, store) => sum + store.real + store.dodgy, 0)} deals
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 border-b border-stone-200 pb-1 dd-type-meta dd-type-meta-strong text-stone-500">
-                          <span>Supermarket</span>
-                          <span className="text-center text-fair-700">Real Saver</span>
-                          <span className="text-center text-alert-700">Dodgy Deal</span>
-                        </div>
-                        <div className="divide-y divide-stone-100">
-                          {month.stores.map((store) => (
-                            <div key={store.key} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-2 py-2 last:pb-0">
-                              <span className="truncate dd-type-secondary dd-type-secondary-strong text-stone-700">{store.store}</span>
-                              <Link href="/" onClick={() => openFilteredDeals(store.key, "real")} aria-label={`Browse current Real Saver deals from ${store.store}`} className="rounded-md py-1 text-center text-base font-black tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">{store.real}</Link>
-                              <Link href="/" onClick={() => openFilteredDeals(store.key, "dodgy")} aria-label={`Browse current Dodgy Deals from ${store.store}`} className="rounded-md py-1 text-center text-base font-black tabular-nums text-alert-700 underline decoration-alert-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">{store.dodgy}</Link>
+                    <div className="flex flex-col gap-5">
+                      {currentStoreStats.map((store) => {
+                        const total = store.real + store.dodgy;
+                        const realWidth = total ? (store.real / maxCurrentSpecials) * 100 : 0;
+                        const dodgyWidth = total ? (store.dodgy / maxCurrentSpecials) * 100 : 0;
+                        return (
+                          <div key={store.key}>
+                            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                              <span className="dd-type-control text-stone-800">{store.store}</span>
+                              <span className="dd-type-meta font-bold tabular-nums text-stone-500">{total} specials</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsValueRankingOpen((open) => !open)}
-                aria-expanded={isValueRankingOpen}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
-              >
-                <span>
-                  <span className="block dd-type-section text-stone-900">Best value by supermarket</span>
-                  <span className="mt-1 block dd-type-secondary text-stone-500">
-                    See the best average discount by supermarket in NZ in the past 90 days.
-                  </span>
-                </span>
-                <ChevronDown
-                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isValueRankingOpen ? "rotate-180" : ""}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isValueRankingOpen && (
-                <div className="flex flex-col gap-4">
-                  {loadingProducts ? (
-                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Loading supermarket rankings&hellip;</p>
-                  ) : storeRankings[0]?.realDeals ? (
-                    <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-fair-200 bg-fair-50 p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-fair-700">Best value</p>
-                      <div className="mt-3 flex flex-col gap-1">
-                        <p className="text-lg font-bold leading-tight text-fair-950">{storeRankings[0].store}</p>
-                        <p className="dd-type-meta text-fair-800">Last 90 days</p>
-                      </div>
-                      <Link href="/" onClick={() => openFilteredDeals(storeRankings[0].key, "real")} aria-label={`Browse current Real Saver deals at ${storeRankings[0].store}`} className="mt-4 block text-3xl font-black leading-none tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2">
-                        {formatPercent(storeRankings[0].averageDiscount)}
-                      </Link>
-                      <p className="mt-1 text-[12px] font-semibold text-fair-800">average discount</p>
-                      <p className="mt-3 dd-type-meta text-fair-800">
-                        Based on {storeRankings[0].realDeals} {storeRankings[0].realDeals === 1 ? "deal" : "deals"}
-                      </p>
+                            <div
+                              role="img"
+                              aria-label={store.store + ": " + store.real + " Real Savers and " + store.dodgy + " Dodgy Deals, " + total + " specials total"}
+                              className="flex h-3 overflow-hidden rounded-full bg-stone-100"
+                            >
+                              <span className="bg-fair-500 transition-[width]" style={{ width: String(realWidth) + "%" }} />
+                              <span className="bg-alert-500 transition-[width]" style={{ width: String(dodgyWidth) + "%" }} />
+                            </div>
+                            <div className="mt-1.5 flex items-center gap-3 dd-type-meta">
+                              <Link href="/" onClick={() => openFilteredDeals(store.key, "real")} aria-label={"View " + store.real + " Real Saver deals at " + store.store} className="font-bold text-fair-700 underline decoration-fair-300 underline-offset-2">{store.real} Real Savers</Link>
+                              <Link href="/" onClick={() => openFilteredDeals(store.key, "dodgy")} aria-label={"View " + store.dodgy + " Dodgy Deals at " + store.store} className="font-bold text-alert-700 underline decoration-alert-300 underline-offset-2">{store.dodgy} Dodgy</Link>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {lowestValueRanking && (
-                      <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-stone-500">Lowest average discount</p>
-                        <div className="mt-3 flex flex-col gap-1">
-                          <p className="text-lg font-semibold leading-tight text-stone-800">{lowestValueRanking.store}</p>
-                          <p className="dd-type-meta text-stone-500">Last 90 days</p>
+                  </div>
+
+                  <div className="flex flex-col gap-5 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+                    <div>
+                      <h2 className="dd-type-section text-stone-900">When specials started</h2>
+                      <p className="mt-1 dd-type-secondary text-stone-500">Current specials grouped by their start month.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[300px]">
+                        <div className="grid grid-cols-[minmax(0,5.25rem)_repeat(3,minmax(0,1fr))] items-end gap-x-2 border-b border-stone-100 pb-2 dd-type-meta dd-type-meta-strong text-stone-500">
+                          <span>Store</span>
+                          {chronologicalMonthlyStats.map((month) => <span key={month.key} className="text-center leading-tight">{month.label}</span>)}
                         </div>
-                        <Link href="/" onClick={() => openFilteredDeals(lowestValueRanking.key, "real")} aria-label={`Browse current Real Saver deals at ${lowestValueRanking.store}`} className="mt-4 block text-3xl font-bold leading-none tabular-nums text-stone-700 underline decoration-stone-300 underline-offset-2">
-                          {formatPercent(lowestValueRanking.averageDiscount)}
-                        </Link>
-                        <p className="mt-1 text-[12px] font-semibold text-stone-500">average discount</p>
-                        <p className="mt-3 dd-type-meta text-stone-500">
-                          Based on {lowestValueRanking.realDeals} {lowestValueRanking.realDeals === 1 ? "deal" : "deals"}
-                        </p>
+                        <div className="flex flex-col gap-3 pt-3">
+                          {STATS_STORES.map(({ key, label }) => {
+                            const storeMonths = chronologicalMonthlyStats.map((month) => month.stores.find((store) => store.key === key) ?? { real: 0, dodgy: 0 });
+                            return (
+                              <div key={key} className="grid grid-cols-[minmax(0,5.25rem)_repeat(3,minmax(0,1fr))] items-end gap-x-2">
+                                <span className="truncate dd-type-meta dd-type-meta-strong text-stone-700">{label}</span>
+                                {storeMonths.map((store, index) => {
+                                  const total = store.real + store.dodgy;
+                                  const barHeight = total ? Math.max(10, (total / maxMonthlySpecials) * 100) : 0;
+                                  const realHeight = total ? (store.real / total) * 100 : 0;
+                                  return (
+                                    <div key={key + "-" + chronologicalMonthlyStats[index].key} className="flex h-16 flex-col items-center justify-end gap-1" role="img" aria-label={label + ", " + chronologicalMonthlyStats[index].label + ": " + total + " specials, " + store.real + " Real Savers and " + store.dodgy + " Dodgy Deals"}>
+                                      <span className="dd-type-meta font-bold tabular-nums text-stone-600">{total || "–"}</span>
+                                      <div className="flex h-11 w-8 items-end overflow-hidden rounded-t-lg bg-stone-100" aria-hidden="true">
+                                        <div className="flex w-full flex-col justify-end transition-[height]" style={{ height: String(barHeight) + "%" }}>
+                                          <span className="bg-fair-400" style={{ height: String(realHeight) + "%" }} />
+                                          <span className="flex-1 bg-alert-400" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 dd-type-meta text-stone-500">
+                      <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-fair-400" aria-hidden="true" />Real Saver</span>
+                      <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-alert-400" aria-hidden="true" />Dodgy Deal</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-5 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+                    <div>
+                      <h2 className="dd-type-section text-stone-900">Best average discounts</h2>
+                      <p className="mt-1 dd-type-secondary text-stone-500">Real Saver discounts by supermarket.</p>
+                    </div>
+                    {bestValueRanking ? (
+                      <div className="flex flex-col gap-4">
+                        {storeRankings.filter((store) => store.realDeals > 0).map((store, index) => (
+                          <Link key={store.key} href="/" onClick={() => openFilteredDeals(store.key, "real")} aria-label={"Browse " + store.store + " Real Saver deals averaging " + formatPercent(store.averageDiscount)} className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+                            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                              <span className="dd-type-control text-stone-800"><span className="mr-1.5 text-stone-400">{index + 1}.</span>{store.store}</span>
+                              <span className="text-base font-black tabular-nums text-fair-700">{formatPercent(store.averageDiscount)}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
+                              <div className="h-full rounded-full bg-fair-500 transition-[width]" style={{ width: String((store.averageDiscount / maxAverageDiscount) * 100) + "%" }} />
+                            </div>
+                            <div className="mt-1 flex justify-between gap-3 dd-type-meta text-stone-500">
+                              <span>{store.realDeals} {store.realDeals === 1 ? "deal" : "deals"}</span>
+                              <span>{formatCurrency(store.totalSavings)} combined</span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">No current Real Saver deals to rank yet.</p>
                     )}
                   </div>
 
-                  <div className="flex flex-col divide-y divide-stone-100">
-                    {storeRankings.map((store, index) => (
-                      <div key={store.key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-black tabular-nums text-stone-600">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="dd-type-control truncate text-stone-800">{store.store}</p>
-                          <p className="dd-type-meta text-stone-500">
-                            {store.realDeals} {store.realDeals === 1 ? "deal" : "deals"} &middot; {formatCurrency(store.totalSavings)} combined discounts
-                          </p>
-                        </div>
-                        <Link href="/" onClick={() => openFilteredDeals(store.key, "real")} aria-label={`Browse current Real Saver deals at ${store.store}`} className="rounded-md px-1 py-1 text-right text-base font-black tabular-nums text-fair-700 underline decoration-fair-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600">
-                          {formatPercent(store.averageDiscount)}
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                    </>
-                  ) : (
-                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                      No current Real Saver deals to rank yet.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsPriceChangeOpen((open) => !open)}
-                aria-expanded={isPriceChangeOpen}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
-              >
-                <span>
-                  <span className="block dd-type-section text-stone-900">How often prices change</span>
-                  <span className="mt-1 block dd-type-secondary text-stone-500">
-                    See how often prices change at supermarkets across NZ.
-                  </span>
-                </span>
-                <ChevronDown
-                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isPriceChangeOpen ? "rotate-180" : ""}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isPriceChangeOpen && (
-                <div className="flex flex-col gap-4">
-                  <p className="dd-type-secondary text-stone-500">
-                    This shows the share of items with a price change. We need at least two prices to compare.
-                  </p>
-
-                  {loadingProducts ? (
-                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Loading price changes&hellip;</p>
-                  ) : priceChangeStats.stores.some((store) => store.itemsTracked > 0) ? (
-                    <>
-                      <div className="rounded-2xl border border-ink-100 bg-ink-50/60 p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-600">Most often</p>
-                            <p className="mt-2 text-xl font-bold leading-tight tracking-tight text-stone-900">{priceChangeStats.stores[0].store}</p>
-                            <p className="mt-1 dd-type-secondary text-stone-500">More price changes than elsewhere in NZ</p>
-                          </div>
-                          <div className="flex min-w-[4.5rem] flex-shrink-0 flex-col items-center rounded-xl bg-white/80 px-3 py-2.5 text-center shadow-xs">
-                            <Link href="/" onClick={() => { toggleStore("all"); toggleStore(priceChangeStats.stores[0].key); }} aria-label={`Browse current deals at ${priceChangeStats.stores[0].store}`} className="text-2xl font-black leading-none tabular-nums text-ink-700 underline decoration-ink-300 underline-offset-2">
-                              {priceChangeStats.stores[0].changeRatePct}%
-                            </Link>
-                            <span className="mt-1 text-[11px] font-bold leading-tight text-stone-500">of items changed</span>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-3 border-t border-ink-100 pt-3">
-                          <span className="dd-type-meta text-stone-500">Items changed</span>
-                          <span className="text-sm font-bold tabular-nums text-stone-700">
-                            {priceChangeStats.stores[0].itemsChanged} of {priceChangeStats.stores[0].itemsTracked}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-4">
-                        {priceChangeStats.stores.filter((store) => store.itemsTracked > 0).map((store) => (
-                          <div key={store.key}>
-                            <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                              <p className="dd-type-control text-stone-800">{store.store}</p>
-                              <Link href="/" onClick={() => { toggleStore("all"); toggleStore(store.key); }} aria-label={`Browse current deals at ${store.store}`} className="dd-type-meta font-bold tabular-nums text-stone-600 underline decoration-stone-300 underline-offset-2">
-                                {store.changeRatePct}% of items
-                              </Link>
+                  <div className="flex flex-col gap-5 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
+                    <div>
+                      <h2 className="dd-type-section text-stone-900">Price movement</h2>
+                      <p className="mt-1 dd-type-secondary text-stone-500">The share of tracked items with a recorded price change.</p>
+                    </div>
+                    {mostPriceChangeStore ? (
+                      <>
+                        <div className="flex flex-col gap-4">
+                          {priceChangeStats.stores.filter((store) => store.itemsTracked > 0).map((store) => (
+                            <div key={store.key}>
+                              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                                <span className="dd-type-control text-stone-800">{store.store}</span>
+                                <Link href="/" onClick={() => { toggleStore("all"); toggleStore(store.key); }} aria-label={"Browse current deals at " + store.store} className="dd-type-meta font-bold tabular-nums text-stone-600 underline decoration-stone-300 underline-offset-2">{store.changeRatePct}% changed</Link>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-stone-100" role="img" aria-label={store.store + ": " + store.changeRatePct + "% of tracked items changed price"}>
+                                <div className="dd-price-change-bar h-full rounded-full transition-[width]" style={{ width: String((store.changeRatePct / maxPriceChangeRate) * 100) + "%" }} />
+                              </div>
+                              <p className="mt-1 dd-type-meta text-stone-500">{store.itemsChanged} of {store.itemsTracked} items</p>
                             </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
-                              <div
-                                className="dd-price-change-bar h-full rounded-full transition-[width]"
-                                style={{
-                                  width: `${priceChangeStats.stores[0].changeRatePct > 0 ? Math.max(4, (store.changeRatePct / priceChangeStats.stores[0].changeRatePct) * 100) : 0}%`,
-                                }}
-                              />
-                            </div>
-                            <p className="mt-1 dd-type-meta text-stone-500">
-                              {store.itemsChanged} of {store.itemsTracked} items changed · {store.totalChanges} {store.totalChanges === 1 ? "price change" : "price changes"}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                      Not enough price history yet — we need two prices to compare.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4 rounded-2xl border border-stone-100 bg-white p-5 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsTopChangedItemsOpen((open) => !open)}
-                aria-expanded={isTopChangedItemsOpen}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
-              >
-                <span>
-                  <span className="block dd-type-section text-stone-900">Items changed most often</span>
-                  <span className="mt-1 block dd-type-secondary text-stone-500">
-                    See which current specials changed price most across NZ.
-                  </span>
-                </span>
-                <ChevronDown
-                  className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${isTopChangedItemsOpen ? "rotate-180" : ""}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isTopChangedItemsOpen && (
-                loadingProducts ? (
-                  <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                    Loading price changes&hellip;
-                  </p>
-                ) : priceChangeStats.topProducts.length ? (
-                  <div className="flex flex-col divide-y divide-stone-100">
-                    {priceChangeStats.topProducts.map((product, index) => (
-                      <div key={product.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-ink-50 text-sm font-black tabular-nums text-ink-700">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="dd-type-meta truncate text-stone-500">{product.brand}</p>
-                          <Link
-                            href={`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(product.store)}`}
-                            aria-label={`View ${product.name} deal assessment at ${product.store}`}
-                            className="block dd-type-control text-stone-800 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600"
-                          >
-                            {product.name}
-                          </Link>
-                          <p className="dd-type-meta text-stone-500">Across {product.storeCount} {product.storeCount === 1 ? "supermarket" : "supermarkets"}</p>
+                          ))}
                         </div>
-                        <Link href={`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(product.store)}`} aria-label={`View ${product.name} deal assessment`} className="flex-shrink-0 text-right text-base font-black tabular-nums text-ink-700 underline decoration-ink-300 underline-offset-2">
-                          {product.totalChanges} {product.totalChanges === 1 ? "change" : "changes"}
-                        </Link>
-                      </div>
-                    ))}
+                        <div className="border-t border-stone-100 pt-4">
+                          <p className="mb-2 dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-stone-500">Most changed items</p>
+                          {priceChangeStats.topProducts.length > 0 ? (
+                            <div className="flex flex-col divide-y divide-stone-100">
+                              {priceChangeStats.topProducts.slice(0, 3).map((product, index) => (
+                                <Link key={product.id} href={"/deal/" + encodeURIComponent(product.id) + "/" + encodeURIComponent(product.store)} aria-label={"View " + product.name + " deal assessment at " + product.store} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+                                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-ink-50 text-sm font-black tabular-nums text-ink-700">{index + 1}</span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block dd-type-meta truncate text-stone-500">{product.brand}</span>
+                                    <span className="block dd-type-control truncate text-stone-800">{product.name}</span>
+                                    <span className="block dd-type-meta text-stone-500">Across {product.storeCount} {product.storeCount === 1 ? "supermarket" : "supermarkets"}</span>
+                                  </span>
+                                  <span className="flex-shrink-0 text-right text-base font-black tabular-nums text-ink-700">{product.totalChanges} {product.totalChanges === 1 ? "change" : "changes"}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">No price changes yet.</p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">Not enough price history yet — we need two prices to compare.</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="rounded-xl bg-stone-50 p-4 text-center dd-type-secondary text-stone-500">
-                    No price changes yet — we need two prices to spot a change.
-                  </p>
-                )
+                </>
               )}
-            </div>
-
             </div>
             )}
 
@@ -917,4 +762,22 @@ function StatCell({
       {content}
     </Link>
   ) : content;
+}
+
+function TrendInsightStat({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="min-w-0 px-2 text-center first:pl-0 last:pr-0">
+      <p className="min-h-8 text-[10px] font-bold leading-tight text-white/65">{label}</p>
+      <p className="mt-1 text-xl font-black leading-none tabular-nums text-white">{value}</p>
+      <p className="mt-1 truncate text-[10px] font-semibold leading-tight text-white/80">{detail}</p>
+    </div>
+  );
 }
