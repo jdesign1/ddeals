@@ -48,8 +48,6 @@ export default function CheaperOptionsCarousel({
         <CheaperOptionsThumbnailBelt
           key={`${originalProduct.id}-${originalDeal.store}-${visibleAlternatives.map(({ product, store }) => `${product.id}-${store}`).join("|")}`}
           alternatives={visibleAlternatives}
-          originalProduct={originalProduct}
-          originalDeal={originalDeal}
           selectedAlternative={selectedAlternative}
           onSelectAlternative={onSelectAlternative}
         />
@@ -60,27 +58,13 @@ export default function CheaperOptionsCarousel({
 
 function CheaperOptionsThumbnailBelt({
   alternatives,
-  originalProduct,
-  originalDeal,
   selectedAlternative,
   onSelectAlternative,
 }: {
   alternatives: CheaperAlternative[];
-  originalProduct: ProductCardData;
-  originalDeal: CurrentDeal;
   selectedAlternative: CheaperAlternative | null;
   onSelectAlternative: (alternative: CheaperAlternative | null) => void;
 }) {
-  const thumbnailOptions = [
-    { product: originalProduct, store: originalDeal.store, price: originalDeal.price, alternative: null },
-    ...alternatives.map((alternative) => ({
-      product: alternative.product,
-      store: alternative.store,
-      price: alternative.price,
-      alternative,
-    })),
-  ];
-
   return (
     <div className="px-3">
       <div className="mt-1">
@@ -88,17 +72,23 @@ function CheaperOptionsThumbnailBelt({
           <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-fair-700">Cheaper options</p>
           <span className="text-[11px] font-semibold text-stone-500">Tap to compare</span>
         </div>
-        <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Cheaper options">
-          {thumbnailOptions.map(({ product, store, price, alternative }, index) => {
-            const isSelected = alternative === null
-              ? selectedAlternative === null
-              : selectedAlternative?.product.id === alternative.product.id && selectedAlternative.store === alternative.store;
+        <div
+          className="hide-scrollbar flex gap-2 overflow-x-auto pb-1"
+          role="group"
+          aria-label="Cheaper options"
+          onScroll={() => {
+            if (selectedAlternative) onSelectAlternative(null);
+          }}
+        >
+          {alternatives.map((alternative) => {
+            const { product, store, price } = alternative;
+            const isSelected = selectedAlternative?.product.id === alternative.product.id && selectedAlternative.store === alternative.store;
             return (
               <button
                 key={[product.id, store].join("-")}
                 type="button"
                 onClick={() => onSelectAlternative(alternative)}
-                aria-label={`${index === 0 ? "Saved item: " : "Cheaper option: "}${product.name} at ${store}, $${price.toFixed(2)}`}
+                aria-label={`Cheaper option: ${product.name} at ${store}, $${price.toFixed(2)}`}
                 aria-pressed={isSelected}
                 className={`relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border bg-white p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${isSelected ? "border-2 border-stone-900" : "border-stone-200"}`}
               >
