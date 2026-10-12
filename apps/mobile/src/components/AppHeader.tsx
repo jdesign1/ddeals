@@ -71,11 +71,13 @@ export default function AppHeader({
       hasPresentedNewSpecialsThisMount.current = true;
       consumeOpenRequest();
       if (!digest) return;
-      setNewSpecialsModalSummary(digest);
+      const summaryToPresent = digest;
+      acknowledge();
+      setNewSpecialsModalSummary(summaryToPresent);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [consumeOpenRequest, digest, openRequested, shouldPresentNewSpecialsModal]);
+  }, [acknowledge, consumeOpenRequest, digest, openRequested, shouldPresentNewSpecialsModal]);
 
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
