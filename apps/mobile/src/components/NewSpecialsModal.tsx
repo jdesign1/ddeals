@@ -164,7 +164,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                           onClick={() => handleSelectFilter("real", summary.realDealKeys)}
                           className="dd-btn dd-btn-outline new-specials-real-button min-h-12 w-full cursor-pointer"
                         >
-                          <span>{pluralLabel(summary.realDeals, "Real Saver")}</span>
+                          <span>See {pluralLabel(summary.realDeals, "Real Saver")}</span>
                         </button>
                       )}
                       {summary.dodgyDeals > 0 && (
@@ -173,7 +173,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                           onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
                           className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-12 w-full cursor-pointer"
                         >
-                          <span>{pluralLabel(summary.dodgyDeals, "Dodgy Deal")}</span>
+                          <span>See {pluralLabel(summary.dodgyDeals, "Dodgy Deal")}</span>
                         </button>
                       )}
                     </div>
@@ -183,7 +183,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     onClick={() => handleSelectFilter("all", summary.allDealKeys)}
                     className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
                   >
-                    <span>See all {pluralLabel(summary.total, "deal")}</span>
+                    <span>See the Top 20</span>
                   </button>
                 </div>
               )}
