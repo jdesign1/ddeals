@@ -1083,18 +1083,89 @@ export function splitUnsafeMatchGroups(groupEntries: [string, DodgyDealsRow[]][]
   return safeGroups;
 }
 
+function storeKeysInProducts(products: ProductCard[]): Set<string> {
+  const storeKeys = new Set<string>();
+  for (const product of products) {
+    for (const deal of product.currentDeals) {
+      storeKeys.add(canonicalStoreKey(deal.store));
+    }
+  }
+  return storeKeys;
+}
+
 /**
- * Loads current specials only (per the 2026-08-07 scope decision) — the app
- * searches/browses current specials, using history purely to rank them, not
- * full-catalogue browsing. Sourced from `published_dodgy_deals_cache` (see below),
- * grouped into real cross-store match groups via the union-find matchIndex.
+ * A newly published catalogue can temporarily omit one retailer while the
+ * database keeps the last verified snapshot inside its outage grace period.
+ * Keep that retailer's still-eligible cached deals alongside the fresh stores
+ * instead of replacing a healthy local catalogue with a retailer-shaped hole.
+ * The normal verification filter still runs after this merge, so cached deals
+ * cannot outlive the same seven-day freshness contract as the database view.
  */
+export function mergeMissingStoreDeals(
+  freshProducts: ProductCard[],
+  cachedProducts: ProductCard[],
+): ProductCard[] {
+  const freshStoreKeys = storeKeysInProducts(freshProducts);
+  const cachedStoreKeys = storeKeysInProducts(cachedProducts);
+  const missingStoreKeys = new Set(
+    [...cachedStoreKeys].filter((storeKey) => !freshStoreKeys.has(storeKey)),
+  );
+  if (!missingStoreKeys.size) return freshProducts;
+
+  const merged = freshProducts.map((product) => ({
+    ...product,
+    currentDeals: [...product.currentDeals],
+  }));
+  const freshByProductId = new Map(merged.map((product) => [product.id, product]));
+
+  for (const cachedProduct of cachedProducts) {
+    const missingDeals = cachedProduct.currentDeals.filter((deal) => (
+      missingStoreKeys.has(canonicalStoreKey(deal.store))
+    ));
+    if (!missingDeals.length) continue;
+
+    const freshProduct = freshByProductId.get(cachedProduct.id);
+    if (!freshProduct) {
+      merged.push({
+        ...cachedProduct,
+        currentDeals: missingDeals,
+        standardPrice: Math.min(
+          cachedProduct.standardPrice,
+          ...missingDeals.map((deal) => deal.originalPrice),
+        ),
+      });
+      continue;
+    }
+
+    const existingStoreKeys = new Set(
+      freshProduct.currentDeals.map((deal) => canonicalStoreKey(deal.store)),
+    );
+    const additions = missingDeals.filter((deal) => (
+      !existingStoreKeys.has(canonicalStoreKey(deal.store))
+    ));
+    if (!additions.length) continue;
+    freshProduct.currentDeals.push(...additions);
+    freshProduct.standardPrice = Math.min(
+      freshProduct.standardPrice,
+      ...additions.map((deal) => deal.originalPrice),
+    );
+  }
+
+  return merged;
+}
+
 interface LiveProductsLoadResult {
   products: ProductCard[];
   /** Cache refresh timestamp from the exact rows used to build these cards. */
   sourceUpdatedAt: number | null;
 }
 
+/**
+ * Loads current specials only (per the 2026-08-07 scope decision) — the app
+ * searches/browses current specials, using history purely to rank them, not
+ * full-catalogue browsing. Sourced from `published_dodgy_deals_cache` (see below),
+ * grouped into real cross-store match groups via the union-find matchIndex.
+ */
 async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<LiveProductsLoadResult> {
   const specialRows = await fetchSpecialRows(config);
   const sourceUpdatedAt = specialRows.reduce<number | null>((latest, row) => {
@@ -1654,9 +1725,10 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
         return filterRecentlyVerifiedSpecials(cached);
       }
       if (artifact.products.length > 0) {
-        await writeCatalogueCache(artifact.products, artifact.sourceUpdatedAt);
+        const products = mergeMissingStoreDeals(artifact.products, cached ?? []);
+        await writeCatalogueCache(products, artifact.sourceUpdatedAt);
         publicationMarkerInvalidations.delete(cacheKey);
-        return filterRecentlyVerifiedSpecials(artifact.products);
+        return filterRecentlyVerifiedSpecials(products);
       }
       if (cached) return filterRecentlyVerifiedSpecials(cached);
     } catch {
@@ -1720,12 +1792,13 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     if (cached) return filterRecentlyVerifiedSpecials(cached);
     throw error;
   }
-  const sourceUpdatedAt = fresh.products.length
+  const products = mergeMissingStoreDeals(fresh.products, cached ?? []);
+  const sourceUpdatedAt = products.length
     ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
     : fresh.sourceUpdatedAt;
   publicationMarkerInvalidations.delete(cacheKey);
-  if (fresh.products.length) writeCatalogueCache(fresh.products, sourceUpdatedAt);
-  return filterRecentlyVerifiedSpecials(fresh.products);
+  if (products.length) writeCatalogueCache(products, sourceUpdatedAt);
+  return filterRecentlyVerifiedSpecials(products);
 }
 
 /** Returns true when an automatic six-hour refresh is due, without making a network request. */

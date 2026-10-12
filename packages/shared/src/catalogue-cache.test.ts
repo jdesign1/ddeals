@@ -15,6 +15,7 @@ import {
   __clearCatalogueCacheForTests,
   __catalogueCacheTestInternals,
 } from "./catalogue-cache.ts";
+import { SPECIALS_VERIFICATION_TTL_MS } from "./specials-freshness.ts";
 import type { ProductCard } from "./data.ts";
 
 function fakeProduct(id: string): ProductCard {
@@ -123,7 +124,7 @@ test("readCatalogueCache: a record just inside the TTL is still a hit", async ()
 test("readCatalogueCache: removes a store deal after its verification window", async () => {
   const staleProduct = fakeProduct("stale");
   staleProduct.currentDeals[0].specialsVerifiedAt = new Date(
-    Date.now() - __catalogueCacheTestInternals.TTL_MS * 9
+    Date.now() - SPECIALS_VERIFICATION_TTL_MS - 1000
   ).toISOString();
   await writeCatalogueCache([staleProduct]);
   assert.equal(await readCatalogueCache(), null);

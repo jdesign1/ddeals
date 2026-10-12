@@ -1,6 +1,9 @@
 import type { ProductCard } from "./data.ts";
 
-export const SPECIALS_VERIFICATION_TTL_MS = 48 * 60 * 60 * 1000;
+// Keep this aligned with public.verify_catalogue_publication()'s bounded
+// seven-day grace period. A single failed retailer scrape must not make that
+// retailer disappear from an otherwise usable cached catalogue after 48h.
+export const SPECIALS_VERIFICATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Remove store deals whose complete snapshot is missing or outside its verified window. */
 export function filterRecentlyVerifiedSpecials(

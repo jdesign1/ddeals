@@ -8,6 +8,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   mergeProductMeta,
+  mergeMissingStoreDeals,
   buildProductCardsFromSpecials,
   buildMatchIndex,
   canonicalStoreKey,
@@ -1176,6 +1177,35 @@ function fakeProductCard(id: string): ProductCard {
     description: "",
   };
 }
+
+test("mergeMissingStoreDeals retains a cached retailer when a fresh snapshot omits it", () => {
+  const cached = fakeProductCard("shared");
+  const fresh = {
+    ...cached,
+    currentDeals: [{ ...cached.currentDeals[0], store: "New World", sourceStoreId: "newworld" }],
+  };
+
+  const merged = mergeMissingStoreDeals([fresh], [cached]);
+
+  assert.equal(merged.length, 1);
+  assert.deepEqual(
+    merged[0].currentDeals.map((deal) => deal.store),
+    ["New World", "Woolworths"],
+  );
+});
+
+test("mergeMissingStoreDeals does not re-add a retailer present in the fresh snapshot", () => {
+  const cached = fakeProductCard("shared");
+  const fresh = {
+    ...cached,
+    currentDeals: [{ ...cached.currentDeals[0], price: 3.5 }],
+  };
+
+  const merged = mergeMissingStoreDeals([fresh], [cached]);
+
+  assert.equal(merged.length, 1);
+  assert.deepEqual(merged[0].currentDeals.map((deal) => deal.price), [3.5]);
+});
 
 const SAMPLE_DODGY_DEALS_ROW: DodgyDealsRow = {
   product_id: "prod-1",

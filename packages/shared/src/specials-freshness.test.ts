@@ -47,6 +47,13 @@ test("keeps cached specials only while their store snapshot remains verified", (
   assert.deepEqual(filterRecentlyVerifiedSpecials([recent, expired, missing], now), [recent]);
 });
 
+test("keeps a retailer through the backend's seven-day outage grace", () => {
+  const now = Date.parse("2026-09-17T12:00:00Z");
+  const withinGrace = product("within-grace", new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString());
+
+  assert.deepEqual(filterRecentlyVerifiedSpecials([withinGrace], now), [withinGrace]);
+});
+
 test("removes only the expired store deal when another verified store remains", () => {
   const now = Date.parse("2026-09-17T12:00:00Z");
   const card = product("shared", new Date(now - 1000).toISOString());
