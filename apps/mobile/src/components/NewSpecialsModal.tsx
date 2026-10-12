@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -122,7 +121,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 onClick={handleClose}
                 aria-label="Close new specials message"
                 ref={closeButtonRef}
-                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900"
               >
                 <span className="text-2xl leading-none" aria-hidden="true">×</span>
               </button>
@@ -144,7 +143,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                   {!hasNewSpecials
                     ? "All caught up"
-                    : "New deals landed"}
+                    : "Let's inspect them"}
                 </h2>
                 {!hasNewSpecials ? (
                   <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">No fresh deals just yet.</p>
@@ -160,14 +159,6 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
 
               {hasNewSpecials && (
                 <div className="mt-6 flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectFilter("all", summary.allDealKeys)}
-                    className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
-                  >
-                    <span>See all {pluralLabel(summary.total, "deal")}</span>
-                    <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-                  </button>
                   {hasRatedSpecials && (
                     <div className="flex flex-col gap-3">
                       {summary.realDeals > 0 && (
@@ -190,6 +181,13 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                       )}
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectFilter("all", summary.allDealKeys)}
+                    className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+                  >
+                    <span>See all {pluralLabel(summary.total, "deal")}</span>
+                  </button>
                 </div>
               )}
               {!hasNewSpecials && (
