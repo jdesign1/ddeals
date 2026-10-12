@@ -6,8 +6,6 @@ const SNAPSHOT_STORAGE_PREFIX = "dd-semantic-specials-snapshot-v2:";
 export const NEW_SPECIALS_PENDING_VERSION = 1;
 const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v1:";
 const PRICE_CHANGE_EPSILON = 0.005;
-export const MAX_NEW_SPECIALS_PREVIEW_ITEMS = 3;
-export const MAX_NEW_SPECIALS_DISPLAY_COUNT = 50;
 
 type SnapshotEntry = {
   price: number;
@@ -34,15 +32,6 @@ export type NewSpecialsSummary = {
   allDealKeys: string[];
   realDealKeys: string[];
   dodgyDealKeys: string[];
-  previewItems: NewSpecialsPreviewItem[];
-};
-
-export type NewSpecialsPreviewItem = {
-  productId: string;
-  name: string;
-  store: string;
-  price: number;
-  change: "new" | "price-drop";
 };
 
 export type NewSpecialsPending = {
@@ -109,10 +98,7 @@ export function readNewSpecialsPending(scope = "device"): NewSpecialsPending | n
     if (parsed.version !== NEW_SPECIALS_PENDING_VERSION || !parsed.summary || !parsed.snapshot) return null;
     return {
       version: NEW_SPECIALS_PENDING_VERSION,
-      summary: {
-        ...(parsed.summary as NewSpecialsSummary),
-        previewItems: Array.isArray(parsed.summary.previewItems) ? parsed.summary.previewItems : [],
-      },
+      summary: parsed.summary as NewSpecialsSummary,
       snapshot: parsed.snapshot as NewSpecialsSnapshot,
     };
   } catch {
@@ -162,7 +148,6 @@ export function summarizeNewSpecials(products: ProductCard[], previous: NewSpeci
     allDealKeys: [],
     realDealKeys: [],
     dodgyDealKeys: [],
-    previewItems: [],
   };
 
   for (const product of products) {
@@ -178,16 +163,6 @@ export function summarizeNewSpecials(products: ProductCard[], previous: NewSpeci
       summary.allDealKeys.push(key);
       if (hasStarted) summary.newlyStarted += 1;
       else summary.priceDrops += 1;
-
-      if (summary.previewItems.length < MAX_NEW_SPECIALS_PREVIEW_ITEMS) {
-        summary.previewItems.push({
-          productId: product.id,
-          name: product.name,
-          store: deal.store,
-          price: deal.price,
-          change: hasStarted ? "new" : "price-drop",
-        });
-      }
 
       const storeKey = normalizeStoreKey(deal.store);
       if (storeKey.includes("woolworths")) summary.byStore.woolworths += 1;

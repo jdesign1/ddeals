@@ -90,6 +90,10 @@ export default function AppHeader({
   const isHeaderHidden = pathname === "/" && isHiddenOnCheckDeals;
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
   const avatarInitial = profileDisplayName.charAt(0).toUpperCase();
+  const handleNewSpecialsClose = () => {
+    acknowledge();
+    setIsNewSpecialsModalOpen(false);
+  };
 
   return (
     <>
@@ -160,7 +164,7 @@ export default function AppHeader({
       </div>
 
       {newSpecialsModalSummary && (
-        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={() => setIsNewSpecialsModalOpen(false)} onSelectFilter={(filter, dealKeys) => { acknowledge(); setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} />
+        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={handleNewSpecialsClose} onSelectFilter={(filter, dealKeys) => { acknowledge(); setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} />
       )}
     </>
   );

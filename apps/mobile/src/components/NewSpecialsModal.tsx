@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKe
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
-import { MAX_NEW_SPECIALS_DISPLAY_COUNT } from "@/lib/new-specials";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 interface NewSpecialsModalProps {
@@ -28,11 +27,13 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const onSelectFilterRef = useRef(onSelectFilter);
-  onCloseRef.current = onClose;
-  onSelectFilterRef.current = onSelectFilter;
 
-  const displayCount = (count: number) => count > MAX_NEW_SPECIALS_DISPLAY_COUNT ? `${MAX_NEW_SPECIALS_DISPLAY_COUNT}+` : String(count);
-  const pluralLabel = (count: number, singular: string) => `${displayCount(count)} ${singular}${count === 1 ? "" : "s"}`;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    onSelectFilterRef.current = onSelectFilter;
+  }, [onClose, onSelectFilter]);
+
+  const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
   const changeSummary = [
     summary.newlyStarted > 0 ? `${pluralLabel(summary.newlyStarted, "new special")}` : "",
     summary.priceDrops > 0 ? `${pluralLabel(summary.priceDrops, "price drop")}` : "",
@@ -135,7 +136,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   height={1024}
                   sizes="(max-width: 480px) calc(100vw - 72px), 320px"
                   unoptimized
-                  className="mascot-wave h-auto w-full max-w-[20rem]"
+                  className="h-auto w-full max-w-[20rem]"
                 />
               </div>
 
@@ -150,26 +151,12 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 ) : (
                   <>
                     <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">
-                      {`${displayCount(summary.total)} fresh ${summary.total === 1 ? "deal" : "deals"} to check.`}
+                      {`${summary.total} fresh ${summary.total === 1 ? "deal" : "deals"} to check.`}
                     </p>
                     {changeSummary && <p className="mt-2 text-sm leading-6 text-stone-600">{changeSummary}.</p>}
                   </>
                 )}
               </div>
-
-              {hasNewSpecials && summary.previewItems.length > 0 && (
-                <div className="mt-5 rounded-2xl bg-stone-50 px-3 py-3 text-left">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-stone-500">A few to check</p>
-                  <ul className="mt-2 space-y-2" aria-label="New deal previews">
-                    {summary.previewItems.map((item) => (
-                      <li key={`${item.productId}-${item.store}`} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="min-w-0 truncate font-semibold text-stone-800">{item.name}</span>
-                        <span className="shrink-0 text-xs font-semibold text-stone-500">{item.store} · ${item.price.toFixed(2)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
               {hasNewSpecials && (
                 <div className="mt-6 flex flex-col gap-3">
@@ -178,11 +165,11 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     onClick={() => handleSelectFilter("all", summary.allDealKeys)}
                     className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
                   >
-                    <span>See {pluralLabel(summary.total, "deal")}</span>
+                    <span>See all {pluralLabel(summary.total, "deal")}</span>
                     <ArrowRight className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                   </button>
                   {hasRatedSpecials && (
-                    <div className={`grid gap-3 ${summary.realDeals > 0 && summary.dodgyDeals > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
+                    <div className="flex flex-col gap-3">
                       {summary.realDeals > 0 && (
                         <button
                           type="button"
