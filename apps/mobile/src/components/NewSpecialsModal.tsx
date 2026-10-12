@@ -148,12 +148,9 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 {!hasNewSpecials ? (
                   <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">No fresh deals just yet.</p>
                 ) : (
-                  <>
-                    <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">
-                      {`${summary.total} fresh ${summary.total === 1 ? "deal" : "deals"} to check.`}
-                    </p>
-                    {changeSummary && <p className="mt-2 text-sm leading-6 text-stone-600">{changeSummary}.</p>}
-                  </>
+                  <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">
+                    {changeSummary ? `${changeSummary}.` : `${summary.total} ${summary.total === 1 ? "special" : "specials"} to check.`}
+                  </p>
                 )}
               </div>
 
