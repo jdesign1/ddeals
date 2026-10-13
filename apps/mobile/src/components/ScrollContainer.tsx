@@ -8,6 +8,7 @@ import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useSearch } from "@/lib/search-context";
 import {
   isNearScrollBottom,
+  CHECK_DEALS_SCROLL_TO_TOP_EVENT,
   getCapturedSettingsScrollPosition,
   publishCheckDealsHeaderVisibility,
   publishCheckDealsScrollPosition,
@@ -257,6 +258,26 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     publishCheckDealsHeaderVisibility(false);
     publishCheckDealsScrollPosition(lastScrollTopRef.current);
   }, [dealFilter, pathname]);
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+
+    const resetCheckDealsScrollPosition = () => {
+      const element = scrollRef.current;
+      if (!element) return;
+      element.scrollTop = 0;
+      lastScrollTopRef.current = 0;
+      checkDealsScrollTopRef.current = 0;
+      headerScrollAnchorRef.current = 0;
+      headerHiddenRef.current = false;
+      setIsHeaderHidden(false);
+      publishCheckDealsHeaderVisibility(false);
+      publishCheckDealsScrollPosition(0);
+    };
+
+    window.addEventListener(CHECK_DEALS_SCROLL_TO_TOP_EVENT, resetCheckDealsScrollPosition);
+    return () => window.removeEventListener(CHECK_DEALS_SCROLL_TO_TOP_EVENT, resetCheckDealsScrollPosition);
+  }, [pathname]);
 
   // Collapsing the sticky header/toolbar changes the layout above the
   // current viewport and can make the browser emit a compensating scroll

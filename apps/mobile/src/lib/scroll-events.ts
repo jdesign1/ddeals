@@ -1,5 +1,6 @@
 export const CHECK_DEALS_HEADER_SCROLL_EVENT = "dodgey-deals:check-deals-header-scroll";
 export const CHECK_DEALS_SCROLL_POSITION_EVENT = "dodgey-deals:check-deals-scroll-position";
+export const CHECK_DEALS_SCROLL_TO_TOP_EVENT = "dodgey-deals:check-deals-scroll-to-top";
 export const STICKY_BOTTOM_BOUNCE_GUARD_PX = 24;
 
 let settingsScrollTop = 0;
@@ -47,6 +48,11 @@ export function subscribeToCheckDealsHeaderVisibility(onChange: (hidden: boolean
 export function publishCheckDealsScrollPosition(scrollTop: number): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent<number>(CHECK_DEALS_SCROLL_POSITION_EVENT, { detail: scrollTop }));
+}
+
+export function publishCheckDealsScrollToTop(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(CHECK_DEALS_SCROLL_TO_TOP_EVENT));
 }
 
 export function subscribeToCheckDealsScrollPosition(onChange: (scrollTop: number) => void): () => void {

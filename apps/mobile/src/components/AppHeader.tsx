@@ -12,7 +12,7 @@ import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
-import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { publishCheckDealsScrollToTop, subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
@@ -45,7 +45,7 @@ export default function AppHeader({
   const { isAnonymousSession, user, profile } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { query, setQuery, openSearch, openSearchForFilter } = useSearch();
+  const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
   const { digest, openRequested, consumeOpenRequest, acknowledge } = useNewSpecials();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
@@ -95,6 +95,13 @@ export default function AppHeader({
   const handleNewSpecialsClose = () => {
     acknowledge();
     setIsNewSpecialsModalOpen(false);
+  };
+  const handleShowTopDeals = () => {
+    acknowledge();
+    setIsNewSpecialsModalOpen(false);
+    closeSearch();
+    setDealFilter("all");
+    publishCheckDealsScrollToTop();
   };
 
   return (
@@ -166,7 +173,7 @@ export default function AppHeader({
       </div>
 
       {newSpecialsModalSummary && (
-        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={handleNewSpecialsClose} onSelectFilter={(filter, dealKeys) => { acknowledge(); setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} />
+        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={handleNewSpecialsClose} onSelectFilter={(filter, dealKeys) => { acknowledge(); setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} onSelectTopDeals={handleShowTopDeals} />
       )}
     </>
   );
