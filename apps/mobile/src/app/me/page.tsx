@@ -13,6 +13,7 @@ import {
 import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { useAuth } from "@/lib/auth-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { useSearch } from "@/lib/search-context";
@@ -232,19 +233,62 @@ function WatchlistStatsPanel({ loading, productCount, stats, isSavingsOpen, onSa
   return (
     <section id="deal-stats-panel-watchlist" role="tabpanel" aria-labelledby="deal-stats-tab-watchlist" className="flex flex-col gap-8">
       <section className="flex flex-col gap-5 px-5" aria-labelledby="watchlist-supermarket-heading">
-        <div className="flex items-center justify-between gap-3"><h1 id="watchlist-supermarket-heading" className="dd-type-section text-stone-900">Your Watchlist by supermarket</h1><div role="status" aria-label="Selected period: Last 90 days" className="flex flex-shrink-0 items-center gap-2 rounded-full border-2 border-stone-900 bg-white px-4 py-2 dd-type-control text-stone-900"><span>Last 90 days</span><ChevronRight className="h-4 w-4" aria-hidden="true" /></div></div>
-        <p className="dd-type-secondary max-w-2xl text-stone-600">Compare the current Real Savers, Fair Deals and Dodgy Deals from your Watchlist at each supermarket. Verdicts are informed by the selected 90-day period.</p>
-        <div className="overflow-x-auto rounded-xl"><table className="w-full min-w-[31rem] border-collapse text-left" aria-label="Your Watchlist by supermarket for the last 90 days"><thead><tr className="border-b border-stone-900"><th scope="col" className="px-1 py-3 dd-type-control text-stone-900">Supermarket</th><th scope="col" className="px-2 py-3 text-center text-sm font-bold text-fair-700">Real Savers</th><th scope="col" className="px-2 py-3 text-center text-sm font-bold text-amber-500">Fair Deals</th><th scope="col" className="px-2 py-3 text-center text-sm font-bold text-alert-600">Dodgy Deals</th></tr></thead><tbody>{stats.stores.map((store) => <tr key={store.key} className="border-b border-stone-400 last:border-b-0"><th scope="row" className="px-1 py-3 dd-type-control font-bold text-stone-800">{store.store}</th><td className="px-2 py-3 text-center text-2xl font-black tabular-nums text-fair-600">{store.realSavers}</td><td className="px-2 py-3 text-center text-2xl font-black tabular-nums text-amber-500">{store.fairDeals}</td><td className="px-2 py-3 text-center text-2xl font-black tabular-nums text-alert-600">{store.dodgyDeals}</td></tr>)}</tbody></table></div>
+        <h1 id="watchlist-supermarket-heading" className="dd-type-section text-stone-900">Your Watchlist by supermarket</h1>
+        <p className="dd-type-secondary max-w-2xl text-stone-600">Compare the current Real Savers, Fair Deals and Dodgy Deals from your Watchlist at each supermarket. Verdicts are based on the last 90 days of price history.</p>
+        <div className="rounded-xl"><table className="w-full table-fixed border-collapse text-left" aria-label="Your Watchlist by supermarket for the last 90 days"><colgroup><col className="w-[18%]" /><col className="w-[27.33%]" /><col className="w-[27.33%]" /><col className="w-[27.33%]" /></colgroup><thead><tr className="border-b border-stone-900"><th scope="col" className="px-0 py-2 text-[10px] font-bold uppercase leading-tight tracking-wide text-stone-900"><span className="sr-only">Supermarket</span></th><th scope="col" className="px-1 py-2 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-fair-700"><span className="sr-only">Real Savers</span><span aria-hidden="true">Real</span></th><th scope="col" className="px-1 py-2 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-amber-500"><span className="sr-only">Fair Deals</span><span aria-hidden="true">Fair</span></th><th scope="col" className="px-1 py-2 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-alert-600"><span className="sr-only">Dodgy Deals</span><span aria-hidden="true">Dodgy</span></th></tr></thead><tbody>{stats.stores.map((store) => <tr key={store.key} className="border-b border-stone-200 last:border-b-0"><th scope="row" className="px-0 py-2"><StoreLogoBadge store={store.store} variant="compact" decorative /><span className="sr-only">{store.store}</span></th><td className="px-1 py-2 text-center text-xl font-black tabular-nums text-fair-600">{store.realSavers}</td><td className="px-1 py-2 text-center text-xl font-black tabular-nums text-amber-500">{store.fairDeals}</td><td className="px-1 py-2 text-center text-xl font-black tabular-nums text-alert-600">{store.dodgyDeals}</td></tr>)}</tbody></table></div>
       </section>
-      <section className="flex flex-col gap-5 px-5" aria-labelledby="estimated-savings-heading"><div><h2 id="estimated-savings-heading" className="dd-type-section text-stone-900">Estimated Savings</h2><p className="mt-2 dd-type-secondary text-stone-600">Compare your estimated savings at each supermarket based on current Watchlist specials.</p></div><div className="grid grid-cols-3 divide-x divide-stone-500 rounded-3xl border-2 border-stone-900 bg-green-100 px-3 py-6">{stats.savings.map((store) => <div key={store.key} className="flex min-w-0 flex-col items-center gap-2 px-1 text-center"><span className="truncate text-xs font-bold text-stone-900 sm:text-sm">{store.store}</span><span className="text-2xl font-black leading-none tabular-nums text-stone-950">{formatCurrency(store.amount)}</span></div>)}</div><div className="flex flex-col items-center"><button type="button" onClick={onSavingsToggle} aria-expanded={isSavingsOpen} className="flex cursor-pointer items-center gap-2 dd-type-control text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"><span>See more info</span><ChevronDown className={`h-5 w-5 transition-transform ${isSavingsOpen ? "rotate-180" : ""}`} aria-hidden="true" /></button>{isSavingsOpen && <p className="mt-3 max-w-xl text-center dd-type-secondary text-stone-600">This is a one-unit estimate using the difference between each current special price and its reference price. It is not a record of checkout spending.</p>}</div></section>
-      <section className="flex flex-col gap-5 bg-[#f0ebf4] px-5 py-8" aria-labelledby="watchlist-top-heading"><h2 id="watchlist-top-heading" className="dd-type-section text-stone-900">Watchlist Top 3</h2><div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Watchlist Top 3 ranking">{([["most-often", "Most often on special"], ["least-often", "Less often on special"], ["price-swings", "Biggest price swings"]] as const).map(([mode, label]) => { const selected = topMode === mode; return <button key={mode} type="button" aria-pressed={selected} onClick={() => onTopModeChange(mode)} className={`flex-shrink-0 cursor-pointer rounded-full border-2 px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${selected ? "border-black bg-black text-white" : "border-stone-900 bg-white text-stone-900 hover:bg-stone-100"}`}>{label}</button>; })}</div>{stats.topProducts.length > 0 ? <div className="flex flex-col gap-5">{stats.topProducts.map((item) => <WatchlistTopCard key={item.product.id} item={item} mode={topMode} />)}</div> : <div className="rounded-3xl border-2 border-stone-900 bg-white p-6 text-center"><p className="dd-type-control text-stone-900">We need more price history to show your Top 3.</p><p className="mt-2 dd-type-secondary text-stone-600">Keep products on your Watchlist and check back as their 90-day history builds.</p></div>}</section>
+      <section className="flex flex-col gap-5 px-5" aria-labelledby="estimated-savings-heading"><div><h2 id="estimated-savings-heading" className="dd-type-section text-stone-900">Estimated Savings</h2><p className="mt-2 dd-type-secondary text-stone-600">Compare your estimated savings at each supermarket based on current Watchlist specials.</p></div><div className="grid grid-cols-3 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs">{stats.savings.map((store) => <div key={store.key} className="flex min-w-0 flex-col items-center gap-2 px-2 py-5 text-center"><StoreLogoBadge store={store.store} variant="ranking" /><span className="sr-only">{store.store}</span><span className="text-xl font-black leading-none tabular-nums text-fair-800">{formatCurrency(store.amount)}</span></div>)}</div><div className="flex flex-col items-center"><button type="button" onClick={onSavingsToggle} aria-expanded={isSavingsOpen} className="flex cursor-pointer items-center gap-2 dd-type-control text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"><span>See more info</span><ChevronDown className={`h-5 w-5 transition-transform ${isSavingsOpen ? "rotate-180" : ""}`} aria-hidden="true" /></button>{isSavingsOpen && <p className="mt-3 max-w-xl text-center dd-type-secondary text-stone-600">This is a one-unit estimate using the difference between each current special price and its reference price. It is not a record of checkout spending.</p>}</div></section>
+      <section className="flex flex-col gap-5 bg-[#f0ebf4] px-5 py-8" aria-labelledby="watchlist-top-heading"><h2 id="watchlist-top-heading" className="dd-type-section text-stone-900">Watchlist Top 3</h2><div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1" role="group" aria-label="Watchlist Top 3 ranking">{([["most-often", "Most often on special"], ["least-often", "Less often on special"], ["price-swings", "Biggest price swings"]] as const).map(([mode, label]) => { const selected = topMode === mode; return <button key={mode} type="button" aria-pressed={selected} onClick={() => onTopModeChange(mode)} className={`flex-shrink-0 cursor-pointer rounded-full border px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${selected ? "border-ink-900 bg-ink-900 text-white" : "border-stone-200 bg-white text-stone-900 hover:bg-stone-50"}`}>{label}</button>; })}</div>{stats.topProducts.length > 0 ? <div className="flex flex-col gap-4">{stats.topProducts.map((item) => <WatchlistTopCard key={item.product.id} item={item} mode={topMode} />)}</div> : <div className="rounded-2xl border border-stone-200/80 bg-white p-6 text-center shadow-xs"><p className="dd-type-control text-stone-900">We need more price history to show your Top 3.</p><p className="mt-2 dd-type-secondary text-stone-600">Keep products on your Watchlist and check back as their 90-day history builds.</p></div>}</section>
     </section>
   );
 }
 
+function topCardAssessmentDeal(product: ProductCard): CurrentDeal | undefined {
+  const deals = product.currentDeals.filter((deal) => deal.isOnSpecial === true);
+  const candidates = deals.length > 0 ? deals : product.currentDeals;
+  return candidates.reduce<CurrentDeal | undefined>((best, deal) => (!best || deal.price < best.price ? deal : best), undefined);
+}
+
 function WatchlistTopCard({ item, mode }: { item: WatchlistStats["topProducts"][number]; mode: WatchlistTopMode }) {
-  const summary = mode === "price-swings" ? item.totalPriceSwing > 0 ? `Largest observed 90-day price range: ${formatCurrency(item.totalPriceSwing)}.` : `${item.totalPriceChanges} recorded price changes in the last 90 days.` : `${item.totalSpecialDays} ${item.totalSpecialDays === 1 ? "day" : "days"} on special in the last 90 days.`;
-  return <article className="rounded-3xl border-2 border-stone-900 bg-white p-5"><div className="flex gap-4"><ProductImage src={item.product.image} alt="" width={118} height={118} sizes="118px" className="h-[7.375rem] w-[7.375rem] flex-shrink-0 rounded-2xl object-cover" /><div className="min-w-0 flex-1"><h3 className="line-clamp-2 text-sm font-bold leading-tight text-stone-900">{item.product.name}</h3><p className="mt-3 text-xs font-bold leading-tight text-stone-800">{summary}</p><div className="mt-4 grid grid-cols-3 divide-x divide-stone-500">{item.stores.map((store) => <div key={store.key} className="min-w-0 px-2 text-center first:pl-0 last:pr-0"><p className="text-xl font-black leading-none tabular-nums text-stone-900">{formatTopStoreValue(store, mode)}</p><p className="mt-2 truncate text-[10px] font-bold leading-tight text-stone-900">{store.store}</p></div>)}</div></div></div></article>;
+  const summary = mode === "price-swings"
+    ? item.totalPriceSwing > 0
+      ? `Largest observed 90-day price range: ${formatCurrency(item.totalPriceSwing)}.`
+      : `${item.totalPriceChanges} recorded price changes in the last 90 days.`
+    : `${item.totalSpecialDays} ${item.totalSpecialDays === 1 ? "day" : "days"} on special in the last 90 days.`;
+  const assessmentDeal = topCardAssessmentDeal(item.product);
+  const cardClassName = "group block overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-xs transition-transform duration-150 ease-out active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2";
+  const cardContent = (
+    <>
+      <div className="product-image-frame relative flex h-32 w-full items-center justify-center overflow-hidden bg-stone-50 p-3">
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl">
+          <ProductImage src={item.product.image} alt={item.product.name} width={220} height={128} sizes="(max-width: 480px) 100vw, 440px" className="product-image-content h-full w-full object-contain" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-3 bg-white px-3 pb-3 pt-3">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="line-clamp-2 min-w-0 font-display text-base font-bold leading-snug text-stone-900">{item.product.name}</h3>
+          {assessmentDeal && <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" aria-hidden="true" />}
+        </div>
+        <p className="text-xs font-bold leading-tight text-stone-800">{summary}</p>
+        <div className="grid grid-cols-3 divide-x divide-stone-200 border-t border-stone-100 pt-3">
+          {item.stores.map((store) => (
+            <div key={store.key} role="group" className="flex min-w-0 flex-col items-center gap-1.5 px-2 text-center first:pl-0 last:pr-0" aria-label={`${store.store}: ${formatTopStoreValue(store, mode)}`}>
+              <StoreLogoBadge store={store.store} variant="ranking" decorative />
+              <span className={`whitespace-nowrap font-black leading-none tabular-nums text-stone-900 ${mode === "price-swings" ? "text-base sm:text-lg" : "text-xl"}`}>{formatTopStoreValue(store, mode)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
+  return assessmentDeal ? (
+    <Link href={`/deal/${encodeURIComponent(item.product.id)}/${encodeURIComponent(assessmentDeal.store)}`} aria-label={`View ${item.product.name} deal assessment at ${assessmentDeal.store}`} className={cardClassName}>
+      {cardContent}
+    </Link>
+  ) : (
+    <article className={cardClassName}>{cardContent}</article>
+  );
 }
 
 function formatTopStoreValue(store: WatchlistStats["topProducts"][number]["stores"][number], mode: WatchlistTopMode): string {
