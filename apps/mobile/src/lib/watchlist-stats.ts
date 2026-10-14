@@ -13,6 +13,7 @@ export const WATCHLIST_STATS_STORES = [
 ] as const;
 
 export type WatchlistTopMode = "most-often" | "least-often" | "price-swings";
+export type PriceSwingDirection = "up" | "down";
 
 export interface WatchlistStoreStats {
   key: string;
@@ -33,6 +34,7 @@ export interface WatchlistProductStoreStats {
   store: string;
   specialDays: number | null;
   priceSwing: number | null;
+  priceSwingDirection: PriceSwingDirection | null;
   priceChanges: number | null;
 }
 
@@ -74,6 +76,20 @@ function priceSwingFor(deal: CurrentDeal | undefined): number | null {
   return high - low;
 }
 
+/**
+ * A low/high range does not contain an ordered price transition. The current
+ * price versus the stored 90-day average is the clearest available direction
+ * signal for the Top 3 card; equal or incomplete values deliberately stay
+ * neutral rather than showing an unsupported arrow.
+ */
+function priceSwingDirectionFor(deal: CurrentDeal | undefined, priceSwing: number | null): PriceSwingDirection | null {
+  if (priceSwing === null) return null;
+  const current = finiteNonNegative(deal?.price);
+  const average = finiteNonNegative(deal?.ninetyDayAvg);
+  if (current === null || average === null || Math.abs(current - average) < 0.005) return null;
+  return current > average ? "up" : "down";
+}
+
 function priceChangesFor(deal: CurrentDeal | undefined): number | null {
   const changes = finiteNonNegative(deal?.ninetyDayPriceChanges);
   return changes === null ? null : Math.round(changes);
@@ -86,11 +102,13 @@ function isActiveSpecial(deal: CurrentDeal | undefined): deal is CurrentDeal {
 function buildProductStats(product: ProductCard): WatchlistTopProduct {
   const stores = WATCHLIST_STATS_STORES.map(({ key, label }) => {
     const deal = representativeDeal(product, key);
+    const priceSwing = priceSwingFor(deal);
     return {
       key,
       store: label,
       specialDays: specialDaysFor(deal),
-      priceSwing: priceSwingFor(deal),
+      priceSwing,
+      priceSwingDirection: priceSwingDirectionFor(deal, priceSwing),
       priceChanges: priceChangesFor(deal),
     };
   });

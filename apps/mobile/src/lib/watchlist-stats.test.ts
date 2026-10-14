@@ -18,7 +18,7 @@ function product(id: string, name: string, deals: ProductCard["currentDeals"]): 
   };
 }
 
-function deal(store: string, dealType: ProductCard["currentDeals"][number]["dealType"], price: number, originalPrice: number, specialDays: number, low: number, high: number) {
+function deal(store: string, dealType: ProductCard["currentDeals"][number]["dealType"], price: number, originalPrice: number, specialDays: number, low: number, high: number, average = (low + high) / 2) {
   return {
     store,
     price,
@@ -33,7 +33,7 @@ function deal(store: string, dealType: ProductCard["currentDeals"][number]["deal
     specialEndDate: null,
     ninetyDayLow: low,
     ninetyDayHigh: high,
-    ninetyDayAvg: (low + high) / 2,
+    ninetyDayAvg: average,
     ninetyDaySamples: 10,
     ninetyDaySpecialSamples: 5,
     ninetyDayPriceChanges: 2,
@@ -68,4 +68,9 @@ test("buildWatchlistStats ranks Watchlist Top 3 from 90-day history", () => {
 
   assert.deepEqual(stats.topProducts.map(({ product: item }) => item.id), ["swing", "often", "rarely"]);
   assert.equal(stats.topProducts[0]?.totalPriceSwing, 13);
+  assert.equal(stats.topProducts[0]?.stores[0]?.priceSwingDirection, "down");
+
+  const rising = product("rising", "Rising item", [deal("New World", "Real Deal", 9, 10, 5, 2, 10, 6)]);
+  const risingStats = buildWatchlistStats([rising], new Set(["rising"]), "price-swings");
+  assert.equal(risingStats.topProducts[0]?.stores[0]?.priceSwingDirection, "up");
 });

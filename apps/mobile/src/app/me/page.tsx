@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import {
   buildPriceChangeStats,
   matchesAnySelectedStore,
@@ -271,12 +271,20 @@ function WatchlistTopCard({ item, mode }: { item: WatchlistStats["topProducts"][
         </div>
         <p className="text-xs font-bold leading-tight text-stone-800">{summary}</p>
         <div className="grid grid-cols-3 divide-x divide-stone-200 border-t border-stone-100 pt-3">
-          {item.stores.map((store) => (
-            <div key={store.key} role="group" className="flex min-w-0 flex-col items-center gap-1.5 px-2 text-center first:pl-0 last:pr-0" aria-label={`${store.store}: ${formatTopStoreValue(store, mode)}`}>
-              <StoreLogoBadge store={store.store} variant="ranking" decorative />
-              <span className={`whitespace-nowrap font-black leading-none tabular-nums text-stone-900 ${mode === "price-swings" ? "text-base sm:text-lg" : "text-xl"}`}>{formatTopStoreValue(store, mode)}</span>
-            </div>
-          ))}
+          {item.stores.map((store) => {
+            const metric = topStoreMetric(store, mode);
+            return (
+              <div key={store.key} role="group" className="flex min-w-0 flex-col items-center gap-1.5 px-2 text-center first:pl-0 last:pr-0" aria-label={`${store.store}: ${metric.ariaLabel}`}>
+                <StoreLogoBadge store={store.store} variant="ranking" decorative />
+                <span className={`inline-flex max-w-full items-baseline justify-center whitespace-nowrap font-black leading-none tabular-nums text-stone-900 ${mode === "price-swings" ? "text-base sm:text-lg" : "text-lg sm:text-xl"}`}>
+                  {metric.direction === "up" && <ArrowUp className="mr-0.5 h-3.5 w-3.5 shrink-0 text-alert-600" aria-hidden="true" />}
+                  {metric.direction === "down" && <ArrowDown className="mr-0.5 h-3.5 w-3.5 shrink-0 text-fair-600" aria-hidden="true" />}
+                  <span>{metric.value}</span>
+                  {metric.unit && <span className="ml-0.5 text-[11px] font-extrabold tracking-tight text-stone-500">{metric.unit}</span>}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </>
@@ -291,9 +299,16 @@ function WatchlistTopCard({ item, mode }: { item: WatchlistStats["topProducts"][
   );
 }
 
-function formatTopStoreValue(store: WatchlistStats["topProducts"][number]["stores"][number], mode: WatchlistTopMode): string {
-  const value = mode === "price-swings" ? store.priceSwing : store.specialDays;
-  return value === null ? "—" : mode === "price-swings" ? formatCurrency(value) : String(value);
+function topStoreMetric(store: WatchlistStats["topProducts"][number]["stores"][number], mode: WatchlistTopMode): { value: string; unit?: "days"; direction: "up" | "down" | null; ariaLabel: string } {
+  if (mode === "price-swings") {
+    if (store.priceSwing === null) return { value: "—", direction: null, ariaLabel: "No 90-day price range available" };
+    const range = formatCurrency(store.priceSwing);
+    const directionLabel = store.priceSwingDirection === "up" ? "current price above the 90-day average" : store.priceSwingDirection === "down" ? "current price below the 90-day average" : "direction unavailable";
+    return { value: range, direction: store.priceSwingDirection, ariaLabel: `${directionLabel}; 90-day price range ${range}` };
+  }
+
+  if (store.specialDays === null) return { value: "—", unit: "days", direction: null, ariaLabel: "No 90-day special-day history available" };
+  return { value: String(store.specialDays), unit: "days", direction: null, ariaLabel: `${store.specialDays} days on special in the last 90 days` };
 }
 
 interface NZTrendsPanelProps {
