@@ -98,7 +98,11 @@ export default function ProductListCard({
   const isRealSaver = deal.dealType === "Real Deal";
   const isFairDeal = deal.dealType === "Fair Price";
   const hideCardBadges = hasMixedStoreVerdicts(product);
+  const { isGridLayout, isCompactLayout } = useCardLayout();
   const isSnapshotLayout = snapshot != null;
+  // Top 20 snapshot cards have their own fixed rail layout. They must stay
+  // stable when the user chooses Compact cards for the regular browse lists.
+  const isCompactCardLayout = isCompactLayout && !isSnapshotLayout;
   const isTourDealCard =
     dataOnboarding === "deal-card" ||
     dataOnboarding === "top-savings-deal-card" ||
@@ -108,8 +112,7 @@ export default function ProductListCard({
   // Unit pricing remains available for deal assessment and data analysis, but
   // browse cards stay focused on the product's actual shelf price.
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);
-  const { isGridLayout, isCompactLayout } = useCardLayout();
-  const pinStoreLogosToFooter = !isSnapshotLayout && !isCompactLayout && !hideCardBadges;
+  const pinStoreLogosToFooter = !isSnapshotLayout && !isCompactCardLayout && !hideCardBadges;
   const useGridCard = isSnapshotLayout || isGridLayout;
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
@@ -191,7 +194,7 @@ export default function ProductListCard({
         WebkitTouchCallout: "none",
       }}
       className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border ${snapshot?.isNew ? "border-black" : "border-stone-200/80"} bg-white ${
-        isCompactLayout
+        isCompactCardLayout
           ? "dd-compact-product-card flex min-h-28 items-stretch gap-3 p-2"
           : isSnapshotLayout
             ? "dd-snapshot-card w-[40%] min-w-[136px] max-w-[180px] shrink-0 snap-start flex flex-col rounded-[1.5rem]"
@@ -204,7 +207,7 @@ export default function ProductListCard({
         productId={product.id}
         productName={product.name}
         dataOnboarding={isTourDealCard ? "save-product" : undefined}
-        containerClassName={isCompactLayout || isSnapshotLayout ? "absolute right-0 top-0 z-10" : undefined}
+        containerClassName={isCompactCardLayout || isSnapshotLayout ? "absolute right-0 top-0 z-10" : undefined}
       />
 
       {/* Single layout keeps the horizontal image-and-text card currently
@@ -213,7 +216,7 @@ export default function ProductListCard({
           text sits underneath it. */}
       <div
         className={`product-image-frame relative flex flex-shrink-0 select-none items-center justify-center overflow-hidden ${
-          isCompactLayout
+          isCompactCardLayout
             ? "-my-2 -ml-2 w-20 self-stretch rounded-l-xl bg-paper p-1.5"
           : useGridCard
               ? isSnapshotLayout
@@ -245,7 +248,7 @@ export default function ProductListCard({
       </div>
       <div
         className={`flex min-w-0 flex-1 flex-col justify-start bg-white ${
-          isCompactLayout
+          isCompactCardLayout
             ? "px-2 py-2"
             : isSnapshotLayout
               ? "px-3 pb-7 pt-2"
@@ -268,12 +271,12 @@ export default function ProductListCard({
             +1px on top of that, specifically for this label, per this new
             ask, landing at `text-[12px]`, not evidence the earlier sweep
             missed it. */}
-        {!isCompactLayout && (
+        {!isCompactCardLayout && (
           <span className={`dd-type-meta text-stone-600 ${isSnapshotLayout ? "block min-h-[1.125rem] truncate" : ""}`}>
             {brandSentenceCase}
           </span>
         )}
-        <h3 className={`line-clamp-2 font-display text-base font-bold ${isSnapshotLayout ? "leading-[1.125rem] min-h-[2.25rem]" : "leading-snug"} text-stone-900 ${isCompactLayout ? "pr-12" : ""}`}>
+        <h3 className={`line-clamp-2 font-display text-base font-bold ${isSnapshotLayout ? "leading-[1.125rem] min-h-[2.25rem]" : "leading-snug"} text-stone-900 ${isCompactCardLayout ? "pr-12" : ""}`}>
           {product.name}
         </h3>
         {!isSnapshotLayout && product.unit ? (
@@ -285,10 +288,10 @@ export default function ProductListCard({
           {specialPriceRange ? (
             <ResponsivePriceRange
               text={`$${specialPriceRange.lowestPrice.toFixed(2)}–$${specialPriceRange.highestPrice.toFixed(2)}`}
-              compact={isCompactLayout}
+              compact={isCompactCardLayout}
             />
           ) : (
-            <span className={`font-display font-extrabold text-stone-900 ${isCompactLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
+            <span className={`font-display font-extrabold text-stone-900 ${isCompactCardLayout ? "text-base" : "text-2xl"}`}>${deal.price.toFixed(2)}</span>
           )}
           {isSnapshotLayout && (
             <span className="truncate dd-type-meta dd-type-meta-strong text-stone-600">{storeLabel}</span>
@@ -298,14 +301,14 @@ export default function ProductListCard({
             title. This leaves the bottom row free for the saving and verdict
             pair used by the Top 20 cards. */}
         {!isSnapshotLayout && (
-          <div className={`${pinStoreLogosToFooter ? "mt-auto pt-2" : "mt-1.5"} flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactLayout ? "pr-12" : ""}`}>
-            <StoreLogoBadge store={deal.store} variant={isCompactLayout ? "compact" : "card"} />
+          <div className={`${pinStoreLogosToFooter ? "mt-auto pt-2" : "mt-1.5"} flex min-w-0 flex-wrap items-center gap-1.5 ${isCompactCardLayout ? "pr-12" : ""}`}>
+            <StoreLogoBadge store={deal.store} variant={isCompactCardLayout ? "compact" : "card"} />
             {alsoSpecialStores.map((store) => (
-              <StoreLogoBadge key={store} store={store} variant={isCompactLayout ? "compact" : "card"} />
+              <StoreLogoBadge key={store} store={store} variant={isCompactCardLayout ? "compact" : "card"} />
             ))}
           </div>
         )}
-        {!isCompactLayout && (
+        {!isCompactCardLayout && (
           <span className="sr-only">
               {specialPriceRange
                 ? "Various"
@@ -317,7 +320,7 @@ export default function ProductListCard({
           </span>
         )}
         </div>
-        {!isSnapshotLayout && !hideCardBadges && isCompactLayout && showPriceChangeBadge && (
+        {!isSnapshotLayout && !hideCardBadges && isCompactCardLayout && showPriceChangeBadge && (
           <div className="mt-auto flex min-w-0 items-center gap-1 pt-1.5">
             <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
           </div>
@@ -335,7 +338,7 @@ export default function ProductListCard({
             {snapshot.kind === "savings" ? "Save" : "Up"} ${snapshot.amount.toFixed(2)}
           </span>
         </div>
-      ) : !hideCardBadges && !isCompactLayout && showPriceChangeBadge && (
+      ) : !hideCardBadges && !isCompactCardLayout && showPriceChangeBadge && (
         <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-1 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
           <PriceChangeBadge currentPrice={deal.price} comparisonPrice={deal.originalPrice} format="amount" compact />
         </div>
