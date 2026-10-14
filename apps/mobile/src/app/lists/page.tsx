@@ -119,11 +119,14 @@ function normalizeStoreOrder(savedOrder: string[], currentKeys: string[]): strin
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
+  const userId = user?.id;
   const router = useRouter();
   const {
     unreadListItemKeys,
+    unreadVerdictChangeListItemKeys,
     unreadAlerts,
     markListItemViewed,
+    markWatchlistVisited,
     pushEnabled,
     pushReady,
     pushAvailableOnDevice,
@@ -161,6 +164,7 @@ export default function ListsPage() {
   const watchlistReturnContextRef = useRef<WatchlistReturnContext | null>(null);
   const watchlistReturnRestoredRef = useRef(false);
   const storeOrderHydratedRef = useRef<string | null>(null);
+  const watchlistVisitRecordedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const handleShare = () => setIsShareSheetOpen(true);
@@ -223,6 +227,16 @@ export default function ListsPage() {
       window.clearTimeout(timer);
     };
   }, [applyData, user]);
+
+  useEffect(() => {
+    if (!userId) {
+      watchlistVisitRecordedRef.current = null;
+      return;
+    }
+    if (loadingWatchlist || error || watchlistVisitRecordedRef.current === userId) return;
+    watchlistVisitRecordedRef.current = userId;
+    markWatchlistVisited();
+  }, [error, loadingWatchlist, markWatchlistVisited, userId]);
 
   useEffect(() => {
     const handleMembershipChanged = () => void reload(false);
@@ -665,8 +679,8 @@ export default function ListsPage() {
     const preferredPulseStore = !storeKey && activePulse ? pulseSummary.preferredStoreIds[activePulse].get(entry.productId) : undefined;
     const deal = card ? watchlistItemDeal(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets, preferredPulseStore, sortMode) : undefined;
     const sourceItem = entry.sourceItems[0];
-    const isUnread = entry.sourceItems.some((item) => unreadListItemKeys.has(`${item.list_id}:${item.id}`));
-    const onViewed = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
+    const isUnread = entry.sourceItems.some((item) => unreadVerdictChangeListItemKeys.has(`${item.list_id}:${item.id}`));
+    const onDealAssessmentOpen = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
     const currentCheaperOptionsKey = card && deal ? cheaperOptionsContextKey(card, deal, selectedSupermarkets) : "";
     const cachedCheaperOptions = cheaperAlternativesCache.get(entry.productId);
     const cheaperAlternatives = cachedCheaperOptions?.contextKey === currentCheaperOptionsKey ? cachedCheaperOptions.alternatives : [];
@@ -683,7 +697,7 @@ export default function ListsPage() {
         transition={{ duration: 0.24, ease: "easeOut" }}
         data-watchlist-product-id={entry.productId}
       >
-        <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread} onViewed={onViewed}>
+        <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread}>
           {card && deal ? (
             <ListItemProductCard
               product={card}
@@ -692,6 +706,7 @@ export default function ListsPage() {
               quantity={entry.item.quantity}
               onRemove={() => void removeProduct(entry.productId)}
               removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
+              onDealAssessmentOpen={onDealAssessmentOpen}
               onAfterNotOnSpecial={() => void reload(false)}
               showCheaperOptions={activeWatchlistTab === "cheaper-options" && watchlistView === "all"}
               cheaperAlternatives={cheaperAlternatives}

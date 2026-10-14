@@ -229,7 +229,7 @@ const CONTACT_ROUTES = ["/support", "/report-deal"];
 export default function BottomNav() {
   const pathname = usePathname();
   const { isActive: isSearchActive, closeSearch } = useSearch();
-  const { unreadCount } = useNotifications();
+  const { hasUnreadWatchlistUpdates } = useNotifications();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest, requestOpen } = useNewSpecials();
 
@@ -250,7 +250,7 @@ export default function BottomNav() {
       >
         {TABS.map(({ href, label, icon }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          const hasUnreadUpdates = href === "/lists" && unreadCount > 0;
+          const hasUnreadUpdates = href === "/lists" && hasUnreadWatchlistUpdates;
           const hasNewSpecials = href === "/" && hasPendingDigest;
           return (
             <Link

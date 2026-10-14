@@ -30,14 +30,22 @@ interface NotificationsContextValue {
   unreadCount: number;
   unreadAlerts: ReadonlyArray<UnreadListAlert>;
   unreadListItemKeys: ReadonlySet<string>;
+  unreadVerdictChangeListItemKeys: ReadonlySet<string>;
+  hasUnreadWatchlistUpdates: boolean;
   setPushEnabled: (enabled: boolean) => Promise<boolean>;
   openNotificationSettings: () => Promise<void>;
   markListItemViewed: (listId: string, listItemId: string) => Promise<void>;
+  markWatchlistVisited: () => void;
   refreshNotifications: () => Promise<void>;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 const alertKey = (listId: string, listItemId: string) => `${listId}:${listItemId}`;
+const watchlistNavSeenAtKey = (userId: string) => `dodgey-deals:watchlist-nav-seen-at-v1:${userId}`;
+// The red unread dot is reserved for a changed assessment. Price-only alerts
+// remain available in the notification summary without creating a stronger
+// verdict-change signal on the card or bottom navigation.
+const verdictChangeEventTypes = new Set<UnreadListAlert["event_type"]>(["became_real_saver", "became_dodgy"]);
 
 function isNativeIos(): boolean {
   return typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
@@ -45,6 +53,7 @@ function isNativeIos(): boolean {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id;
   const client = getAccountsSupabaseClient();
   const [pushEnabled, setPushEnabledState] = useState(false);
   const [pushReady, setPushReady] = useState(false);
@@ -52,8 +61,29 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [pushPermissionState, setPushPermissionState] = useState<PermissionState | null>(null);
   const [unreadAlerts, setUnreadAlerts] = useState<UnreadListAlert[]>([]);
   const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [watchlistNavSeenAt, setWatchlistNavSeenAt] = useState<number | null>(null);
+  const [watchlistNavStateReady, setWatchlistNavStateReady] = useState(false);
   const registeredTokenRef = useRef<string | null>(null);
   const viewedRequestsRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!userId) {
+      setWatchlistNavSeenAt(null);
+      setWatchlistNavStateReady(true);
+      return;
+    }
+
+    setWatchlistNavStateReady(false);
+    try {
+      const raw = window.localStorage.getItem(watchlistNavSeenAtKey(userId));
+      const parsed = raw ? Number(raw) : NaN;
+      setWatchlistNavSeenAt(Number.isFinite(parsed) ? parsed : null);
+    } catch {
+      setWatchlistNavSeenAt(null);
+    } finally {
+      setWatchlistNavStateReady(true);
+    }
+  }, [userId]);
 
   const refreshNotifications = useCallback(async () => {
     if (!client || !user) {
@@ -329,6 +359,37 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [unreadAlerts]
   );
 
+  const unreadVerdictChangeListItemKeys = useMemo(
+    () => new Set(
+      unreadAlerts
+        .filter((alert) => verdictChangeEventTypes.has(alert.event_type))
+        .map((alert) => alertKey(alert.list_id, alert.list_item_id)),
+    ),
+    [unreadAlerts]
+  );
+
+  const hasUnreadWatchlistUpdates = useMemo(() => {
+    if (!watchlistNavStateReady || unreadVerdictChangeListItemKeys.size === 0) return false;
+    if (watchlistNavSeenAt === null) return true;
+    return unreadAlerts.some((alert) => {
+      if (!verdictChangeEventTypes.has(alert.event_type)) return false;
+      const createdAt = Date.parse(alert.created_at);
+      return !Number.isFinite(createdAt) || createdAt > watchlistNavSeenAt;
+    });
+  }, [unreadAlerts, unreadVerdictChangeListItemKeys, watchlistNavSeenAt, watchlistNavStateReady]);
+
+  const markWatchlistVisited = useCallback(() => {
+    if (!userId) return;
+    const seenAt = Date.now();
+    setWatchlistNavSeenAt(seenAt);
+    setWatchlistNavStateReady(true);
+    try {
+      window.localStorage.setItem(watchlistNavSeenAtKey(userId), String(seenAt));
+    } catch {
+      // The in-memory state still clears the nav indicator for this session.
+    }
+  }, [userId]);
+
   const value = useMemo<NotificationsContextValue>(() => ({
     pushEnabled,
     pushReady,
@@ -338,12 +399,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     unreadCount: unreadAlerts.length,
     unreadAlerts,
     unreadListItemKeys,
+    unreadVerdictChangeListItemKeys,
+    hasUnreadWatchlistUpdates,
     setPushEnabled,
     openNotificationSettings,
     markListItemViewed,
+    markWatchlistVisited,
     refreshNotifications,
   }), [
+    hasUnreadWatchlistUpdates,
     markListItemViewed,
+    markWatchlistVisited,
     notificationError,
     openNotificationSettings,
     pushEnabled,
@@ -354,6 +420,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setPushEnabled,
     unreadAlerts,
     unreadListItemKeys,
+    unreadVerdictChangeListItemKeys,
   ]);
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;

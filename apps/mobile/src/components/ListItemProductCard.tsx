@@ -146,6 +146,8 @@ export interface ListItemProductCardProps {
    * this component doesn't know the list's own name. */
   removeLabel: string;
   onBeforeNavigate?: () => void;
+  /** Marks this Watchlist item viewed when its deal assessment is opened. */
+  onDealAssessmentOpen?: () => void;
   /** Refresh the list data after the not-on-special sheet is dismissed. */
   onAfterNotOnSpecial?: () => void;
   /** The Cheaper Options tab supplies ranked alternatives for this saved item. */
@@ -183,6 +185,7 @@ export default function ListItemProductCard({
   onRemove,
   removeLabel,
   onBeforeNavigate,
+  onDealAssessmentOpen,
   onAfterNotOnSpecial,
   cheaperAlternatives = [],
   showCheaperOptions = false,
@@ -245,6 +248,7 @@ export default function ListItemProductCard({
 
   const goToDeal = () => {
     onBeforeNavigate?.();
+    onDealAssessmentOpen?.();
     router.push(`/deal/${encodeURIComponent(displayedProduct.id)}/${encodeURIComponent(displayedDeal.store)}`);
   };
 
