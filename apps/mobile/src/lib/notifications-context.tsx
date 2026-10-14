@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 
-interface UnreadListAlert {
+export interface UnreadListAlert {
   id: string;
   list_id: string;
   list_item_id: string;
@@ -18,6 +18,7 @@ interface UnreadListAlert {
   event_type: "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
   verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
   price: number;
+  previous_price: number | null;
   created_at: string;
 }
 
@@ -42,9 +43,9 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 const alertKey = (listId: string, listItemId: string) => `${listId}:${listItemId}`;
 const watchlistNavSeenAtKey = (userId: string) => `dodgey-deals:watchlist-nav-seen-at-v1:${userId}`;
-// The red unread dot is reserved for a changed assessment. Price-only alerts
-// remain available in the notification summary without creating a stronger
-// verdict-change signal on the card or bottom navigation.
+// Verdict changes have a separate derived set for callers that need to style
+// assessment changes differently. The Watchlist unread dot is broader: it
+// represents any unread price or verdict update for a saved item.
 const verdictChangeEventTypes = new Set<UnreadListAlert["event_type"]>(["became_real_saver", "became_dodgy"]);
 
 function isNativeIos(): boolean {
@@ -67,22 +68,31 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const viewedRequestsRef = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!userId) {
-      setWatchlistNavSeenAt(null);
-      setWatchlistNavStateReady(true);
-      return;
-    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setWatchlistNavStateReady(false);
+      if (!userId) {
+        setWatchlistNavSeenAt(null);
+        setWatchlistNavStateReady(true);
+        return;
+      }
 
-    setWatchlistNavStateReady(false);
-    try {
-      const raw = window.localStorage.getItem(watchlistNavSeenAtKey(userId));
-      const parsed = raw ? Number(raw) : NaN;
-      setWatchlistNavSeenAt(Number.isFinite(parsed) ? parsed : null);
-    } catch {
-      setWatchlistNavSeenAt(null);
-    } finally {
-      setWatchlistNavStateReady(true);
-    }
+      try {
+        const raw = window.localStorage.getItem(watchlistNavSeenAtKey(userId));
+        const parsed = raw ? Number(raw) : NaN;
+        setWatchlistNavSeenAt(Number.isFinite(parsed) ? parsed : null);
+      } catch {
+        setWatchlistNavSeenAt(null);
+      } finally {
+        setWatchlistNavStateReady(true);
+      }
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [userId]);
 
   const refreshNotifications = useCallback(async () => {
@@ -105,7 +115,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     for (let offset = 0; ; offset += 500) {
       const unreadResult = await client
         .from("list_price_alert_events")
-        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,price,created_at")
+        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,price,previous_price,created_at")
         .is("viewed_at", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + 499);
@@ -369,14 +379,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   );
 
   const hasUnreadWatchlistUpdates = useMemo(() => {
-    if (!watchlistNavStateReady || unreadVerdictChangeListItemKeys.size === 0) return false;
+    if (!watchlistNavStateReady || unreadAlerts.length === 0) return false;
     if (watchlistNavSeenAt === null) return true;
     return unreadAlerts.some((alert) => {
-      if (!verdictChangeEventTypes.has(alert.event_type)) return false;
       const createdAt = Date.parse(alert.created_at);
       return !Number.isFinite(createdAt) || createdAt > watchlistNavSeenAt;
     });
-  }, [unreadAlerts, unreadVerdictChangeListItemKeys, watchlistNavSeenAt, watchlistNavStateReady]);
+  }, [unreadAlerts, watchlistNavSeenAt, watchlistNavStateReady]);
 
   const markWatchlistVisited = useCallback(() => {
     if (!userId) return;

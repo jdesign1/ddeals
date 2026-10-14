@@ -27,7 +27,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
-import { useNotifications } from "@/lib/notifications-context";
+import { useNotifications, type UnreadListAlert } from "@/lib/notifications-context";
 import ErrorState from "@/components/ErrorState";
 import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
@@ -35,6 +35,7 @@ import ProductImage from "@/components/ProductImage";
 import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import UnreadListItem from "@/components/UnreadListItem";
+import WatchlistUpdateSheet from "@/components/WatchlistUpdateSheet";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CategoryPicker from "@/components/CategoryPicker";
 import SortDropdown from "@/components/SortDropdown";
@@ -123,7 +124,6 @@ export default function ListsPage() {
   const router = useRouter();
   const {
     unreadListItemKeys,
-    unreadVerdictChangeListItemKeys,
     unreadAlerts,
     markListItemViewed,
     markWatchlistVisited,
@@ -160,6 +160,7 @@ export default function ListsPage() {
   const [loadingCheaperProductIds, setLoadingCheaperProductIds] = useState<Set<string>>(new Set());
   const [expandedCheaperProductIds, setExpandedCheaperProductIds] = useState<Set<string>>(new Set());
   const [selectedCheaperOption, setSelectedCheaperOption] = useState<{ productId: string; alternative: CheaperAlternativeList[number] } | null>(null);
+  const [selectedWatchlistUpdate, setSelectedWatchlistUpdate] = useState<ReadonlyArray<UnreadListAlert> | null>(null);
   const cheaperOptionsDefaultExpansionPendingRef = useRef(false);
   const watchlistReturnContextRef = useRef<WatchlistReturnContext | null>(null);
   const watchlistReturnRestoredRef = useRef(false);
@@ -265,6 +266,17 @@ export default function ListsPage() {
     }
     return [...byProduct.values()];
   }, [itemsByList]);
+
+  const unreadAlertsByListItem = useMemo(() => {
+    const grouped = new Map<string, UnreadListAlert[]>();
+    for (const alert of unreadAlerts) {
+      const key = `${alert.list_id}:${alert.list_item_id}`;
+      const updates = grouped.get(key) ?? [];
+      updates.push(alert);
+      grouped.set(key, updates);
+    }
+    return grouped;
+  }, [unreadAlerts]);
 
   useEffect(() => {
     if (!user || loadingWatchlist || error || watchlistItems.length === 0 || catalogueProducts !== null || loadingCheaperOptions) return;
@@ -679,7 +691,8 @@ export default function ListsPage() {
     const preferredPulseStore = !storeKey && activePulse ? pulseSummary.preferredStoreIds[activePulse].get(entry.productId) : undefined;
     const deal = card ? watchlistItemDeal(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets, preferredPulseStore, sortMode) : undefined;
     const sourceItem = entry.sourceItems[0];
-    const isUnread = entry.sourceItems.some((item) => unreadVerdictChangeListItemKeys.has(`${item.list_id}:${item.id}`));
+    const unreadUpdates = entry.sourceItems.flatMap((item) => unreadAlertsByListItem.get(`${item.list_id}:${item.id}`) ?? []);
+    const isUnread = unreadUpdates.length > 0;
     const onDealAssessmentOpen = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
     const currentCheaperOptionsKey = card && deal ? cheaperOptionsContextKey(card, deal, selectedSupermarkets) : "";
     const cachedCheaperOptions = cheaperAlternativesCache.get(entry.productId);
@@ -697,7 +710,13 @@ export default function ListsPage() {
         transition={{ duration: 0.24, ease: "easeOut" }}
         data-watchlist-product-id={entry.productId}
       >
-        <UnreadListItem listId={sourceItem.list_id} productId={entry.productId} isUnread={isUnread}>
+        <UnreadListItem
+          listId={sourceItem.list_id}
+          productId={entry.productId}
+          isUnread={isUnread}
+          updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
+          onUpdateClick={() => setSelectedWatchlistUpdate(unreadUpdates)}
+        >
           {card && deal ? (
             <ListItemProductCard
               product={card}
@@ -944,6 +963,18 @@ export default function ListsPage() {
         </div>
       )}
 
+      <WatchlistUpdateSheet
+        open={selectedWatchlistUpdate !== null}
+        updates={selectedWatchlistUpdate ?? []}
+        onClose={() => setSelectedWatchlistUpdate(null)}
+        onOpenAssessment={() => {
+          const update = selectedWatchlistUpdate?.[0];
+          if (!update) return;
+          setSelectedWatchlistUpdate(null);
+          void markListItemViewed(update.list_id, update.list_item_id);
+          router.push(`/deal/${encodeURIComponent(update.product_id)}/${encodeURIComponent(update.store_name)}`);
+        }}
+      />
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
       <ClearWatchlistSheet
         open={isClearWatchlistSheetOpen}
