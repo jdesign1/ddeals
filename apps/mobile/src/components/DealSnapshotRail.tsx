@@ -55,6 +55,7 @@ export default function DealSnapshotRail({
   selectedCategories,
   refreshKey,
   showingNewOnly,
+  updatedText,
   onSeeAll,
   onSeeMore,
 }: {
@@ -63,6 +64,7 @@ export default function DealSnapshotRail({
   selectedCategories: string[];
   refreshKey: string;
   showingNewOnly: boolean;
+  updatedText: string | null;
   onSeeAll: () => void;
   onSeeMore: () => void;
 }) {
@@ -167,12 +169,15 @@ export default function DealSnapshotRail({
   if (!hasRenderableDeals) return null;
 
   return (
-    <section className={`flex flex-col gap-3 px-5 py-5 ${isSavings ? "bg-fair-50" : "bg-alert-50"}`} aria-labelledby={`${kind}-snapshot-title`}>
+    <section className="flex flex-col gap-2 px-5 pb-3 pt-0" aria-labelledby={`${kind}-snapshot-title`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 id={`${kind}-snapshot-title`} className={`dd-type-section ${isSavings ? "text-fair-800" : "text-alert-700"}`}>
-            {title}
-          </h2>
+          <div className="flex items-baseline gap-2">
+            <h2 id={`${kind}-snapshot-title`} className={`dd-type-section ${isSavings ? "text-fair-800" : "text-alert-700"}`}>
+              {title}
+            </h2>
+            {updatedText && <span className="dd-type-meta dd-type-meta-strong text-stone-500">{updatedText}</span>}
+          </div>
           <p className="dd-type-secondary mt-1 max-w-[18rem] text-stone-600" aria-live="polite">{sectionSubtext}</p>
         </div>
         <button
@@ -188,7 +193,7 @@ export default function DealSnapshotRail({
 
       <motion.div
         ref={railRef}
-        className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
+        className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
         role="region"
         aria-label={`${title} ranked products`}
         initial={false}

@@ -413,7 +413,7 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
+          className={`flex flex-col gap-2 pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
         >
       {!isSearchActive && !loadingProducts && !error && (
         <CheckDealsSummary
@@ -460,7 +460,7 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
         <>
-          <div className={`px-5 pb-2 pt-4 ${dealFilterTintClass || "bg-stone-100"}`}>
+          <div className={`px-5 pb-1 pt-3 ${dealFilterTintClass || "bg-stone-100"}`}>
             <h2 className="dd-type-section text-stone-900">Deal highlights</h2>
           </div>
           <div
@@ -649,6 +649,7 @@ export default function HomePage() {
                 selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
                 showingNewOnly={newForYouFilterActive}
+                updatedText={updatedText}
                 onSeeAll={() => openSearchForFilter("real", { focus: false })}
                 onSeeMore={() => openSearchForFilter("real", { focus: false })}
               />
@@ -658,6 +659,7 @@ export default function HomePage() {
                 selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
                 showingNewOnly={newForYouFilterActive}
+                updatedText={updatedText}
                 onSeeAll={() => openSearchForFilter("dodgy", { focus: false })}
                 onSeeMore={() => openSearchForFilter("dodgy", { focus: false })}
               />
