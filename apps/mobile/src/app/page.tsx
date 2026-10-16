@@ -399,12 +399,9 @@ export default function HomePage() {
   };
 
   const handleSummaryStoreSelect = (store: CheckDealsSummaryStore) => {
-    if (selectedStores.length === 1 && selectedStores[0] === store) {
-      toggleStore("all");
-      return;
-    }
     toggleStore("all");
     toggleStore(store);
+    openSearchForFilter("all", { focus: false });
   };
 
   return (
@@ -421,8 +418,7 @@ export default function HomePage() {
           counts={currentSpecialCounts}
           updatedText={updatedText}
           updatedLabel={updatedLabel}
-          selectedStores={selectedStores}
-          onSelectStore={handleSummaryStoreSelect}
+          onOpenStoreDeals={handleSummaryStoreSelect}
         />
       )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +
