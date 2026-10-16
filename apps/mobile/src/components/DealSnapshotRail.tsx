@@ -226,7 +226,11 @@ export default function DealSnapshotRail({
                 rank: index + 1,
                 kind,
                 amount,
-                isNew: newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
+                // Every card in the filtered rail has already passed the
+                // New-to-you filter. Keep the existing Top 20 freshness
+                // badge for the normal rail, and surface the same badge in
+                // filtered mode so the card reinforces the active filter.
+                isNew: showingNewOnly || newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
               }}
             />
           );
