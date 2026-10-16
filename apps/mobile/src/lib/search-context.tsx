@@ -158,8 +158,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Shared while a search session is open so Check deals and the full-screen
-  // search overlay agree on the supermarket scope. Closing Search resets this
-  // transient scope so Check deals returns to its neutral all-supermarkets view.
+  // search overlay agree on the supermarket and deal-tab scope. Closing Search
+  // resets both transient values so Check deals returns to its neutral view.
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
   const [dealFilter, setDealFilter] = useState<DealFilter>("all");
   const [query, setQuery] = useState("");
@@ -358,6 +358,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setQuery("");
         setNewSpecialDealKeys(null);
         setSelectedStores(["all"]);
+        setDealFilter("all");
         setFocusSearchOnOpen(true);
         setIsActive(false);
         setReturnToSearch(null);

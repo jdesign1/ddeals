@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { CheckDealsSummaryStore } from "@/lib/check-deals-home";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
@@ -8,6 +9,32 @@ const SUMMARY_STORES: Array<{ key: CheckDealsSummaryStore; label: string }> = [
   { key: "paknsave", label: "Pak’n Save" },
   { key: "woolworths", label: "Woolworths" },
 ];
+
+type SummaryCounts = Record<CheckDealsSummaryStore, number>;
+
+const COUNT_ANIMATION_DELAY_MS = 350;
+const COUNT_ANIMATION_DURATION_MS = 820;
+const ZERO_COUNTS: SummaryCounts = {
+  newworld: 0,
+  paknsave: 0,
+  woolworths: 0,
+};
+
+// Keep this entrance moment to once per client app session, including when
+// the Check Deals route is temporarily unmounted while another tab is open.
+let hasPlayedCountAnimation = false;
+
+function easeOutCubic(progress: number): number {
+  return 1 - ((1 - progress) ** 3);
+}
+
+function interpolateCounts(target: SummaryCounts, progress: number): SummaryCounts {
+  return {
+    newworld: Math.round(target.newworld * progress),
+    paknsave: Math.round(target.paknsave * progress),
+    woolworths: Math.round(target.woolworths * progress),
+  };
+}
 
 export default function CheckDealsSummary({
   counts,
@@ -20,6 +47,48 @@ export default function CheckDealsSummary({
   updatedLabel: string;
   onOpenStoreDeals: (store: CheckDealsSummaryStore) => void;
 }) {
+  const [shouldAnimate] = useState(() => !hasPlayedCountAnimation);
+  const initialCountsRef = useRef(counts);
+  const [animatedCounts, setAnimatedCounts] = useState<SummaryCounts>(() => (
+    shouldAnimate ? ZERO_COUNTS : counts
+  ));
+  const [isAnimating, setIsAnimating] = useState(shouldAnimate);
+
+  useEffect(() => {
+    if (!shouldAnimate) return;
+
+    let animationFrame: number | null = null;
+    const delayTimer = window.setTimeout(() => {
+      hasPlayedCountAnimation = true;
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setIsAnimating(false);
+        return;
+      }
+
+      const startedAt = performance.now();
+      const animate = (now: number) => {
+        const progress = Math.min((now - startedAt) / COUNT_ANIMATION_DURATION_MS, 1);
+        setAnimatedCounts(interpolateCounts(initialCountsRef.current, easeOutCubic(progress)));
+
+        if (progress < 1) {
+          animationFrame = window.requestAnimationFrame(animate);
+        } else {
+          setIsAnimating(false);
+        }
+      };
+
+      animationFrame = window.requestAnimationFrame(animate);
+    }, COUNT_ANIMATION_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(delayTimer);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [shouldAnimate]);
+
+  const visibleCounts = isAnimating ? animatedCounts : counts;
+
   return (
     <section className="mx-5 rounded-3xl border border-stone-200/80 bg-white px-5 py-5 shadow-xs" aria-labelledby="current-specials-title">
       <div className="flex flex-col items-start gap-1.5">
@@ -42,7 +111,7 @@ export default function CheckDealsSummary({
               className="flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
             >
               <StoreLogoBadge store={key} variant="ranking" decorative />
-              <span className="text-xl font-black leading-none tabular-nums text-fair-800">{counts[key]}</span>
+              <span className="text-xl font-black leading-none tabular-nums text-fair-800">{visibleCounts[key]}</span>
             </button>
           );
         })}
