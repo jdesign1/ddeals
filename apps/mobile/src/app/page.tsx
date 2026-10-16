@@ -461,7 +461,7 @@ export default function HomePage() {
       {!isSearchActive && !loadingProducts && !error && (
         <>
           <div className={`px-5 pb-1 pt-3 ${dealFilterTintClass || "bg-stone-100"}`}>
-            <h2 className="dd-type-section text-stone-900">Deal highlights</h2>
+            <h2 className="dd-type-section text-stone-900">Standout specials</h2>
           </div>
           <div
             className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
