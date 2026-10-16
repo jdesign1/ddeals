@@ -460,13 +460,13 @@ export default function HomePage() {
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
         <>
-          <div className={`px-5 pb-1 pt-3 ${dealFilterTintClass || "bg-stone-100"}`}>
+          <div className={`px-5 pb-0 pt-4 ${dealFilterTintClass || "bg-stone-100"}`}>
             <h2 className="dd-type-section text-stone-900">Standout specials</h2>
           </div>
           <div
             className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
               dealFilterTintClass || "bg-stone-100"
-            } ${toolbarVisible ? "pt-2" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+            } ${toolbarVisible ? "pt-1" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
               toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
             }`}
             style={{
