@@ -399,6 +399,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
+  const scraperRunId = request.headers.get("x-scraper-run-id") ?? undefined;
   if (!secret) return Response.json({ error: "Notification processing is not configured." }, { status: 503 });
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -406,10 +407,13 @@ export async function GET(request: Request) {
 
   try {
     const result = await processAlerts();
-    console.info("List-price notification processing completed.", result);
+    console.info("List-price notification processing completed.", { ...result, scraperRunId });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("List-price notification processing failed.", error instanceof Error ? error.message : "Unknown error");
+    console.error("List-price notification processing failed.", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      scraperRunId,
+    });
     return Response.json({ error: "Notification processing failed." }, { status: 500 });
   }
 }
