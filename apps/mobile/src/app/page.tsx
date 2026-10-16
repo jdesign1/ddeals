@@ -20,14 +20,12 @@ import CheckDealsSummary from "@/components/CheckDealsSummary";
 import PersonalDealRail from "@/components/PersonalDealRail";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
-import { useWatchlist } from "@/lib/watchlist-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey } from "@/lib/new-specials";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
   buildPreviouslyCheckedChangedDeals,
-  buildWatchlistSpecialDeals,
   formatCompactUpdatedText,
   getLatestPublishedAt,
   type CheckDealsSummaryStore,
@@ -234,7 +232,6 @@ export default function HomePage() {
     openSearchForFilter,
   } = useSearch();
   const { session } = useAuth();
-  const { savedProductIds, loadingSavedItems } = useWatchlist();
   const { digest } = useNewSpecials();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
@@ -338,10 +335,6 @@ export default function HomePage() {
     ? `Live data, updated ${updatedText === "now" ? "just now" : `${updatedText} ago`}`
     : "Live data";
   const newDealKeySet = useMemo(() => new Set(newDealKeys), [newDealKeys]);
-  const watchlistSpecialDeals = useMemo(
-    () => loadingSavedItems ? [] : buildWatchlistSpecialDeals(products, savedProductIds, selectedStores),
-    [loadingSavedItems, products, savedProductIds, selectedStores],
-  );
   const previouslyCheckedDeals = useMemo(
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
     [checkedHistory, products, selectedStores],
@@ -643,13 +636,6 @@ export default function HomePage() {
               language app-wide instead of border outlines. */}
           {dealFilter === "all" && (
             <>
-              <PersonalDealRail
-                id="watchlist-specials-rail"
-                title="Your Watchlist specials"
-                description="Saved products that are on special at your selected supermarkets."
-                deals={watchlistSpecialDeals}
-                tone="watchlist"
-              />
               <PersonalDealRail
                 id="previously-checked-rail"
                 title="Worth another look"
