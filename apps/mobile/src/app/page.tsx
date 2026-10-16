@@ -457,42 +457,45 @@ export default function HomePage() {
           (2026-08-21) brings that parity to BEHAVIOR too, not just look --
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && (
-        <div
-          className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
-            dealFilterTintClass || "bg-stone-100"
-          } ${toolbarVisible ? "pt-4" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
-            toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
-          }`}
-          style={{
-            top: "var(--check-deals-chrome-height, 64px)",
-            gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
-          }}
-        >
-          {/* Standouts keeps the high-value personal entry point visible while
-              the existing deal tabs remain available for the full catalogue. */}
-          <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="dd-type-section text-stone-900">Standouts</h2>
-              {newForYouDeals.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsNewForYouFilter((active) => !active)}
-                  aria-pressed={newForYouFilterActive}
-                  className={`dd-type-control flex shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-2 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
-                    newForYouFilterActive
-                      ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
-                      : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
-                  }`}
-                  aria-label={`Filter to new for you deals, ${newForYouDeals.length} available`}
-                >
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
-                    {newForYouDeals.length}
-                  </span>
-                  New for you
-                </button>
-              )}
-            </div>
-            <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
+        <>
+          <div className={`px-5 pb-2 pt-4 ${dealFilterTintClass || "bg-stone-100"}`}>
+            <h2 className="dd-type-section text-stone-900">Deal highlights</h2>
+          </div>
+          <div
+            className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
+              dealFilterTintClass || "bg-stone-100"
+            } ${toolbarVisible ? "pt-2" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+              toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
+            }`}
+            style={{
+              top: "var(--check-deals-chrome-height, 64px)",
+              gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
+            }}
+          >
+            {/* The heading scrolls naturally; this sticky surface keeps only
+                the deal filters available while the catalogue is browsed. */}
+            <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
+              <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
+                {newForYouDeals.length > 0 && (
+                  <div className="min-w-max shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewForYouFilter((active) => !active)}
+                      aria-pressed={newForYouFilterActive}
+                      className={`dd-type-control flex shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-2 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+                        newForYouFilterActive
+                          ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
+                          : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
+                      }`}
+                      aria-label={`Filter to new for you deals, ${newForYouDeals.length} available`}
+                    >
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
+                        {newForYouDeals.length}
+                      </span>
+                      New for you
+                    </button>
+                  </div>
+                )}
               <div className="min-w-[8.75rem] shrink-0">
                 <SupermarketPicker
                   stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
@@ -525,26 +528,27 @@ export default function HomePage() {
                   </div>
                 </>
               )}
+              </div>
+              {dealFilter !== "all" && (
+                <DealFilterTabs
+                  value={dealFilter}
+                  onChange={handleDealFilterChange}
+                  allLabel="Top Deals"
+                />
+              )}
+              {dealFilter !== "all" && (
+                <NativeSelectFilter
+                  value={dealSortBy}
+                  defaultValue={getDefaultDealSort(dealFilter)}
+                  onChange={handleDealSortChange}
+                  options={TRENDING_SORT_OPTIONS}
+                  ariaLabel="Sort deals"
+                  fill
+                />
+              )}
             </div>
-            {dealFilter !== "all" && (
-              <DealFilterTabs
-                value={dealFilter}
-                onChange={handleDealFilterChange}
-                allLabel="Top Deals"
-              />
-            )}
-            {dealFilter !== "all" && (
-              <NativeSelectFilter
-                value={dealSortBy}
-                defaultValue={getDefaultDealSort(dealFilter)}
-                onChange={handleDealSortChange}
-                options={TRENDING_SORT_OPTIONS}
-                ariaLabel="Sort deals"
-                fill
-              />
-            )}
           </div>
-        </div>
+        </>
       )}
 
       {!isSearchActive && error && (

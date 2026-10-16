@@ -157,9 +157,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Kept in the global search provider so the Check deals page and the
-  // full-screen search overlay always show and filter by the same preferred
-  // supermarkets, even when the Home route is remounted between visits.
+  // Shared while a search session is open so Check deals and the full-screen
+  // search overlay agree on the supermarket scope. Closing Search resets this
+  // transient scope so Check deals returns to its neutral all-supermarkets view.
   const [selectedStores, setSelectedStores] = useState<string[]>(["all"]);
   const [dealFilter, setDealFilter] = useState<DealFilter>("all");
   const [query, setQuery] = useState("");
@@ -357,6 +357,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       closeSearch: () => {
         setQuery("");
         setNewSpecialDealKeys(null);
+        setSelectedStores(["all"]);
         setFocusSearchOnOpen(true);
         setIsActive(false);
         setReturnToSearch(null);
