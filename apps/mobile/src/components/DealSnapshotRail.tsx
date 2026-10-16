@@ -169,7 +169,7 @@ export default function DealSnapshotRail({
   if (!hasRenderableDeals) return null;
 
   return (
-    <section className="flex flex-col gap-2 px-5 pb-3 pt-0" aria-labelledby={`${kind}-snapshot-title`}>
+    <section className="flex flex-col gap-3 px-5 pb-3 pt-0" aria-labelledby={`${kind}-snapshot-title`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">

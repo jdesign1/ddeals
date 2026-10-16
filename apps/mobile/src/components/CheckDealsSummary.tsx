@@ -90,7 +90,7 @@ export default function CheckDealsSummary({
   const visibleCounts = isAnimating ? animatedCounts : counts;
 
   return (
-    <section className="mx-5 mt-2 rounded-3xl border border-stone-200/80 bg-white px-5 py-5 shadow-xs" aria-labelledby="current-specials-title">
+    <section className="mx-5 mt-2" aria-labelledby="current-specials-title">
       <div className="flex flex-col items-start gap-1.5">
         <div className="flex items-center gap-2" aria-label={updatedLabel}>
           <span className="rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-fair-500">
@@ -100,7 +100,7 @@ export default function CheckDealsSummary({
         </div>
         <h1 id="current-specials-title" className="dd-type-section whitespace-nowrap text-stone-900">Current specials by supermarket</h1>
       </div>
-      <div className="mt-4 grid grid-cols-3 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs" role="group" aria-label="Current special counts by supermarket">
+      <div className="mt-4 grid w-full grid-cols-3 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs" role="group" aria-label="Current special counts by supermarket">
         {SUMMARY_STORES.map(({ key, label }) => {
           return (
             <button
