@@ -44,20 +44,6 @@ function getLatestPublishedAt(deals: readonly FlatDeal[]): string | null {
   return latestPublishedAt;
 }
 
-function formatUpdatedText(publishedAt: string | null): string | null {
-  if (!publishedAt) return null;
-
-  const ageMinutes = Math.max(0, Math.floor((Date.now() - Date.parse(publishedAt)) / 60_000));
-  if (ageMinutes < 1) return "Updated just now";
-  if (ageMinutes < 60) return `Updated ${ageMinutes} min ago`;
-
-  const ageHours = Math.floor(ageMinutes / 60);
-  if (ageHours < 24) return `Updated ${ageHours} ${ageHours === 1 ? "hour" : "hours"} ago`;
-
-  const ageDays = Math.floor(ageHours / 24);
-  return `Updated ${ageDays} ${ageDays === 1 ? "day" : "days"} ago`;
-}
-
 function arraysMatch(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
   if (!left || !right || left.length !== right.length) return false;
   return left.every((value, index) => value === right[index]);
@@ -79,7 +65,7 @@ export default function DealSnapshotRail({
   onSeeMore: () => void;
 }) {
   const isSavings = kind === "savings";
-  const title = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
+  const title = isSavings ? "Top Savers" : "Dodgiest Deals";
   const emptyMessage = isSavings
     ? "No real specials in this category right now, check again later"
     : "No dodgy specials in this category right now, check again later";
@@ -151,11 +137,9 @@ export default function DealSnapshotRail({
     () => new Set(resolvedSnapshot?.newKeys ?? []),
     [resolvedSnapshot],
   );
-  const freshnessText = formatUpdatedText(latestPublishedAt);
-  const fallbackDescription = isSavings ? "Biggest savings" : "Biggest price hikes";
-  const sectionSubtext = freshnessText
-    ? `${freshnessText}${newTop20Keys.size > 0 ? ` · ${newTop20Keys.size} new deal${newTop20Keys.size === 1 ? "" : "s"}` : ""}`
-    : fallbackDescription;
+  const sectionSubtext = isSavings
+    ? "Best genuine specials available now."
+    : "Most misleading specials available now.";
   const firstRenderableIndex = useMemo(
     () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
@@ -263,7 +247,7 @@ function SnapshotSeeAllCard({
   label: "See all" | "See more";
 }) {
   const isSavings = kind === "savings";
-  const beltTitle = isSavings ? "Top Savings Specials" : "Dodgiest Specials";
+  const beltTitle = isSavings ? "Top Savers" : "Dodgiest Deals";
 
   return (
     <button

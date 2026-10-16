@@ -48,6 +48,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading, isAnonymousSession } = useAuth();
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null });
+  // Keep the summary available to the Check Deals page after the launch
+  // modal acknowledges it. Pending status stays separate so the modal and
+  // notification affordances do not reappear for an already-acknowledged
+  // summary during the same app session.
+  const [acknowledgedSummary, setAcknowledgedSummary] = useState<NewSpecialsSummary | null>(null);
   const [openRequested, setOpenRequested] = useState(false);
 
   useEffect(() => {
@@ -57,6 +62,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       snapshot: readNewSpecialsSnapshot(scope),
       pending: readNewSpecialsPending(scope),
     });
+    setAcknowledgedSummary(null);
     setOpenRequested(false);
   }, [scope]);
 
@@ -68,7 +74,9 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     () => (previousSnapshot ? summarizeNewSpecials(products, previousSnapshot) : null),
     [previousSnapshot, products],
   );
-  const digest = pending?.summary ?? detectedSummary;
+  const detectedDigest = detectedSummary?.total ? detectedSummary : null;
+  const pendingDigest = pending?.summary ?? detectedDigest;
+  const digest = pendingDigest ?? acknowledgedSummary;
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0) return;
@@ -104,8 +112,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   }, [currentSnapshot, detectedSummary, loadingProducts, pending, previousSnapshot, products.length, scope, storageReady]);
 
   const requestOpen = useCallback(() => {
-    if (digest?.total) setOpenRequested(true);
-  }, [digest]);
+    if (pendingDigest?.total) setOpenRequested(true);
+  }, [pendingDigest]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
@@ -113,23 +121,25 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
   const acknowledge = useCallback(() => {
     if (!scope || !storageReady) return;
+    const summaryToKeep = pendingDigest;
     const snapshotToKeep = pending?.snapshot ?? currentSnapshot;
     writeNewSpecialsSnapshot(snapshotToKeep, scope);
     clearNewSpecialsPending(scope);
     setStored({ scope, snapshot: snapshotToKeep, pending: null });
+    if (summaryToKeep) setAcknowledgedSummary(summaryToKeep);
     setOpenRequested(false);
-  }, [currentSnapshot, pending, scope, storageReady]);
+  }, [currentSnapshot, pending, pendingDigest, scope, storageReady]);
 
   const value = useMemo<NewSpecialsContextValue>(
     () => ({
       digest,
-      hasPendingDigest: Boolean(digest?.total),
+      hasPendingDigest: Boolean(pendingDigest?.total),
       openRequested,
       requestOpen,
       consumeOpenRequest,
       acknowledge,
     }),
-    [acknowledge, consumeOpenRequest, digest, openRequested, requestOpen],
+    [acknowledge, consumeOpenRequest, digest, openRequested, pendingDigest, requestOpen],
   );
 
   return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;

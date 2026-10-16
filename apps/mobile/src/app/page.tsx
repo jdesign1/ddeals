@@ -11,12 +11,27 @@ import {
   compareDealSnapshotEntries,
   isEligibleForDealSnapshot,
   type DealSnapshotKind,
+  type DealCheckRow,
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
+import CheckDealsSummary from "@/components/CheckDealsSummary";
+import PersonalDealRail from "@/components/PersonalDealRail";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
+import { useWatchlist } from "@/lib/watchlist-context";
+import { useNewSpecials } from "@/lib/new-specials-context";
+import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
+import {
+  buildCurrentSpecialCounts,
+  buildNewSinceLastVisitDeals,
+  buildPreviouslyCheckedChangedDeals,
+  buildWatchlistSpecialDeals,
+  formatCompactUpdatedText,
+  getLatestPublishedAt,
+  type CheckDealsSummaryStore,
+} from "@/lib/check-deals-home";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import ProductListCard from "@/components/ProductListCard";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -211,6 +226,10 @@ export default function HomePage() {
     setDealFilter,
     openSearchForFilter,
   } = useSearch();
+  const { session } = useAuth();
+  const { savedProductIds, loadingSavedItems } = useWatchlist();
+  const { digest } = useNewSpecials();
+  const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
@@ -225,6 +244,32 @@ export default function HomePage() {
   };
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
+  const newDealKeys = useMemo(() => digest?.allDealKeys ?? [], [digest]);
+  const [checkedHistoryState, setCheckedHistoryState] = useState<{ accessToken: string | null; rows: DealCheckRow[] }>({ accessToken: null, rows: [] });
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let cancelled = false;
+    fetchDealCheckHistoryFromApi(accessToken, { scope: "history" })
+      .then(({ rows }) => {
+        if (!cancelled) setCheckedHistoryState({ accessToken, rows });
+      })
+      .catch(() => {
+        // This belt is an enhancement to the live catalogue. A history
+        // failure must not turn a healthy Check Deals page into an error state.
+        if (!cancelled) setCheckedHistoryState({ accessToken, rows: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  const checkedHistory = useMemo(
+    () => checkedHistoryState.accessToken === accessToken ? checkedHistoryState.rows : [],
+    [accessToken, checkedHistoryState],
+  );
 
   // The top nav and the tabs/pills are one collapsing stack. The scroll
   // container publishes the header state after the same direction threshold
@@ -295,6 +340,25 @@ export default function HomePage() {
     [topSavingsDeals, worstDodgyDeals]
   );
 
+  const currentSpecialCounts = useMemo(() => buildCurrentSpecialCounts(products), [products]);
+  const latestPublishedAt = useMemo(() => getLatestPublishedAt(products), [products]);
+  const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
+  const updatedLabel = latestPublishedAt
+    ? `Live data, updated ${updatedText === "now" ? "just now" : `${updatedText} ago`}`
+    : "Live data";
+  const newSinceLastVisitDeals = useMemo(
+    () => buildNewSinceLastVisitDeals(products, newDealKeys, selectedStores),
+    [newDealKeys, products, selectedStores],
+  );
+  const watchlistSpecialDeals = useMemo(
+    () => loadingSavedItems ? [] : buildWatchlistSpecialDeals(products, savedProductIds, selectedStores),
+    [loadingSavedItems, products, savedProductIds, selectedStores],
+  );
+  const previouslyCheckedDeals = useMemo(
+    () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
+    [checkedHistory, products, selectedStores],
+  );
+
   const filteredDeals = useMemo<FlatDeal[]>(() => {
     if (dealCategoryFilter.length === 0) return dealsAllCategories;
     return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category, product.name)));
@@ -317,6 +381,19 @@ export default function HomePage() {
     if (linkedFilter) setDealFilter(linkedFilter);
   };
 
+  const handleSummaryStoreSelect = (store: CheckDealsSummaryStore) => {
+    if (selectedStores.length === 1 && selectedStores[0] === store) {
+      toggleStore("all");
+      return;
+    }
+    toggleStore("all");
+    toggleStore(store);
+  };
+
+  const scrollToNewDeals = () => {
+    document.getElementById("new-since-last-visit-rail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <>
       <div className="relative">
@@ -326,6 +403,15 @@ export default function HomePage() {
           transition={{ duration: 0.3, ease: "easeOut" }}
           className={`flex flex-col gap-[14px] pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
         >
+      {!isSearchActive && !loadingProducts && !error && (
+        <CheckDealsSummary
+          counts={currentSpecialCounts}
+          updatedText={updatedText}
+          updatedLabel={updatedLabel}
+          selectedStores={selectedStores}
+          onSelectStore={handleSummaryStoreSelect}
+        />
+      )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
           restyle session).
@@ -373,50 +459,72 @@ export default function HomePage() {
             gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
           }}
         >
-          {/* The compact filter row keeps the three primary controls together
-              directly below the deal tabs. */}
+          {/* Standouts keeps the high-value personal entry point visible while
+              the existing deal tabs remain available for the full catalogue. */}
           <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
-            <DealFilterTabs
-              value={dealFilter}
-              onChange={handleDealFilterChange}
-              allLabel="Top Deals"
-            />
-            <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
-              <SupermarketPicker
-                stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
-                selectedStoreIds={selectedStores}
-                onToggleStore={toggleStore}
-              />
-              {dealFilter === "all" ? (
-                <CategoryPicker
-                  label="Category"
-                  selectedCategories={topDealsCategories}
-                  onChange={setTopDealsCategories}
-                  availableCategories={topDealsAvailableCategories}
-                  categoryCounts={topDealsCategoryCounts}
-                  emptyMessage="No Top Deals in this category right now."
-                  singleCategoryLabel="1 category"
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="dd-type-section text-stone-900">Standouts</h2>
+              <button
+                type="button"
+                onClick={scrollToNewDeals}
+                className="dd-type-control flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-stone-300 bg-white px-3 py-2 shadow-sm transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
+                aria-label={`Show new since last visit${newSinceLastVisitDeals.length ? `, ${newSinceLastVisitDeals.length} deals` : ""}`}
+              >
+                {newSinceLastVisitDeals.length > 0 && <span className="rounded-full bg-ink-900 px-1.5 py-0.5 text-[10px] leading-none text-white">{newSinceLastVisitDeals.length}</span>}
+                New since last visit
+              </button>
+            </div>
+            <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
+              <div className="min-w-[8.75rem] shrink-0">
+                <SupermarketPicker
+                  stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
+                  selectedStoreIds={selectedStores}
+                  onToggleStore={toggleStore}
                 />
+              </div>
+              {dealFilter === "all" ? (
+                <div className="min-w-[8.75rem] shrink-0">
+                  <CategoryPicker
+                    label="Category"
+                    selectedCategories={topDealsCategories}
+                    onChange={setTopDealsCategories}
+                    availableCategories={topDealsAvailableCategories}
+                    categoryCounts={topDealsCategoryCounts}
+                    emptyMessage="No Top Deals in this category right now."
+                    singleCategoryLabel="1 category"
+                  />
+                </div>
               ) : (
                 <>
-                  <CategoryPicker
-                    selectedCategories={dealCategoryFilter}
-                    onChange={setDealCategoryFilter}
-                    availableCategories={availableCategories}
-                    categoryCounts={categoryCounts}
-                    emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
-                  />
-                  <NativeSelectFilter
-                    value={dealSortBy}
-                    defaultValue={getDefaultDealSort(dealFilter)}
-                    onChange={handleDealSortChange}
-                    options={TRENDING_SORT_OPTIONS}
-                    ariaLabel="Sort deals"
-                    fill
-                  />
+                  <div className="min-w-[8.75rem] shrink-0">
+                    <CategoryPicker
+                      selectedCategories={dealCategoryFilter}
+                      onChange={setDealCategoryFilter}
+                      availableCategories={availableCategories}
+                      categoryCounts={categoryCounts}
+                      emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
+                    />
+                  </div>
                 </>
               )}
             </div>
+            {dealFilter !== "all" && (
+              <DealFilterTabs
+                value={dealFilter}
+                onChange={handleDealFilterChange}
+                allLabel="Top Deals"
+              />
+            )}
+            {dealFilter !== "all" && (
+              <NativeSelectFilter
+                value={dealSortBy}
+                defaultValue={getDefaultDealSort(dealFilter)}
+                onChange={handleDealSortChange}
+                options={TRENDING_SORT_OPTIONS}
+                ariaLabel="Sort deals"
+                fill
+              />
+            )}
           </div>
         </div>
       )}
@@ -504,6 +612,30 @@ export default function HomePage() {
               language app-wide instead of border outlines. */}
           {dealFilter === "all" && (
             <>
+              <PersonalDealRail
+                id="new-since-last-visit-rail"
+                title="New since your last visit"
+                description="Fresh specials and price drops since you last checked in."
+                deals={newSinceLastVisitDeals}
+                emptyMessage="No new specials since your last visit."
+                tone="new"
+              />
+              <PersonalDealRail
+                id="watchlist-specials-rail"
+                title="Your Watchlist specials"
+                description="Saved products that are on special at your selected supermarkets."
+                deals={watchlistSpecialDeals}
+                emptyMessage="Save products to your Watchlist to see their specials here."
+                tone="watchlist"
+              />
+              <PersonalDealRail
+                id="previously-checked-rail"
+                title="Worth another look"
+                description="Deals you checked before whose price or assessment has changed."
+                deals={previouslyCheckedDeals}
+                emptyMessage="No checked deals have changed recently."
+                tone="history"
+              />
               <DealSnapshotRail
                 kind="savings"
                 deals={topSavingsDeals}
@@ -564,13 +696,26 @@ export default function HomePage() {
 function HomeCatalogueSkeleton() {
   return (
     <div className="space-y-5 px-5 pb-2" role="status" aria-busy="true" aria-label="Loading today’s deals">
-      <div className="flex rounded-xl bg-white p-1 shadow-sm" aria-hidden="true">
-        <div className="dd-skeleton-shimmer h-10 flex-1 rounded-lg" />
-        <div className="dd-skeleton-shimmer ml-1 h-10 flex-1 rounded-lg" />
-        <div className="dd-skeleton-shimmer ml-1 h-10 flex-1 rounded-lg" />
+      <div className="rounded-3xl border-2 border-stone-200 bg-white p-5" aria-hidden="true">
+        <div className="flex items-center justify-between gap-3">
+          <div className="dd-skeleton-shimmer h-6 w-48 rounded" />
+          <div className="dd-skeleton-shimmer h-6 w-14 rounded-full" />
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          <div className="dd-skeleton-shimmer h-12 rounded" />
+          <div className="dd-skeleton-shimmer h-12 rounded" />
+          <div className="dd-skeleton-shimmer h-12 rounded" />
+        </div>
+      </div>
+      <div className="space-y-3" aria-hidden="true">
+        <div className="dd-skeleton-shimmer h-6 w-28 rounded" />
+        <div className="hide-scrollbar -mx-5 flex gap-2 overflow-hidden px-5">
+          <div className="dd-skeleton-shimmer h-10 w-40 shrink-0 rounded-full" />
+          <div className="dd-skeleton-shimmer h-10 w-32 shrink-0 rounded-full" />
+          <div className="dd-skeleton-shimmer h-10 w-28 shrink-0 rounded-full" />
+        </div>
       </div>
       <div className="hide-scrollbar -mx-5 flex gap-2 overflow-hidden px-5" aria-hidden="true">
-        <div className="dd-skeleton-shimmer h-10 w-14 shrink-0 rounded-full" />
         <div className="dd-skeleton-shimmer h-10 w-24 shrink-0 rounded-full" />
         <div className="dd-skeleton-shimmer h-10 w-24 shrink-0 rounded-full" />
         <div className="dd-skeleton-shimmer h-10 w-20 shrink-0 rounded-full" />

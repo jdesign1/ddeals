@@ -76,8 +76,12 @@ export interface ProductListCardProps {
   snapshot?: {
     rank: number;
     kind: DealSnapshotKind;
-    amount: number;
+    amount?: number;
     isNew?: boolean;
+    /** Optional neutral label for personalised rails whose deal has no
+     * positive reference-price delta (for example, a newly listed special). */
+    badgeLabel?: string;
+    badgeTone?: "savings" | "dodgy" | "neutral";
   };
   /** Optional onboarding anchor for the first useful card/action in a view. */
   dataOnboarding?: string;
@@ -334,9 +338,17 @@ export default function ProductListCard({
               New
             </span>
           )}
-          <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${snapshot.kind === "savings" ? "bg-fair-600" : "bg-alert-600"}`}>
-            {snapshot.kind === "savings" ? "Save" : "Up"} ${snapshot.amount.toFixed(2)}
-          </span>
+          {(snapshot.badgeLabel || snapshot.amount != null) && (
+            <span className={`shrink-0 select-none whitespace-nowrap rounded-md px-1 py-0.5 text-xs leading-4 font-bold text-white shadow-xs ${
+              snapshot.badgeTone === "neutral"
+                ? "bg-stone-700"
+                : snapshot.badgeTone === "dodgy" || (snapshot.badgeTone == null && snapshot.kind === "dodgy")
+                  ? "bg-alert-600"
+                  : "bg-fair-600"
+            }`}>
+              {snapshot.badgeLabel ?? `${snapshot.kind === "savings" ? "Save" : "Up"} $${snapshot.amount?.toFixed(2)}`}
+            </span>
+          )}
         </div>
       ) : !hideCardBadges && !isCompactCardLayout && showPriceChangeBadge && (
         <div className={`absolute bottom-2 z-10 flex min-w-0 items-center justify-start gap-1 ${useGridCard ? "left-3 right-3" : "left-40 right-3"}`}>
