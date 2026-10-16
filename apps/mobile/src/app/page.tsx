@@ -479,12 +479,12 @@ export default function HomePage() {
             <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
               <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
                 {dealFilter === "all" && newDealsCount > 0 && (
-                  <div className="min-w-max shrink-0">
+                  <div className="flex h-11 min-w-max shrink-0 items-center">
                     <button
                       type="button"
                       onClick={() => setIsNewForYouFilter((active) => !active)}
                       aria-pressed={newForYouFilterActive}
-                      className={`dd-type-control flex shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-2 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+                      className={`dd-type-control flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-0 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
                         newForYouFilterActive
                           ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
                           : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
