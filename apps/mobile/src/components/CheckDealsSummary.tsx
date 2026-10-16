@@ -13,7 +13,7 @@ const SUMMARY_STORES: Array<{ key: CheckDealsSummaryStore; label: string }> = [
 type SummaryCounts = Record<CheckDealsSummaryStore, number>;
 
 const COUNT_ANIMATION_DELAY_MS = 350;
-const COUNT_ANIMATION_DURATION_MS = 820;
+const COUNT_ANIMATION_DURATION_MS = 1400;
 const ZERO_COUNTS: SummaryCounts = {
   newworld: 0,
   paknsave: 0,
