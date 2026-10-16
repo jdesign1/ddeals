@@ -26,7 +26,6 @@ import { getNewSpecialDealKey } from "@/lib/new-specials";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
-  buildNewSinceLastVisitDeals,
   buildPreviouslyCheckedChangedDeals,
   buildWatchlistSpecialDeals,
   formatCompactUpdatedText,
@@ -338,16 +337,7 @@ export default function HomePage() {
   const updatedLabel = latestPublishedAt
     ? `Live data, updated ${updatedText === "now" ? "just now" : `${updatedText} ago`}`
     : "Live data";
-  const newSinceLastVisitDeals = useMemo(
-    () => buildNewSinceLastVisitDeals(products, newDealKeys, selectedStores),
-    [newDealKeys, products, selectedStores],
-  );
   const newDealKeySet = useMemo(() => new Set(newDealKeys), [newDealKeys]);
-  const newForYouDeals = useMemo(
-    () => newSinceLastVisitDeals.filter(({ deal }) => matchesDealFilter(deal, dealFilter)),
-    [dealFilter, newSinceLastVisitDeals],
-  );
-  const newForYouFilterActive = isNewForYouFilter && newForYouDeals.length > 0;
   const watchlistSpecialDeals = useMemo(
     () => loadingSavedItems ? [] : buildWatchlistSpecialDeals(products, savedProductIds, selectedStores),
     [loadingSavedItems, products, savedProductIds, selectedStores],
@@ -356,14 +346,33 @@ export default function HomePage() {
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
     [checkedHistory, products, selectedStores],
   );
-  const topSavingsDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "savings", newForYouFilterActive ? newDealKeySet : undefined),
-    [newDealKeySet, newForYouFilterActive, products, selectedStores]
+  const allTopSavingsDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "savings"),
+    [products, selectedStores]
   );
-  const worstDodgyDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "dodgy", newForYouFilterActive ? newDealKeySet : undefined),
-    [newDealKeySet, newForYouFilterActive, products, selectedStores]
+  const allWorstDodgyDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "dodgy"),
+    [products, selectedStores]
   );
+  const newTopSavingsDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "savings", newDealKeySet),
+    [newDealKeySet, products, selectedStores]
+  );
+  const newWorstDodgyDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "dodgy", newDealKeySet),
+    [newDealKeySet, products, selectedStores]
+  );
+  const newDealsCount = useMemo(
+    () => [...newTopSavingsDeals, ...newWorstDodgyDeals].filter(({ product }) =>
+      topDealsCategories.length === 0
+        || topDealsCategories.includes(groupCategory(product.category, product.name))
+    ).length,
+    [newTopSavingsDeals, newWorstDodgyDeals, topDealsCategories],
+  );
+  const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
+  const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
+  const worstDodgyDeals = newForYouFilterActive ? newWorstDodgyDeals : allWorstDodgyDeals;
+
   const topDealsAvailableCategories = useMemo(
     () => [...new Set([...topSavingsDeals, ...worstDodgyDeals].map(({ product }) => groupCategory(product.category, product.name)))],
     [topSavingsDeals, worstDodgyDeals]
@@ -377,9 +386,8 @@ export default function HomePage() {
     const categoryFiltered = dealCategoryFilter.length === 0
       ? dealsAllCategories
       : dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category, product.name)));
-    if (!newForYouFilterActive) return categoryFiltered;
-    return categoryFiltered.filter(({ product, deal }) => newDealKeySet.has(getNewSpecialDealKey(product.id, deal.store)));
-  }, [dealCategoryFilter, dealsAllCategories, newDealKeySet, newForYouFilterActive]);
+    return categoryFiltered;
+  }, [dealCategoryFilter, dealsAllCategories]);
 
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
@@ -390,6 +398,7 @@ export default function HomePage() {
   const handleDealFilterChange = (filter: DealFilter) => {
     setDealFilter(filter);
     setDealSortBy(getDefaultDealSort(filter));
+    if (filter !== "all") setIsNewForYouFilter(false);
   };
 
   const handleDealSortChange = (sortBy: DealSortBy) => {
@@ -476,7 +485,7 @@ export default function HomePage() {
                 the deal filters available while the catalogue is browsed. */}
             <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
               <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
-                {newForYouDeals.length > 0 && (
+                {dealFilter === "all" && newDealsCount > 0 && (
                   <div className="min-w-max shrink-0">
                     <button
                       type="button"
@@ -487,12 +496,12 @@ export default function HomePage() {
                           ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
                           : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
                       }`}
-                      aria-label={`Filter to new for you deals, ${newForYouDeals.length} available`}
+                      aria-label={`Filter to new deals since your last visit, ${newDealsCount} available`}
                     >
                       <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
-                        {newForYouDeals.length}
+                        {newDealsCount}
                       </span>
-                      New for you
+                      New to you
                     </button>
                   </div>
                 )}
@@ -635,13 +644,6 @@ export default function HomePage() {
           {dealFilter === "all" && (
             <>
               <PersonalDealRail
-                id="new-for-you-rail"
-                title="New for you"
-                description="Fresh specials and price drops since you last checked in."
-                deals={newSinceLastVisitDeals}
-                tone="new"
-              />
-              <PersonalDealRail
                 id="watchlist-specials-rail"
                 title="Your Watchlist specials"
                 description="Saved products that are on special at your selected supermarkets."
@@ -660,6 +662,7 @@ export default function HomePage() {
                 deals={topSavingsDeals}
                 selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
+                showingNewOnly={newForYouFilterActive}
                 onSeeAll={() => openSearchForFilter("real", { focus: false })}
                 onSeeMore={() => openSearchForFilter("real", { focus: false })}
               />
@@ -668,6 +671,7 @@ export default function HomePage() {
                 deals={worstDodgyDeals}
                 selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
+                showingNewOnly={newForYouFilterActive}
                 onSeeAll={() => openSearchForFilter("dodgy", { focus: false })}
                 onSeeMore={() => openSearchForFilter("dodgy", { focus: false })}
               />

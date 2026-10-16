@@ -54,6 +54,7 @@ export default function DealSnapshotRail({
   deals,
   selectedCategories,
   refreshKey,
+  showingNewOnly,
   onSeeAll,
   onSeeMore,
 }: {
@@ -61,6 +62,7 @@ export default function DealSnapshotRail({
   deals: FlatDeal[];
   selectedCategories: string[];
   refreshKey: string;
+  showingNewOnly: boolean;
   onSeeAll: () => void;
   onSeeMore: () => void;
 }) {
@@ -85,8 +87,8 @@ export default function DealSnapshotRail({
   const snapshotScopeKey = useMemo(() => {
     const stores = refreshKey.split(",").filter(Boolean).sort().join(",") || "all";
     const categories = [...selectedCategories].sort().join(",") || "all";
-    return `${stores}:${categories}`;
-  }, [refreshKey, selectedCategories]);
+    return `${stores}:${categories}:${showingNewOnly ? "new" : "all"}`;
+  }, [refreshKey, selectedCategories, showingNewOnly]);
   const snapshotStorageKey = useMemo(
     () => getTop20StorageKey(kind, snapshotScopeKey),
     [kind, snapshotScopeKey],
@@ -135,9 +137,11 @@ export default function DealSnapshotRail({
     () => new Set(resolvedSnapshot?.newKeys ?? []),
     [resolvedSnapshot],
   );
-  const sectionSubtext = isSavings
-    ? "Best genuine specials available now."
-    : "Most misleading specials available now.";
+  const sectionSubtext = showingNewOnly
+    ? "New deals since your last visit."
+    : isSavings
+      ? "Best genuine specials available now."
+      : "Most misleading specials available now.";
   const firstRenderableIndex = useMemo(
     () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
@@ -158,7 +162,7 @@ export default function DealSnapshotRail({
     return () => {
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
     };
-  }, [refreshKey, selectedCategoryKey]);
+  }, [refreshKey, selectedCategoryKey, showingNewOnly]);
 
   if (!hasRenderableDeals) return null;
 
