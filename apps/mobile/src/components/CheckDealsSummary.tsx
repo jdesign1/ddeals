@@ -24,16 +24,16 @@ export default function CheckDealsSummary({
 }) {
   return (
     <section className="mx-5 rounded-3xl border-2 border-stone-900 bg-white px-5 py-5" aria-labelledby="current-specials-title">
-      <div className="flex items-start justify-between gap-3">
-        <h1 id="current-specials-title" className="dd-type-section whitespace-nowrap text-stone-900">Current specials by supermarket</h1>
-        <div className="flex shrink-0 flex-col items-end gap-0.5" aria-label={updatedLabel}>
+      <div className="flex flex-col items-start gap-1.5">
+        <div className="flex items-center gap-2" aria-label={updatedLabel}>
           <span className="rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-fair-500">
             LIVE
           </span>
           {updatedText && <span className="dd-type-meta dd-type-meta-strong text-stone-500">{updatedText}</span>}
         </div>
+        <h1 id="current-specials-title" className="dd-type-section whitespace-nowrap text-stone-900">Current specials by supermarket</h1>
       </div>
-      <div className="mt-5 grid grid-cols-3 divide-x divide-stone-300" role="group" aria-label="Current special counts by supermarket">
+      <div className="mt-4 grid grid-cols-3 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs" role="group" aria-label="Current special counts by supermarket">
         {SUMMARY_STORES.map(({ key, label }) => {
           const selected = selectedStores.includes(key);
           return (
@@ -43,10 +43,10 @@ export default function CheckDealsSummary({
               aria-label={`${label}: ${counts[key]} current specials`}
               aria-pressed={selected}
               onClick={() => onSelectStore(key)}
-              className={`flex min-w-0 cursor-pointer flex-col items-center gap-1 px-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${selected ? "text-ink-700" : "text-stone-900"}`}
+              className={`flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${selected ? "bg-white/70" : "hover:bg-white/40"}`}
             >
               <StoreLogoBadge store={key} variant="ranking" decorative />
-              <span className="font-display text-3xl font-extrabold leading-none tabular-nums">{counts[key]}</span>
+              <span className="text-xl font-black leading-none tabular-nums text-fair-800">{counts[key]}</span>
             </button>
           );
         })}
