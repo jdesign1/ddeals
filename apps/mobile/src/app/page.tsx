@@ -484,7 +484,7 @@ export default function HomePage() {
                       type="button"
                       onClick={() => setIsNewForYouFilter((active) => !active)}
                       aria-pressed={newForYouFilterActive}
-                      className={`dd-type-control flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-0 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+                      className={`dd-type-control flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-0 shadow-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
                         newForYouFilterActive
                           ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
                           : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
