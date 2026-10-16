@@ -660,28 +660,16 @@ export default function HomePage() {
                 deals={topSavingsDeals}
                 selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
-                onSeeAll={() => {
-                  setDealCategoryFilter(topDealsCategories);
-                  handleDealSortChange("biggest-saver");
-                }}
-                onSeeMore={() => {
-                  setDealCategoryFilter([]);
-                  handleDealSortChange("worst-dodgy");
-                }}
+                onSeeAll={() => openSearchForFilter("real", { focus: false })}
+                onSeeMore={() => openSearchForFilter("real", { focus: false })}
               />
               <DealSnapshotRail
                 kind="dodgy"
                 deals={worstDodgyDeals}
                 selectedCategories={topDealsCategories}
                 refreshKey={selectedStores.join(",")}
-                onSeeAll={() => {
-                  setDealCategoryFilter(topDealsCategories);
-                  handleDealSortChange("worst-dodgy");
-                }}
-                onSeeMore={() => {
-                  setDealCategoryFilter([]);
-                  handleDealSortChange("worst-dodgy");
-                }}
+                onSeeAll={() => openSearchForFilter("dodgy", { focus: false })}
+                onSeeMore={() => openSearchForFilter("dodgy", { focus: false })}
               />
               <div className="px-5 pb-2 pt-1">
                 <button
