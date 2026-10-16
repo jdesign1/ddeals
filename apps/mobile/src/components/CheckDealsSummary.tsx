@@ -90,7 +90,7 @@ export default function CheckDealsSummary({
   const visibleCounts = isAnimating ? animatedCounts : counts;
 
   return (
-    <section className="mx-5 rounded-3xl border border-stone-200/80 bg-white px-5 py-5 shadow-xs" aria-labelledby="current-specials-title">
+    <section className="mx-5 mt-2 rounded-3xl border border-stone-200/80 bg-white px-5 py-5 shadow-xs" aria-labelledby="current-specials-title">
       <div className="flex flex-col items-start gap-1.5">
         <div className="flex items-center gap-2" aria-label={updatedLabel}>
           <span className="rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-fair-500">
