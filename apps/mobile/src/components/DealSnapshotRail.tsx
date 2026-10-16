@@ -66,9 +66,6 @@ export default function DealSnapshotRail({
 }) {
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savers" : "Dodgiest Deals";
-  const emptyMessage = isSavings
-    ? "No real specials in this category right now, check again later"
-    : "No dodgy specials in this category right now, check again later";
 
   const rankedDeals = useMemo(() => {
     const filtered = selectedCategories.length === 0
@@ -99,6 +96,7 @@ export default function DealSnapshotRail({
     () => rankedDeals.filter(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
   );
+  const hasRenderableDeals = snapshotDeals.length > 0;
   const currentSnapshot = useMemo(
     () => createTop20Snapshot(
       snapshotDeals.map(({ product, deal }) => ({ productId: product.id, store: deal.store })),
@@ -162,6 +160,8 @@ export default function DealSnapshotRail({
     };
   }, [refreshKey, selectedCategoryKey]);
 
+  if (!hasRenderableDeals) return null;
+
   return (
     <section className={`flex flex-col gap-3 px-5 py-5 ${isSavings ? "bg-fair-50" : "bg-alert-50"}`} aria-labelledby={`${kind}-snapshot-title`}>
       <div className="flex items-start justify-between gap-3">
@@ -182,54 +182,48 @@ export default function DealSnapshotRail({
         </button>
       </div>
 
-      {rankedDeals.length === 0 ? (
-        <div className="rounded-2xl bg-white px-4 py-6 text-center shadow-sm">
-          <p className="dd-type-secondary text-stone-600">{emptyMessage}</p>
-        </div>
-      ) : (
-        <motion.div
-          ref={railRef}
-          className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
-          role="region"
-          aria-label={`${title} ranked products`}
-          initial={false}
-          animate={isRefreshing ? { opacity: [1, 0.72, 1] } : { opacity: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          {rankedDeals.map(({ product, deal }, index) => {
-            const amount = getDealSnapshotAmount(deal, kind);
-            if (amount == null) return null;
+      <motion.div
+        ref={railRef}
+        className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
+        role="region"
+        aria-label={`${title} ranked products`}
+        initial={false}
+        animate={isRefreshing ? { opacity: [1, 0.72, 1] } : { opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        {rankedDeals.map(({ product, deal }, index) => {
+          const amount = getDealSnapshotAmount(deal, kind);
+          if (amount == null) return null;
 
-            return (
-              <ProductListCard
-                key={`${kind}-${product.id}-${deal.store}`}
-                product={product}
-                deal={deal}
-                imageLoading={index < 2 ? "eager" : "lazy"}
-                storeLinePrefix={null}
-                alsoSpecialStores={alsoSpecialStores(product, deal.store)}
-                // The first rendered tile in each top specials belt is a
-                // reliable bridge into the assessment walkthrough. The
-                // savings belt renders first, with dodgy as a fallback.
-                dataOnboarding={
-                  index === firstRenderableIndex
-                    ? isSavings
-                      ? "top-savings-deal-card"
-                      : "dodgy-deal-card"
-                    : undefined
-                }
-                snapshot={{
-                  rank: index + 1,
-                  kind,
-                  amount,
-                  isNew: newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
-                }}
-              />
-            );
-          })}
-          {!isShortRail && <SnapshotSeeAllCard kind={kind} onSeeAll={onSeeAll} label="See all" />}
-        </motion.div>
-      )}
+          return (
+            <ProductListCard
+              key={`${kind}-${product.id}-${deal.store}`}
+              product={product}
+              deal={deal}
+              imageLoading={index < 2 ? "eager" : "lazy"}
+              storeLinePrefix={null}
+              alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+              // The first rendered tile in each top specials belt is a
+              // reliable bridge into the assessment walkthrough. The
+              // savings belt renders first, with dodgy as a fallback.
+              dataOnboarding={
+                index === firstRenderableIndex
+                  ? isSavings
+                    ? "top-savings-deal-card"
+                    : "dodgy-deal-card"
+                  : undefined
+              }
+              snapshot={{
+                rank: index + 1,
+                kind,
+                amount,
+                isNew: newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
+              }}
+            />
+          );
+        })}
+        {!isShortRail && <SnapshotSeeAllCard kind={kind} onSeeAll={onSeeAll} label="See all" />}
+      </motion.div>
       <span className="sr-only" aria-live="polite">
         {isRefreshing ? `${title} updated` : ""}
       </span>

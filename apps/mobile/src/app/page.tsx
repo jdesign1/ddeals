@@ -22,6 +22,7 @@ import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
+import { getNewSpecialDealKey } from "@/lib/new-specials";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
@@ -179,11 +180,18 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
   return sorted;
 }
 
-function buildSnapshotDeals(products: ProductCard[], selectedStores: string[], kind: DealSnapshotKind): FlatDeal[] {
+function buildSnapshotDeals(
+  products: ProductCard[],
+  selectedStores: string[],
+  kind: DealSnapshotKind,
+  newDealKeys?: ReadonlySet<string>,
+): FlatDeal[] {
   const snapshotDeals: FlatDeal[] = [];
   for (const product of products) {
     const qualifying = product.currentDeals.filter(
-      (deal) => matchesAnySelectedStore(deal.store, selectedStores) && isEligibleForDealSnapshot(deal, kind)
+      (deal) => matchesAnySelectedStore(deal.store, selectedStores)
+        && isEligibleForDealSnapshot(deal, kind)
+        && (!newDealKeys || newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
     );
     if (!qualifying.length) continue;
     const best = qualifying.reduce((currentBest, candidate) =>
@@ -234,6 +242,7 @@ export default function HomePage() {
   // supermarket choice carries between Check deals and full-screen search.
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
+  const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
@@ -323,23 +332,6 @@ export default function HomePage() {
     [dealsAllCategories]
   );
 
-  const topSavingsDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "savings"),
-    [products, selectedStores]
-  );
-  const worstDodgyDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "dodgy"),
-    [products, selectedStores]
-  );
-  const topDealsAvailableCategories = useMemo(
-    () => [...new Set([...topSavingsDeals, ...worstDodgyDeals].map(({ product }) => groupCategory(product.category, product.name)))],
-    [topSavingsDeals, worstDodgyDeals]
-  );
-  const topDealsCategoryCounts = useMemo(
-    () => getSnapshotCategoryCounts([...topSavingsDeals, ...worstDodgyDeals]),
-    [topSavingsDeals, worstDodgyDeals]
-  );
-
   const currentSpecialCounts = useMemo(() => buildCurrentSpecialCounts(products), [products]);
   const latestPublishedAt = useMemo(() => getLatestPublishedAt(products), [products]);
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
@@ -350,6 +342,12 @@ export default function HomePage() {
     () => buildNewSinceLastVisitDeals(products, newDealKeys, selectedStores),
     [newDealKeys, products, selectedStores],
   );
+  const newDealKeySet = useMemo(() => new Set(newDealKeys), [newDealKeys]);
+  const newForYouDeals = useMemo(
+    () => newSinceLastVisitDeals.filter(({ deal }) => matchesDealFilter(deal, dealFilter)),
+    [dealFilter, newSinceLastVisitDeals],
+  );
+  const newForYouFilterActive = isNewForYouFilter && newForYouDeals.length > 0;
   const watchlistSpecialDeals = useMemo(
     () => loadingSavedItems ? [] : buildWatchlistSpecialDeals(products, savedProductIds, selectedStores),
     [loadingSavedItems, products, savedProductIds, selectedStores],
@@ -358,11 +356,30 @@ export default function HomePage() {
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
     [checkedHistory, products, selectedStores],
   );
+  const topSavingsDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "savings", newForYouFilterActive ? newDealKeySet : undefined),
+    [newDealKeySet, newForYouFilterActive, products, selectedStores]
+  );
+  const worstDodgyDeals = useMemo(
+    () => buildSnapshotDeals(products, selectedStores, "dodgy", newForYouFilterActive ? newDealKeySet : undefined),
+    [newDealKeySet, newForYouFilterActive, products, selectedStores]
+  );
+  const topDealsAvailableCategories = useMemo(
+    () => [...new Set([...topSavingsDeals, ...worstDodgyDeals].map(({ product }) => groupCategory(product.category, product.name)))],
+    [topSavingsDeals, worstDodgyDeals]
+  );
+  const topDealsCategoryCounts = useMemo(
+    () => getSnapshotCategoryCounts([...topSavingsDeals, ...worstDodgyDeals]),
+    [topSavingsDeals, worstDodgyDeals]
+  );
 
   const filteredDeals = useMemo<FlatDeal[]>(() => {
-    if (dealCategoryFilter.length === 0) return dealsAllCategories;
-    return dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category, product.name)));
-  }, [dealsAllCategories, dealCategoryFilter]);
+    const categoryFiltered = dealCategoryFilter.length === 0
+      ? dealsAllCategories
+      : dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category, product.name)));
+    if (!newForYouFilterActive) return categoryFiltered;
+    return categoryFiltered.filter(({ product, deal }) => newDealKeySet.has(getNewSpecialDealKey(product.id, deal.store)));
+  }, [dealCategoryFilter, dealsAllCategories, newDealKeySet, newForYouFilterActive]);
 
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
@@ -388,10 +405,6 @@ export default function HomePage() {
     }
     toggleStore("all");
     toggleStore(store);
-  };
-
-  const scrollToNewDeals = () => {
-    document.getElementById("new-since-last-visit-rail")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -464,15 +477,24 @@ export default function HomePage() {
           <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="dd-type-section text-stone-900">Standouts</h2>
-              <button
-                type="button"
-                onClick={scrollToNewDeals}
-                className="dd-type-control flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-stone-300 bg-white px-3 py-2 shadow-sm transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
-                aria-label={`Show new since last visit${newSinceLastVisitDeals.length ? `, ${newSinceLastVisitDeals.length} deals` : ""}`}
-              >
-                {newSinceLastVisitDeals.length > 0 && <span className="rounded-full bg-ink-900 px-1.5 py-0.5 text-[10px] leading-none text-white">{newSinceLastVisitDeals.length}</span>}
-                New since last visit
-              </button>
+              {newForYouDeals.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsNewForYouFilter((active) => !active)}
+                  aria-pressed={newForYouFilterActive}
+                  className={`dd-type-control flex shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-2 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+                    newForYouFilterActive
+                      ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
+                      : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
+                  }`}
+                  aria-label={`Filter to new for you deals, ${newForYouDeals.length} available`}
+                >
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
+                    {newForYouDeals.length}
+                  </span>
+                  New for you
+                </button>
+              )}
             </div>
             <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
               <div className="min-w-[8.75rem] shrink-0">
@@ -613,11 +635,10 @@ export default function HomePage() {
           {dealFilter === "all" && (
             <>
               <PersonalDealRail
-                id="new-since-last-visit-rail"
-                title="New since your last visit"
+                id="new-for-you-rail"
+                title="New for you"
                 description="Fresh specials and price drops since you last checked in."
                 deals={newSinceLastVisitDeals}
-                emptyMessage="No new specials since your last visit."
                 tone="new"
               />
               <PersonalDealRail
@@ -625,7 +646,6 @@ export default function HomePage() {
                 title="Your Watchlist specials"
                 description="Saved products that are on special at your selected supermarkets."
                 deals={watchlistSpecialDeals}
-                emptyMessage="Save products to your Watchlist to see their specials here."
                 tone="watchlist"
               />
               <PersonalDealRail
@@ -633,7 +653,6 @@ export default function HomePage() {
                 title="Worth another look"
                 description="Deals you checked before whose price or assessment has changed."
                 deals={previouslyCheckedDeals}
-                emptyMessage="No checked deals have changed recently."
                 tone="history"
               />
               <DealSnapshotRail

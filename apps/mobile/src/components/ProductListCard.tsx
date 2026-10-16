@@ -75,6 +75,7 @@ export interface ProductListCardProps {
   /** Snapshot rails use a ranked, fixed-width card and dollar-first callout. */
   snapshot?: {
     rank: number;
+    showRank?: boolean;
     kind: DealSnapshotKind;
     amount?: number;
     isNew?: boolean;
@@ -241,7 +242,7 @@ export default function ProductListCard({
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${useGridCard ? "scale-[0.95]" : ""}`}
           />
         </div>
-        {snapshot && (
+        {snapshot && snapshot.showRank !== false && (
           <span
             className="absolute left-0 top-0 h-14 w-14 bg-ink-600 font-display text-base font-black text-white [clip-path:polygon(0_0,100%_0,0_100%)]"
             aria-label={`Rank ${snapshot.rank}`}

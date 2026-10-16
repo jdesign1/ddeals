@@ -1,6 +1,7 @@
 "use client";
 
 import type { CheckDealsSummaryStore } from "@/lib/check-deals-home";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 const SUMMARY_STORES: Array<{ key: CheckDealsSummaryStore; label: string }> = [
   { key: "newworld", label: "New World" },
@@ -24,8 +25,8 @@ export default function CheckDealsSummary({
   return (
     <section className="mx-5 rounded-3xl border-2 border-stone-900 bg-white px-5 py-5" aria-labelledby="current-specials-title">
       <div className="flex items-start justify-between gap-3">
-        <h1 id="current-specials-title" className="dd-type-section text-stone-900">Current specials by supermarket</h1>
-        <div className="flex shrink-0 items-center gap-1.5" aria-label={updatedLabel}>
+        <h1 id="current-specials-title" className="dd-type-section whitespace-nowrap text-stone-900">Current specials by supermarket</h1>
+        <div className="flex shrink-0 flex-col items-end gap-0.5" aria-label={updatedLabel}>
           <span className="rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-fair-500">
             LIVE
           </span>
@@ -39,12 +40,13 @@ export default function CheckDealsSummary({
             <button
               key={key}
               type="button"
+              aria-label={`${label}: ${counts[key]} current specials`}
               aria-pressed={selected}
               onClick={() => onSelectStore(key)}
               className={`flex min-w-0 cursor-pointer flex-col items-center gap-1 px-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${selected ? "text-ink-700" : "text-stone-900"}`}
             >
-              <span className="dd-type-control truncate font-bold">{label}</span>
-              <span className="font-display text-4xl font-extrabold leading-none tabular-nums">{counts[key]}</span>
+              <StoreLogoBadge store={key} variant="ranking" decorative />
+              <span className="font-display text-3xl font-extrabold leading-none tabular-nums">{counts[key]}</span>
             </button>
           );
         })}

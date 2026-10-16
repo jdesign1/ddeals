@@ -23,7 +23,6 @@ export default function PersonalDealRail({
   title,
   description,
   deals,
-  emptyMessage,
   tone,
   onSeeAll,
 }: {
@@ -31,13 +30,14 @@ export default function PersonalDealRail({
   title: string;
   description: string;
   deals: CheckDealsRailItem[];
-  emptyMessage: string;
   tone: PersonalRailTone;
   onSeeAll?: () => void;
 }) {
   const railRef = useRef<HTMLDivElement>(null);
   const visibleDeals = useMemo(() => deals.slice(0, 20), [deals]);
   const styles = toneStyles[tone];
+
+  if (visibleDeals.length === 0) return null;
 
   return (
     <section className={`flex flex-col gap-3 px-5 py-5 ${styles.section}`} aria-labelledby={`${id}-title`}>
@@ -57,53 +57,48 @@ export default function PersonalDealRail({
         )}
       </div>
 
-      {visibleDeals.length === 0 ? (
-        <div className="rounded-2xl bg-white px-4 py-6 text-center shadow-sm">
-          <p className="dd-type-secondary text-stone-600">{emptyMessage}</p>
-        </div>
-      ) : (
-        <div
-          ref={railRef}
-          className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
-          role="region"
-          aria-label={`${title} products`}
-        >
-          {visibleDeals.map((item, index) => {
-            const kind = snapshotKindForDeal(item);
-            const amount = getDealSnapshotAmount(item.deal, kind);
-            return (
-              <ProductListCard
-                key={`${id}-${item.product.id}-${item.deal.store}`}
-                product={item.product}
-                deal={item.deal}
-                imageLoading={index < 2 ? "eager" : "lazy"}
-                storeLinePrefix={null}
-                snapshot={{
-                  rank: index + 1,
-                  kind,
-                  amount: amount ?? undefined,
-                  badgeLabel: amount == null ? "Special" : undefined,
-                  badgeTone: amount == null ? "neutral" : kind,
-                  isNew: item.isNew,
-                }}
-              />
-            );
-          })}
-          {onSeeAll && visibleDeals.length >= 10 && (
-            <button
-              type="button"
-              onClick={onSeeAll}
-              className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${styles.action}`}
-              aria-label={`See all ${title.toLowerCase()}`}
-            >
-              <span className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
-                <ArrowRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
-                <span className="dd-type-control font-extrabold">See all</span>
-              </span>
-            </button>
-          )}
-        </div>
-      )}
+      <div
+        ref={railRef}
+        className="hide-scrollbar -mx-5 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0"
+        role="region"
+        aria-label={`${title} products`}
+      >
+        {visibleDeals.map((item, index) => {
+          const kind = snapshotKindForDeal(item);
+          const amount = getDealSnapshotAmount(item.deal, kind);
+          return (
+            <ProductListCard
+              key={`${id}-${item.product.id}-${item.deal.store}`}
+              product={item.product}
+              deal={item.deal}
+              imageLoading={index < 2 ? "eager" : "lazy"}
+              storeLinePrefix={null}
+              snapshot={{
+                rank: index + 1,
+                showRank: tone !== "watchlist",
+                kind,
+                amount: amount ?? undefined,
+                badgeLabel: amount == null ? "Special" : undefined,
+                badgeTone: amount == null ? "neutral" : kind,
+                isNew: item.isNew,
+              }}
+            />
+          );
+        })}
+        {onSeeAll && visibleDeals.length >= 10 && (
+          <button
+            type="button"
+            onClick={onSeeAll}
+            className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${styles.action}`}
+            aria-label={`See all ${title.toLowerCase()}`}
+          >
+            <span className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
+              <ArrowRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
+              <span className="dd-type-control font-extrabold">See all</span>
+            </span>
+          </button>
+        )}
+      </div>
     </section>
   );
 }
