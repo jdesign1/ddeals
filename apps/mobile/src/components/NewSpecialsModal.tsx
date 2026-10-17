@@ -39,10 +39,6 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   }, [onClose, onSelectAllNewDeals, onSelectFilter, onSelectTopDeals]);
 
   const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
-  const changeSummary = [
-    summary.newlyStarted > 0 ? `${pluralLabel(summary.newlyStarted, "new special")}` : "",
-    summary.priceDrops > 0 ? `${pluralLabel(summary.priceDrops, "price drop")}` : "",
-  ].filter(Boolean).join(" · ");
 
   const handleClose = useCallback(() => {
     setIsClosing(true);
@@ -159,14 +155,12 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                   {!hasNewSpecials
                     ? "All caught up"
-                    : "Let's inspect them"}
+                    : `${summary.total} new deal${summary.total === 1 ? "" : "s"} to inspect`}
                 </h2>
                 {!hasNewSpecials ? (
                   <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">No fresh deals just yet.</p>
                 ) : (
-                  <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">
-                    {changeSummary ? `${changeSummary}.` : `${summary.total} ${summary.total === 1 ? "special" : "specials"} to check.`}
-                  </p>
+                  <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">Are they real or dodgy?</p>
                 )}
               </div>
 
