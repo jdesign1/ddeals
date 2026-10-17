@@ -135,7 +135,7 @@ export interface ListItemProductCardProps {
   product: ProductCardData;
   deal: CurrentDeal;
   /** Other supermarkets with a verified active special for this product. */
-  otherSpecialCount?: number;
+  otherSpecialStores?: string[];
   /** `list_items.quantity` -- only rendered as a "×N" chip when > 1, same
    * threshold the plain-text row this replaces already used. */
   quantity: number;
@@ -180,7 +180,7 @@ function freshnessLabel(verifiedAt: string | null | undefined): string | null {
 export default function ListItemProductCard({
   product,
   deal,
-  otherSpecialCount = 0,
+  otherSpecialStores = [],
   quantity,
   onRemove,
   removeLabel,
@@ -429,12 +429,15 @@ export default function ListItemProductCard({
                 {dealFreshnessLabel}
               </span>
             )}
-            {!selectedAlternativeDeal && otherSpecialCount > 0 && (
+            {!selectedAlternativeDeal && otherSpecialStores.length > 0 && (
               <span
-                className="dd-badge dd-badge-compact dd-badge-neutral"
-                aria-label={`Also on special at ${otherSpecialCount} other ${otherSpecialCount === 1 ? "supermarket" : "supermarkets"}`}
+                role="img"
+                className="inline-flex items-center gap-1"
+                aria-label={`Also on special at ${otherSpecialStores.length} other ${otherSpecialStores.length === 1 ? "supermarket" : "supermarkets"}: ${otherSpecialStores.join(", ")}`}
               >
-                +{otherSpecialCount} {otherSpecialCount === 1 ? "store" : "stores"}
+                {otherSpecialStores.map((store) => (
+                  <StoreLogoBadge key={store} store={store} variant="compact" decorative />
+                ))}
               </span>
             )}
             {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}

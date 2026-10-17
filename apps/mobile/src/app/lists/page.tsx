@@ -110,13 +110,14 @@ function watchlistCategory(product: Pick<ListItemProductMeta, "name" | "brand" |
   return isDairy ? "Dairy" : groupCategory(product.category);
 }
 
-function otherSpecialStoreCount(product: ProductCardData, displayedStore: string): number {
+function otherSpecialStores(product: ProductCardData, displayedStore: string): string[] {
   const displayedKey = canonicalStoreKey(displayedStore);
-  return new Set(
-    product.currentDeals
-      .filter((deal) => deal.isOnSpecial && canonicalStoreKey(deal.store) !== displayedKey)
-      .map((deal) => canonicalStoreKey(deal.store)),
-  ).size;
+  const stores = new Map<string, string>();
+  for (const deal of product.currentDeals) {
+    const storeKey = canonicalStoreKey(deal.store);
+    if (deal.isOnSpecial && storeKey && storeKey !== displayedKey && !stores.has(storeKey)) stores.set(storeKey, deal.store);
+  }
+  return [...stores.values()];
 }
 
 export default function ListsPage() {
@@ -454,7 +455,7 @@ export default function ListsPage() {
             <ListItemProductCard
               product={card}
               deal={deal}
-              otherSpecialCount={deal.isOnSpecial ? otherSpecialStoreCount(card, deal.store) : 0}
+              otherSpecialStores={deal.isOnSpecial ? otherSpecialStores(card, deal.store) : []}
               quantity={entry.item.quantity}
               onRemove={() => void removeProduct(entry.productId)}
               removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
@@ -746,41 +747,38 @@ function WatchlistSummaryCard({
 
   return (
     <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
-      <h1 id="watchlist-intro-title" className="sr-only">Your Watchlist</h1>
-      <div className="grid grid-cols-2 gap-2" aria-label="Watchlist summary">
-        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-3" aria-label={`${onSpecialCount} on special`}>
-          <p className="text-sm font-extrabold leading-7 text-stone-900"><span className="text-2xl font-black">{onSpecialCount}</span> on special</p>
-        </div>
-        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-3" aria-label={`Watching ${itemCount} ${itemCount === 1 ? "item" : "items"}`}>
-          <p className="text-sm font-extrabold leading-7 text-stone-900">Watching <span className="text-2xl font-black">{itemCount}</span> {itemCount === 1 ? "item" : "items"}</p>
-        </div>
-      </div>
+      <h1 id="watchlist-intro-title" className="mb-4 text-center text-2xl font-black leading-8 text-stone-900">You&apos;re watching {itemCount} {itemCount === 1 ? "product" : "products"}</h1>
       {!isEmpty && (
-        <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200 rounded-xl bg-stone-50 py-2" aria-label="Filter specials by deal type">
-          {([
-            ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700"],
-            ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700"],
-            ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700"],
-          ] as const).map(([filter, label, count, tone]) => {
-            const isSelected = selectedDealType === filter;
-            const isDisabled = count === 0;
-            return (
-              <button
-                key={filter}
-                type="button"
-                disabled={isDisabled}
-                aria-pressed={isSelected}
-                aria-label={`${label}: ${count}${isDisabled ? ", no results" : ", show results"}`}
-                onClick={() => {
-                  if (!isDisabled) onDealTypeChange(isSelected ? "all" : filter);
-                }}
-                className={`flex min-w-0 flex-col items-center gap-0.5 px-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-40 ${isSelected ? "rounded-lg bg-white shadow-sm" : ""}`}
-              >
-                <span className={`text-2xl font-black leading-7 ${tone}`}>{count}</span>
-                <span className="text-[11px] font-extrabold leading-4 text-stone-600">{label}</span>
-              </button>
-            );
-          })}
+        <div className="overflow-hidden rounded-xl border border-stone-900" aria-label="Filter specials by deal type">
+          <div className="border-b border-stone-900 px-3 py-4 text-center" aria-label={`${onSpecialCount} on special now`}>
+            <p className="text-2xl font-black leading-8 text-stone-900">{onSpecialCount} on special now</p>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-stone-200 bg-stone-50 py-2">
+            {([
+              ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700"],
+              ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700"],
+              ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700"],
+            ] as const).map(([filter, label, count, tone]) => {
+              const isSelected = selectedDealType === filter;
+              const isDisabled = count === 0;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  disabled={isDisabled}
+                  aria-pressed={isSelected}
+                  aria-label={`${label}: ${count}${isDisabled ? ", no results" : ", show results"}`}
+                  onClick={() => {
+                    if (!isDisabled) onDealTypeChange(isSelected ? "all" : filter);
+                  }}
+                  className={`flex min-w-0 flex-col items-center gap-0.5 px-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset disabled:cursor-default disabled:opacity-100 ${isSelected ? "rounded-lg bg-white shadow-sm" : ""}`}
+                >
+                  <span className={`text-2xl font-black leading-7 ${tone}`}>{count}</span>
+                  <span className="text-[11px] font-extrabold leading-4 text-stone-600">{label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       {!isEmpty && hasNewPrices && (
