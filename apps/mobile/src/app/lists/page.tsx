@@ -38,6 +38,7 @@ import UnreadListItem from "@/components/UnreadListItem";
 import WatchlistUpdateSheet from "@/components/WatchlistUpdateSheet";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CategoryPicker from "@/components/CategoryPicker";
+import DealTypePicker, { type WatchlistDealTypeFilter } from "@/components/DealTypePicker";
 import SortDropdown from "@/components/SortDropdown";
 import WatchlistViewPicker from "@/components/WatchlistViewPicker";
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
@@ -49,6 +50,13 @@ import { sortWatchlistItems, watchlistItemDeal, type WatchlistSortMode } from "@
 type WatchlistTab = "watchlist" | "cheaper-options";
 type WatchlistView = "all" | "by-supermarket";
 
+type WatchlistDealTypeCounts = {
+  realSavers: number;
+  fairDeals: number;
+  dodgyDeals: number;
+  checking: number;
+};
+
 interface WatchlistItem {
   productId: string;
   item: ListItemRow;
@@ -57,6 +65,51 @@ interface WatchlistItem {
 }
 
 const dairyRule = getSearchSynonymRule("dairy");
+
+function matchesDealTypeFilter(
+  deal: ReturnType<typeof watchlistItemDeal>,
+  filter: WatchlistDealTypeFilter,
+): boolean {
+  if (filter === "all") return true;
+  if (!deal || deal.isOnSpecial !== true) return false;
+
+  const verdict = getAssessmentVerdict(deal);
+  if (filter === "checking") return verdict === "Early read" || verdict === "Limited history";
+  return verdict === filter;
+}
+
+function dealTypeFilterLabel(filter: WatchlistDealTypeFilter): string {
+  if (filter === "all") return "all deal types";
+  if (filter === "Fair Price") return "Fair Deals";
+  if (filter === "checking") return "Still checking";
+  return `${filter}s`;
+}
+
+function watchlistItemDealForFilter(
+  item: WatchlistItem,
+  itemCards: Map<string, ProductCardData>,
+  selectedSupermarkets: string[],
+  preferredStore: string | undefined,
+  sortMode: WatchlistSortMode,
+  dealTypeFilter: WatchlistDealTypeFilter,
+): ReturnType<typeof watchlistItemDeal> {
+  if (dealTypeFilter === "all") return watchlistItemDeal(item, itemCards, selectedSupermarkets, preferredStore, sortMode);
+  const card = itemCards.get(item.productId);
+  if (!card) return undefined;
+  const matchingDeals = card.currentDeals.filter((deal) => (
+    (selectedSupermarkets.includes("all") || matchesAnySelectedStore(deal.store, selectedSupermarkets))
+    && matchesDealTypeFilter(deal, dealTypeFilter)
+  ));
+  if (matchingDeals.length === 0) return undefined;
+
+  return watchlistItemDeal(
+    item,
+    new Map([[item.productId, { ...card, currentDeals: matchingDeals }]]),
+    ["all"],
+    preferredStore,
+    sortMode,
+  );
+}
 
 function watchlistCategory(product: Pick<ListItemProductMeta, "name" | "brand" | "category"> | undefined): string {
   if (!product) return "";
@@ -143,8 +196,10 @@ export default function ListsPage() {
   const [sortMode, setSortMode] = useState<WatchlistSortMode>("best");
   const [watchlistView, setWatchlistView] = useState<WatchlistView>("all");
   const [activePulse, setActivePulse] = useState<WatchlistPulseKind | null>(null);
+  const [selectedDealType, setSelectedDealType] = useState<WatchlistDealTypeFilter>("all");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSupermarkets, setSelectedSupermarkets] = useState<string[]>(["all"]);
+  const [isInactiveSectionExpanded, setIsInactiveSectionExpanded] = useState(true);
   const [expandedStoreKeys, setExpandedStoreKeys] = useState<Set<string>>(new Set());
   const [orderedStoreKeys, setOrderedStoreKeys] = useState<string[]>([]);
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
@@ -321,6 +376,7 @@ export default function ListsPage() {
     setSelectedCheaperOption(null);
     if (tab === "cheaper-options") {
       setActivePulse(null);
+      setSelectedDealType("all");
       cheaperOptionsDefaultExpansionPendingRef.current = true;
       setExpandedCheaperProductIds(new Set(watchlistItems.map((entry) => entry.productId)));
       // Cheaper Options is anchored to the product's primary offer. Keep it
@@ -480,6 +536,20 @@ export default function ListsPage() {
     unreadAlerts.map((alert) => ({ productId: alert.product_id, eventType: alert.event_type })),
   ), [itemCards, unreadAlerts, watchlistItems]);
 
+  const dealTypeCounts = useMemo<WatchlistDealTypeCounts>(() => {
+    const counts: WatchlistDealTypeCounts = { realSavers: 0, fairDeals: 0, dodgyDeals: 0, checking: 0 };
+    for (const item of watchlistItems) {
+      const deal = watchlistItemDeal(item, itemCards, ["all"], undefined, "best");
+      if (!deal || deal.isOnSpecial !== true) continue;
+      const verdict = getAssessmentVerdict(deal);
+      if (verdict === "Real Saver") counts.realSavers += 1;
+      else if (verdict === "Fair Price") counts.fairDeals += 1;
+      else if (verdict === "Dodgy Deal") counts.dodgyDeals += 1;
+      else counts.checking += 1;
+    }
+    return counts;
+  }, [itemCards, watchlistItems]);
+
   const filteredItems = useMemo(
     () => sortWatchlistItems(
       watchlistItems.filter((item) => {
@@ -496,6 +566,18 @@ export default function ListsPage() {
       activePulse ? pulseSummary.productIds[activePulse] : undefined,
     ),
     [activePulse, filterSupermarkets, itemCards, productMeta, pulseSummary.preferredStoreIds, pulseSummary.productIds, selectedCategories, selectedSupermarkets, sortMode, watchlistItems],
+  );
+
+  const dealTypeFilteredItems = useMemo(
+    () => filteredItems.filter((item) => watchlistItemDealForFilter(
+      item,
+      itemCards,
+      filterSupermarkets,
+      activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined,
+      sortMode,
+      selectedDealType,
+    ) !== undefined),
+    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds, selectedDealType, sortMode],
   );
 
   const supermarkets = useMemo(() => {
@@ -516,8 +598,9 @@ export default function ListsPage() {
         .filter(([key]) => selectedSupermarkets.includes(key))
         .map(([, label]) => label)
         .join(", ");
-    return `${watchlistView === "by-supermarket" ? "grouped by supermarket" : "shown as all items"}, showing ${supermarketScope}`;
-  }, [selectedSupermarkets, supermarkets, watchlistView]);
+    const dealTypeScope = selectedDealType === "all" ? "all deal types" : dealTypeFilterLabel(selectedDealType);
+    return `${watchlistView === "by-supermarket" ? "grouped by supermarket" : "shown as all items"}, showing ${supermarketScope} and ${dealTypeScope}`;
+  }, [selectedDealType, selectedSupermarkets, supermarkets, watchlistView]);
 
   const storeKeys = useMemo(() => supermarkets.map(([key]) => key), [supermarkets]);
 
@@ -597,6 +680,7 @@ export default function ListsPage() {
   const handlePulseSelect = useCallback((kind: WatchlistPulseKind) => {
     setActiveWatchlistTab("watchlist");
     setWatchlistView("all");
+    setSelectedDealType("all");
     setActivePulse((current) => current === kind ? null : kind);
   }, []);
 
@@ -666,30 +750,33 @@ export default function ListsPage() {
   }, [isClearingWatchlist, reload, watchlistItems]);
 
   const activeItems = useMemo(
-    () => filteredItems.filter((item) => watchlistItemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode)?.isOnSpecial === true),
-    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds, sortMode],
+    () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode, selectedDealType)?.isOnSpecial === true),
+    [activePulse, dealTypeFilteredItems, filterSupermarkets, itemCards, pulseSummary.preferredStoreIds, selectedDealType, sortMode],
   );
   const inactiveItems = useMemo(
-    () => filteredItems.filter((item) => watchlistItemDeal(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode)?.isOnSpecial !== true),
-    [activePulse, filterSupermarkets, filteredItems, itemCards, pulseSummary.preferredStoreIds, sortMode],
+    () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, activePulse ? pulseSummary.preferredStoreIds[activePulse].get(item.productId) : undefined, sortMode, selectedDealType)?.isOnSpecial !== true),
+    [activePulse, dealTypeFilteredItems, filterSupermarkets, itemCards, pulseSummary.preferredStoreIds, selectedDealType, sortMode],
   );
   const pulseItems = useMemo(
-    () => activePulse ? filteredItems.filter((item) => pulseSummary.productIds[activePulse].has(item.productId)) : [],
-    [activePulse, filteredItems, pulseSummary.productIds],
+    () => activePulse ? dealTypeFilteredItems.filter((item) => pulseSummary.productIds[activePulse].has(item.productId)) : [],
+    [activePulse, dealTypeFilteredItems, pulseSummary.productIds],
   );
   const otherPulseItems = useMemo(
-    () => activePulse ? filteredItems.filter((item) => !pulseSummary.productIds[activePulse].has(item.productId)) : [],
-    [activePulse, filteredItems, pulseSummary.productIds],
+    () => activePulse ? dealTypeFilteredItems.filter((item) => !pulseSummary.productIds[activePulse].has(item.productId)) : [],
+    [activePulse, dealTypeFilteredItems, pulseSummary.productIds],
   );
   const groupedSupermarkets = useMemo(
-    () => orderedSupermarkets.filter(([storeKey]) => filteredItems.some((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey))),
-    [filteredItems, itemCards, orderedSupermarkets],
+    () => orderedSupermarkets.filter(([storeKey]) => (
+      (selectedSupermarkets.includes("all") || selectedSupermarkets.includes(storeKey))
+      && dealTypeFilteredItems.some((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey && matchesDealTypeFilter(deal, selectedDealType)))
+    )),
+    [dealTypeFilteredItems, itemCards, orderedSupermarkets, selectedDealType, selectedSupermarkets],
   );
   const renderItem = (entry: WatchlistItem, storeKey?: string) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
     const preferredPulseStore = !storeKey && activePulse ? pulseSummary.preferredStoreIds[activePulse].get(entry.productId) : undefined;
-    const deal = card ? watchlistItemDeal(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets, preferredPulseStore, sortMode) : undefined;
+    const deal = card ? watchlistItemDealForFilter(entry, itemCards, storeKey ? [storeKey] : filterSupermarkets, preferredPulseStore, sortMode, selectedDealType) : undefined;
     const sourceItem = entry.sourceItems[0];
     const unreadUpdates = entry.sourceItems.flatMap((item) => unreadAlertsByListItem.get(`${item.list_id}:${item.id}`) ?? []);
     const isUnread = unreadUpdates.length > 0;
@@ -782,6 +869,13 @@ export default function ListsPage() {
           onTabChange={handleWatchlistTabChange}
           itemCount={watchlistItems.length}
           newPriceItemCount={newPriceItemCount}
+          dealTypeCounts={dealTypeCounts}
+          selectedDealType={selectedDealType}
+          onDealTypeChange={(nextDealType) => {
+            setSelectedDealType(nextDealType);
+            setActivePulse(null);
+            setSelectedCheaperOption(null);
+          }}
           pulseSummary={pulseSummary}
           activePulse={activePulse}
           onPulseSelect={handlePulseSelect}
@@ -793,8 +887,20 @@ export default function ListsPage() {
       </div>
 
       <div className="watchlist-filter-bar">
-        <div className="grid min-w-0 grid-cols-3 gap-1.5 overflow-hidden px-5">
-          <div className="min-w-0">
+        <div className="hide-scrollbar flex min-w-0 gap-1.5 overflow-x-auto px-5">
+          {activeWatchlistTab !== "cheaper-options" && (
+            <div className="shrink-0">
+              <DealTypePicker
+                value={selectedDealType}
+                onChange={(nextDealType) => {
+                  setSelectedDealType(nextDealType);
+                  setActivePulse(null);
+                  setSelectedCheaperOption(null);
+                }}
+              />
+            </div>
+          )}
+          <div className="shrink-0">
             <WatchlistViewPicker
               view={watchlistView}
               onViewChange={(view) => {
@@ -807,7 +913,7 @@ export default function ListsPage() {
               onToggleStore={toggleSupermarket}
             />
           </div>
-          <div className="min-w-0">
+          <div className="shrink-0">
             <CategoryPicker
               selectedCategories={selectedCategories}
               onChange={(categories) => {
@@ -819,7 +925,7 @@ export default function ListsPage() {
               align="left"
             />
           </div>
-          <div className="min-w-0">
+          <div className="shrink-0">
             <SortDropdown
               value={sortMode}
               defaultValue="best"
@@ -842,8 +948,8 @@ export default function ListsPage() {
       <div className="sr-only" aria-live="polite">
         {activePulse
           ? `${pulseLabel(activePulse, pulseSummary.counts[activePulse])} selected. Showing ${pulseItems.length} matching ${pulseItems.length === 1 ? "item" : "items"} first, followed by ${otherPulseItems.length} other Watchlist ${otherPulseItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
-          : selectedCategories.length > 0
-            ? `Showing ${filteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
+          : selectedCategories.length > 0 || selectedDealType !== "all" || !selectedSupermarkets.includes("all")
+            ? `Showing ${dealTypeFilteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
             : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`}
       </div>
 
@@ -864,14 +970,14 @@ export default function ListsPage() {
             <p className="max-w-xs text-sm leading-5 text-stone-500">Tap the plus icon on any item to add it to your Watchlist. We&rsquo;ll alert you when it goes on special again at a better price.</p>
           </div>
         )}
-        {!loadingWatchlist && !error && watchlistItems.length > 0 && filteredItems.length === 0 && (
+        {!loadingWatchlist && !error && watchlistItems.length > 0 && dealTypeFilteredItems.length === 0 && (
           <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match these filters.</p>
         )}
-        {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "all" && (
+        {!loadingWatchlist && !error && dealTypeFilteredItems.length > 0 && watchlistView === "all" && (
           <div className={`flex flex-col px-5 ${activeWatchlistTab === "cheaper-options" ? "gap-3" : "gap-2"}`}>
             {activeWatchlistTab === "cheaper-options" ? (
               <AnimatePresence initial={false} mode="popLayout">
-                {filteredItems.map((entry) => renderItem(entry))}
+                {dealTypeFilteredItems.map((entry) => renderItem(entry))}
               </AnimatePresence>
             ) : activePulse ? (
               <AnimatePresence initial={false} mode="popLayout">
@@ -904,30 +1010,69 @@ export default function ListsPage() {
               </AnimatePresence>
             ) : (
               <AnimatePresence initial={false} mode="popLayout">
+                {activeItems.length > 0 && (
+                  <motion.h2
+                    key="on-special-heading"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                  >
+                    On special ({activeItems.length})
+                  </motion.h2>
+                )}
                 {activeItems.map((entry) => renderItem(entry))}
                 {inactiveItems.length > 0 && (
-                  <motion.h2
+                  <motion.div
                     key="not-on-special-heading"
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="mt-3 px-1 text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400"
+                    className="mt-3"
                   >
-                    Not on special
-                  </motion.h2>
+                    <button
+                      type="button"
+                      aria-expanded={isInactiveSectionExpanded}
+                      aria-controls="watchlist-not-on-special-items"
+                      onClick={() => setIsInactiveSectionExpanded((expanded) => !expanded)}
+                      className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-1 text-left text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400 transition-colors hover:text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
+                    >
+                      <span>Not currently on special ({inactiveItems.length})</span>
+                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isInactiveSectionExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+                    </button>
+                    <div id="watchlist-not-on-special-items">
+                      <AnimatePresence initial={false}>
+                        {isInactiveSectionExpanded && (
+                          <motion.div
+                            key="not-on-special-items"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="flex flex-col gap-2 overflow-hidden pt-1"
+                          >
+                            {inactiveItems.map((entry) => renderItem(entry))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
                 )}
-                {inactiveItems.map((entry) => renderItem(entry))}
               </AnimatePresence>
             )}
           </div>
         )}
-        {!loadingWatchlist && !error && filteredItems.length > 0 && watchlistView === "by-supermarket" && (
+        {!loadingWatchlist && !error && dealTypeFilteredItems.length > 0 && watchlistView === "by-supermarket" && (
           <div className="px-5">
             <p className="sr-only" aria-live="polite">{reorderAnnouncement}</p>
             <Reorder.Group axis="y" values={groupedSupermarkets.map(([key]) => key)} onReorder={persistVisibleStoreOrder} aria-label="Reorder supermarkets" className="flex flex-col gap-2">
               {groupedSupermarkets.map(([storeKey, storeLabel], index) => {
-                const storeItems = filteredItems.filter((entry) => (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey));
+                const storeItems = dealTypeFilteredItems.filter((entry) => (
+                  (selectedSupermarkets.includes("all") || selectedSupermarkets.includes(storeKey))
+                  && (itemCards.get(entry.productId)?.currentDeals ?? []).some((deal) => canonicalStoreKey(deal.store) === storeKey && matchesDealTypeFilter(deal, selectedDealType))
+                ));
                 return (
                   <WatchlistSupermarketSection
                     key={storeKey}
@@ -1064,6 +1209,9 @@ function WatchlistSummaryCard({
   onTabChange,
   itemCount,
   newPriceItemCount,
+  dealTypeCounts,
+  selectedDealType,
+  onDealTypeChange,
   pulseSummary,
   activePulse,
   onPulseSelect,
@@ -1076,6 +1224,9 @@ function WatchlistSummaryCard({
   onTabChange: (tab: WatchlistTab) => void;
   itemCount: number;
   newPriceItemCount: number;
+  dealTypeCounts: WatchlistDealTypeCounts;
+  selectedDealType: WatchlistDealTypeFilter;
+  onDealTypeChange: (value: WatchlistDealTypeFilter) => void;
   pulseSummary: WatchlistPulseSummary;
   activePulse: WatchlistPulseKind | null;
   onPulseSelect: (kind: WatchlistPulseKind) => void;
@@ -1086,6 +1237,7 @@ function WatchlistSummaryCard({
 }) {
   const hasNewPrices = newPriceItemCount > 0;
   const isEmpty = itemCount === 0;
+  const specialCount = dealTypeCounts.realSavers + dealTypeCounts.fairDeals + dealTypeCounts.dodgyDeals + dealTypeCounts.checking;
   const subtitle = isEmpty
     ? "Save items to your Watchlist and we’ll keep an eye out for better special prices."
     : activeTab === "cheaper-options"
@@ -1126,6 +1278,44 @@ function WatchlistSummaryCard({
       <p className="mt-3 text-[13px] leading-5 text-stone-600">
         {subtitle}
       </p>
+      {activeTab !== "cheaper-options" && !isEmpty && (
+        <div className="mt-4 border-t border-stone-100 pt-3" aria-label="Watchlist deal summary">
+          <p className="text-[13px] font-extrabold text-stone-900">
+            Across your Watchlist: {specialCount} of {itemCount} watched {itemCount === 1 ? "product is" : "products are"} on special
+          </p>
+          <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200 rounded-xl bg-stone-50 py-2">
+            {([
+              ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700"],
+              ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700"],
+              ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700"],
+            ] as const).map(([filter, label, count, tone]) => {
+              const isSelected = selectedDealType === filter;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => onDealTypeChange(isSelected ? "all" : filter)}
+                  className={`flex min-w-0 flex-col items-center gap-0.5 px-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset ${isSelected ? "rounded-lg bg-white shadow-sm" : ""}`}
+                >
+                  <span className={`text-2xl font-black leading-7 ${tone}`}>{count}</span>
+                  <span className="text-[11px] font-extrabold leading-4 text-stone-600">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {dealTypeCounts.checking > 0 && (
+            <button
+              type="button"
+              aria-pressed={selectedDealType === "checking"}
+              onClick={() => onDealTypeChange(selectedDealType === "checking" ? "all" : "checking")}
+              className={`mt-2 w-full cursor-pointer rounded-lg px-2 py-1 text-left text-[12px] leading-4 text-stone-500 transition-colors hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${selectedDealType === "checking" ? "bg-stone-100 font-extrabold text-stone-800" : ""}`}
+            >
+              {dealTypeCounts.checking} {dealTypeCounts.checking === 1 ? "product is" : "products are"} still checking — tap to show
+            </button>
+          )}
+        </div>
+      )}
       {activeTab !== "cheaper-options" && !isEmpty && pulseSummary.counts && (
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Watchlist updates">
           {WATCHLIST_PULSE_ORDER.map((kind) => {
