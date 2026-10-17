@@ -63,6 +63,8 @@ export interface ProductListCardProps {
   storeLinePrefix?: string | null;
   /** Other stores (raw store names) also running a special on this product right now. */
   alsoSpecialStores?: string[];
+  /** Marks a card as part of the user's current unread new-deals batch. */
+  isNew?: boolean;
   /** Called right before navigating to the deal page -- lets a caller that
    * renders this card inside its own always-mounted fixed overlay (e.g.
    * FullScreenSearch, 2026-08-09) close itself first. Without this, tapping
@@ -94,6 +96,7 @@ export default function ProductListCard({
   imageLoading = "lazy",
   storeLinePrefix = "Lowest at",
   alsoSpecialStores = [],
+  isNew = false,
   onNavigate,
   snapshot,
   dataOnboarding,
@@ -108,6 +111,7 @@ export default function ProductListCard({
   // Top 20 snapshot cards have their own fixed rail layout. They must stay
   // stable when the user chooses Compact cards for the regular browse lists.
   const isCompactCardLayout = isCompactLayout && !isSnapshotLayout;
+  const showsNewBadge = Boolean(snapshot?.isNew || isNew);
   const isTourDealCard =
     dataOnboarding === "deal-card" ||
     dataOnboarding === "top-savings-deal-card" ||
@@ -198,7 +202,7 @@ export default function ProductListCard({
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
       }}
-      className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border ${snapshot?.isNew ? "border-black" : "border-stone-200/80"} bg-white ${
+      className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border ${showsNewBadge ? "border-black" : "border-stone-200/80"} bg-white ${
         isCompactCardLayout
           ? "dd-compact-product-card flex min-h-28 items-stretch gap-3 p-2"
           : isSnapshotLayout
@@ -242,6 +246,11 @@ export default function ProductListCard({
             className={`product-image-content h-full w-full object-contain mix-blend-multiply ${useGridCard ? "scale-[0.95]" : ""}`}
           />
         </div>
+        {!isSnapshotLayout && isNew && (
+          <span className="absolute left-2.5 top-2.5 z-10 select-none whitespace-nowrap rounded-md bg-stone-900 px-1.5 py-0.5 text-xs leading-4 font-bold text-white shadow-xs">
+            New
+          </span>
+        )}
         {snapshot && snapshot.showRank !== false && (
           <span
             className="absolute left-0 top-0 h-14 w-14 bg-ink-600 font-display text-base font-black text-white [clip-path:polygon(0_0,100%_0,0_100%)]"

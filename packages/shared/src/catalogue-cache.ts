@@ -75,6 +75,8 @@ export interface CatalogueCacheMetadata {
   sourceUpdatedAt?: number;
   /** Last time the lightweight publication marker was checked. */
   publicationCheckedAt?: number;
+  /** True only for a snapshot written from a validated catalogue artifact. */
+  complete?: boolean;
 }
 
 interface CatalogueCacheRecord extends CatalogueCacheMetadata {
@@ -151,6 +153,7 @@ export async function readCatalogueCacheMetadata(): Promise<CatalogueCacheMetada
           savedAt: latest.savedAt,
           sourceUpdatedAt: latest.sourceUpdatedAt,
           publicationCheckedAt: latest.publicationCheckedAt,
+          complete: latest.complete === true,
         }
       : null;
   } catch {
@@ -169,6 +172,7 @@ export async function writeCatalogueCacheMetadata(savedAt = Date.now(), sourceUp
         version: CATALOGUE_CACHE_VERSION,
         savedAt,
         ...(sourceMarker === undefined ? {} : { sourceUpdatedAt: sourceMarker }),
+        complete: false,
       }, CATALOGUE_CACHE_METADATA_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -224,6 +228,7 @@ export async function writeCatalogueCache(products: ProductCard[], sourceUpdated
         savedAt,
         publicationCheckedAt: savedAt,
         products,
+        complete: true,
         ...(sourceMarker === undefined ? {} : { sourceUpdatedAt: sourceMarker }),
       };
       tx.objectStore(CATALOGUE_CACHE_STORE).put(record, CATALOGUE_CACHE_KEY);

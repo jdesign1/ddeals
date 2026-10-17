@@ -3,8 +3,9 @@ import { matchesDealFilter } from "./deal-filters.ts";
 
 const SNAPSHOT_VERSION = 2;
 const SNAPSHOT_STORAGE_PREFIX = "dd-semantic-specials-snapshot-v2:";
-export const NEW_SPECIALS_PENDING_VERSION = 1;
-const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v1:";
+export const NEW_SPECIALS_PENDING_TTL_MS = 48 * 60 * 60 * 1000;
+export const NEW_SPECIALS_PENDING_VERSION = 3;
+const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v3:";
 const PRICE_CHANGE_EPSILON = 0.005;
 
 type SnapshotEntry = {
@@ -32,13 +33,93 @@ export type NewSpecialsSummary = {
   allDealKeys: string[];
   realDealKeys: string[];
   dodgyDealKeys: string[];
+  newlyStartedDealKeys: string[];
+  priceDropDealKeys: string[];
 };
 
 export type NewSpecialsPending = {
   version: number;
+  /** Stable identity for this user's/device's unread discovery batch. */
+  batchId: string;
+  /** When the batch was first detected locally. */
+  detectedAt: number;
+  /** Unread batches are eventually retired so stale badges do not linger. */
+  expiresAt: number;
+  /** Popup presentation is separate from whether the batch was reviewed. */
+  popupPresented: boolean;
   summary: NewSpecialsSummary;
   snapshot: NewSpecialsSnapshot;
 };
+
+export function createNewSpecialsBatchId(now = Date.now()): string {
+  const randomId = typeof globalThis.crypto?.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+  return `${now}-${randomId}`;
+}
+
+export function createNewSpecialsPending(
+  summary: NewSpecialsSummary,
+  snapshot: NewSpecialsSnapshot,
+  now = Date.now(),
+): NewSpecialsPending {
+  return {
+    version: NEW_SPECIALS_PENDING_VERSION,
+    batchId: createNewSpecialsBatchId(now),
+    detectedAt: now,
+    expiresAt: now + NEW_SPECIALS_PENDING_TTL_MS,
+    popupPresented: false,
+    summary,
+    snapshot,
+  };
+}
+
+export function isNewSpecialsPendingActive(pending: NewSpecialsPending, now = Date.now()): boolean {
+  return pending.summary.total > 0 && pending.expiresAt > now;
+}
+
+function storeKeyFromDealKey(dealKey: string): string {
+  const separatorIndex = dealKey.lastIndexOf("::");
+  return separatorIndex >= 0 ? dealKey.slice(separatorIndex + 2) : "";
+}
+
+/** Removes only the exact keys the user has successfully reached. */
+export function removeReviewedNewSpecials(
+  summary: NewSpecialsSummary,
+  reviewedDealKeys: readonly string[],
+): NewSpecialsSummary | null {
+  const reviewed = new Set(reviewedDealKeys);
+  const remaining = (keys: readonly string[]) => keys.filter((key) => !reviewed.has(key));
+  const allDealKeys = remaining(summary.allDealKeys);
+  if (allDealKeys.length === 0) return null;
+
+  const byStore = { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 };
+  for (const key of allDealKeys) {
+    const store = storeKeyFromDealKey(key);
+    if (store.includes("woolworths")) byStore.woolworths += 1;
+    else if (store.includes("newworld")) byStore.newworld += 1;
+    else if (store.includes("paknsave")) byStore.paknsave += 1;
+    else if (store.includes("foursquare")) byStore.foursquare += 1;
+  }
+
+  const realDealKeys = remaining(summary.realDealKeys);
+  const dodgyDealKeys = remaining(summary.dodgyDealKeys);
+  const newlyStartedDealKeys = remaining(summary.newlyStartedDealKeys);
+  const priceDropDealKeys = remaining(summary.priceDropDealKeys);
+  return {
+    byStore,
+    realDeals: realDealKeys.length,
+    dodgyDeals: dodgyDealKeys.length,
+    total: allDealKeys.length,
+    newlyStarted: newlyStartedDealKeys.length,
+    priceDrops: priceDropDealKeys.length,
+    allDealKeys,
+    realDealKeys,
+    dodgyDealKeys,
+    newlyStartedDealKeys,
+    priceDropDealKeys,
+  };
+}
 
 export function getNewSpecialsStorageScope(userId: string | null | undefined, isAnonymousSession = false): string {
   return userId && !isAnonymousSession ? `user:${userId}` : "device";
@@ -95,9 +176,23 @@ export function readNewSpecialsPending(scope = "device"): NewSpecialsPending | n
     const raw = window.localStorage.getItem(scopedStorageKey(PENDING_STORAGE_PREFIX, scope));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<NewSpecialsPending>;
-    if (parsed.version !== NEW_SPECIALS_PENDING_VERSION || !parsed.summary || !parsed.snapshot) return null;
+    if (
+      parsed.version !== NEW_SPECIALS_PENDING_VERSION
+      || typeof parsed.batchId !== "string"
+      || typeof parsed.detectedAt !== "number"
+      || typeof parsed.expiresAt !== "number"
+      || typeof parsed.popupPresented !== "boolean"
+      || !parsed.summary
+      || !parsed.snapshot
+      || !Array.isArray((parsed.summary as Partial<NewSpecialsSummary>).newlyStartedDealKeys)
+      || !Array.isArray((parsed.summary as Partial<NewSpecialsSummary>).priceDropDealKeys)
+    ) return null;
     return {
       version: NEW_SPECIALS_PENDING_VERSION,
+      batchId: parsed.batchId,
+      detectedAt: parsed.detectedAt,
+      expiresAt: parsed.expiresAt,
+      popupPresented: parsed.popupPresented,
       summary: parsed.summary as NewSpecialsSummary,
       snapshot: parsed.snapshot as NewSpecialsSnapshot,
     };
@@ -129,7 +224,10 @@ export function clearNewSpecialsPending(scope = "device"): boolean {
 function hasLaterSaleStart(current: CurrentDeal, previous: SnapshotEntry): boolean {
   const currentStart = Date.parse(current.saleStartedAt ?? "");
   const previousStart = Date.parse(previous.saleStartedAt ?? "");
-  return Number.isFinite(currentStart) && (!Number.isFinite(previousStart) || currentStart > previousStart);
+  // Filling in a previously-missing timestamp is not evidence that the
+  // promotion itself just started. Only compare two known timestamps; a real
+  // newly observed deal is still handled by the !previousDeal branch below.
+  return Number.isFinite(currentStart) && Number.isFinite(previousStart) && currentStart > previousStart;
 }
 
 /**
@@ -148,6 +246,8 @@ export function summarizeNewSpecials(products: ProductCard[], previous: NewSpeci
     allDealKeys: [],
     realDealKeys: [],
     dodgyDealKeys: [],
+    newlyStartedDealKeys: [],
+    priceDropDealKeys: [],
   };
 
   for (const product of products) {
@@ -161,8 +261,13 @@ export function summarizeNewSpecials(products: ProductCard[], previous: NewSpeci
 
       summary.total += 1;
       summary.allDealKeys.push(key);
-      if (hasStarted) summary.newlyStarted += 1;
-      else summary.priceDrops += 1;
+      if (hasStarted) {
+        summary.newlyStarted += 1;
+        summary.newlyStartedDealKeys.push(key);
+      } else {
+        summary.priceDrops += 1;
+        summary.priceDropDealKeys.push(key);
+      }
 
       const storeKey = normalizeStoreKey(deal.store);
       if (storeKey.includes("woolworths")) summary.byStore.woolworths += 1;

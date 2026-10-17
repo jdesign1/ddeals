@@ -356,13 +356,32 @@ export default function HomePage() {
     [newDealKeySet, products, selectedStores]
   );
   const newDealsCount = useMemo(
-    () => [...newTopSavingsDeals, ...newWorstDodgyDeals].filter(({ product }) =>
-      topDealsCategories.length === 0
-        || topDealsCategories.includes(groupCategory(product.category, product.name))
-    ).length,
+    () => {
+      const keys = new Set<string>();
+      for (const { product, deal } of [...newTopSavingsDeals, ...newWorstDodgyDeals]) {
+        if (topDealsCategories.length > 0 && !topDealsCategories.includes(groupCategory(product.category, product.name))) continue;
+        keys.add(getNewSpecialDealKey(product.id, deal.store));
+      }
+      return keys.size;
+    },
     [newTopSavingsDeals, newWorstDodgyDeals, topDealsCategories],
   );
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
+  const newDealsRealSearchOptions = useMemo(
+    () => newForYouFilterActive && newDealKeys.length > 0
+      ? { focus: false, dealKeys: newDealKeys, sortBy: "biggest-saver" as const }
+      : { focus: false },
+    [newDealKeys, newForYouFilterActive],
+  );
+  const newDealsDodgySearchOptions = useMemo(
+    () => newForYouFilterActive && newDealKeys.length > 0
+      ? { focus: false, dealKeys: newDealKeys, sortBy: "worst-dodgy" as const }
+      : { focus: false },
+    [newDealKeys, newForYouFilterActive],
+  );
+  const openRailSearch = (filter: DealFilter, options: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy }) => {
+    openSearchForFilter(filter, options);
+  };
   const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
   const worstDodgyDeals = newForYouFilterActive ? newWorstDodgyDeals : allWorstDodgyDeals;
 
@@ -650,8 +669,8 @@ export default function HomePage() {
                 refreshKey={selectedStores.join(",")}
                 showingNewOnly={newForYouFilterActive}
                 updatedText={updatedText}
-                onSeeAll={() => openSearchForFilter("real", { focus: false })}
-                onSeeMore={() => openSearchForFilter("real", { focus: false })}
+                onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions)}
+                onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions)}
               />
               <DealSnapshotRail
                 kind="dodgy"
@@ -660,8 +679,8 @@ export default function HomePage() {
                 refreshKey={selectedStores.join(",")}
                 showingNewOnly={newForYouFilterActive}
                 updatedText={updatedText}
-                onSeeAll={() => openSearchForFilter("dodgy", { focus: false })}
-                onSeeMore={() => openSearchForFilter("dodgy", { focus: false })}
+                onSeeAll={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
+                onSeeMore={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
               />
               <div className="px-5 pb-2 pt-1">
                 <button

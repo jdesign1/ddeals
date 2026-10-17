@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import {
+  createNewSpecialsPending,
   createNewSpecialsSnapshot,
   getNewSpecialDealKey,
   getNewSpecialsStorageScope,
+  isNewSpecialsPendingActive,
+  removeReviewedNewSpecials,
   summarizeNewSpecials,
 } from "./new-specials.ts";
 
@@ -88,6 +91,17 @@ test("a price increase does not create a new-specials update", () => {
   assert.equal(summary.total, 0);
 });
 
+test("filling in a missing sale start timestamp does not create a false new-specials update", () => {
+  const previous = createNewSpecialsSnapshot([product("p1", [deal({ saleStartedAt: null })])]);
+  const refreshed = [product("p1", [deal({ saleStartedAt: "2026-09-29T00:00:00.000Z" })])];
+
+  const summary = summarizeNewSpecials(refreshed, previous);
+
+  assert.equal(summary.total, 0);
+  assert.equal(summary.newlyStarted, 0);
+  assert.equal(summary.priceDrops, 0);
+});
+
 test("all new deals are counted and account scopes stay separate", () => {
   const products = Array.from({ length: 5 }, (_, index) => product(`p${index}`, [deal({ price: 4 - index / 10 })]));
   const previous = createNewSpecialsSnapshot([]);
@@ -97,4 +111,33 @@ test("all new deals are counted and account scopes stay separate", () => {
   assert.equal(getNewSpecialsStorageScope("user-1"), "user:user-1");
   assert.equal(getNewSpecialsStorageScope("user-1", true), "device");
   assert.equal(getNewSpecialsStorageScope(null), "device");
+});
+
+test("new batches keep the popup state separate from the unread deal state", () => {
+  const now = Date.parse("2026-10-01T00:00:00.000Z");
+  const snapshot = createNewSpecialsSnapshot([]);
+  const summary = summarizeNewSpecials([product("p1", [deal()])], snapshot);
+  const pending = createNewSpecialsPending(summary, createNewSpecialsSnapshot([product("p1", [deal()])]), now);
+
+  assert.equal(pending.popupPresented, false);
+  assert.equal(pending.detectedAt, now);
+  assert.equal(isNewSpecialsPendingActive(pending, now + 1), true);
+  assert.equal(isNewSpecialsPendingActive(pending, pending.expiresAt), false);
+});
+
+test("reviewing one deal category preserves the other unread keys", () => {
+  const previous = createNewSpecialsSnapshot([]);
+  const products = [
+    product("real", [deal({ dealType: "Real Deal" })]),
+    product("dodgy", [deal({ dealType: "Dodgy Deal", store: "newworld", saleStartedAt: "2026-09-29T00:00:00.000Z" })]),
+    product("fair", [deal({ dealType: "Fair Price", store: "paknsave", saleStartedAt: "2026-09-29T00:00:00.000Z" })]),
+  ];
+  const summary = summarizeNewSpecials(products, previous);
+  const remaining = removeReviewedNewSpecials(summary, summary.realDealKeys);
+
+  assert.ok(remaining);
+  assert.equal(remaining.total, 2);
+  assert.equal(remaining.realDeals, 0);
+  assert.equal(remaining.dodgyDeals, 1);
+  assert.equal(remaining.priceDrops, 0);
 });

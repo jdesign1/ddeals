@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -46,12 +46,17 @@ export default function AppHeader({
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
   const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
-  const { digest, openRequested, consumeOpenRequest, acknowledge } = useNewSpecials();
+  const {
+    digest,
+    popupPresented,
+    openRequested,
+    consumeOpenRequest,
+    markPopupShown,
+  } = useNewSpecials();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
-  const hasPresentedNewSpecialsThisMount = useRef(false);
 
   useEffect(() => {
     const syncSplashState = (isComplete = false) => setIsLaunchSplashFinished(isComplete || !document.querySelector(".launch-splash"));
@@ -65,19 +70,18 @@ export default function AppHeader({
 
   const shouldPresentNewSpecialsModal = isLaunchSplashFinished && (digest?.total ?? 0) > 0 && pathname === "/";
   useEffect(() => {
-    if (!shouldPresentNewSpecialsModal || (!openRequested && hasPresentedNewSpecialsThisMount.current)) return;
+    if (!shouldPresentNewSpecialsModal || (!openRequested && popupPresented)) return;
     const presentationTimer = window.setTimeout(() => {
-      if (!openRequested && hasPresentedNewSpecialsThisMount.current) return;
-      hasPresentedNewSpecialsThisMount.current = true;
+      if (!openRequested && popupPresented) return;
       consumeOpenRequest();
       if (!digest) return;
       const summaryToPresent = digest;
-      acknowledge();
+      markPopupShown();
       setNewSpecialsModalSummary(summaryToPresent);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [acknowledge, consumeOpenRequest, digest, openRequested, shouldPresentNewSpecialsModal]);
+  }, [consumeOpenRequest, digest, markPopupShown, openRequested, popupPresented, shouldPresentNewSpecialsModal]);
 
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
@@ -93,15 +97,21 @@ export default function AppHeader({
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
   const avatarInitial = profileDisplayName.charAt(0).toUpperCase();
   const handleNewSpecialsClose = () => {
-    acknowledge();
     setIsNewSpecialsModalOpen(false);
   };
   const handleShowTopDeals = () => {
-    acknowledge();
     setIsNewSpecialsModalOpen(false);
     closeSearch();
     setDealFilter("all");
     publishCheckDealsScrollToTop();
+  };
+  const handleShowAllNewDeals = (dealKeys: string[]) => {
+    setIsNewSpecialsModalOpen(false);
+    openSearchForFilter("all", {
+      focus: false,
+      dealKeys,
+      sortBy: "biggest-saver",
+    });
   };
 
   return (
@@ -173,7 +183,17 @@ export default function AppHeader({
       </div>
 
       {newSpecialsModalSummary && (
-        <NewSpecialsModal open={isNewSpecialsModalOpen && pathname === "/"} summary={newSpecialsModalSummary} onClose={handleNewSpecialsClose} onSelectFilter={(filter, dealKeys) => { acknowledge(); setIsNewSpecialsModalOpen(false); openSearchForFilter(filter, { focus: false, dealKeys }); }} onSelectTopDeals={handleShowTopDeals} />
+        <NewSpecialsModal
+          open={isNewSpecialsModalOpen && pathname === "/"}
+          summary={newSpecialsModalSummary}
+          onClose={handleNewSpecialsClose}
+          onSelectFilter={(filter, dealKeys) => {
+            setIsNewSpecialsModalOpen(false);
+            openSearchForFilter(filter, { focus: false, dealKeys });
+          }}
+          onSelectAllNewDeals={handleShowAllNewDeals}
+          onSelectTopDeals={handleShowTopDeals}
+        />
       )}
     </>
   );

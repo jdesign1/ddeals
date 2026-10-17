@@ -34,6 +34,7 @@ import {
   type CheckDealsSortBy,
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
+import { useNewSpecials } from "@/lib/new-specials-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
@@ -199,24 +200,49 @@ function cheapestDeal(deals: CurrentDeal[]): CurrentDeal {
   return deals.reduce((lowest, current) => (current.price < lowest.price ? current : lowest), deals[0]);
 }
 
+function compareDealsForSort(a: CurrentDeal, b: CurrentDeal, sortBy: CheckDealsSortBy): number {
+  if (sortBy === "price-asc") return a.price - b.price;
+  if (sortBy === "biggest-saver" || sortBy === "worst-dodgy") {
+    const scoreDifference = (getDealSortScore(b, sortBy) ?? Number.NEGATIVE_INFINITY)
+      - (getDealSortScore(a, sortBy) ?? Number.NEGATIVE_INFINITY);
+    if (scoreDifference !== 0) return scoreDifference;
+  }
+  return compareLatestSpecials(a, b);
+}
+
+function representativeDeal(deals: CurrentDeal[], sortBy: CheckDealsSortBy): CurrentDeal {
+  return deals.reduce(
+    (best, candidate) => compareDealsForSort(candidate, best, sortBy) < 0 ? candidate : best,
+    deals[0],
+  );
+}
+
 /** Other applicable stores also on special right now, excluding `shownDeal`'s
  * own store -- ported from the results section's `alsoSpecialStores` calc. */
 function alsoSpecialStoresForResults(
   product: ProductCardData,
   shownDeal: CurrentDeal,
   selectedStores: string[],
-  filter: DealFilter = "all"
+  filter: DealFilter = "all",
+  newDealKeys: Set<string> | null = null,
 ): string[] {
   const applicable = applicableDealsFor(product, selectedStores, filter);
-  const pool = applicable.length > 0 ? applicable : product.currentDeals;
+  const filtered = newDealKeys
+    ? applicable.filter((deal) => newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
+    : applicable;
+  const pool = filtered.length > 0 ? filtered : newDealKeys ? [] : product.currentDeals;
   return [...new Set(pool.filter((d) => d.isOnSpecial !== false && d.store !== shownDeal.store).map((d) => d.store))];
 }
 
 /** Same idea for the pre-3-character "Popular specials" list -- ported
  * verbatim, deliberately NOT filtered by the store selection (the prototype
  * doesn't filter it there either). */
-function alsoSpecialStoresForPopular(product: ProductCardData, shownDeal: CurrentDeal): string[] {
-  return [...new Set(product.currentDeals.filter((d) => d.isOnSpecial !== false && d.store !== shownDeal.store).map((d) => d.store))];
+function alsoSpecialStoresForPopular(product: ProductCardData, shownDeal: CurrentDeal, newDealKeys: Set<string> | null = null): string[] {
+  return [...new Set(product.currentDeals.filter((deal) => (
+    deal.isOnSpecial !== false
+    && deal.store !== shownDeal.store
+    && (!newDealKeys || newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
+  )).map((d) => d.store))];
 }
 
 export default function FullScreenSearch() {
@@ -239,7 +265,9 @@ export default function FullScreenSearch() {
     dealFilter,
     setDealFilter,
     newSpecialDealKeys,
+    searchSortOverride,
   } = useSearch();
+  const { markReviewed } = useNewSpecials();
   const { isGridLayout } = useCardLayout();
   const pathname = usePathname();
 
@@ -411,8 +439,9 @@ export default function FullScreenSearch() {
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
-      setPopularSortBy(getDefaultDealSort(dealFilter));
-      setResultsSortBy(getDefaultDealSort(dealFilter));
+      const initialSort = searchSortOverride ?? getDefaultDealSort(dealFilter);
+      setPopularSortBy(initialSort);
+      setResultsSortBy(initialSort);
     }
   }
 
@@ -566,7 +595,9 @@ export default function FullScreenSearch() {
     });
 
     const getBestDeal = (p: ProductCardData) =>
-      cheapestDeal(applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet));
+      newSpecialDealKeySet
+        ? representativeDeal(applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet), resultsSortBy)
+        : cheapestDeal(applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet));
     const getBestPrice = (p: ProductCardData) => getBestDeal(p).price;
     const getLatestStart = (p: ProductCardData) => {
       const deals = applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet);
@@ -616,6 +647,32 @@ export default function FullScreenSearch() {
     resetKey: sortedProducts,
   });
   const visibleSearchResults = sortedProducts.slice(0, visibleSearchResultsCount);
+  const displayedNewDealKeys = useMemo(() => {
+    if (!newSpecialDealKeySet) return [];
+    const keys = new Set<string>();
+    if (trimmedQuery.length >= 3) {
+      for (const product of visibleSearchResults) {
+        for (const deal of applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet)) {
+          keys.add(getNewSpecialDealKey(product.id, deal.store));
+        }
+      }
+    } else {
+      for (const { product, bestDeal } of visiblePopularSpecials) {
+        keys.add(getNewSpecialDealKey(product.id, bestDeal.store));
+      }
+    }
+    return [...keys];
+  }, [dealFilter, newSpecialDealKeySet, selectedStores, trimmedQuery, visiblePopularSpecials, visibleSearchResults]);
+
+  // Do not clear the unread cue when navigation starts. Keep it until the
+  // exact-key search has actually produced a result, so a failed load or a
+  // deal that ended between detection and navigation can be retried.
+  useEffect(() => {
+    if (!isOpen || loading || !newSpecialDealKeySet) return;
+    if (displayedNewDealKeys.length === 0) return;
+    markReviewed(displayedNewDealKeys, dealFilter);
+  }, [dealFilter, displayedNewDealKeys, isOpen, loading, markReviewed, newSpecialDealKeySet]);
+
   const handleClearText = () => setQuery("");
   const fullSearchInputRef = useRef<HTMLInputElement>(null);
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -1137,7 +1194,8 @@ export default function FullScreenSearch() {
                           deal={bestDeal}
                           imageLoading={index < 2 ? "eager" : "lazy"}
                           storeLinePrefix={null}
-                          alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal)}
+                            alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal, newSpecialDealKeySet)}
+                          isNew={newSpecialDealKeySet !== null}
                           onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                         />
                       ))}
@@ -1301,9 +1359,10 @@ export default function FullScreenSearch() {
                   <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                     {sortedProducts.length > 0 ? (
                       visibleSearchResults.map((product, index) => {
-                        const bestDeal = cheapestDeal(
-                          applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet),
-                        );
+                        const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
+                        const bestDeal = newSpecialDealKeySet
+                          ? representativeDeal(matchingDeals, resultsSortBy)
+                          : cheapestDeal(matchingDeals);
                         return (
                           <ProductListCard
                             key={product.id}
@@ -1311,7 +1370,8 @@ export default function FullScreenSearch() {
                             deal={bestDeal}
                             imageLoading={index < 2 ? "eager" : "lazy"}
                             storeLinePrefix={null}
-                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter)}
+                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet)}
+                            isNew={newSpecialDealKeySet !== null}
                             onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                           />
                         );

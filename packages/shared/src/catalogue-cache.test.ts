@@ -86,6 +86,7 @@ test("writeCatalogueCache: preserves the source freshness marker in metadata", a
   const metadata = await readCatalogueCacheMetadata();
   assert.equal(metadata?.sourceUpdatedAt, sourceUpdatedAt);
   assert.equal(Number.isFinite(metadata?.savedAt), true);
+  assert.equal(metadata?.complete, true);
 });
 
 test("updateCatalogueCacheProducts: updates rows without resetting the full-catalogue timestamp", async () => {

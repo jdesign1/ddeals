@@ -12,10 +12,11 @@ interface NewSpecialsModalProps {
   summary: NewSpecialsSummary;
   onClose: () => void;
   onSelectFilter: (filter: DealFilter, dealKeys: string[]) => void;
+  onSelectAllNewDeals: (dealKeys: string[]) => void;
   onSelectTopDeals: () => void;
 }
 
-export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectTopDeals }: NewSpecialsModalProps) {
+export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, onSelectTopDeals }: NewSpecialsModalProps) {
   // Keep the shared viewport lock active until the exit animation finishes.
   // Otherwise the underlying page/nav becomes visible during the modal's
   // fade-and-scale exit, which reads as a flicker on iOS cold starts.
@@ -27,13 +28,15 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const onSelectFilterRef = useRef(onSelectFilter);
+  const onSelectAllNewDealsRef = useRef(onSelectAllNewDeals);
   const onSelectTopDealsRef = useRef(onSelectTopDeals);
 
   useEffect(() => {
     onCloseRef.current = onClose;
     onSelectFilterRef.current = onSelectFilter;
+    onSelectAllNewDealsRef.current = onSelectAllNewDeals;
     onSelectTopDealsRef.current = onSelectTopDeals;
-  }, [onClose, onSelectFilter, onSelectTopDeals]);
+  }, [onClose, onSelectAllNewDeals, onSelectFilter, onSelectTopDeals]);
 
   const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
   const changeSummary = [
@@ -49,6 +52,11 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const handleSelectFilter = useCallback((filter: DealFilter, dealKeys: string[]) => {
     setIsClosing(true);
     onSelectFilterRef.current(filter, dealKeys);
+  }, []);
+
+  const handleSelectAllNewDeals = useCallback((dealKeys: string[]) => {
+    setIsClosing(true);
+    onSelectAllNewDealsRef.current(dealKeys);
   }, []);
 
   const handleSelectTopDeals = useCallback(() => {
@@ -164,6 +172,13 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
 
               {hasNewSpecials && (
                 <div className="mt-6 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAllNewDeals(summary.allDealKeys)}
+                    className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+                  >
+                    <span>See all {pluralLabel(summary.total, "new deal")}</span>
+                  </button>
                   {hasRatedSpecials && (
                     <div className="flex flex-col gap-3">
                       {summary.realDeals > 0 && (
@@ -189,7 +204,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   <button
                     type="button"
                     onClick={handleSelectTopDeals}
-                    className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+                    className="dd-btn dd-btn-outline min-h-12 w-full cursor-pointer"
                   >
                     <span>See the Top 20</span>
                   </button>

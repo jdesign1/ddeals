@@ -1797,7 +1797,11 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
     : fresh.sourceUpdatedAt;
   publicationMarkerInvalidations.delete(cacheKey);
-  if (products.length) writeCatalogueCache(products, sourceUpdatedAt);
+  // Wait for the validated snapshot to be persisted before returning. The
+  // mobile new-specials detector uses the cache metadata as its publication
+  // boundary, so returning first could make a cold load look incomplete and
+  // skip the first new-deals batch until the next refresh.
+  if (products.length) await writeCatalogueCache(products, sourceUpdatedAt);
   return filterRecentlyVerifiedSpecials(products);
 }
 

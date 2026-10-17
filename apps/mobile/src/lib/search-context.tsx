@@ -6,6 +6,7 @@ import {
   loadLiveProducts,
   refreshLiveProducts,
   describeFetchError,
+  readCatalogueCacheMetadata,
   type ProductCard,
   type RefreshLiveProductsResult,
   filterRecentlyVerifiedSpecials,
@@ -13,6 +14,7 @@ import {
 import { supabaseConfig } from "./config";
 import { publishCatalogueUpdate, subscribeToCatalogueUpdates } from "./catalogue-refresh";
 import type { DealFilter } from "./deal-filters";
+import type { CheckDealsSortBy } from "./deal-sorting";
 
 /**
  * Global full-screen search state (2026-08-09, per Jay's ask: "clicking the
@@ -79,9 +81,18 @@ interface SearchContextValue {
    * query so a post-login new-specials CTA always lands on the latest browse
    * view. `focus: false` is used by the New Specials launch notice so its
    * destination opens ready to browse without summoning the keyboard. */
-  openSearchForFilter: (filter: DealFilter, options?: { focus?: boolean; dealKeys?: string[] }) => void;
+  openSearchForFilter: (
+    filter: DealFilter,
+    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy },
+  ) => void;
   /** Exact product/store deal keys selected by the new-specials digest. */
   newSpecialDealKeys: string[] | null;
+  /** Publication identity for the last validated catalogue snapshot. */
+  cataloguePublicationKey: string | null;
+  /** True only when the publication marker was available for that snapshot. */
+  cataloguePublicationComplete: boolean;
+  /** Optional sort used only for the next fresh search opening. */
+  searchSortOverride: CheckDealsSortBy | null;
   /** Back arrow / dedicated close button -- clears the query AND exits,
    * same as the prototype's `handleClearSearch`. */
   closeSearch: () => void;
@@ -120,6 +131,21 @@ interface SearchContextValue {
 const SearchContext = createContext<SearchContextValue | null>(null);
 
 const INITIAL_CATALOGUE_RETRY_DELAYS_MS = [500, 1500];
+
+interface CataloguePublicationState {
+  key: string | null;
+  complete: boolean;
+}
+
+async function readCurrentCataloguePublication(): Promise<CataloguePublicationState> {
+  const metadata = await readCatalogueCacheMetadata();
+  const hasValidatedMarker = metadata?.complete === true
+    && typeof metadata.sourceUpdatedAt === "number"
+    && Number.isFinite(metadata.sourceUpdatedAt);
+  return hasValidatedMarker
+    ? { key: String(metadata.sourceUpdatedAt), complete: true }
+    : { key: null, complete: false };
+}
 
 function addRetryJitter(delayMs: number): number {
   // Avoid synchronising a large group of clients after the same CDN or
@@ -167,6 +193,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [hasOpenedSearch, setHasOpenedSearch] = useState(false);
   const [focusSearchOnOpen, setFocusSearchOnOpen] = useState(true);
   const [newSpecialDealKeys, setNewSpecialDealKeys] = useState<string[] | null>(null);
+  const [cataloguePublicationKey, setCataloguePublicationKey] = useState<string | null>(null);
+  const [cataloguePublicationComplete, setCataloguePublicationComplete] = useState(false);
+  const [searchSortOverride, setSearchSortOverride] = useState<CheckDealsSortBy | null>(null);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -187,6 +216,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const refreshCatalogue = useCallback(async (): Promise<RefreshLiveProductsResult> => {
     const result = await refreshLiveProducts(supabaseConfig);
     setProducts(result.products);
+    const publication = await readCurrentCataloguePublication();
+    setCataloguePublicationKey(publication.key);
+    setCataloguePublicationComplete(publication.complete);
     setError(null);
     publishCatalogueUpdate(result.products);
     return result;
@@ -211,8 +243,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     if (!shouldLoadCatalogue) return;
     let cancelled = false;
     loadLiveProductsWithRetry()
-      .then((result) => {
-        if (!cancelled) setProducts(result);
+      .then(async (result) => {
+        const publication = await readCurrentCataloguePublication();
+        if (!cancelled) {
+          setProducts(result);
+          setCataloguePublicationKey(publication.key);
+          setCataloguePublicationComplete(publication.complete);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(describeFetchError(err, "Failed to load specials"));
@@ -262,8 +299,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       revalidation = (async () => {
         try {
           const result = await loadLiveProducts(supabaseConfig);
+          const publication = await readCurrentCataloguePublication();
           if (!cancelled) {
             setProducts(result);
+            setCataloguePublicationKey(publication.key);
+            setCataloguePublicationComplete(publication.complete);
             setError(null);
             publishCatalogueUpdate(result);
           }
@@ -316,6 +356,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       dealFilter,
       setDealFilter,
       newSpecialDealKeys,
+      cataloguePublicationKey,
+      cataloguePublicationComplete,
+      searchSortOverride,
       query,
       setQuery,
       isActive,
@@ -337,6 +380,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openSearch: () => {
         setHasOpenedSearch(true);
         setNewSpecialDealKeys(null);
+        setSearchSortOverride(null);
         setPreserveSearchStateOnOpen(false);
         setFocusSearchOnOpen(true);
         setIsActive(true);
@@ -346,6 +390,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setQuery("");
         setDealFilter(filter);
         setNewSpecialDealKeys(options?.dealKeys?.length ? options.dealKeys : null);
+        setSearchSortOverride(options?.sortBy ?? null);
         // The digest count spans every supermarket. Reset a previous search
         // preference here so its "View all" promise cannot land on a
         // smaller, hidden subset of the selected deals.
@@ -357,6 +402,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       closeSearch: () => {
         setQuery("");
         setNewSpecialDealKeys(null);
+        setSearchSortOverride(null);
         setSelectedStores(["all"]);
         setDealFilter("all");
         setFocusSearchOnOpen(true);
@@ -387,7 +433,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
+    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
