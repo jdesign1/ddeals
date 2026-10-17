@@ -746,13 +746,13 @@ function WatchlistSummaryCard({
   const isEmpty = itemCount === 0;
 
   return (
-    <section className="mx-5" aria-labelledby="watchlist-intro-title">
-      <h1 id="watchlist-intro-title" className="dd-type-section mb-3 text-center text-stone-900">You&apos;re watching {itemCount} {itemCount === 1 ? "product" : "products"}</h1>
+    <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
+      <h1 id="watchlist-intro-title" className="mb-3 text-center text-base font-extrabold leading-6 text-stone-900">You&apos;re watching {itemCount} {itemCount === 1 ? "product" : "products"}</h1>
       {!isEmpty && (
         <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white" aria-label="Watchlist specials summary">
           <div className="overflow-hidden rounded-2xl" aria-label="Filter specials by deal type">
             <div className="border-b border-stone-200 px-3 py-3 text-center" aria-label={`${onSpecialCount} on special now`}>
-              <p className="dd-type-section text-stone-900">{onSpecialCount} on special now</p>
+              <p className="text-base font-extrabold leading-6 text-stone-900">{onSpecialCount} on special now</p>
             </div>
             <div className="grid grid-cols-3 divide-x divide-stone-200 bg-stone-50 py-2">
               {([
