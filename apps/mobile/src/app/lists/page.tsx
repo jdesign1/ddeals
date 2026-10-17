@@ -752,7 +752,7 @@ function WatchlistSummaryCard({
         <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white" aria-label="Watchlist specials summary">
           <div className="overflow-hidden rounded-2xl" aria-label="Filter specials by deal type">
             <div className="border-b border-stone-200 px-3 py-3 text-center" aria-label={`${onSpecialCount} on special now`}>
-              <p className="text-base font-extrabold leading-6 text-stone-900">{onSpecialCount} on special now</p>
+              <p className="text-sm font-bold leading-5 text-stone-900">{onSpecialCount} on special now</p>
             </div>
             <div className="grid grid-cols-3 divide-x divide-stone-200 bg-stone-50 py-2">
               {([
