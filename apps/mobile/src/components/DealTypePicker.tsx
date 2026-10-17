@@ -6,14 +6,13 @@ import { Check, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import FilterTrigger from "@/components/FilterTrigger";
 
-export type WatchlistDealTypeFilter = "all" | "Real Saver" | "Fair Price" | "Dodgy Deal" | "checking";
+export type WatchlistDealTypeFilter = "all" | "Real Saver" | "Fair Price" | "Dodgy Deal";
 
 const OPTIONS: ReadonlyArray<{ value: WatchlistDealTypeFilter; label: string }> = [
   { value: "all", label: "All deal types" },
   { value: "Real Saver", label: "Real Savers" },
   { value: "Fair Price", label: "Fair Deals" },
   { value: "Dodgy Deal", label: "Dodgy Deals" },
-  { value: "checking", label: "Still checking" },
 ];
 
 export default function DealTypePicker({

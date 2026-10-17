@@ -7,19 +7,14 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import FilterTrigger from "@/components/FilterTrigger";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
-type WatchlistView = "all" | "by-supermarket";
 type StoreOption = { id: string; label: string };
 
-/** Combines Watchlist layout and supermarket scope into one compact control. */
-export default function WatchlistViewPicker({
-  view,
-  onViewChange,
+/** Compact supermarket filter used by the Watchlist toolbar. */
+export default function SupermarketPicker({
   selectedStoreIds,
   stores,
   onToggleStore,
 }: {
-  view: WatchlistView;
-  onViewChange: (view: WatchlistView) => void;
   selectedStoreIds: string[];
   stores: StoreOption[];
   onToggleStore: (storeId: string) => void;
@@ -27,12 +22,12 @@ export default function WatchlistViewPicker({
   const [isOpen, setIsOpen] = useState(false);
   const selectedStores = selectedStoreIds.filter((storeId) => storeId !== "all");
   const hasStoreFilter = selectedStores.length > 0;
-  const isActive = view !== "all" || hasStoreFilter;
+  const isActive = hasStoreFilter;
   const dialogRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  const viewLabel = hasStoreFilter ? `View · ${selectedStores.length}` : "View";
-  const viewAriaLabel = `Choose Watchlist view and supermarkets. Currently ${view === "by-supermarket" ? "grouped by supermarket" : "showing all items"}; ${hasStoreFilter ? `${selectedStores.length} supermarket${selectedStores.length === 1 ? "" : "s"} selected` : "all supermarkets selected"}.`;
+  const supermarketLabel = hasStoreFilter ? `Supermarket · ${selectedStores.length}` : "Supermarket";
+  const supermarketAriaLabel = `Filter by supermarket. ${hasStoreFilter ? `${selectedStores.length} supermarket${selectedStores.length === 1 ? "" : "s"} selected` : "All supermarkets selected"}.`;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -42,7 +37,7 @@ export default function WatchlistViewPicker({
 
     const focusableSelector = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
     const focusInitialControl = () => {
-      dialog.querySelector<HTMLElement>("button[aria-label='Close Watchlist view']")?.focus();
+      dialog.querySelector<HTMLElement>("button[aria-label='Close supermarket filter']")?.focus();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -79,18 +74,17 @@ export default function WatchlistViewPicker({
   };
 
   const reset = () => {
-    onViewChange("all");
     onToggleStore("all");
   };
 
   return (
     <>
       <FilterTrigger
-        label={viewLabel}
+        label={supermarketLabel}
         active={isActive}
         onOpen={openSheet}
         onClear={reset}
-        ariaLabel={viewAriaLabel}
+        ariaLabel={supermarketAriaLabel}
         expanded={isOpen}
         fill
         align="left"
@@ -111,7 +105,7 @@ export default function WatchlistViewPicker({
                 ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
-                aria-label={viewAriaLabel}
+                aria-label={supermarketAriaLabel}
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
@@ -119,7 +113,7 @@ export default function WatchlistViewPicker({
                 className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
               >
                 <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
-                  <h3 className="dd-type-sheet-title text-stone-900">View Watchlist</h3>
+                  <h3 className="dd-type-sheet-title text-stone-900">Supermarkets</h3>
                   <div className="flex items-center gap-1">
                     {isActive && (
                       <button
@@ -133,7 +127,7 @@ export default function WatchlistViewPicker({
                     <button
                       type="button"
                       onClick={() => setIsOpen(false)}
-                      aria-label="Close Watchlist view"
+                      aria-label="Close supermarket filter"
                       className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
@@ -142,36 +136,9 @@ export default function WatchlistViewPicker({
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                  <section aria-labelledby="watchlist-layout-heading" className="space-y-2">
-                    <h4 id="watchlist-layout-heading" className="dd-type-meta dd-type-meta-strong text-stone-500">Layout</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {([
-                        ["all", "All items"],
-                        ["by-supermarket", "By supermarket"],
-                      ] as const).map(([nextView, label]) => {
-                        const selected = view === nextView;
-                        return (
-                          <button
-                            key={nextView}
-                            type="button"
-                            onClick={() => onViewChange(nextView)}
-                            aria-pressed={selected}
-                            className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
-                              selected
-                                ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
-                                : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-
-                  <section aria-labelledby="watchlist-supermarkets-heading" className="mt-6 space-y-2">
-                    <h4 id="watchlist-supermarkets-heading" className="dd-type-meta dd-type-meta-strong text-stone-500">Supermarkets</h4>
-                    <p className="text-xs leading-4 text-stone-500">Counts are per supermarket; a product can appear in more than one section.</p>
+                  <section aria-labelledby="watchlist-supermarkets-heading" className="space-y-2">
+                    <h4 id="watchlist-supermarkets-heading" className="dd-type-meta dd-type-meta-strong text-stone-500">Choose supermarkets</h4>
+                    <p className="text-xs leading-4 text-stone-500">Select one or more supermarkets to narrow the specials below.</p>
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
