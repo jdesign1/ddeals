@@ -746,59 +746,61 @@ function WatchlistSummaryCard({
   const isEmpty = itemCount === 0;
 
   return (
-    <section className="mx-5 rounded-2xl border border-stone-200 bg-white px-4 py-4" aria-labelledby="watchlist-intro-title">
-      <h1 id="watchlist-intro-title" className="mb-3 text-center text-base font-extrabold leading-6 text-stone-900">You&apos;re watching {itemCount} {itemCount === 1 ? "product" : "products"}</h1>
-      {!isEmpty && (
-        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white" aria-label="Watchlist specials summary">
-          <div className="overflow-hidden rounded-2xl" aria-label="Filter specials by deal type">
-            <div className="border-b border-stone-200 px-3 py-3 text-center" aria-label={`${onSpecialCount} on special now`}>
-              <p className="text-sm font-bold leading-5 text-stone-900">{onSpecialCount} on special now</p>
+    <section className="bg-white py-5" aria-labelledby="watchlist-intro-title">
+      <div className="mx-5">
+        <h1 id="watchlist-intro-title" className="mb-3 text-center text-base font-extrabold leading-6 text-stone-900">You&apos;re watching {itemCount} {itemCount === 1 ? "product" : "products"}</h1>
+        {!isEmpty && (
+          <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white" aria-label="Watchlist specials summary">
+            <div className="overflow-hidden rounded-2xl" aria-label="Filter specials by deal type">
+              <div className="border-b border-stone-200 px-3 py-3 text-center" aria-label={`${onSpecialCount} on special now`}>
+                <p className="text-sm font-bold leading-5 text-stone-900">{onSpecialCount} on special now</p>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-stone-200 bg-stone-50 py-2">
+                {([
+                  ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700"],
+                  ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700"],
+                  ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700"],
+                ] as const).map(([filter, label, count, tone]) => {
+                  const isSelected = selectedDealType === filter;
+                  const isDisabled = count === 0;
+                  return (
+                    <button
+                      key={filter}
+                      type="button"
+                      disabled={isDisabled}
+                      aria-pressed={isSelected}
+                      aria-label={`${label}: ${count}${isDisabled ? ", no results" : ", show results"}`}
+                      onClick={() => {
+                        if (!isDisabled) onDealTypeChange(isSelected ? "all" : filter);
+                      }}
+                      className="flex min-w-0 flex-col items-center gap-0.5 px-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset disabled:cursor-default disabled:opacity-100"
+                    >
+                      <span className={`text-xl font-black leading-7 ${tone}`}>{count}</span>
+                      <span className="dd-type-meta dd-type-meta-strong text-stone-600">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-stone-200 bg-stone-50 py-2">
-              {([
-                ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700"],
-                ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700"],
-                ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700"],
-              ] as const).map(([filter, label, count, tone]) => {
-                const isSelected = selectedDealType === filter;
-                const isDisabled = count === 0;
-                return (
-                  <button
-                    key={filter}
-                    type="button"
-                    disabled={isDisabled}
-                    aria-pressed={isSelected}
-                    aria-label={`${label}: ${count}${isDisabled ? ", no results" : ", show results"}`}
-                    onClick={() => {
-                      if (!isDisabled) onDealTypeChange(isSelected ? "all" : filter);
-                    }}
-                    className="flex min-w-0 flex-col items-center gap-0.5 px-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset disabled:cursor-default disabled:opacity-100"
-                  >
-                    <span className={`text-xl font-black leading-7 ${tone}`}>{count}</span>
-                    <span className="dd-type-meta dd-type-meta-strong text-stone-600">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {hasNewPrices && (
+              <div className="flex items-center gap-2 border-t border-stone-100 px-4 py-3 text-[13px] font-extrabold text-stone-900" aria-live="polite">
+                <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
+                {newPriceItemCount} {newPriceItemCount === 1 ? "item" : "items"} with new prices
+              </div>
+            )}
+            {showNotificationSetup && (
+              <div className="flex items-center justify-between gap-3 border-t border-stone-100 px-4 py-3">
+                <p className="text-[12px] leading-4 text-stone-500">
+                  {notificationPermissionDenied ? "Notifications are off. Turn them on to get price alerts." : "Get an alert when prices change."}
+                </p>
+                <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
+                  {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
+                </button>
+              </div>
+            )}
           </div>
-          {hasNewPrices && (
-            <div className="flex items-center gap-2 border-t border-stone-100 px-4 py-3 text-[13px] font-extrabold text-stone-900" aria-live="polite">
-              <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
-              {newPriceItemCount} {newPriceItemCount === 1 ? "item" : "items"} with new prices
-            </div>
-          )}
-          {showNotificationSetup && (
-            <div className="flex items-center justify-between gap-3 border-t border-stone-100 px-4 py-3">
-              <p className="text-[12px] leading-4 text-stone-500">
-                {notificationPermissionDenied ? "Notifications are off. Turn them on to get price alerts." : "Get an alert when prices change."}
-              </p>
-              <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
-                {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
