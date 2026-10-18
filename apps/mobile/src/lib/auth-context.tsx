@@ -55,17 +55,6 @@ interface AuthContextValue {
   signInWithProvider: (provider: AuthProviderName) => Promise<{ error: string | null }>;
   getLinkedIdentities: () => Promise<{ error: string | null; identities: AccountIdentity[] }>;
   linkAppleIdentity: () => Promise<{ error: string | null }>;
-  requestEmailIdentityLink: (email: string) => Promise<{
-    error: string | null;
-    currentEmail: string | null;
-    newEmail: string;
-  }>;
-  verifyEmailIdentityLink: (params: {
-    currentEmail: string | null;
-    currentToken?: string;
-    newEmail: string;
-    newToken: string;
-  }) => Promise<{ error: string | null }>;
   completeProfile: (details: AccountDetails) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   updateProfileName: (name: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   refreshProfile: () => Promise<AccountProfile | null>;
@@ -325,66 +314,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           provider: "apple",
           options: { redirectTo: authRedirectUrl },
         });
-        return { error: error?.message ?? null };
-      },
-      requestEmailIdentityLink: async (email) => {
-        if (!client) return { error: configurationError(), currentEmail: null, newEmail: "" };
-        if (!user) {
-          return {
-            error: "Please sign in before adding an email sign-in method.",
-            currentEmail: null,
-            newEmail: "",
-          };
-        }
-        const normalizedEmail = email.trim().toLowerCase();
-        if (!normalizedEmail) return { error: "Enter an email address.", currentEmail: null, newEmail: "" };
-        if (normalizedEmail === user.email?.trim().toLowerCase()) {
-          return {
-            error: "That email is already the email on this account.",
-            currentEmail: user.email ?? null,
-            newEmail: normalizedEmail,
-          };
-        }
-        const { error } = await client.auth.updateUser(
-          { email: normalizedEmail },
-          { emailRedirectTo: authRedirectUrl || undefined },
-        );
-        return {
-          error: error?.message ?? null,
-          currentEmail: user.email ?? null,
-          newEmail: normalizedEmail,
-        };
-      },
-      verifyEmailIdentityLink: async ({ currentEmail, currentToken, newEmail, newToken }) => {
-        if (!client) return { error: configurationError() };
-        if (!user) return { error: "Please sign in before verifying an email sign-in method." };
-        const normalizedCurrentEmail = currentEmail?.trim().toLowerCase() || "";
-        const normalizedCurrentToken = currentToken?.trim() || "";
-        const normalizedNewEmail = newEmail.trim().toLowerCase();
-        const normalizedNewToken = newToken.trim();
-        if (!normalizedNewEmail || !/^\d{6,8}$/.test(normalizedNewToken)) {
-          return { error: "Enter the verification code from your new email." };
-        }
-        if (normalizedCurrentToken && !/^\d{6,8}$/.test(normalizedCurrentToken)) {
-          return { error: "Enter the verification code from your current email." };
-        }
-        if (normalizedCurrentToken && normalizedCurrentEmail) {
-          const { error } = await client.auth.verifyOtp({
-            email: normalizedCurrentEmail,
-            token: normalizedCurrentToken,
-            type: "email_change",
-          });
-          if (error) return { error: error.message };
-        }
-        const { error } = await client.auth.verifyOtp({
-          email: normalizedNewEmail,
-          token: normalizedNewToken,
-          type: "email_change",
-        });
-        if (!error) {
-          const { data: refreshedUser } = await client.auth.getUser();
-          if (refreshedUser.user) setUser(refreshedUser.user);
-        }
         return { error: error?.message ?? null };
       },
       completeProfile: async (details) => {
