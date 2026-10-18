@@ -38,6 +38,7 @@
 
 import type { ProductCard, CurrentDeal, PriceHistoryPoint } from "./data.ts";
 import { canonicalStoreKey, matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
+import { SPECIALS_VERIFICATION_TTL_MS } from "./specials-freshness.ts";
 
 /** Real 5-store list for this app's live catalogue (see file header note). */
 export const DEAL_DETAIL_STORES_LIST: string[] = Object.values(STORE_DISPLAY_FALLBACK);
@@ -518,7 +519,9 @@ export function groupCategory(rawCategory: string | null | undefined, productNam
 const PRODUCT_TYPE_PATTERNS: { key: string; patterns: string[] }[] = [
   { key: "bakeware", patterns: ["springform", "cake pan", "cake tin", "baking pan", "baking tray", "baking tin", "bakeware"] },
   { key: "dishwashing", patterns: ["dishwashing", "dish wash", "dish liquid", "dish soap"] },
-  { key: "soap", patterns: ["hand wash", "hand soap", "body wash", "bar soap", "soap"] },
+  { key: "hand_wash", patterns: ["hand wash", "handwash", "hand soap"] },
+  { key: "body_wash", patterns: ["body wash", "bodywash"] },
+  { key: "bar_soap", patterns: ["bar soap"] },
   { key: "toilet_paper", patterns: ["toilet paper", "toilet tissue", "toilet roll"] },
   { key: "paper_towel", patterns: ["paper towel", "kitchen towel"] },
   { key: "facial_tissue", patterns: ["facial tissue", "tissue"] },
@@ -527,8 +530,31 @@ const PRODUCT_TYPE_PATTERNS: { key: string; patterns: string[] }[] = [
   { key: "razor", patterns: ["razor", "shaver"] },
   { key: "food_storage", patterns: ["cling wrap", "plastic wrap", "food wrap", "storage container", "food container"] },
   { key: "paper_cup", patterns: ["paper cup", "party cup"] },
-  { key: "dog_food", patterns: ["dog food", "dog roll", "dog treat", "puppy"] },
-  { key: "cat_food", patterns: ["cat food", "cat treat", "kitten"] },
+  { key: "dog_treat", patterns: ["dog treat", "dog snack"] },
+  { key: "dog_roll", patterns: ["dog roll"] },
+  { key: "dog_food", patterns: ["dog food"] },
+  { key: "puppy_food", patterns: ["puppy"] },
+  { key: "cat_treat", patterns: ["cat treat", "cat snack"] },
+  { key: "cat_food", patterns: ["cat food"] },
+  { key: "kitten_food", patterns: ["kitten"] },
+];
+
+/**
+ * A conservative variant guard. A missing marker is not evidence that two
+ * variants are interchangeable: if one item explicitly advertises a
+ * dietary, caffeine, fragrance, refill, or concentrate property, the other
+ * item must advertise the same property before it can appear as a cheaper
+ * option. This intentionally favours abstaining over a misleading match.
+ */
+const ALTERNATIVE_VARIANT_MARKERS: { key: string; patterns: RegExp[] }[] = [
+  { key: "vegan", patterns: [/\bvegan\b/i, /\bplant[- ]based\b/i] },
+  { key: "vegetarian", patterns: [/\bvegetarian\b/i] },
+  { key: "gluten_free", patterns: [/\bgluten[- ]free\b/i] },
+  { key: "dairy_free", patterns: [/\bdairy[- ]free\b/i, /\blactose[- ]free\b/i] },
+  { key: "decaf", patterns: [/\bdecaf(?:feinated)?\b/i, /\bcaffeine[- ]free\b/i] },
+  { key: "fragrance_free", patterns: [/\bfragrance[- ]free\b/i, /\bunscented\b/i] },
+  { key: "refill", patterns: [/\brefill\b/i, /\brefillable\b/i] },
+  { key: "concentrate", patterns: [/\bconcentrate(?:d)?\b/i] },
 ];
 
 const ALTERNATIVE_STOP_TOKENS = new Set([
@@ -565,6 +591,18 @@ function productTypeKey(product: ProductCard): string | null {
   return PRODUCT_TYPE_PATTERNS.find(({ patterns }) => patterns.some((pattern) => text.includes(pattern)))?.key || null;
 }
 
+function hasAlternativeVariantMarker(text: string, marker: { patterns: RegExp[] }): boolean {
+  return marker.patterns.some((pattern) => pattern.test(text));
+}
+
+function hasVariantConflict(target: ProductCard, candidate: ProductCard): boolean {
+  const targetText = target.name || "";
+  const candidateText = candidate.name || "";
+  return ALTERNATIVE_VARIANT_MARKERS.some((marker) =>
+    hasAlternativeVariantMarker(targetText, marker) !== hasAlternativeVariantMarker(candidateText, marker)
+  );
+}
+
 /**
  * Returns a relevance score, or 0 when the candidate should be excluded.
  * Shared broad categories are only a starting pool; a meaningful name/type
@@ -580,20 +618,22 @@ function cheaperAlternativeRelevance(target: ProductCard, candidate: ProductCard
   const targetType = productTypeKey(target);
   const candidateType = productTypeKey(candidate);
   if (targetType && candidateType && targetType !== candidateType) return 0;
+  if (hasVariantConflict(target, candidate)) return 0;
 
   const targetTokens = meaningfulNameTokens(target.name);
   const candidateTokens = meaningfulNameTokens(candidate.name);
   const sharedTokens = [...targetTokens].filter((token) => candidateTokens.has(token));
   const sameType = Boolean(targetType && targetType === candidateType);
 
-  // This is the important safety rule: when the category is broad and there
-  // are no shared product words or known product type, the item is random,
-  // regardless of how much cheaper it is.
-  if (!sameType && sharedTokens.length === 0) return 0;
+  // This is the important safety rule: broad catalogue categories need at
+  // least two meaningful shared product words unless a high-signal product
+  // type matched. One shared word such as "soap", "chocolate", or a brand
+  // name is not enough to call two products comparable.
+  if (!sameType && sharedTokens.length < 2) return 0;
 
   // A cross-category-group match needs stronger evidence than two products
   // that already share the exact catalogue category.
-  if (!sameCategory && !sameType && sharedTokens.length < 2) return 0;
+  if (!sameCategory && !sameType && sharedTokens.length < 3) return 0;
 
   return (sameType ? 4 : 0) + (sameCategory ? 1 : 0) + sharedTokens.length * 0.5;
 }
@@ -625,10 +665,125 @@ export interface CheaperAlternative {
   product: ProductCard;
   store: string;
   price: number;
+  comparison: "unit-price";
   saving: number;
+  /** Unit-value saving, expressed in `savingUnit`, not a pack-price delta. */
+  savingUnit: ComparableUnit;
+  candidateUnitPrice: number;
+  targetUnitPrice: number;
 }
 
 type RankedCheaperAlternative = CheaperAlternative & { relevance: number };
+
+export type ComparableUnit = "kg" | "L" | "each";
+
+interface ComparablePrice {
+  price: number;
+  unit: ComparableUnit;
+}
+
+interface UnitLabel {
+  amount: number;
+  unit: ComparableUnit;
+}
+
+export interface CheaperAlternativesOptions {
+  /** The checked deal supplies authoritative sale-unit metadata when present. */
+  baselineDeal?: CurrentDeal;
+  /** Injectable clock for deterministic tests and safe expiry checks. */
+  now?: number;
+}
+
+function parseUnitLabel(value: string | null | undefined): UnitLabel | null {
+  const normalized = (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\$?\s*\/\s*/, "")
+    .replace(/^per\s+/, "")
+    .replace(/,/g, "")
+    .replace(/\s+/g, "");
+  if (!normalized) return null;
+  const match = normalized.match(/^(\d+(?:\.\d+)?)?(kg|g|l|litre|litres|liter|liters|ml|ea|each|item|items)$/);
+  if (!match) return null;
+
+  const amount = Number(match[1] || 1);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  switch (match[2]) {
+    case "g":
+      return { amount: amount / 1000, unit: "kg" };
+    case "kg":
+      return { amount, unit: "kg" };
+    case "ml":
+      return { amount: amount / 1000, unit: "L" };
+    case "l":
+    case "litre":
+    case "litres":
+    case "liter":
+    case "liters":
+      return { amount, unit: "L" };
+    default:
+      return { amount, unit: "each" };
+  }
+}
+
+function parseProductUnit(value: string | null | undefined): UnitLabel | null {
+  const normalized = (value || "").trim().toLowerCase().replace(/,/g, "");
+  if (!normalized) return null;
+
+  const multipack = normalized.match(/^(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)\s*(kg|g|l|litre|litres|liter|liters|ml)$/);
+  if (multipack) {
+    const inner = parseUnitLabel(`${multipack[2]}${multipack[3]}`);
+    const count = Number(multipack[1]);
+    if (inner && Number.isFinite(count) && count > 0) return { ...inner, amount: inner.amount * count };
+  }
+
+  // A bare pack count is deliberately not treated as `each`: without an
+  // item count it cannot safely be compared with another pack size.
+  return parseUnitLabel(normalized.match(/^(\d+(?:\.\d+)?)\s*(kg|g|l|litre|litres|liter|liters|ml|ea|each|item|items)$/)?.[0]);
+}
+
+function comparablePrice(product: ProductCard, dealPrice: number, deal?: CurrentDeal): ComparablePrice | null {
+  if (!Number.isFinite(dealPrice) || dealPrice <= 0) return null;
+
+  const saleUnit = parseUnitLabel(deal?.saleUnitLabel);
+  const saleUnitPrice = deal?.saleUnitPrice;
+  if (saleUnit && saleUnitPrice != null && Number.isFinite(saleUnitPrice) && saleUnitPrice > 0) {
+    return { price: saleUnitPrice / saleUnit.amount, unit: saleUnit.unit };
+  }
+
+  const productUnit = parseProductUnit(product.unit);
+  if (!productUnit) return null;
+  return { price: dealPrice / productUnit.amount, unit: productUnit.unit };
+}
+
+function parseSpecialEndDate(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return null;
+  // Retailer feeds commonly provide an end date without a time. Treat that
+  // date as valid through the end of the local-calendar day rather than
+  // expiring the special at midnight UTC.
+  return dateOnly ? parsed + 24 * 60 * 60 * 1000 - 1 : parsed;
+}
+
+function isEligibleAlternativeDeal(deal: CurrentDeal, now: number): boolean {
+  if (deal.isOnSpecial !== true || deal.wasArtificiallyInflated || deal.isDodgyReviewCandidate === true) return false;
+  if (deal.dealType === "Dodgy Deal" || deal.dealType === "Unverified Deal") return false;
+  if (!Number.isFinite(deal.price) || deal.price <= 0) return false;
+
+  const verifiedAt = deal.specialsVerifiedAt ? Date.parse(deal.specialsVerifiedAt) : Number.NaN;
+  if (!Number.isFinite(verifiedAt) || verifiedAt > now + 5 * 60 * 1000 || now - verifiedAt >= SPECIALS_VERIFICATION_TTL_MS) return false;
+
+  const endAt = parseSpecialEndDate(deal.specialEndDate);
+  if (deal.specialEndDate && endAt == null) return false;
+  if (endAt != null && endAt <= now) return false;
+  return true;
+}
+
+function roundCents(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
 
 /**
  * Relevant products with a real active special cheaper than `dealPrice` at
@@ -642,32 +797,69 @@ export function findCheaperAlternatives(
   allProducts: ProductCard[],
   dealPrice: number,
   selectedStores: string[] = ["all"],
-  storesList: string[] = DEAL_DETAIL_STORES_LIST
+  storesList: string[] = DEAL_DETAIL_STORES_LIST,
+  options: CheaperAlternativesOptions = {}
 ): CheaperAlternative[] {
+  const now = options.now ?? Date.now();
+  const targetUnitPrice = comparablePrice(product, dealPrice, options.baselineDeal);
+  if (!targetUnitPrice) return [];
+
   const categoryPool = allProducts.filter(
     (p) => p.id !== product.id && groupCategory(p.category, p.name) === groupCategory(product.category, product.name)
   );
 
-  const allOptions = categoryPool.flatMap((p) =>
-    storesList
-      .map((store) => {
-        const activeDeal = (p.currentDeals || []).find(
-          (d) => normalizeStoreKey(d.store).includes(normalizeStoreKey(store)) && d.isOnSpecial !== false
-        );
-        if (!activeDeal) return null;
-        const relevance = cheaperAlternativeRelevance(product, p);
-        if (!relevance) return null;
-        return { product: p, store, price: activeDeal.price, saving: dealPrice - activeDeal.price, relevance };
-      })
-      .filter((item): item is RankedCheaperAlternative => item != null && item.price < dealPrice)
-  );
+  const allOptions = categoryPool.flatMap((candidateProduct) => {
+    const relevance = cheaperAlternativeRelevance(product, candidateProduct);
+    if (!relevance) return [];
+
+    const candidateOptions = storesList.flatMap((store) => {
+      const activeDeal = (candidateProduct.currentDeals || [])
+        .filter((deal) => canonicalStoreKey(deal.store) === canonicalStoreKey(store))
+        .filter((deal) => matchesAnySelectedStore(deal.store, selectedStores))
+        .filter((deal) => isEligibleAlternativeDeal(deal, now))
+        .sort((a, b) =>
+          a.price - b.price
+          || canonicalStoreKey(a.store).localeCompare(canonicalStoreKey(b.store))
+          || (a.sourceStoreId || "").localeCompare(b.sourceStoreId || "")
+          || (a.sourceProductId || "").localeCompare(b.sourceProductId || "")
+        )[0];
+      if (!activeDeal) return [];
+
+      const candidateUnitPrice = comparablePrice(candidateProduct, activeDeal.price, activeDeal);
+      if (!candidateUnitPrice || candidateUnitPrice.unit !== targetUnitPrice.unit) return [];
+      const saving = roundCents(targetUnitPrice.price - candidateUnitPrice.price);
+      if (saving < 0.01) return [];
+
+      return [{
+        product: candidateProduct,
+        store,
+        price: activeDeal.price,
+        comparison: "unit-price",
+        saving,
+        savingUnit: targetUnitPrice.unit,
+        candidateUnitPrice: roundCents(candidateUnitPrice.price),
+        targetUnitPrice: roundCents(targetUnitPrice.price),
+        relevance,
+      } satisfies RankedCheaperAlternative];
+    });
+
+    // Show at most one result per product. This keeps a single widely-listed
+    // candidate from crowding out more useful alternatives while still
+    // choosing its best eligible supermarket deterministically.
+    return candidateOptions
+      .sort((a, b) => b.saving - a.saving || a.price - b.price || a.store.localeCompare(b.store))
+      .slice(0, 1);
+  });
 
   return allOptions
-    .filter((item) => {
-      if (selectedStores.includes("all")) return true;
-      return selectedStores.some((selected) => normalizeStoreKey(item.store).includes(selected));
-    })
-    .sort((a, b) => b.relevance - a.relevance || b.saving - a.saving)
+    .sort((a, b) =>
+      b.relevance - a.relevance
+      || b.saving - a.saving
+      || a.candidateUnitPrice - b.candidateUnitPrice
+      || a.price - b.price
+      || a.product.id.localeCompare(b.product.id)
+      || canonicalStoreKey(a.store).localeCompare(canonicalStoreKey(b.store))
+    )
     .slice(0, 20)
     .map(({ relevance: _relevance, ...item }) => item);
 }

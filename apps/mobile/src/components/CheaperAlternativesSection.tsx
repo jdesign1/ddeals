@@ -26,9 +26,9 @@ export default function CheaperAlternativesSection({
 
   return (
     <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
-      <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
+      <h4 className="dd-type-section text-stone-900">Comparable cheaper alternatives</h4>
       <p className="mb-3 text-sm text-stone-600">
-        {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
+        Like-for-like specials with a lower unit price
       </p>
       <button
         type="button"
@@ -61,7 +61,7 @@ export default function CheaperAlternativesSection({
           >
             <div className="pt-3">
               <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
-                {alternatives.map(({ product: alternativeProduct, store, price, saving }) => {
+                {alternatives.map(({ product: alternativeProduct, store, price, saving, savingUnit, candidateUnitPrice, targetUnitPrice }) => {
                   return (
                     <div key={`${alternativeProduct.id}-${store}`}>
                       <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-300 bg-white px-5 pb-5 pt-7 shadow-xs">
@@ -87,12 +87,14 @@ export default function CheaperAlternativesSection({
                               <h3 className="mt-1 line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">{alternativeProduct.name}</h3>
                               <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
                                 <span className="font-display text-base font-extrabold text-stone-900">${price.toFixed(2)}</span>
+                                <span className="text-xs font-semibold text-stone-500">(${candidateUnitPrice.toFixed(2)}/{savingUnit})</span>
                               </div>
                             </div>
                           </div>
                         </div>
                         <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
-                          Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
+                          Lower unit price by <strong className="font-extrabold">${saving.toFixed(2)}/{savingUnit}</strong>
+                          <span className="mt-0.5 block text-white/80">${candidateUnitPrice.toFixed(2)}/{savingUnit} vs ${targetUnitPrice.toFixed(2)}/{savingUnit} checked</span>
                         </span>
                         <a
                           href={findDealForStore(alternativeProduct.currentDeals, store)?.productUrl || getStoreProductUrl(store, alternativeProduct.name)}
