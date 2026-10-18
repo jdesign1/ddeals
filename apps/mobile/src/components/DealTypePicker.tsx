@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import FilterTrigger from "@/components/FilterTrigger";
 
@@ -123,33 +123,41 @@ export default function DealTypePicker({
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
-                <div className="overflow-y-auto py-2 pb-safe-sm" role="radiogroup" aria-label="Deal type options">
-                  {OPTIONS.map((option, index) => {
-                    const isSelected = option.value === value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={isSelected}
-                        tabIndex={isSelected ? 0 : -1}
-                        ref={(element) => {
-                          optionRefs.current[index] = element;
-                        }}
-                        onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                        onClick={() => {
-                          onChange(option.value);
-                          setIsOpen(false);
-                        }}
-                        className={`flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-3.5 text-left dd-type-control transition-colors ${isSelected ? "text-ink-600" : "text-stone-700 hover:bg-stone-50"}`}
-                      >
-                        <span>{option.label}</span>
-                        <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${isSelected ? "border-ink-600 bg-ink-600 text-white" : "border-stone-300 bg-white text-transparent"}`}>
-                          <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                  <section aria-labelledby="deal-type-options-heading" className="space-y-2">
+                    <h4 id="deal-type-options-heading" className="dd-type-meta dd-type-meta-strong text-stone-500">Choose a deal type</h4>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Deal type options">
+                      {OPTIONS.map((option, index) => {
+                        const isSelected = option.value === value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={isSelected ? 0 : -1}
+                            ref={(element) => {
+                              optionRefs.current[index] = element;
+                            }}
+                            onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                            onClick={() => onChange(option.value)}
+                            className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${isSelected ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white" : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"}`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
+                <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 px-5 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="dd-sheet-cta w-full cursor-pointer rounded-xl bg-stone-900 py-3 dd-type-control text-white transition-colors hover:bg-ink-600"
+                  >
+                    Done
+                  </button>
                 </div>
               </motion.section>
             </>
