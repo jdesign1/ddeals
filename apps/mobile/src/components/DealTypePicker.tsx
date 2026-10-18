@@ -87,7 +87,7 @@ export default function DealTypePicker({
   return (
     <>
       <FilterTrigger
-        label={isActive ? selectedOption.label : "Deal Type"}
+        label={isActive ? selectedOption.label : "Deal"}
         active={isActive}
         onOpen={openSheet}
         onClear={() => onChange("all")}
