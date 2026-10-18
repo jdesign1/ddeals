@@ -564,6 +564,17 @@ const ALTERNATIVE_STOP_TOKENS = new Set([
   "g", "kg", "oz", "x",
 ]);
 
+// A single shared word can be enough when it is a strong product-family
+// signal and both catalogue rows agree on the exact shopper category. This
+// list deliberately excludes generic words such as "chocolate", "natural",
+// and brand names, which caused unrelated same-department matches before the
+// stricter matcher was introduced.
+const HIGH_SIGNAL_ALTERNATIVE_TOKENS = new Set([
+  "milk", "yoghurt", "yogurt", "cheese", "butter", "rice", "pasta", "spaghetti", "macaroni",
+  "flour", "sugar", "cereal", "coffee", "tea", "oats", "bread", "detergent", "laundry",
+  "shampoo", "conditioner", "deodorant", "nappy", "nappies",
+]);
+
 function normaliseCategory(value: string | null | undefined): string {
   return (value || "")
     .split(">")
@@ -584,6 +595,11 @@ function meaningfulNameTokens(name: string | null | undefined): Set<string> {
       .filter((token) => token.length >= 3 && !/^\d/.test(token) && !ALTERNATIVE_STOP_TOKENS.has(token))
       .map(singularAlternativeToken)
   );
+}
+
+function meaningfulProductTokens(product: ProductCard): Set<string> {
+  const brandTokens = meaningfulNameTokens(product.brand);
+  return new Set([...meaningfulNameTokens(product.name)].filter((token) => !brandTokens.has(token)));
 }
 
 function productTypeKey(product: ProductCard): string | null {
@@ -620,16 +636,17 @@ function cheaperAlternativeRelevance(target: ProductCard, candidate: ProductCard
   if (targetType && candidateType && targetType !== candidateType) return 0;
   if (hasVariantConflict(target, candidate)) return 0;
 
-  const targetTokens = meaningfulNameTokens(target.name);
-  const candidateTokens = meaningfulNameTokens(candidate.name);
+  const targetTokens = meaningfulProductTokens(target);
+  const candidateTokens = meaningfulProductTokens(candidate);
   const sharedTokens = [...targetTokens].filter((token) => candidateTokens.has(token));
+  const sharedHighSignalTokens = sharedTokens.filter((token) => HIGH_SIGNAL_ALTERNATIVE_TOKENS.has(token));
   const sameType = Boolean(targetType && targetType === candidateType);
 
   // This is the important safety rule: broad catalogue categories need at
   // least two meaningful shared product words unless a high-signal product
   // type matched. One shared word such as "soap", "chocolate", or a brand
   // name is not enough to call two products comparable.
-  if (!sameType && sharedTokens.length < 2) return 0;
+  if (!sameType && sharedTokens.length < 2 && !(sameCategory && sharedHighSignalTokens.length > 0)) return 0;
 
   // A cross-category-group match needs stronger evidence than two products
   // that already share the exact catalogue category.
@@ -665,95 +682,14 @@ export interface CheaperAlternative {
   product: ProductCard;
   store: string;
   price: number;
-  comparison: "unit-price";
   saving: number;
-  /** Unit-value saving, expressed in `savingUnit`, not a pack-price delta. */
-  savingUnit: ComparableUnit;
-  candidateUnitPrice: number;
-  targetUnitPrice: number;
 }
 
 type RankedCheaperAlternative = CheaperAlternative & { relevance: number };
 
-export type ComparableUnit = "kg" | "L" | "each";
-
-interface ComparablePrice {
-  price: number;
-  unit: ComparableUnit;
-}
-
-interface UnitLabel {
-  amount: number;
-  unit: ComparableUnit;
-}
-
 export interface CheaperAlternativesOptions {
-  /** The checked deal supplies authoritative sale-unit metadata when present. */
-  baselineDeal?: CurrentDeal;
   /** Injectable clock for deterministic tests and safe expiry checks. */
   now?: number;
-}
-
-function parseUnitLabel(value: string | null | undefined): UnitLabel | null {
-  const normalized = (value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^\$?\s*\/\s*/, "")
-    .replace(/^per\s+/, "")
-    .replace(/,/g, "")
-    .replace(/\s+/g, "");
-  if (!normalized) return null;
-  const match = normalized.match(/^(\d+(?:\.\d+)?)?(kg|g|l|litre|litres|liter|liters|ml|ea|each|item|items)$/);
-  if (!match) return null;
-
-  const amount = Number(match[1] || 1);
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-  switch (match[2]) {
-    case "g":
-      return { amount: amount / 1000, unit: "kg" };
-    case "kg":
-      return { amount, unit: "kg" };
-    case "ml":
-      return { amount: amount / 1000, unit: "L" };
-    case "l":
-    case "litre":
-    case "litres":
-    case "liter":
-    case "liters":
-      return { amount, unit: "L" };
-    default:
-      return { amount, unit: "each" };
-  }
-}
-
-function parseProductUnit(value: string | null | undefined): UnitLabel | null {
-  const normalized = (value || "").trim().toLowerCase().replace(/,/g, "");
-  if (!normalized) return null;
-
-  const multipack = normalized.match(/^(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)\s*(kg|g|l|litre|litres|liter|liters|ml)$/);
-  if (multipack) {
-    const inner = parseUnitLabel(`${multipack[2]}${multipack[3]}`);
-    const count = Number(multipack[1]);
-    if (inner && Number.isFinite(count) && count > 0) return { ...inner, amount: inner.amount * count };
-  }
-
-  // A bare pack count is deliberately not treated as `each`: without an
-  // item count it cannot safely be compared with another pack size.
-  return parseUnitLabel(normalized.match(/^(\d+(?:\.\d+)?)\s*(kg|g|l|litre|litres|liter|liters|ml|ea|each|item|items)$/)?.[0]);
-}
-
-function comparablePrice(product: ProductCard, dealPrice: number, deal?: CurrentDeal): ComparablePrice | null {
-  if (!Number.isFinite(dealPrice) || dealPrice <= 0) return null;
-
-  const saleUnit = parseUnitLabel(deal?.saleUnitLabel);
-  const saleUnitPrice = deal?.saleUnitPrice;
-  if (saleUnit && saleUnitPrice != null && Number.isFinite(saleUnitPrice) && saleUnitPrice > 0) {
-    return { price: saleUnitPrice / saleUnit.amount, unit: saleUnit.unit };
-  }
-
-  const productUnit = parseProductUnit(product.unit);
-  if (!productUnit) return null;
-  return { price: dealPrice / productUnit.amount, unit: productUnit.unit };
 }
 
 function parseSpecialEndDate(value: string | null | undefined): number | null {
@@ -801,8 +737,7 @@ export function findCheaperAlternatives(
   options: CheaperAlternativesOptions = {}
 ): CheaperAlternative[] {
   const now = options.now ?? Date.now();
-  const targetUnitPrice = comparablePrice(product, dealPrice, options.baselineDeal);
-  if (!targetUnitPrice) return [];
+  if (!Number.isFinite(dealPrice) || dealPrice <= 0) return [];
 
   const categoryPool = allProducts.filter(
     (p) => p.id !== product.id && groupCategory(p.category, p.name) === groupCategory(product.category, product.name)
@@ -825,20 +760,14 @@ export function findCheaperAlternatives(
         )[0];
       if (!activeDeal) return [];
 
-      const candidateUnitPrice = comparablePrice(candidateProduct, activeDeal.price, activeDeal);
-      if (!candidateUnitPrice || candidateUnitPrice.unit !== targetUnitPrice.unit) return [];
-      const saving = roundCents(targetUnitPrice.price - candidateUnitPrice.price);
+      const saving = roundCents(dealPrice - activeDeal.price);
       if (saving < 0.01) return [];
 
       return [{
         product: candidateProduct,
         store,
         price: activeDeal.price,
-        comparison: "unit-price",
         saving,
-        savingUnit: targetUnitPrice.unit,
-        candidateUnitPrice: roundCents(candidateUnitPrice.price),
-        targetUnitPrice: roundCents(targetUnitPrice.price),
         relevance,
       } satisfies RankedCheaperAlternative];
     });
@@ -855,12 +784,11 @@ export function findCheaperAlternatives(
     .sort((a, b) =>
       b.relevance - a.relevance
       || b.saving - a.saving
-      || a.candidateUnitPrice - b.candidateUnitPrice
       || a.price - b.price
       || a.product.id.localeCompare(b.product.id)
       || canonicalStoreKey(a.store).localeCompare(canonicalStoreKey(b.store))
     )
-    .slice(0, 20)
+    .slice(0, 24)
     .map(({ relevance: _relevance, ...item }) => item);
 }
 

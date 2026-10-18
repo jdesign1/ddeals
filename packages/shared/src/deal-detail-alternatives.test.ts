@@ -82,6 +82,42 @@ test("findCheaperAlternatives: keeps a cheaper product with the same product typ
   assert.equal(results[0]?.product.id, "baking-tray");
 });
 
+test("findCheaperAlternatives: allows a strong single family word in the same shopper category", () => {
+  const target = fakeProduct({
+    id: "blue-milk",
+    name: "Anchor Blue Milk",
+    category: "Dairy & Eggs",
+    brand: "Anchor",
+  });
+  const candidate = fakeProduct({
+    id: "green-milk",
+    name: "Meadow Fresh Green Milk",
+    category: "Dairy & Eggs",
+    brand: "Meadow Fresh",
+    currentDeals: [fakeDeal({ price: 3 })],
+  });
+
+  const results = findAlternatives(target, [target, candidate], 5);
+  assert.equal(results.length, 1);
+  assert.equal(results[0]?.product.id, "green-milk");
+});
+
+test("findCheaperAlternatives: does not treat a shared brand name as product evidence", () => {
+  const target = fakeProduct({
+    id: "brand-a",
+    name: "Test brand premium biscuits",
+    brand: "Test brand",
+  });
+  const candidate = fakeProduct({
+    id: "brand-b",
+    name: "Test brand laundry powder",
+    brand: "Test brand",
+    currentDeals: [fakeDeal({ price: 2 })],
+  });
+
+  assert.deepEqual(findAlternatives(target, [target, candidate], 5), []);
+});
+
 test("findCheaperAlternatives: blocks known incompatible product types", () => {
   const target = fakeProduct({ id: "air-freshener", name: "Glade Clean Linen Air Freshener" });
   const candidate = fakeProduct({
@@ -93,7 +129,7 @@ test("findCheaperAlternatives: blocks known incompatible product types", () => {
   assert.deepEqual(findAlternatives(target, [target, candidate], 5), []);
 });
 
-test("findCheaperAlternatives: compares compatible unit value instead of pack price", () => {
+test("findCheaperAlternatives: compares lower total price", () => {
   const target = fakeProduct({
     id: "coffee",
     name: "Coffee Beans Medium Roast",
@@ -111,14 +147,10 @@ test("findCheaperAlternatives: compares compatible unit value instead of pack pr
 
   const results = findAlternatives(target, [target, candidate], 5);
   assert.equal(results.length, 1);
-  assert.equal(results[0]?.savingUnit, "kg");
-  assert.equal(results[0]?.comparison, "unit-price");
-  assert.equal(results[0]?.targetUnitPrice, 5);
-  assert.equal(results[0]?.candidateUnitPrice, 4.8);
-  assert.equal(results[0]?.saving, 0.2);
+  assert.equal(results[0]?.saving, 2.6);
 });
 
-test("findCheaperAlternatives: rejects a cheaper pack with a worse unit value", () => {
+test("findCheaperAlternatives: keeps the simpler total-price behavior across pack sizes", () => {
   const target = fakeProduct({
     id: "rice",
     name: "Long Grain Rice",
@@ -134,32 +166,9 @@ test("findCheaperAlternatives: rejects a cheaper pack with a worse unit value", 
     currentDeals: [fakeDeal({ price: 2.6 })],
   });
 
-  assert.deepEqual(findAlternatives(target, [target, candidate], 5), []);
-});
-
-test("findCheaperAlternatives: normalizes retailer comparative labels", () => {
-  const target = fakeProduct({
-    id: "flour",
-    name: "Plain Flour",
-    category: "Pantry",
-    unit: "1kg",
-    currentDeals: [fakeDeal({ price: 5, saleUnitPrice: 5, saleUnitLabel: "$/kg" })],
-  });
-  const candidate = fakeProduct({
-    id: "small-flour",
-    name: "Plain Flour Premium",
-    category: "Pantry",
-    unit: "500g",
-    currentDeals: [fakeDeal({ price: 2.5, saleUnitPrice: 0.4, saleUnitLabel: "$/100g" })],
-  });
-
-  const results = findCheaperAlternatives(target, [target, candidate], 5, ["all"], undefined, {
-    baselineDeal: target.currentDeals[0],
-    now: TEST_NOW,
-  });
+  const results = findAlternatives(target, [target, candidate], 5);
   assert.equal(results.length, 1);
-  assert.equal(results[0]?.savingUnit, "kg");
-  assert.equal(results[0]?.candidateUnitPrice, 4);
+  assert.equal(results[0]?.saving, 2.4);
 });
 
 test("findCheaperAlternatives: excludes stale, dodgy, and expired specials", () => {

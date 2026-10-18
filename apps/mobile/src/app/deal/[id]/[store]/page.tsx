@@ -614,7 +614,7 @@ export default function DealAssessmentPage() {
   // of keeping a never-updated state variable around.
   const cheaperAlternatives = useMemo(
     () => (product && activeDeal && effectiveProducts
-      ? findCheaperAlternatives(product, effectiveProducts, activeDeal.price, ["all"], undefined, { baselineDeal: activeDeal })
+      ? findCheaperAlternatives(product, effectiveProducts, activeDeal.price, ["all"])
       : []),
     [activeDeal, effectiveProducts, product]
   );
@@ -1051,9 +1051,9 @@ export default function DealAssessmentPage() {
 
       {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
           <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
-            <h4 className="dd-type-section text-stone-900">Comparable cheaper alternatives</h4>
+            <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
             <p className="mb-3 text-sm text-stone-600">
-              Like-for-like specials with a lower unit price
+              {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
             </p>
             <button
               onClick={() => setShowCheaperCarousel((open) => !open)}
@@ -1175,7 +1175,7 @@ export default function DealAssessmentPage() {
                       just `pt-3`. */}
                   <div className="pt-3">
                     <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
-                      {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving, savingUnit, candidateUnitPrice, targetUnitPrice }) => {
+                      {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving }) => {
                         return (
                           <div key={`${altProd.id}-${altStore}`}>
                             {/* Card content ported verbatim from the old
@@ -1242,14 +1242,12 @@ export default function DealAssessmentPage() {
                                     </h3>
                                     <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
                                       <span className="font-display text-base font-extrabold text-stone-900">${altPrice.toFixed(2)}</span>
-                                      <span className="text-xs font-semibold text-stone-500">(${candidateUnitPrice.toFixed(2)}/{savingUnit})</span>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                               <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
-                                Lower unit price by <strong className="font-extrabold">${saving.toFixed(2)}/{savingUnit}</strong>
-                                <span className="mt-0.5 block text-white/80">${candidateUnitPrice.toFixed(2)}/{savingUnit} vs ${targetUnitPrice.toFixed(2)}/{savingUnit} checked</span>
+                                Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
                               </span>
                               <a
                                 href={findDealForStore(altProd.currentDeals, altStore)?.productUrl || getStoreProductUrl(altStore, altProd.name)}

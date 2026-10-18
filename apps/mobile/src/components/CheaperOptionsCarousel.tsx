@@ -3,7 +3,7 @@
 import { type CheaperAlternative, type CurrentDeal, type ProductCard as ProductCardData } from "@dodgey-deals/shared";
 import ProductImage from "@/components/ProductImage";
 
-const MAX_CHEAPER_OPTIONS = 5;
+const MAX_CHEAPER_OPTIONS = 6;
 
 export default function CheaperOptionsCarousel({
   alternatives,
@@ -81,14 +81,14 @@ function CheaperOptionsThumbnailBelt({
           }}
         >
           {alternatives.map((alternative) => {
-            const { product, store, price, saving, savingUnit } = alternative;
+            const { product, store, price } = alternative;
             const isSelected = selectedAlternative?.product.id === alternative.product.id && selectedAlternative.store === alternative.store;
             return (
               <button
                 key={[product.id, store].join("-")}
                 type="button"
                 onClick={() => onSelectAlternative(alternative)}
-                aria-label={`Comparable cheaper option: ${product.name} at ${store}, $${price.toFixed(2)}, lower unit price by $${saving.toFixed(2)} per ${savingUnit}`}
+                aria-label={`Cheaper option: ${product.name} at ${store}, $${price.toFixed(2)}`}
                 aria-pressed={isSelected}
                 className={`relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border bg-white p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${isSelected ? "border-2 border-stone-900" : "border-stone-200"}`}
               >

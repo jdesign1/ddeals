@@ -217,7 +217,7 @@ export default function DealAssessmentPage() {
   // of keeping a never-updated state variable around.
   const cheaperAlternatives = useMemo(
     () => (product && deal && products
-      ? findCheaperAlternatives(product, products, deal.price, ["all"], undefined, { baselineDeal: deal })
+      ? findCheaperAlternatives(product, products, deal.price, ["all"])
       : []),
     [product, deal, products]
   );
@@ -486,8 +486,8 @@ export default function DealAssessmentPage() {
 
         {cheaperAlternatives.length > 0 && (
           <div>
-            <h4 className="mb-1 text-sm font-black text-stone-900">Comparable cheaper alternatives</h4>
-            <p className="mb-3 text-sm text-stone-600">Like-for-like specials with a lower unit price</p>
+            <h4 className="mb-1 text-sm font-black text-stone-900">Cheaper alternatives available</h4>
+            <p className="mb-3 text-sm text-stone-600">See other cheaper alternatives on special</p>
             <button
               onClick={() => setCurrentView("cheaper-alternatives")}
               className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center text-[13px] leading-4 font-black transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
@@ -656,7 +656,7 @@ export default function DealAssessmentPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving, savingUnit, candidateUnitPrice, targetUnitPrice }) => {
+                  {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving }) => {
                     const meta = getStoreLogoMeta(altStore);
                     return (
                       <div
@@ -704,8 +704,7 @@ export default function DealAssessmentPage() {
                               </p>
                               <h3 className="mt-1 font-display text-base font-bold leading-snug text-stone-900">{altProd.name}</h3>
                               <span className="mt-2 inline-block rounded-md border border-fair-100/50 bg-fair-50 px-2.5 py-2 text-[13px] leading-4 font-semibold tracking-wider text-fair-800">
-                                Lower unit price by <strong className="font-extrabold">${saving.toFixed(2)}/{savingUnit}</strong>
-                                <span className="mt-0.5 block text-fair-700/80">${candidateUnitPrice.toFixed(2)}/{savingUnit} vs ${targetUnitPrice.toFixed(2)}/{savingUnit} checked</span>
+                                Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
                               </span>
                             </div>
                             <div className="mt-3.5 flex flex-wrap items-center gap-3">
