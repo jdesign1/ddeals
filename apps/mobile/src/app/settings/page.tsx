@@ -9,7 +9,7 @@ import { useCardLayout } from "@/lib/card-layout-context";
 import { useTheme } from "@/lib/theme-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useAuth } from "@/lib/auth-context";
-import { getAccountDisplayName, getAccountEmailDisplay } from "@/lib/account-display";
+import { getAccountDisplayName, getAccountEmailDisplay, getAccountSignInMethodDisplay } from "@/lib/account-display";
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
@@ -57,6 +57,8 @@ export default function SettingsPage() {
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
   const profileInitial = profileName.trim().charAt(0).toUpperCase() || "D";
   const accountEmail = getAccountEmailDisplay(user?.email);
+  const accountSignInMethod = getAccountSignInMethodDisplay(user);
+  const accountIdentifier = accountEmail === "-" ? accountSignInMethod : accountEmail;
 
   const onBack = () => {
     if (backNavigationStartedRef.current) return;
@@ -217,7 +219,7 @@ export default function SettingsPage() {
                   <Pencil className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
-              <p className="mt-1 truncate dd-type-secondary text-stone-500">{accountEmail}</p>
+              <p className="mt-1 truncate dd-type-secondary text-stone-500">{accountIdentifier}</p>
             </div>
           </div>
           <div className="mt-5 border-t border-stone-100 pt-4">
@@ -439,8 +441,8 @@ export default function SettingsPage() {
           </div>
           <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
             <div>
-              <p className="dd-type-meta dd-type-meta-strong text-stone-500">Email</p>
-              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{accountEmail}</p>
+              <p className="dd-type-meta dd-type-meta-strong text-stone-500">Sign-in method</p>
+              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{accountSignInMethod}</p>
             </div>
             {user.created_at && (
               <div>
