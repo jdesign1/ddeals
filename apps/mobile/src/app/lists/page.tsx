@@ -27,7 +27,6 @@ import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import { useNotifications, type UnreadListAlert } from "@/lib/notifications-context";
 import ErrorState from "@/components/ErrorState";
-import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import ShareListsSheet from "@/components/ShareListsSheet";
@@ -499,54 +498,64 @@ export default function ListsPage() {
   return (
     <main className="flex min-h-full flex-col gap-2 pb-24">
       <div className="watchlist-top-chrome pt-2">
-        <WatchlistSummaryCard
-          itemCount={watchlistItems.length}
-          newPriceItemCount={newPriceItemCount}
-          onSpecialCount={onSpecialCount}
-          dealTypeCounts={dealTypeCounts}
-          selectedDealType={selectedDealType}
-          onDealTypeChange={setSelectedDealType}
-          showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
-          notificationPermissionDenied={pushPermissionState === "denied"}
-          isSettingUpNotifications={isSettingUpNotifications}
-          onSetupNotifications={() => void handleNotificationSetup()}
-        />
+        {loadingWatchlist ? (
+          <WatchlistSummarySkeleton />
+        ) : (
+          <WatchlistSummaryCard
+            itemCount={watchlistItems.length}
+            newPriceItemCount={newPriceItemCount}
+            onSpecialCount={onSpecialCount}
+            dealTypeCounts={dealTypeCounts}
+            selectedDealType={selectedDealType}
+            onDealTypeChange={setSelectedDealType}
+            showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
+            notificationPermissionDenied={pushPermissionState === "denied"}
+            isSettingUpNotifications={isSettingUpNotifications}
+            onSetupNotifications={() => void handleNotificationSetup()}
+          />
+        )}
       </div>
 
-      <div className="watchlist-filter-bar">
-        <div className="hide-scrollbar flex min-w-0 gap-1.5 overflow-x-auto px-5">
-          <div className="shrink-0">
-            <DealTypePicker value={selectedDealType} onChange={setSelectedDealType} />
-          </div>
-          <div className="shrink-0">
-            <SupermarketPicker
-              stores={supermarkets.map(([id, label]) => ({ id, label }))}
-              selectedStoreIds={selectedSupermarkets}
-              onToggleStore={toggleSupermarket}
-            />
-          </div>
-          <div className="shrink-0">
-            <CategoryPicker
-              selectedCategories={selectedCategories}
-              onChange={setSelectedCategories}
-              availableCategories={categories}
-              categoryCounts={categoryCounts}
-              align="left"
-            />
+      {loadingWatchlist ? (
+        <WatchlistFilterSkeleton />
+      ) : (
+        <div className="watchlist-filter-bar">
+          <div className="hide-scrollbar flex min-w-0 gap-1.5 overflow-x-auto px-5">
+            <div className="shrink-0">
+              <DealTypePicker value={selectedDealType} onChange={setSelectedDealType} />
+            </div>
+            <div className="shrink-0">
+              <SupermarketPicker
+                stores={supermarkets.map(([id, label]) => ({ id, label }))}
+                selectedStoreIds={selectedSupermarkets}
+                onToggleStore={toggleSupermarket}
+              />
+            </div>
+            <div className="shrink-0">
+              <CategoryPicker
+                selectedCategories={selectedCategories}
+                onChange={setSelectedCategories}
+                availableCategories={categories}
+                categoryCounts={categoryCounts}
+                align="left"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="sr-only" aria-live="polite">
-        {selectedCategories.length > 0 || selectedDealType !== "all" || !selectedSupermarkets.includes("all")
-          ? `Showing ${dealTypeFilteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
-          : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`}
-      </div>
+      {!loadingWatchlist && (
+        <div className="sr-only" aria-live="polite">
+          {selectedCategories.length > 0 || selectedDealType !== "all" || !selectedSupermarkets.includes("all")
+            ? `Showing ${dealTypeFilteredItems.length} of ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`
+            : `Watching ${watchlistItems.length} ${watchlistItems.length === 1 ? "item" : "items"}; ${viewStatusDescription}.`}
+        </div>
+      )}
 
       {error && <ErrorState message="Something went wrong with your Watchlist." detail={error} onRetry={() => void reload()} />}
 
-      <div className={`relative ${loadingWatchlist ? "min-h-[160px]" : ""}`}>
-        <div className="pointer-events-none absolute inset-0 z-10"><LoadingMascot loading={loadingWatchlist} /></div>
+      <div className="relative">
+        {loadingWatchlist && <WatchlistItemsSkeleton />}
         {!loadingWatchlist && !error && watchlistItems.length === 0 && (
           <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-stone-200/80 bg-white px-5 py-12 text-center">
             <MascotImage src="/lists-login.webp" darkSrc="/lists-login-dark.webp" alt="" width={288} height={306} sizes="128px" unoptimized className="mascot-wave mb-2 h-auto w-full max-w-[8rem]" />
@@ -716,6 +725,53 @@ function ClearWatchlistSheet({
         )}
       </AnimatePresence>
     </BottomSheetPortal>
+  );
+}
+
+function WatchlistSummarySkeleton() {
+  return (
+    <section className="bg-white py-5" role="status" aria-busy="true" aria-label="Loading your Watchlist">
+      <div className="mx-5">
+        <div className="dd-skeleton-shimmer mx-auto h-6 w-48 rounded" />
+        <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white" aria-hidden="true">
+          <div className="border-b border-stone-200 px-3 py-3">
+            <div className="dd-skeleton-shimmer mx-auto h-5 w-32 rounded" />
+          </div>
+          <div className="grid grid-cols-3 gap-3 bg-stone-50 px-3 py-3">
+            <div className="dd-skeleton-shimmer h-12 rounded" />
+            <div className="dd-skeleton-shimmer h-12 rounded" />
+            <div className="dd-skeleton-shimmer h-12 rounded" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WatchlistFilterSkeleton() {
+  return (
+    <div className="hide-scrollbar flex gap-2 overflow-hidden px-5 py-2" aria-hidden="true">
+      <div className="dd-skeleton-shimmer h-10 w-24 shrink-0 rounded-full" />
+      <div className="dd-skeleton-shimmer h-10 w-32 shrink-0 rounded-full" />
+      <div className="dd-skeleton-shimmer h-10 w-28 shrink-0 rounded-full" />
+    </div>
+  );
+}
+
+function WatchlistItemsSkeleton() {
+  return (
+    <div className="space-y-3 px-5 pb-2" aria-hidden="true">
+      <div className="dd-skeleton-shimmer h-5 w-28 rounded" />
+      {[0, 1, 2].map((index) => (
+        <div key={index} className="flex min-h-[88px] gap-3 rounded-xl bg-white p-3 shadow-xs">
+          <div className="dd-skeleton-shimmer h-16 w-16 shrink-0 rounded-lg" />
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+            <div className="dd-skeleton-shimmer h-4 w-4/5 rounded" />
+            <div className="dd-skeleton-shimmer h-3 w-1/2 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
