@@ -67,7 +67,6 @@ const ALWAYS_COMPARABLE_CATEGORIES = new Set([
 ]);
 
 const PANTRY_STAPLE_TERMS = /\b(?:almond(?:s)?|cashew(?:s)?|hazelnut(?:s)?|macadamia(?:s)?|peanut(?:s)?|pecan(?:s)?|pistachio(?:s)?|walnut(?:s)?|nut(?:s)?|seed(?:s)?|dried fruit|rice|pasta|cereal|oat(?:s|meal)?|flour|sugar|coffee|tea|cocoa|protein|powder|oil)\b/i;
-const HOUSEHOLD_COMPARISON_TERMS = /\b(?:detergent|laundry|washing powder|dishwasher|dishwash|fabric softener|bleach|cleaner|cleaning|disinfectant)\b/i;
 const READY_TO_DRINK_TERMS = /\b(?:drink|beverage|smooth(?:ie|ies)|kombucha|juice(?:\/drink)?|(?:vitamin|flavou?red|electrolyte|sparkling)\s+water|(?:energy|sports|soft|sparkling)\s+drink|protein\s+(?:shake|smooth(?:ie|ies)|drink|beverage)|(?:flavou?red|chocolate)\s+milk|milk\s+drink|iced\s+(?:coffee|tea)|cold\s+brew|(?:cola|lemonade|cordial|ginger\s+beer)\b)/i;
 const DRY_DRINK_TERMS = /\b(?:coffee|tea|cocoa|chocolate)\b/i;
 
@@ -113,7 +112,10 @@ export function shouldDisplayAssessmentUnitPrice(
   if (ALWAYS_COMPARABLE_CATEGORIES.has(shopperCategory)) return true;
 
   if (shopperCategory === "Pantry") return PANTRY_STAPLE_TERMS.test(name);
-  if (shopperCategory === "Household & Cleaning") return HOUSEHOLD_COMPARISON_TERMS.test(name);
+  // Household products are better compared by their shelf price and pack or
+  // volume details. Keep their unit-price evidence for history/classification,
+  // but avoid adding a noisy $/unit label to the shopper-facing assessment.
+  if (shopperCategory === "Household & Cleaning") return false;
   return false;
 }
 
