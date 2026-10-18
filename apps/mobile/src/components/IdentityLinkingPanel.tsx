@@ -83,7 +83,7 @@ export default function IdentityLinkingPanel() {
           Sign-in methods
         </h3>
         <p className="mt-1 text-[13px] leading-5 text-stone-500">
-          Only linked methods can access this account. Email linking is currently unavailable.
+          Use the same sign-in method to keep your Watchlist in one place.
         </p>
       </div>
 
