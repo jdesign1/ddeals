@@ -83,6 +83,58 @@ notifies the user when action may be worthwhile.
 - Finalise App Store product identifiers and entitlement mappings from this
   plan before enabling purchases.
 
+## App Store Connect setup checklist
+
+The paid agreement and bank account are now accepted, so create the products
+with these exact values before testing the purchase flow:
+
+1. In App Store Connect, open the app and go to **Monetization →
+   Subscriptions**.
+2. Create one subscription group:
+   - Reference name: `Dodgy Deal Plus`
+   - Display name: `Dodgy Deal Plus`
+3. Add the monthly auto-renewable subscription:
+   - Reference name: `Dodgy Deal Plus Monthly`
+   - Product ID: `nz.dodgydeals.plus.monthly`
+   - Duration: 1 month
+   - New Zealand starting price: NZ$2.00
+4. Add the annual auto-renewable subscription to the same group:
+   - Reference name: `Dodgy Deal Plus Annual`
+   - Product ID: `nz.dodgydeals.plus.annual`
+   - Duration: 1 year
+   - New Zealand starting price: NZ$24.00
+5. Add the same introductory offer to both products: **Free → 1 month**.
+   Apple allows a customer to redeem only one introductory offer per
+   subscription group, so the trial should not be described as two separate
+   free months.
+6. Add the New Zealand localization for each product:
+   - Display name: `Dodgy Deal Plus`
+   - Description: `Keep watching prices with unlimited Watchlist items and price alerts.`
+7. Initially make the products available in New Zealand only. We can add other
+   storefronts after the NZ purchase and support flow is proven.
+8. Create a Sandbox Apple Account with the New Zealand storefront, then test
+   the products in a development-signed or TestFlight build. TestFlight
+   renewals are accelerated, so a monthly subscription can be tested without
+   waiting a month.
+
+Do not paste Apple private keys, certificates, or Supabase service keys into
+the repository or chat. The current app reads product IDs from the public
+configuration and keeps verification material server-side.
+
+### Server notification setup
+
+For TestFlight, set the App Store Server Notifications **Sandbox Server URL**
+to:
+
+`https://app.dodgydeal.co.nz/api/subscriptions/apple/notifications`
+
+Choose **Version 2**. Keep the app’s server environment set to `Sandbox` while
+testing. Before public release, configure a Production deployment with
+`APPLE_STORE_ENVIRONMENT=Production`, the numeric Apple App ID, and the Apple
+root certificates, then set the Production Server URL to the same endpoint.
+If Sandbox and Production use separate deployments, point each Apple URL at
+the matching environment deployment.
+
 ## Implementation status
 
 The app foundation is now prepared for the first Apple subscription group:

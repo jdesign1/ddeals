@@ -14,11 +14,13 @@ import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import {
   configuredAppleProductIds,
+  DodgySubscriptions,
   isNativeAppleSubscriptionsAvailable,
   loadAppleSubscriptionProducts,
   purchaseAppleSubscription,
   restoreAppleSubscriptions,
   syncCurrentAppleSubscriptions,
+  verifyAppleSubscriptionTransaction,
   type AppleSubscriptionProduct,
 } from "@/lib/native-apple-subscriptions";
 import { AnimatePresence, motion } from "motion/react";
@@ -62,6 +64,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const nativeAvailable = isNativeAppleSubscriptionsAvailable();
   const configuredProductIds = configuredAppleProductIds();
+  const configuredProductIdsKey = configuredProductIds.join(",");
   const isPremium = hasEntitlement(entitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess);
 
   const refresh = useCallback(async () => {
@@ -91,9 +94,24 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!nativeAvailable || !user || !session) return;
     let cancelled = false;
+    let transactionHandle: { remove: () => Promise<void> } | undefined;
+
+    void DodgySubscriptions.addListener("transactionUpdated", ({ transaction }) => {
+      void verifyAppleSubscriptionTransaction(transaction, session.access_token)
+        .then(() => {
+          if (!cancelled) void refresh();
+        })
+        .catch((syncError) => {
+          if (!cancelled) setError(subscriptionError(syncError));
+        });
+    }).then((handle) => {
+      if (cancelled) void handle.remove();
+      else transactionHandle = handle;
+    });
+
     void syncCurrentAppleSubscriptions(session.access_token)
-      .then((syncedCount) => {
-        if (!cancelled && syncedCount > 0) return refresh();
+      .then(() => {
+        if (!cancelled) return refresh();
         return undefined;
       })
       .catch((syncError) => {
@@ -101,13 +119,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       });
     return () => {
       cancelled = true;
+      void transactionHandle?.remove();
     };
   }, [nativeAvailable, refresh, session, user]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!nativeAvailable || configuredProductIds.length === 0) {
-      setProducts([]);
+    if (!nativeAvailable || configuredProductIdsKey.length === 0) {
       return () => {
         cancelled = true;
       };
@@ -124,7 +142,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [configuredProductIds.join(","), nativeAvailable]);
+  }, [configuredProductIdsKey, nativeAvailable]);
 
   const purchase = useCallback(async (productId: string): Promise<boolean> => {
     if (!user || !session) {
@@ -296,7 +314,7 @@ function SubscriptionSheet({
                       return (
                         <button key={product.id} type="button" onClick={() => onPurchase(product.id)} disabled={busyProductId !== null} className={`relative flex min-h-16 items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${isAnnual ? "border-ink-900 bg-ink-900 text-white" : "border-stone-300 bg-white text-stone-900"}`}>
                           {isAnnual && <span className="absolute -top-2.5 left-4 rounded-full bg-fair-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-ink-900">Best value</span>}
-                          <span><span className="block text-sm font-extrabold">{isAnnual ? "Annual" : "Monthly"}</span><span className={`mt-0.5 block text-xs ${isAnnual ? "text-white/70" : "text-stone-500"}`}>One month free, then {isAnnual ? "NZ$24/year" : "NZ$2/month"}</span></span>
+                          <span><span className="block text-sm font-extrabold">{isAnnual ? "Annual" : "Monthly"}</span><span className={`mt-0.5 block text-xs ${isAnnual ? "text-white/70" : "text-stone-500"}`}>One month free for eligible new subscribers, then renews {isAnnual ? "annually" : "monthly"}</span></span>
                           <span className="shrink-0 text-sm font-extrabold">{isBusy ? "Starting…" : product.displayPrice}</span>
                         </button>
                       );

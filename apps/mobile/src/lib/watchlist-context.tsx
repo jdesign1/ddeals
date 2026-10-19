@@ -8,6 +8,7 @@ import {
   createList,
   fetchItemsForLists,
   fetchUserLists,
+  FREE_WATCHLIST_LIMIT,
   invalidateListsPageCache,
   LIST_MEMBERSHIP_CHANGED_EVENT,
   removeItemFromList,
@@ -15,6 +16,7 @@ import {
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
+import { useSubscriptions } from "@/lib/subscription-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { describeFetchError } from "@dodgey-deals/shared";
 import WatchlistNotificationSheet from "@/components/WatchlistNotificationSheet";
@@ -51,6 +53,7 @@ function isWatchlist(list: ListRow): boolean {
  */
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
   const {
     pushEnabled,
     pushReady,
@@ -205,6 +208,13 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     setError(null);
     const pendingIds = [...selectedProductIds].filter((productId) => !savedProductIds.has(productId));
 
+    if (!subscriptionLoading && !isPremium && savedProductIds.size + pendingIds.length > FREE_WATCHLIST_LIMIT) {
+      setError(`Free accounts can save up to ${FREE_WATCHLIST_LIMIT} products. Subscribe to save more.`);
+      setIsCommitting(false);
+      openSubscriptionSheet();
+      return;
+    }
+
     const client = requireAccountsSupabaseClient();
 
     try {
@@ -229,7 +239,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         invalidateListsPageCache(user.id);
         window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
         setConfirmation(`${addedIds.length} ${addedIds.length === 1 ? "item" : "items"} added to Watchlist`);
-        if (!pushEnabled) {
+        if (!pushEnabled && isPremium) {
           setNotificationPromptItemCount(addedIds.length);
           setNotificationPromptUserId(user.id);
           setNotificationPromptPending(true);
@@ -237,11 +247,17 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       }
       if (failedIds.length) setError("Some items couldn't be added. Please try again.");
     } catch (commitError) {
-      setError(describeFetchError(commitError, "We couldn't update your Watchlist."));
+      const message = commitError instanceof Error ? commitError.message : "";
+      if (/watchlist limit reached|subscription required/i.test(message)) {
+        setError(`Free accounts can save up to ${FREE_WATCHLIST_LIMIT} products. Subscribe to save more.`);
+        openSubscriptionSheet();
+      } else {
+        setError(describeFetchError(commitError, "We couldn't update your Watchlist."));
+      }
     } finally {
       setIsCommitting(false);
     }
-  }, [isCommitting, pushEnabled, savedProductIds, selectedProductIds, user]);
+  }, [isCommitting, isPremium, openSubscriptionSheet, pushEnabled, savedProductIds, selectedProductIds, subscriptionLoading, user]);
 
   const value = useMemo<WatchlistContextValue>(() => ({
     savedProductIds,

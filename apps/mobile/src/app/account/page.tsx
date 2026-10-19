@@ -10,6 +10,7 @@ import MascotImage from "@/components/MascotImage";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountEmailDisplay } from "@/lib/account-display";
 import { usePageHeader } from "@/lib/header-context";
+import { useSubscriptions } from "@/lib/subscription-context";
 
 /**
  * "Manage Account" -- ported (in spirit, not verbatim) from
@@ -41,6 +42,7 @@ import { usePageHeader } from "@/lib/header-context";
 export default function AccountPage() {
   const router = useRouter();
   const { user, loading, signOut, openAuthSheet } = useAuth();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   usePageHeader("Manage Account", () => router.back());
@@ -101,6 +103,28 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
+      <section className="flex flex-col gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-5 shadow-xs" aria-labelledby="subscription-heading">
+        <div>
+          <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-ink-700">Dodgy Deal Plus</p>
+          <h2 id="subscription-heading" className="mt-1 dd-type-section text-ink-950">
+            {isPremium ? "Your subscription is active" : "Keep watching prices for you"}
+          </h2>
+          <p className="mt-1 dd-type-secondary text-ink-800/75">
+            {isPremium
+              ? "Manage your Watchlist monitoring and price alerts from your subscription options."
+              : "Get unlimited Watchlist items and price alerts while keeping the full deal assessment free."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openSubscriptionSheet}
+          disabled={subscriptionLoading}
+          className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
+        >
+          {subscriptionLoading ? "Checking subscription…" : isPremium ? "View subscription" : "See subscription options"}
+        </button>
+      </section>
 
       <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4">
         <p className="text-[13px] leading-relaxed text-stone-500">

@@ -7,6 +7,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
+import { useSubscriptions } from "@/lib/subscription-context";
 
 export interface UnreadListAlert {
   id: string;
@@ -54,6 +55,7 @@ function isNativeIos(): boolean {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
   const userId = user?.id;
   const client = getAccountsSupabaseClient();
   const [pushEnabled, setPushEnabledState] = useState(false);
@@ -96,7 +98,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   const refreshNotifications = useCallback(async () => {
-    if (!client || !user) {
+    if (!client || !user || subscriptionLoading || !isPremium) {
       setPushEnabledState(false);
       setUnreadAlerts([]);
       return;
@@ -132,7 +134,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     setPushEnabledState(Boolean(preferenceResult.data?.push_enabled));
     setUnreadAlerts(nextUnreadAlerts);
-  }, [client, user]);
+  }, [client, isPremium, subscriptionLoading, user]);
 
   const refreshPushPermission = useCallback(async (): Promise<PermissionState | null> => {
     if (!isNativeIos()) {
@@ -293,6 +295,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setNotificationError("Sign in to manage push notifications.");
       return false;
     }
+    if (enabled && subscriptionLoading) {
+      setNotificationError("Checking your subscription status. Please try again in a moment.");
+      return false;
+    }
+    if (enabled && !isPremium) {
+      setNotificationError("Subscribe to Dodgy Deal Plus to receive price alerts.");
+      openSubscriptionSheet();
+      return false;
+    }
     if (enabled && !isNativeIos()) {
       setNotificationError("Push notifications are available in the iOS app.");
       return false;
@@ -332,7 +343,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       registeredTokenRef.current = null;
     }
     return true;
-  }, [client, pushReady, user]);
+  }, [client, isPremium, openSubscriptionSheet, pushReady, subscriptionLoading, user]);
 
   const openNotificationSettings = useCallback(async () => {
     setNotificationError(null);

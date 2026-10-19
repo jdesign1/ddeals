@@ -41,7 +41,10 @@ export function configuredAppleProductIds(): string[] {
     .filter(Boolean);
 }
 
-async function verifyTransaction(transaction: AppleSubscriptionTransaction, accessToken: string): Promise<void> {
+export async function verifyAppleSubscriptionTransaction(
+  transaction: AppleSubscriptionTransaction,
+  accessToken: string,
+): Promise<void> {
   const response = await fetch("/api/subscriptions/apple/verify", {
     method: "POST",
     cache: "no-store",
@@ -66,20 +69,20 @@ export async function loadAppleSubscriptionProducts(): Promise<AppleSubscription
 export async function purchaseAppleSubscription(productId: string, accountId: string, accessToken: string): Promise<AppleSubscriptionTransaction> {
   if (!isNativeAppleSubscriptionsAvailable()) throw new Error("Apple subscriptions are only available in the iOS app.");
   const transaction = await DodgySubscriptions.purchase({ productId, appAccountToken: accountId });
-  await verifyTransaction(transaction, accessToken);
+  await verifyAppleSubscriptionTransaction(transaction, accessToken);
   return transaction;
 }
 
 export async function syncCurrentAppleSubscriptions(accessToken: string): Promise<number> {
   if (!isNativeAppleSubscriptionsAvailable()) return 0;
   const { transactions } = await DodgySubscriptions.currentEntitlements();
-  for (const transaction of transactions) await verifyTransaction(transaction, accessToken);
+  for (const transaction of transactions) await verifyAppleSubscriptionTransaction(transaction, accessToken);
   return transactions.length;
 }
 
 export async function restoreAppleSubscriptions(accessToken: string): Promise<number> {
   if (!isNativeAppleSubscriptionsAvailable()) return 0;
   const { transactions } = await DodgySubscriptions.restore();
-  for (const transaction of transactions) await verifyTransaction(transaction, accessToken);
+  for (const transaction of transactions) await verifyAppleSubscriptionTransaction(transaction, accessToken);
   return transactions.length;
 }

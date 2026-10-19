@@ -1,8 +1,11 @@
-# Subscription foundation
+# Subscription foundation and current product plan
 
-This is the Phase 1 foundation for paid subscriptions. It deliberately does
-not add a paywall, limits, prices, trial length, or StoreKit purchase flow.
-Existing free functionality remains unchanged.
+This document records the subscription foundation and the current first-release
+product decision. The commercial details are maintained in
+`docs/subscription-product-plan.md`.
+
+The core deal assessment remains free. The paid plan is for extended history,
+ongoing monitoring, and convenience features.
 
 ## Current app contract
 
@@ -16,6 +19,10 @@ The shared package now exposes:
 - `hasEntitlement(...)`: checks whether a capability is currently available.
 - `fetchUserEntitlements(...)`: reads the signed-in user's rows from Accounts
   Supabase; RLS remains the authority for account ownership.
+- `FREE_WATCHLIST_LIMIT`: five saved products for free accounts.
+- `FREE_CHECK_HISTORY_LIMIT`: ten recent All Checks entries for free accounts.
+- `FREE_DEAL_STATS_CHECK_LIMIT`: thirty recent checks used for free Deal Stats.
+- `PREMIUM_CHECK_HISTORY_LIMIT`: the server-side extended-history ceiling.
 
 Example future keys are `advanced_history`, `deal_alerts`, and
 `unlimited_lists`. They are examples only and do not currently unlock or limit
@@ -41,9 +48,15 @@ Performance reported 0 errors and 0 warnings, and Security reported 0 errors.
 The remaining Security warnings are pre-existing function/password-protection
 recommendations outside this subscription foundation.
 
+The live Accounts project also revokes browser `SELECT` access to
+`public.deal_checks`. Authenticated clients retain only the insert privilege
+needed when a deal is checked. History reads now go through the authenticated
+server route, which checks the verified `premium_access` entitlement before
+applying the free or premium limit.
+
 ## Phase 2 implementation
 
-The first Apple plumbing is now in place without choosing prices or limits:
+The first Apple plumbing is now in place for the agreed product direction:
 
 - The iOS shell exposes a small StoreKit 2 bridge for loading products,
   purchasing with a Supabase account UUID as Apple's `appAccountToken`,
@@ -56,6 +69,14 @@ The first Apple plumbing is now in place without choosing prices or limits:
   refunds, and revocations.
 - Apple signed timestamps prevent an older notification from overwriting a
   newer transaction state.
+- The app uses the proposed monthly product `nz.dodgydeals.plus.monthly` and
+  annual product `nz.dodgydeals.plus.annual`, both mapped to
+  `premium_access`.
+- The agreed prices are NZ$2 monthly and NZ$24 annually, with a one-month free
+  introductory offer configured in App Store Connect before launch.
+- The full assessment, evidence, supermarket comparison, and 90-day graph
+  remain free. Premium history, unlimited Watchlist, and price alerts are
+  separate from that core assessment.
 
 Before enabling a product, configure the server-only Apple environment,
 bundle/app identifiers, App Store root certificates, and product-to-entitlement
@@ -63,7 +84,34 @@ map. Product IDs can be exposed to the iOS client, but Apple private keys and
 root certificate material must never use `NEXT_PUBLIC_` variables.
 
 The endpoints intentionally return configuration-unavailable responses until
-those values are present. No current free functionality is gated.
+those values are present. The remaining launch work is App Store Connect and
+Vercel configuration, followed by Sandbox/TestFlight purchase, restore,
+renewal, expiry, and downgrade testing.
 
-Only after the StoreKit flow is tested in Xcode and App Store sandbox should we
-decide product IDs, prices, trials, and feature limits.
+## Deployment configuration status
+
+The `dodgy-deal-mobile` Vercel project now has the non-secret Sandbox values
+configured for production and preview:
+
+- `NEXT_PUBLIC_APPLE_SUBSCRIPTION_PRODUCT_IDS`
+- `APPLE_STORE_ENVIRONMENT=Sandbox`
+- `APPLE_BUNDLE_ID=nz.dodgydeals.app`
+- `APPLE_ENTITLEMENT_PRODUCT_MAP`
+
+The Apple G3 root certificate is now configured as encrypted server-only
+Vercel environment configuration for production and preview. The remaining
+launch checks are:
+
+- confirm the Accounts service-role key is populated and usable by the
+  subscription routes
+- add `APPLE_APPLE_ID` before switching the server to Production
+- optionally add the Apple G2 root certificate alongside G3 if Apple’s
+  verification chain requires it in future
+
+After the products exist in App Store Connect, configure App Store Server
+Notifications V2 to send to:
+
+`https://app.dodgydeal.co.nz/api/subscriptions/apple/notifications`
+
+Keep the environment in Sandbox until TestFlight purchase, restore, renewal,
+expiry, refund, and notification delivery have all been verified.
