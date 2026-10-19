@@ -8,7 +8,7 @@ this plan before launch.
 ## Pricing
 
 - Monthly: **NZ$2 per month**
-- Annual: **NZ$24 paid upfront**
+- Annual: **NZ$20 paid upfront**
 - Introductory offer: **one month free**, followed by the selected plan price
 
 Proposed App Store Connect product identifiers:
@@ -17,9 +17,9 @@ Proposed App Store Connect product identifiers:
 - Annual: `nz.dodgydeals.plus.annual`
 - Entitlement: `premium_access`
 
-The annual price is intentionally the same as twelve monthly payments. It
-provides upfront payment and convenience, but is not presented as an annual
-discount.
+The annual price gives users a modest saving compared with twelve monthly
+payments, while keeping the cost low for people managing a cost-of-living
+crisis.
 
 ## Free access
 
@@ -102,7 +102,7 @@ with these exact values before testing the purchase flow:
    - Reference name: `Dodgy Deal Plus Annual`
    - Product ID: `nz.dodgydeals.plus.annual`
    - Duration: 1 year
-   - New Zealand starting price: NZ$24.00
+   - New Zealand starting price: NZ$20.00
 5. Add the same introductory offer to both products: **Free → 1 month**.
    Apple allows a customer to redeem only one introductory offer per
    subscription group, so the trial should not be described as two separate

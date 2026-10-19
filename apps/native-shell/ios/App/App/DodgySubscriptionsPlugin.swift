@@ -10,7 +10,8 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "currentEntitlements", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "finish", returnType: CAPPluginReturnPromise)
     ]
 
     private var updatesTask: Task<Void, Never>?
@@ -21,7 +22,6 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
                 guard let self else { return }
                 guard case .verified(let transaction) = result else { continue }
                 let payload = self.transactionPayload(transaction, jwsRepresentation: result.jwsRepresentation)
-                await transaction.finish()
                 self.notifyListeners("transactionUpdated", data: ["transaction": payload])
             }
         }
@@ -77,9 +77,7 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
                         call.reject("Apple could not verify this transaction.", "TRANSACTION_UNVERIFIED")
                         return
                     }
-                    let payload = self.transactionPayload(transaction, jwsRepresentation: verification.jwsRepresentation)
-                    await transaction.finish()
-                    call.resolve(payload)
+                    call.resolve(self.transactionPayload(transaction, jwsRepresentation: verification.jwsRepresentation))
                 case .userCancelled:
                     call.reject("The Apple purchase was cancelled.", "USER_CANCELLED")
                 case .pending:
@@ -107,6 +105,31 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
             } catch {
                 call.reject("Apple could not restore purchases.", "RESTORE_FAILED", error)
             }
+        }
+    }
+
+    @objc func finish(_ call: CAPPluginCall) {
+        guard let transactionIdString = call.getString("transactionId"),
+              let transactionId = UInt64(transactionIdString) else {
+            call.reject("A valid Apple transaction ID is required.", "INVALID_ARGUMENT")
+            return
+        }
+
+        Task { @MainActor in
+            var finished = false
+            for await result in Transaction.unfinished {
+                guard case .verified(let transaction) = result else { continue }
+                guard transaction.id == transactionId else { continue }
+                await transaction.finish()
+                finished = true
+                break
+            }
+
+            // The transaction may already have been finished by a concurrent
+            // listener or a previous retry. Treat that as success because the
+            // server verification has already completed before this method is
+            // called.
+            call.resolve(["finished": finished])
         }
     }
 

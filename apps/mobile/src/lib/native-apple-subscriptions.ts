@@ -22,6 +22,7 @@ interface DodgySubscriptionsPlugin {
   purchase(options: { productId: string; appAccountToken: string }): Promise<AppleSubscriptionTransaction>;
   currentEntitlements(): Promise<{ transactions: AppleSubscriptionTransaction[] }>;
   restore(): Promise<{ transactions: AppleSubscriptionTransaction[] }>;
+  finish(options: { transactionId: string }): Promise<{ finished: boolean }>;
   addListener(
     eventName: "transactionUpdated",
     listenerFunc: (event: { transaction: AppleSubscriptionTransaction }) => void
@@ -58,6 +59,12 @@ export async function verifyAppleSubscriptionTransaction(
     const payload = await response.json().catch(() => null) as { error?: string } | null;
     throw new Error(payload?.error || "We could not verify the Apple subscription.");
   }
+  await finishAppleSubscriptionTransaction(transaction.transactionId);
+}
+
+export async function finishAppleSubscriptionTransaction(transactionId: string): Promise<void> {
+  if (!isNativeAppleSubscriptionsAvailable()) return;
+  await DodgySubscriptions.finish({ transactionId });
 }
 
 export async function loadAppleSubscriptionProducts(): Promise<AppleSubscriptionProduct[]> {

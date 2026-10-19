@@ -203,37 +203,22 @@ export async function upsertAppleEntitlements(params: {
     throw new Error("Apple transaction is missing a required identifier");
   }
 
+  const verifiedAt = new Date().toISOString();
+  const revokedAt = params.status === "revoked" ? verifiedAt : null;
   for (const entitlementKey of params.entitlementKeys) {
-    const existingResult = await params.accounts
-      .from("subscription_entitlements")
-      .select("provider_signed_at")
-      .eq("account_id", params.accountId)
-      .eq("entitlement_key", entitlementKey)
-      .eq("provider", APPLE_PROVIDER)
-      .eq("product_id", params.transaction.productId)
-      .maybeSingle();
-    if (existingResult.error) throw new Error(`Could not read subscription entitlement: ${existingResult.error.message}`);
-
-    const existingSignedAt = existingResult.data?.provider_signed_at;
-    if (existingSignedAt && Date.parse(existingSignedAt) > Date.parse(signedAt)) continue;
-
-    const { error } = await params.accounts.from("subscription_entitlements").upsert(
-      {
-        account_id: params.accountId,
-        entitlement_key: entitlementKey,
-        status: params.status,
-        provider: APPLE_PROVIDER,
-        product_id: params.transaction.productId,
-        provider_transaction_id: providerTransactionId,
-        original_transaction_id: originalTransactionId,
-        expires_at: expiresAt,
-        provider_signed_at: signedAt,
-        verified_at: new Date().toISOString(),
-        revoked_at: params.status === "revoked" ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "account_id,entitlement_key,provider,product_id" }
-    );
+    const { error } = await params.accounts.rpc("upsert_subscription_entitlement_if_newer", {
+      p_account_id: params.accountId,
+      p_entitlement_key: entitlementKey,
+      p_status: params.status,
+      p_provider: APPLE_PROVIDER,
+      p_product_id: params.transaction.productId,
+      p_provider_transaction_id: providerTransactionId,
+      p_original_transaction_id: originalTransactionId,
+      p_expires_at: expiresAt,
+      p_provider_signed_at: signedAt,
+      p_verified_at: verifiedAt,
+      p_revoked_at: revokedAt,
+    });
     if (error) throw new Error(`Could not save subscription entitlement: ${error.message}`);
   }
 }

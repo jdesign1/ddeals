@@ -72,7 +72,7 @@ The first Apple plumbing is now in place for the agreed product direction:
 - The app uses the proposed monthly product `nz.dodgydeals.plus.monthly` and
   annual product `nz.dodgydeals.plus.annual`, both mapped to
   `premium_access`.
-- The agreed prices are NZ$2 monthly and NZ$24 annually, with a one-month free
+- The agreed prices are NZ$2 monthly and NZ$20 annually, with a one-month free
   introductory offer configured in App Store Connect before launch.
 - The full assessment, evidence, supermarket comparison, and 90-day graph
   remain free. Premium history, unlimited Watchlist, and price alerts are

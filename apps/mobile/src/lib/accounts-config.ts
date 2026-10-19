@@ -9,7 +9,10 @@ import type { SupabaseRestConfig } from "@dodgey-deals/shared";
  */
 export const accountsConfig: SupabaseRestConfig = {
   url: process.env.NEXT_PUBLIC_ACCOUNTS_SUPABASE_URL || "https://mdgrivegsblocgactyjy.supabase.co",
-  anonKey: process.env.NEXT_PUBLIC_ACCOUNTS_SUPABASE_ANON_KEY || "",
+  anonKey:
+    process.env.NEXT_PUBLIC_ACCOUNTS_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_ACCOUNTS_SUPABASE_ANON_KEY ||
+    "",
 };
 
 export const authRedirectUrl =

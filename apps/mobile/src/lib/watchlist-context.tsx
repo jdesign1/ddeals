@@ -224,12 +224,15 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
       const addedIds: string[] = [];
       const failedIds: string[] = [];
+      let watchlistLimitReached = false;
       for (const productId of pendingIds) {
         try {
           await addItemToList(client, watchlist.id, productId);
           addedIds.push(productId);
-        } catch {
+        } catch (itemError) {
           failedIds.push(productId);
+          const message = itemError instanceof Error ? itemError.message : String(itemError);
+          if (/watchlist limit reached|subscription required/i.test(message)) watchlistLimitReached = true;
         }
       }
 
@@ -245,7 +248,12 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           setNotificationPromptPending(true);
         }
       }
-      if (failedIds.length) setError("Some items couldn't be added. Please try again.");
+      if (watchlistLimitReached) {
+        setError(`Free accounts can save up to ${FREE_WATCHLIST_LIMIT} products. Subscribe to save more.`);
+        openSubscriptionSheet();
+      } else if (failedIds.length) {
+        setError("Some items couldn't be added. Please try again.");
+      }
     } catch (commitError) {
       const message = commitError instanceof Error ? commitError.message : "";
       if (/watchlist limit reached|subscription required/i.test(message)) {
