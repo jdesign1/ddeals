@@ -8,6 +8,7 @@ import {
   buildPreviouslyCheckedChangedDeals,
   buildWatchlistSpecialDeals,
   formatCompactUpdatedText,
+  getPreviouslyCheckedDealKey,
 } from "./check-deals-home.ts";
 
 function deal(overrides: Partial<CurrentDeal> = {}): CurrentDeal {
@@ -123,4 +124,26 @@ test("previously checked belt shows the latest changed check only", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0]?.checkedAt, "2026-10-16T00:00:00.000Z");
   assert.equal(items[0]?.changeLabel, "Price changed since you checked");
+});
+
+test("previously checked dismissal keys change when the observed reminder changes", () => {
+  const products = [product("1", "Changed", [deal({ price: 7 })])];
+  const rows: DealCheckRow[] = [{
+    id: "check",
+    user_id: "user",
+    product_id: "1",
+    store: "New World",
+    price: 8,
+    original_price: 10,
+    deal_type: "Real Deal",
+    checked_at: "2026-10-16T00:00:00.000Z",
+  }];
+  const item = buildPreviouslyCheckedChangedDeals(products, rows, ["all"])[0];
+
+  assert.ok(item);
+  assert.equal(getPreviouslyCheckedDealKey(item), getPreviouslyCheckedDealKey({ ...item }));
+  assert.notEqual(
+    getPreviouslyCheckedDealKey(item),
+    getPreviouslyCheckedDealKey({ ...item, deal: { ...item.deal, price: 6.5 } }),
+  );
 });

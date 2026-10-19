@@ -20,6 +20,21 @@ export interface CheckDealsRailItem {
   isNew?: boolean;
 }
 
+/**
+ * Stable per-change key for the dismissible "Worth another look" belt.
+ * Including the current observed state means a later price or assessment
+ * change can surface again after the user dismisses an older reminder.
+ */
+export function getPreviouslyCheckedDealKey(item: Pick<CheckDealsRailItem, "product" | "deal" | "checkedAt">): string {
+  return [
+    item.product.id,
+    normalizeStoreKey(item.deal.store),
+    item.checkedAt ?? "",
+    item.deal.price.toFixed(2),
+    item.deal.dealType,
+  ].join("::");
+}
+
 function verdictRank(deal: CurrentDeal): number {
   if (deal.dealType === "Real Deal") return 4;
   if (deal.dealType === "Fair Price") return 3;

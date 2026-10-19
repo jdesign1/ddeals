@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { getDealSnapshotAmount, type DealSnapshotKind } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
@@ -25,6 +25,7 @@ export default function PersonalDealRail({
   deals,
   tone,
   onSeeAll,
+  onDismiss,
 }: {
   id: string;
   title: string;
@@ -32,6 +33,7 @@ export default function PersonalDealRail({
   deals: CheckDealsRailItem[];
   tone: PersonalRailTone;
   onSeeAll?: () => void;
+  onDismiss?: () => void;
 }) {
   const railRef = useRef<HTMLDivElement>(null);
   const visibleDeals = useMemo(() => deals.slice(0, 20), [deals]);
@@ -46,7 +48,17 @@ export default function PersonalDealRail({
           <h2 id={`${id}-title`} className={`dd-type-section ${styles.title}`}>{title}</h2>
           <p className="dd-type-secondary mt-1 max-w-[18rem] text-stone-600">{description}</p>
         </div>
-        {onSeeAll && visibleDeals.length > 0 && (
+        {onDismiss && visibleDeals.length > 0 ? (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label={`Dismiss ${title}`}
+            aria-haspopup="dialog"
+            className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-white/70 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 ${styles.action}`}
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        ) : onSeeAll && visibleDeals.length > 0 ? (
           <button
             type="button"
             onClick={onSeeAll}
@@ -54,7 +66,7 @@ export default function PersonalDealRail({
           >
             See all
           </button>
-        )}
+        ) : null}
       </div>
 
       <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
@@ -18,6 +18,7 @@ import {
 import MascotImage from "@/components/MascotImage";
 import CheckDealsSummary from "@/components/CheckDealsSummary";
 import PersonalDealRail from "@/components/PersonalDealRail";
+import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
@@ -28,6 +29,7 @@ import {
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getLatestPublishedAt,
+  getPreviouslyCheckedDealKey,
   type CheckDealsSummaryStore,
 } from "@/lib/check-deals-home";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
@@ -55,6 +57,8 @@ import {
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { compareLatestSpecials } from "@/lib/special-freshness";
+
+const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -239,6 +243,8 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
+  const [dismissedWorthAnotherLookKeys, setDismissedWorthAnotherLookKeys] = useState<Set<string>>(() => new Set());
+  const [isWorthAnotherLookSheetOpen, setIsWorthAnotherLookSheetOpen] = useState(false);
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
@@ -251,6 +257,24 @@ export default function HomePage() {
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
   const newDealKeys = useMemo(() => digest?.allDealKeys ?? [], [digest]);
   const [checkedHistoryState, setCheckedHistoryState] = useState<{ accessToken: string | null; rows: DealCheckRow[] }>({ accessToken: null, rows: [] });
+  const worthAnotherLookStorageKey = session?.user?.id
+    ? `${WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX}:${session.user.id}`
+    : null;
+
+  useEffect(() => {
+    if (!worthAnotherLookStorageKey) {
+      setDismissedWorthAnotherLookKeys(new Set());
+      return;
+    }
+
+    try {
+      const stored = window.localStorage.getItem(worthAnotherLookStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      setDismissedWorthAnotherLookKeys(new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : []));
+    } catch {
+      setDismissedWorthAnotherLookKeys(new Set());
+    }
+  }, [worthAnotherLookStorageKey]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -339,6 +363,26 @@ export default function HomePage() {
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
     [checkedHistory, products, selectedStores],
   );
+  const visiblePreviouslyCheckedDeals = useMemo(
+    () => previouslyCheckedDeals.filter((item) => !dismissedWorthAnotherLookKeys.has(getPreviouslyCheckedDealKey(item))),
+    [dismissedWorthAnotherLookKeys, previouslyCheckedDeals],
+  );
+  const dismissWorthAnotherLook = useCallback(() => {
+    const keysToDismiss = visiblePreviouslyCheckedDeals.map(getPreviouslyCheckedDealKey);
+    setDismissedWorthAnotherLookKeys((current) => {
+      const next = new Set(current);
+      keysToDismiss.forEach((key) => next.add(key));
+      if (worthAnotherLookStorageKey) {
+        try {
+          window.localStorage.setItem(worthAnotherLookStorageKey, JSON.stringify([...next]));
+        } catch {
+          // The in-memory dismissal still keeps the belt hidden for this session.
+        }
+      }
+      return next;
+    });
+    setIsWorthAnotherLookSheetOpen(false);
+  }, [visiblePreviouslyCheckedDeals, worthAnotherLookStorageKey]);
   const allTopSavingsDeals = useMemo(
     () => buildSnapshotDeals(products, selectedStores, "savings"),
     [products, selectedStores]
@@ -659,8 +703,9 @@ export default function HomePage() {
                 id="previously-checked-rail"
                 title="Worth another look"
                 description="Deals you checked before whose price or assessment has changed."
-                deals={previouslyCheckedDeals}
+                deals={visiblePreviouslyCheckedDeals}
                 tone="history"
+                onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
               />
               <DealSnapshotRail
                 kind="savings"
@@ -706,6 +751,12 @@ export default function HomePage() {
       )}
       </motion.main>
       </div>
+      <DismissWorthAnotherLookSheet
+        open={isWorthAnotherLookSheetOpen}
+        itemCount={visiblePreviouslyCheckedDeals.length}
+        onClose={() => setIsWorthAnotherLookSheetOpen(false)}
+        onRemove={dismissWorthAnotherLook}
+      />
     </>
   );
 }
