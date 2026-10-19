@@ -128,12 +128,6 @@ export default function ListsPage() {
     unreadAlerts,
     markListItemViewed,
     markWatchlistVisited,
-    pushEnabled,
-    pushReady,
-    pushAvailableOnDevice,
-    pushPermissionState,
-    setPushEnabled,
-    openNotificationSettings,
   } = useNotifications();
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [productMeta, setProductMeta] = useState<Map<string, ListItemProductMeta>>(new Map());
@@ -148,7 +142,6 @@ export default function ListsPage() {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
-  const [isSettingUpNotifications, setIsSettingUpNotifications] = useState(false);
   const [selectedWatchlistUpdate, setSelectedWatchlistUpdate] = useState<ReadonlyArray<UnreadListAlert> | null>(null);
   const watchlistVisitRecordedRef = useRef<string | null>(null);
 
@@ -260,21 +253,6 @@ export default function ListsPage() {
     ),
     [unreadListItemKeys, watchlistItems],
   );
-
-  const handleNotificationSetup = useCallback(async () => {
-    setIsSettingUpNotifications(true);
-    try {
-      if (pushAvailableOnDevice && pushPermissionState === "denied") {
-        await openNotificationSettings();
-      } else if (pushAvailableOnDevice && pushReady) {
-        await setPushEnabled(true);
-      } else {
-        router.push("/settings");
-      }
-    } finally {
-      setIsSettingUpNotifications(false);
-    }
-  }, [openNotificationSettings, pushAvailableOnDevice, pushPermissionState, pushReady, router, setPushEnabled]);
 
   const categories = useMemo(() => {
     const values = new Set<string>();
@@ -508,10 +486,6 @@ export default function ListsPage() {
             dealTypeCounts={dealTypeCounts}
             selectedDealType={selectedDealType}
             onDealTypeChange={setSelectedDealType}
-            showNotificationSetup={Boolean(watchlistItems.length > 0 && pushAvailableOnDevice && (pushPermissionState !== null || pushReady) && !pushEnabled)}
-            notificationPermissionDenied={pushPermissionState === "denied"}
-            isSettingUpNotifications={isSettingUpNotifications}
-            onSetupNotifications={() => void handleNotificationSetup()}
           />
         )}
       </div>
@@ -782,10 +756,6 @@ function WatchlistSummaryCard({
   dealTypeCounts,
   selectedDealType,
   onDealTypeChange,
-  showNotificationSetup,
-  notificationPermissionDenied,
-  isSettingUpNotifications,
-  onSetupNotifications,
 }: {
   itemCount: number;
   newPriceItemCount: number;
@@ -793,10 +763,6 @@ function WatchlistSummaryCard({
   dealTypeCounts: WatchlistDealTypeCounts;
   selectedDealType: WatchlistDealTypeFilter;
   onDealTypeChange: (value: WatchlistDealTypeFilter) => void;
-  showNotificationSetup: boolean;
-  notificationPermissionDenied: boolean;
-  isSettingUpNotifications: boolean;
-  onSetupNotifications: () => void;
 }) {
   const hasNewPrices = newPriceItemCount > 0;
   const isEmpty = itemCount === 0;
@@ -842,13 +808,6 @@ function WatchlistSummaryCard({
               <div className="flex items-center gap-2 border-t border-stone-100 px-4 py-3 text-[13px] font-extrabold text-stone-900" aria-live="polite">
                 <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
                 {newPriceItemCount} {newPriceItemCount === 1 ? "item" : "items"} with new prices
-              </div>
-            )}
-            {showNotificationSetup && (
-              <div className="flex items-center justify-end gap-3 border-t border-stone-100 px-4 py-3">
-                <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
-                  {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
-                </button>
               </div>
             )}
           </div>
