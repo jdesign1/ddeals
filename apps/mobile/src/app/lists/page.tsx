@@ -845,10 +845,7 @@ function WatchlistSummaryCard({
               </div>
             )}
             {showNotificationSetup && (
-              <div className="flex items-center justify-between gap-3 border-t border-stone-100 px-4 py-3">
-                <p className="text-[12px] leading-4 text-stone-500">
-                  {notificationPermissionDenied ? "Notifications are off. Turn them on to get price alerts." : "Get an alert when prices change."}
-                </p>
+              <div className="flex items-center justify-end gap-3 border-t border-stone-100 px-4 py-3">
                 <button type="button" onClick={onSetupNotifications} disabled={isSettingUpNotifications} className="shrink-0 text-[12px] font-extrabold text-ink-900 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-ink-600 disabled:cursor-wait disabled:opacity-50">
                   {isSettingUpNotifications ? "Opening…" : notificationPermissionDenied ? "Open Settings" : "Set up notifications"}
                 </button>
