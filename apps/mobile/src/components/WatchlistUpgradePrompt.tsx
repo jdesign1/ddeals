@@ -60,7 +60,7 @@ export default function WatchlistUpgradePrompt({
                   <button
                     type="button"
                     onClick={onSubscribe}
-                    className="cursor-pointer text-sm font-extrabold text-ink-900 underline decoration-2 underline-offset-4 transition-colors hover:text-fair-700"
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
                   >
                     Subscribe
                   </button>

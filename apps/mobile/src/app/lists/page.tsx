@@ -650,7 +650,7 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && lockedDealTypeFilteredItems.length > 0 && (
           <div className="mt-6 flex flex-col gap-2 border-t border-stone-200 px-5 pt-5">
-            <button type="button" onClick={handleWatchlistSubscribe} className="dd-btn w-full cursor-pointer border-2 border-ink-900 bg-transparent px-4 py-2.5 text-sm text-ink-900 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+            <button type="button" onClick={handleWatchlistSubscribe} className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
               Subscribe for unlimited items
             </button>
             <p className="dd-type-secondary text-stone-500">Save up to 5 items with a free account, any extra items saved will remain here until you subscribe</p>
