@@ -9,10 +9,10 @@ export interface WatchlistEntitlementItem {
 
 function addedAtTime(item: WatchlistEntitlementItem): number {
   const timestamp = Date.parse(item.addedAt);
-  return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER;
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
 }
 
-/** Free accounts keep their first five saved products available. */
+/** Free accounts keep their five most recently added products available. */
 export function getLockedWatchlistProductIds(
   items: readonly WatchlistEntitlementItem[],
   hasUnlimitedAccess: boolean,
@@ -21,7 +21,7 @@ export function getLockedWatchlistProductIds(
 
   const unlockedProductIds = new Set(
     [...items]
-      .sort((left, right) => addedAtTime(left) - addedAtTime(right))
+      .sort((left, right) => addedAtTime(right) - addedAtTime(left))
       .slice(0, FREE_WATCHLIST_LIMIT)
       .map((item) => item.productId),
   );

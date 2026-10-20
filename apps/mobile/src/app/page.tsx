@@ -399,17 +399,7 @@ export default function HomePage() {
     () => buildSnapshotDeals(products, selectedStores, "dodgy", newDealKeySet),
     [newDealKeySet, products, selectedStores]
   );
-  const newDealsCount = useMemo(
-    () => {
-      const keys = new Set<string>();
-      for (const { product, deal } of [...newTopSavingsDeals, ...newWorstDodgyDeals]) {
-        if (topDealsCategories.length > 0 && !topDealsCategories.includes(groupCategory(product.category, product.name))) continue;
-        keys.add(getNewSpecialDealKey(product.id, deal.store));
-      }
-      return keys.size;
-    },
-    [newTopSavingsDeals, newWorstDodgyDeals, topDealsCategories],
-  );
+  const newDealsCount = digest?.total ?? 0;
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const newDealsRealSearchOptions = useMemo(
     () => newForYouFilterActive && newDealKeys.length > 0
@@ -423,8 +413,17 @@ export default function HomePage() {
       : { focus: false },
     [newDealKeys, newForYouFilterActive],
   );
+  const newDealsAllSearchOptions = useMemo(
+    () => newForYouFilterActive && newDealKeys.length > 0
+      ? { focus: false, dealKeys: newDealKeys, sortBy: "latest" as const }
+      : { focus: false },
+    [newDealKeys, newForYouFilterActive],
+  );
   const openRailSearch = (filter: DealFilter, options: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy }) => {
-    openSearchForFilter(filter, options);
+    openSearchForFilter(
+      newForYouFilterActive && options.dealKeys?.length ? "all" : filter,
+      newForYouFilterActive && options.dealKeys?.length ? newDealsAllSearchOptions : options,
+    );
   };
   const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
   const worstDodgyDeals = newForYouFilterActive ? newWorstDodgyDeals : allWorstDodgyDeals;
@@ -730,10 +729,10 @@ export default function HomePage() {
               <div className="px-5 pb-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => openSearchForFilter("all", { focus: false })}
+                  onClick={() => openSearchForFilter("all", newDealsAllSearchOptions)}
                   className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
                 >
-                  See all deals
+                  {newForYouFilterActive ? "See all new deals" : "See all deals"}
                 </button>
               </div>
             </>

@@ -313,7 +313,7 @@ export default function BottomNav() {
                   </span>
                   {(hasUnreadUpdates || hasNewSpecials) && (
                     <span
-                      className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white"
+                      className={`absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ${isActive ? "" : "ring-2 ring-white"}`}
                       aria-hidden="true"
                     />
                   )}

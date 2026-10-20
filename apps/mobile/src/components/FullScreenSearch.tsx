@@ -260,6 +260,8 @@ export default function FullScreenSearch() {
     finishDealNavigation,
     returnToSearch,
     preserveSearchStateOnOpen,
+    clearNewSpecialsFilter,
+    newSpecialsSearchMode,
     selectedStores,
     toggleStore,
     dealFilter,
@@ -267,7 +269,7 @@ export default function FullScreenSearch() {
     newSpecialDealKeys,
     searchSortOverride,
   } = useSearch();
-  const { markReviewed } = useNewSpecials();
+  const { digest, markReviewed } = useNewSpecials();
   const { isGridLayout } = useCardLayout();
   const pathname = usePathname();
 
@@ -431,6 +433,7 @@ export default function FullScreenSearch() {
   // Users can still choose a different sort from the sheet below.
   const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>(() => getDefaultDealSort(dealFilter));
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
+  const [sessionNewSpecialDealKeys, setSessionNewSpecialDealKeys] = useState<string[] | null>(null);
 
   // Track the open transition for scroll restoration. The shared deal filter
   // deliberately is not reset here: it must survive full-screen search
@@ -439,9 +442,17 @@ export default function FullScreenSearch() {
   if (isOpen !== lastSearchOpen) {
     setLastSearchOpen(isOpen);
     if (isOpen && !preserveSearchStateOnOpen) {
+      const freshNewDealKeys = newSpecialsSearchMode === "keys"
+        ? newSpecialDealKeys
+        : newSpecialsSearchMode === "auto"
+          ? digest?.allDealKeys ?? null
+          : null;
+      setSessionNewSpecialDealKeys(freshNewDealKeys?.length ? [...freshNewDealKeys] : null);
       const initialSort = searchSortOverride ?? getDefaultDealSort(dealFilter);
       setPopularSortBy(initialSort);
       setResultsSortBy(initialSort);
+    } else if (!isOpen) {
+      setSessionNewSpecialDealKeys(null);
     }
   }
 
@@ -522,9 +533,10 @@ export default function FullScreenSearch() {
   };
 
   const newSpecialDealKeySet = useMemo(
-    () => (newSpecialDealKeys?.length ? new Set(newSpecialDealKeys) : null),
-    [newSpecialDealKeys],
+    () => (sessionNewSpecialDealKeys?.length ? new Set(sessionNewSpecialDealKeys) : null),
+    [sessionNewSpecialDealKeys],
   );
+  const isNewToYouMode = newSpecialDealKeySet !== null;
 
   // Popular specials -- the same filtered, cheapest deal per product used by
   // Check Deals. Shown before the user has typed 3+ characters.
@@ -681,6 +693,13 @@ export default function FullScreenSearch() {
   };
   const handleBack = () => {
     closeSearch();
+  };
+
+  const handleShowAllDeals = () => {
+    clearNewSpecialsFilter();
+    setSessionNewSpecialDealKeys(null);
+    setPopularSortBy(getDefaultDealSort(dealFilter));
+    setResultsSortBy(getDefaultDealSort(dealFilter));
   };
 
   const getStoreDisplayName = (key: string) => STORE_DISPLAY_FALLBACK[key] || key;
@@ -1128,6 +1147,7 @@ export default function FullScreenSearch() {
                     <DealFilterTabs
                       value={dealFilter}
                       onChange={handleDealFilterChange}
+                      allLabel={isNewToYouMode ? "New to you" : undefined}
                     />
 
                     {renderToolbarFilters("popular")}
@@ -1182,9 +1202,20 @@ export default function FullScreenSearch() {
                           default, `letter-spacing: normal`) rather than a
                           smaller positive tracking value, since Jay asked
                           for "normal" specifically, not just "less wide." */}
-                      <h3 className="dd-type-control text-stone-600">
-                        {newSpecialDealKeySet ? `${sortedPopularSpecials.length} new since your last visit` : `${sortedPopularSpecials.length} deals`}
-                      </h3>
+                      <div className="flex items-center justify-center gap-3">
+                        <h3 className="dd-type-control text-stone-600">
+                          {newSpecialDealKeySet ? `${sortedPopularSpecials.length} new since your last visit` : `${sortedPopularSpecials.length} deals`}
+                        </h3>
+                        {isNewToYouMode && (
+                          <button
+                            type="button"
+                            onClick={handleShowAllDeals}
+                            className="dd-type-control cursor-pointer font-extrabold text-ink-900 underline decoration-2 underline-offset-4 transition-colors hover:text-fair-700"
+                          >
+                            Show all deals
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                       {visiblePopularSpecials.map(({ product, bestDeal }, index) => (
@@ -1342,7 +1373,12 @@ export default function FullScreenSearch() {
                           pills/tabs/sort/category no-border ask -- see
                           `app/page.tsx`'s Home tab track for the full
                           cross-reference. */}
-                      <DealFilterTabs value={dealFilter} onChange={handleDealFilterChange} buttonIdPrefix="price-filter" />
+                      <DealFilterTabs
+                        value={dealFilter}
+                        onChange={handleDealFilterChange}
+                        buttonIdPrefix="price-filter"
+                        allLabel={isNewToYouMode ? "New to you" : undefined}
+                      />
 
                       {renderToolbarFilters("results")}
                     </div>
@@ -1350,10 +1386,19 @@ export default function FullScreenSearch() {
 
                   <DealFilterSummary filter={dealFilter} />
 
-                  <div className="flex items-center justify-center gap-2 text-center">
+                  <div className="flex items-center justify-center gap-3 text-center">
                     <span className="dd-type-meta dd-type-meta-strong text-stone-500">
                       {sortedProducts.length} {sortedProducts.length === 1 ? "item" : "items"}
                     </span>
+                    {isNewToYouMode && (
+                      <button
+                        type="button"
+                        onClick={handleShowAllDeals}
+                        className="dd-type-control cursor-pointer font-extrabold text-ink-900 underline decoration-2 underline-offset-4 transition-colors hover:text-fair-700"
+                      >
+                        Show all deals
+                      </button>
+                    )}
                   </div>
 
                   <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>

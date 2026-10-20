@@ -208,32 +208,6 @@ export default function ListsPage() {
   }, [applyData, user]);
 
   useEffect(() => {
-    if (!userId) {
-      watchlistVisitRecordedRef.current = null;
-      return;
-    }
-    if (loadingWatchlist || subscriptionLoading || error || watchlistVisitRecordedRef.current === userId) return;
-    watchlistVisitRecordedRef.current = userId;
-    markWatchlistVisited();
-    if (isPremium) return;
-
-    const storageKey = watchlistVisitCountStorageKey(userId);
-    let visitCount = 0;
-    try {
-      const storedCount = Number(window.localStorage.getItem(storageKey));
-      if (Number.isFinite(storedCount) && storedCount >= 0) visitCount = Math.floor(storedCount);
-      visitCount += 1;
-      window.localStorage.setItem(storageKey, String(visitCount));
-    } catch {
-      return;
-    }
-
-    if (!shouldShowWatchlistUpgradePrompt(watchlistItems.length, visitCount, isPremium)) return;
-    const timer = window.setTimeout(() => setIsWatchlistUpgradePromptOpen(true), 350);
-    return () => window.clearTimeout(timer);
-  }, [error, isPremium, loadingWatchlist, markWatchlistVisited, subscriptionLoading, userId, watchlistItems.length]);
-
-  useEffect(() => {
     const handleMembershipChanged = () => void reload(false);
     window.addEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, handleMembershipChanged);
     return () => window.removeEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, handleMembershipChanged);
@@ -260,6 +234,32 @@ export default function ListsPage() {
     }
     return [...byProduct.values()];
   }, [itemsByList]);
+
+  useEffect(() => {
+    if (!userId) {
+      watchlistVisitRecordedRef.current = null;
+      return;
+    }
+    if (loadingWatchlist || subscriptionLoading || error || watchlistVisitRecordedRef.current === userId) return;
+    watchlistVisitRecordedRef.current = userId;
+    markWatchlistVisited();
+    if (isPremium) return;
+
+    const storageKey = watchlistVisitCountStorageKey(userId);
+    let visitCount = 0;
+    try {
+      const storedCount = Number(window.localStorage.getItem(storageKey));
+      if (Number.isFinite(storedCount) && storedCount >= 0) visitCount = Math.floor(storedCount);
+      visitCount += 1;
+      window.localStorage.setItem(storageKey, String(visitCount));
+    } catch {
+      return;
+    }
+
+    if (!shouldShowWatchlistUpgradePrompt(watchlistItems.length, visitCount, isPremium)) return;
+    const timer = window.setTimeout(() => setIsWatchlistUpgradePromptOpen(true), 350);
+    return () => window.clearTimeout(timer);
+  }, [error, isPremium, loadingWatchlist, markWatchlistVisited, subscriptionLoading, userId, watchlistItems.length]);
 
   const unreadAlertsByListItem = useMemo(() => {
     const grouped = new Map<string, UnreadListAlert[]>();
