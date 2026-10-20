@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useSearch } from "@/lib/search-context";
+import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
 import LoadingMascot from "@/components/LoadingMascot";
@@ -324,9 +325,7 @@ export default function HistoryPage() {
                 ? filteredHistory.slice(0, index).filter((row) => !historyPreviewIds.has(row.id)).length
                 : -1;
               const lockedOpacity = isLocked
-                ? filteredLockedHistoryCount === 1
-                  ? 0.32
-                  : Math.max(0.06, 0.55 * (1 - lockedIndex / Math.max(1, filteredLockedHistoryCount - 1)))
+                ? getLockedPreviewOpacity(lockedIndex, filteredLockedHistoryCount)
                 : 1;
               const previous = filteredHistory[index - 1];
               const dayKey = getLocalDayKey(h.checked_at);
@@ -338,7 +337,7 @@ export default function HistoryPage() {
                       <button
                         type="button"
                         onClick={openSubscriptionSheet}
-                        className="dd-btn dd-btn-primary w-fit cursor-pointer px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
+                        className="dd-btn w-full cursor-pointer border-2 border-ink-900 bg-transparent px-4 py-2.5 text-sm text-ink-900 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
                       >
                         Subscribe for unlimited items
                       </button>

@@ -41,6 +41,7 @@ import DealTypePicker, { type WatchlistDealTypeFilter } from "@/components/DealT
 import SupermarketPicker from "@/components/WatchlistViewPicker";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
+import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import { sortWatchlistItems, watchlistItemDeal } from "@/lib/watchlist-sort";
 import { getLockedWatchlistProductIds, shouldShowWatchlistUpgradePrompt } from "@/lib/watchlist-upgrade";
 
@@ -649,7 +650,7 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && lockedDealTypeFilteredItems.length > 0 && (
           <div className="mt-6 flex flex-col gap-2 border-t border-stone-200 px-5 pt-5">
-            <button type="button" onClick={handleWatchlistSubscribe} className="dd-btn dd-btn-primary w-fit cursor-pointer px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+            <button type="button" onClick={handleWatchlistSubscribe} className="dd-btn w-full cursor-pointer border-2 border-ink-900 bg-transparent px-4 py-2.5 text-sm text-ink-900 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
               Subscribe for unlimited items
             </button>
             <p className="dd-type-secondary text-stone-500">Save up to 5 items with a free account, any extra items saved will remain here until you subscribe</p>
@@ -674,7 +675,11 @@ export default function ListsPage() {
                     transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
                     className="flex flex-col gap-2 overflow-hidden"
                   >
-                    {lockedDealTypeFilteredItems.map((entry) => renderItem(entry, true))}
+                    {lockedDealTypeFilteredItems.map((entry, index) => (
+                      <div key={entry.productId} style={{ opacity: getLockedPreviewOpacity(index, lockedDealTypeFilteredItems.length) }}>
+                        {renderItem(entry, true)}
+                      </div>
+                    ))}
                   </motion.div>
                 )}
               </AnimatePresence>
