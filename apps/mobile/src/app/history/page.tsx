@@ -333,7 +333,7 @@ export default function HistoryPage() {
               return (
                 <Fragment key={h.id}>
                   {isLocked && index === firstLockedHistoryIndex && (
-                    <div className="flex flex-col gap-2 pt-1 pb-1">
+                    <div className="mt-3 flex flex-col gap-2 border-t border-stone-200 pt-5">
                       <button
                         type="button"
                         onClick={openSubscriptionSheet}
