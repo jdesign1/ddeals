@@ -78,6 +78,14 @@ export function isNewSpecialsPendingActive(pending: NewSpecialsPending, now = Da
   return pending.summary.total > 0 && pending.expiresAt > now;
 }
 
+/** The unread batch may keep its badge while the launch popup is shown once. */
+export function isNewSpecialsPopupPresented(
+  pending: Pick<NewSpecialsPending, "batchId" | "popupPresented"> | null,
+  sessionPresentedBatchId: string | null,
+): boolean {
+  return Boolean(pending && (pending.popupPresented || sessionPresentedBatchId === pending.batchId));
+}
+
 function storeKeyFromDealKey(dealKey: string): string {
   const separatorIndex = dealKey.lastIndexOf("::");
   return separatorIndex >= 0 ? dealKey.slice(separatorIndex + 2) : "";

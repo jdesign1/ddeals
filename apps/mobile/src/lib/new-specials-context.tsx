@@ -9,6 +9,7 @@ import {
   createNewSpecialsSnapshot,
   getNewSpecialsStorageScope,
   isNewSpecialsPendingActive,
+  isNewSpecialsPopupPresented,
   readNewSpecialsPending,
   readNewSpecialsSnapshot,
   removeReviewedNewSpecials,
@@ -192,9 +193,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   }, [currentSnapshot, pending, scope, storageReady]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const popupPresented = isNewSpecialsPopupPresented(activePending, sessionPresentedBatchId);
+
   const requestOpen = useCallback(() => {
-    if (pendingDigest?.total) setOpenRequested(true);
-  }, [pendingDigest]);
+    if (pendingDigest?.total && !popupPresented) setOpenRequested(true);
+  }, [pendingDigest, popupPresented]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
@@ -238,16 +241,14 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     () => ({
       digest,
       hasPendingDigest: Boolean(pendingDigest?.total),
-      popupPresented: Boolean(activePending && (
-        activePending.popupPresented || sessionPresentedBatchId === activePending.batchId
-      )),
+      popupPresented,
       openRequested,
       requestOpen,
       consumeOpenRequest,
       markPopupShown,
       markReviewed,
     }),
-    [activePending, consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, requestOpen, sessionPresentedBatchId],
+    [consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, popupPresented, requestOpen],
   );
 
   return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;

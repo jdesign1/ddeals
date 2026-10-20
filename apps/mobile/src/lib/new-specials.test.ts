@@ -7,6 +7,7 @@ import {
   getNewSpecialDealKey,
   getNewSpecialsStorageScope,
   isNewSpecialsPendingActive,
+  isNewSpecialsPopupPresented,
   removeReviewedNewSpecials,
   summarizeNewSpecials,
 } from "./new-specials.ts";
@@ -123,6 +124,15 @@ test("new batches keep the popup state separate from the unread deal state", () 
   assert.equal(pending.detectedAt, now);
   assert.equal(isNewSpecialsPendingActive(pending, now + 1), true);
   assert.equal(isNewSpecialsPendingActive(pending, pending.expiresAt), false);
+});
+
+test("a presented batch remains unread without requesting the popup again", () => {
+  const summary = summarizeNewSpecials([product("p1", [deal()])], createNewSpecialsSnapshot([]));
+  const pending = createNewSpecialsPending(summary, createNewSpecialsSnapshot([product("p1", [deal()])]), 123);
+
+  assert.equal(isNewSpecialsPopupPresented(pending, null), false);
+  assert.equal(isNewSpecialsPopupPresented({ ...pending, popupPresented: true }, null), true);
+  assert.equal(isNewSpecialsPopupPresented(pending, pending.batchId), true);
 });
 
 test("reviewing one deal category preserves the other unread keys", () => {
