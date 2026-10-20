@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { motion } from "motion/react";
@@ -16,6 +16,7 @@ import {
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
+import { useSubscriptions } from "@/lib/subscription-context";
 import { useSearch } from "@/lib/search-context";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
@@ -66,6 +67,7 @@ import MascotImage from "@/components/MascotImage";
  */
 export default function HistoryPage() {
   const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { isPremium, openSubscriptionSheet } = useSubscriptions();
   const router = useRouter();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
   const [verdictFilter, setVerdictFilter] = useState<"real" | "dodgy" | null>(null);
@@ -79,6 +81,7 @@ export default function HistoryPage() {
   }, []);
 
   const [history, setHistory] = useState<DealCheckRow[] | null>(null);
+  const [historyAccess, setHistoryAccess] = useState({ isPremium: false, limited: false });
   const [availableMonthKeys, setAvailableMonthKeys] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,13 +101,14 @@ export default function HistoryPage() {
       scope: "history",
       ...(range ?? {}),
     })
-      .then(({ rows }) => {
+      .then(({ rows, isPremium: serverIsPremium, limited }) => {
         if (!cancelled) {
           // A month change can leave fallback product metadata from the
           // previous result briefly in memory. Clear it with the new history
           // so a just-selected month can never render a stale product.
           setFallbackProducts([]);
           setHistory(rows);
+          setHistoryAccess({ isPremium: serverIsPremium, limited });
           if (!selectedMonth) setAvailableMonthKeys([...new Set(rows.map((row) => getHistoryMonthKey(row.checked_at)))]);
         }
       })
@@ -114,7 +118,7 @@ export default function HistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, session?.access_token, retryTick, selectedMonth]);
+  }, [isPremium, user, session?.access_token, retryTick, selectedMonth]);
 
   // Gap-fill: any checked product not in the currently-loaded live specials
   // set (rolled off special since it was checked) gets looked up
@@ -161,6 +165,11 @@ export default function HistoryPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const displayHistory = useMemo(() => collapseConsecutiveDealChecks(history || []), [history]);
+  const historyPreviewIds = useMemo(
+    () => new Set(displayHistory.slice(0, 2).map((row) => row.id)),
+    [displayHistory],
+  );
+  const historyIsPremium = historyAccess.isPremium || isPremium;
   const filteredHistory = useMemo(() => {
     return displayHistory.filter((h) => {
       const matchesVerdict = !verdictFilter
@@ -171,6 +180,12 @@ export default function HistoryPage() {
       return Boolean(product && productMatchesSearch(product, searchQuery));
     });
   }, [displayHistory, productById, searchQuery, verdictFilter]);
+  const filteredLockedHistoryCount = historyIsPremium
+    ? 0
+    : filteredHistory.filter((row) => !historyPreviewIds.has(row.id)).length;
+  const firstLockedHistoryIndex = historyIsPremium
+    ? -1
+    : filteredHistory.findIndex((row) => !historyPreviewIds.has(row.id));
   const monthOptions = useMemo(() => buildHistoryMonthOptions(availableMonthKeys), [availableMonthKeys]);
   const firstRenderableHistoryIndex = filteredHistory.findIndex((row) => productById.has(row.product_id));
 
@@ -304,11 +319,33 @@ export default function HistoryPage() {
               const product = productById.get(h.product_id);
               if (!product) return null;
               const deal = buildHistoricalDeal(h);
+              const isLocked = !historyIsPremium && !historyPreviewIds.has(h.id);
+              const lockedIndex = isLocked
+                ? filteredHistory.slice(0, index).filter((row) => !historyPreviewIds.has(row.id)).length
+                : -1;
+              const lockedOpacity = isLocked
+                ? filteredLockedHistoryCount === 1
+                  ? 0.32
+                  : Math.max(0.06, 0.55 * (1 - lockedIndex / Math.max(1, filteredLockedHistoryCount - 1)))
+                : 1;
               const previous = filteredHistory[index - 1];
               const dayKey = getLocalDayKey(h.checked_at);
               const previousDayKey = previous ? getLocalDayKey(previous.checked_at) : null;
               return (
-                <div key={h.id} className="flex flex-col gap-2">
+                <Fragment key={h.id}>
+                  {isLocked && index === firstLockedHistoryIndex && (
+                    <div className="flex flex-col gap-2 pt-1 pb-1">
+                      <button
+                        type="button"
+                        onClick={openSubscriptionSheet}
+                        className="dd-btn dd-btn-primary w-fit cursor-pointer px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
+                      >
+                        Subscribe for unlimited items
+                      </button>
+                      <p className="dd-type-secondary text-stone-500">Subscribe to unlock your full check history.</p>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2" style={isLocked ? { opacity: lockedOpacity } : undefined}>
                   {dayKey !== previousDayKey && (
                     <div
                       className={`flex items-center justify-between gap-3 ${
@@ -360,8 +397,9 @@ export default function HistoryPage() {
                       )}
                     </div>
                   )}
-                  <HistoryProductCard product={product} deal={deal} />
-                </div>
+                  <HistoryProductCard product={product} deal={deal} isLocked={isLocked} />
+                  </div>
+                </Fragment>
               );
             })}
             </motion.div>
