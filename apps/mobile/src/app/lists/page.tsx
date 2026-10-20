@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
+import { useSubscriptions } from "@/lib/subscription-context";
 import { useNotifications, type UnreadListAlert } from "@/lib/notifications-context";
 import ErrorState from "@/components/ErrorState";
 import MascotImage from "@/components/MascotImage";
@@ -33,6 +34,7 @@ import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import UnreadListItem from "@/components/UnreadListItem";
 import WatchlistUpdateSheet from "@/components/WatchlistUpdateSheet";
+import WatchlistUpgradePrompt from "@/components/WatchlistUpgradePrompt";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CategoryPicker from "@/components/CategoryPicker";
 import DealTypePicker, { type WatchlistDealTypeFilter } from "@/components/DealTypePicker";
@@ -40,6 +42,7 @@ import SupermarketPicker from "@/components/WatchlistViewPicker";
 import { AnimatePresence, motion } from "motion/react";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import { sortWatchlistItems, watchlistItemDeal } from "@/lib/watchlist-sort";
+import { getLockedWatchlistProductIds, shouldShowWatchlistUpgradePrompt } from "@/lib/watchlist-upgrade";
 
 type WatchlistDealTypeCounts = {
   realSavers: number;
@@ -55,6 +58,11 @@ interface WatchlistItem {
 }
 
 const dairyRule = getSearchSynonymRule("dairy");
+const WATCHLIST_VISIT_COUNT_STORAGE_PREFIX = "dodgey-deals:watchlist-visits:v1:";
+
+function watchlistVisitCountStorageKey(userId: string): string {
+  return `${WATCHLIST_VISIT_COUNT_STORAGE_PREFIX}${encodeURIComponent(userId)}`;
+}
 
 function matchesDealTypeFilter(
   deal: ReturnType<typeof watchlistItemDeal>,
@@ -121,6 +129,7 @@ function otherSpecialStores(product: ProductCardData, displayedStore: string): s
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
   const userId = user?.id;
   const router = useRouter();
   const {
@@ -142,6 +151,7 @@ export default function ListsPage() {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
+  const [isWatchlistUpgradePromptOpen, setIsWatchlistUpgradePromptOpen] = useState(false);
   const [selectedWatchlistUpdate, setSelectedWatchlistUpdate] = useState<ReadonlyArray<UnreadListAlert> | null>(null);
   const watchlistVisitRecordedRef = useRef<string | null>(null);
 
@@ -202,10 +212,26 @@ export default function ListsPage() {
       watchlistVisitRecordedRef.current = null;
       return;
     }
-    if (loadingWatchlist || error || watchlistVisitRecordedRef.current === userId) return;
+    if (loadingWatchlist || subscriptionLoading || error || watchlistVisitRecordedRef.current === userId) return;
     watchlistVisitRecordedRef.current = userId;
     markWatchlistVisited();
-  }, [error, loadingWatchlist, markWatchlistVisited, userId]);
+    if (isPremium) return;
+
+    const storageKey = watchlistVisitCountStorageKey(userId);
+    let visitCount = 0;
+    try {
+      const storedCount = Number(window.localStorage.getItem(storageKey));
+      if (Number.isFinite(storedCount) && storedCount >= 0) visitCount = Math.floor(storedCount);
+      visitCount += 1;
+      window.localStorage.setItem(storageKey, String(visitCount));
+    } catch {
+      return;
+    }
+
+    if (!shouldShowWatchlistUpgradePrompt(watchlistItems.length, visitCount, isPremium)) return;
+    const timer = window.setTimeout(() => setIsWatchlistUpgradePromptOpen(true), 350);
+    return () => window.clearTimeout(timer);
+  }, [error, isPremium, loadingWatchlist, markWatchlistVisited, subscriptionLoading, userId, watchlistItems.length]);
 
   useEffect(() => {
     const handleMembershipChanged = () => void reload(false);
@@ -299,7 +325,7 @@ export default function ListsPage() {
     [filterSupermarkets, itemCards, productMeta, selectedCategories, selectedSupermarkets, watchlistItems],
   );
 
-  const dealTypeFilteredItems = useMemo(
+  const allDealTypeFilteredItems = useMemo(
     () => filteredItems.filter((item) => watchlistItemDealForFilter(
       item,
       itemCards,
@@ -307,6 +333,19 @@ export default function ListsPage() {
       selectedDealType,
     ) !== undefined),
     [filterSupermarkets, filteredItems, itemCards, selectedDealType],
+  );
+
+  const lockedWatchlistProductIds = useMemo(
+    () => getLockedWatchlistProductIds(watchlistItems, subscriptionLoading || isPremium),
+    [isPremium, subscriptionLoading, watchlistItems],
+  );
+  const dealTypeFilteredItems = useMemo(
+    () => allDealTypeFilteredItems.filter((item) => !lockedWatchlistProductIds.has(item.productId)),
+    [allDealTypeFilteredItems, lockedWatchlistProductIds],
+  );
+  const lockedDealTypeFilteredItems = useMemo(
+    () => allDealTypeFilteredItems.filter((item) => lockedWatchlistProductIds.has(item.productId)),
+    [allDealTypeFilteredItems, lockedWatchlistProductIds],
   );
 
   const supermarkets = useMemo(() => {
@@ -395,6 +434,11 @@ export default function ListsPage() {
     }
   }, [isClearingWatchlist, reload, watchlistItems]);
 
+  const handleWatchlistSubscribe = useCallback(() => {
+    setIsWatchlistUpgradePromptOpen(false);
+    openSubscriptionSheet();
+  }, [openSubscriptionSheet]);
+
   const activeItems = useMemo(
     () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, selectedDealType)?.isOnSpecial === true),
     [dealTypeFilteredItems, filterSupermarkets, itemCards, selectedDealType],
@@ -403,7 +447,7 @@ export default function ListsPage() {
     () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, selectedDealType)?.isOnSpecial !== true),
     [dealTypeFilteredItems, filterSupermarkets, itemCards, selectedDealType],
   );
-  const renderItem = (entry: WatchlistItem) => {
+  const renderItem = (entry: WatchlistItem, isLocked = false) => {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
     const deal = card ? watchlistItemDealForFilter(entry, itemCards, filterSupermarkets, selectedDealType) : undefined;
@@ -420,6 +464,7 @@ export default function ListsPage() {
         exit={{ opacity: 0, y: -8, scale: 0.98 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
         data-watchlist-product-id={entry.productId}
+        className={isLocked ? "grayscale opacity-60" : undefined}
       >
         <UnreadListItem
           listId={sourceItem.list_id}
@@ -537,7 +582,7 @@ export default function ListsPage() {
             <p className="max-w-xs text-sm leading-5 text-stone-500">Tap the plus icon on any item to add it to your Watchlist. We&rsquo;ll alert you when it goes on special again at a better price.</p>
           </div>
         )}
-        {!loadingWatchlist && !error && watchlistItems.length > 0 && selectedDealType === "all" && dealTypeFilteredItems.length === 0 && (
+        {!loadingWatchlist && !error && watchlistItems.length > 0 && selectedDealType === "all" && dealTypeFilteredItems.length === 0 && lockedDealTypeFilteredItems.length === 0 && (
           <p className="mx-5 rounded-2xl bg-white px-4 py-8 text-center text-sm font-semibold text-stone-500">No Watchlist products match these filters.</p>
         )}
         {!loadingWatchlist && !error && dealTypeFilteredItems.length > 0 && (
@@ -596,6 +641,24 @@ export default function ListsPage() {
               </AnimatePresence>
           </div>
         )}
+        {!loadingWatchlist && !error && lockedDealTypeFilteredItems.length > 0 && (
+          <div className="mt-6 flex flex-col gap-2 border-t border-stone-200 px-5 pt-5">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="max-w-[18rem] text-sm font-extrabold leading-5 text-stone-700">Subscribe for unlimited Watchlist items</h2>
+              <button
+                type="button"
+                onClick={handleWatchlistSubscribe}
+                className="shrink-0 cursor-pointer text-sm font-extrabold text-ink-900 underline decoration-2 underline-offset-4 transition-colors hover:text-fair-700"
+              >
+                Subscribe
+              </button>
+            </div>
+            <p className="dd-type-secondary text-stone-500">Saved items beyond your free allowance are kept here until you subscribe.</p>
+            <AnimatePresence initial={false} mode="popLayout">
+              {lockedDealTypeFilteredItems.map((entry) => renderItem(entry, true))}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
       {!loadingWatchlist && watchlistItems.length > 0 && (
@@ -619,6 +682,11 @@ export default function ListsPage() {
         }}
       />
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
+      <WatchlistUpgradePrompt
+        open={isWatchlistUpgradePromptOpen}
+        onClose={() => setIsWatchlistUpgradePromptOpen(false)}
+        onSubscribe={handleWatchlistSubscribe}
+      />
       <ClearWatchlistSheet
         open={isClearWatchlistSheetOpen}
         itemCount={watchlistItems.length}

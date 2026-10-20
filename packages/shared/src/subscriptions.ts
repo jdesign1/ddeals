@@ -16,7 +16,7 @@ export const SUBSCRIPTION_ENTITLEMENT_KEYS = {
   premiumAccess: "premium_access",
 } as const;
 
-/** Free users can save five products; paid users can save without this cap. */
+/** Free users keep five saved products fully available; paid users unlock all saved products. */
 export const FREE_WATCHLIST_LIMIT = 5;
 
 /** Free users can review a small recent slice of their check history. */
