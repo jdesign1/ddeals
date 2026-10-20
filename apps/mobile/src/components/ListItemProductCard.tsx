@@ -148,6 +148,8 @@ export interface ListItemProductCardProps {
   onBeforeNavigate?: () => void;
   /** Marks this Watchlist item viewed when its deal assessment is opened. */
   onDealAssessmentOpen?: () => void;
+  /** Keeps free-account overflow items visible without exposing live deal data. */
+  isLocked?: boolean;
   /** Refresh the list data after the not-on-special sheet is dismissed. */
   onAfterNotOnSpecial?: () => void;
   /** The Cheaper Options tab supplies ranked alternatives for this saved item. */
@@ -186,6 +188,7 @@ export default function ListItemProductCard({
   removeLabel,
   onBeforeNavigate,
   onDealAssessmentOpen,
+  isLocked = false,
   onAfterNotOnSpecial,
   cheaperAlternatives = [],
   showCheaperOptions = false,
@@ -225,20 +228,22 @@ export default function ListItemProductCard({
   // "why" -- local to this one card, same reasoning as `confirmingRemove`
   // just above (only one row's sheet is ever open at a time, nothing
   // outside this card needs to know).
-  const isNotOnSpecial = displayedDeal.isOnSpecial === false;
+  const isNotOnSpecial = !isLocked && displayedDeal.isOnSpecial === false;
   // Use the same public assessment resolver as the deal page. Watchlist copy
   // stays compact, but its state must not diverge (especially for near-low
   // historical reads and unconfirmed Dodgy review candidates).
-  const assessmentVerdict = isNotOnSpecial ? "Fair Price" : getAssessmentVerdict(displayedDeal);
+  const assessmentVerdict = isLocked ? null : isNotOnSpecial ? "Fair Price" : getAssessmentVerdict(displayedDeal);
   const isRealSaver = assessmentVerdict === "Real Saver";
   const isDodgyDeal = assessmentVerdict === "Dodgy Deal";
   const isFairPrice = assessmentVerdict === "Fair Price";
   const isAssessmentPending = assessmentVerdict === "Early read" || assessmentVerdict === "Limited history";
-  const dealFreshnessLabel = displayedDeal.isOnSpecial ? freshnessLabel(displayedDeal.specialsVerifiedAt) : null;
+  const dealFreshnessLabel = !isLocked && displayedDeal.isOnSpecial ? freshnessLabel(displayedDeal.specialsVerifiedAt) : null;
   const [showNotOnSpecialSheet, setShowNotOnSpecialSheet] = useState(false);
   const isCheaperOptionsExpanded = showCheaperOptions && cheaperOptionsExpanded;
   const isMergedCheaperOptionsCard = isCheaperOptionsExpanded;
-  const verdictBorderClass = isNotOnSpecial && !confirmingRemove
+  const verdictBorderClass = isLocked
+    ? "border-stone-200/80 bg-stone-50"
+    : isNotOnSpecial && !confirmingRemove
     ? "border-stone-200/80 grayscale bg-stone-50"
     : isRealSaver
       ? "border-fair-600"
@@ -257,6 +262,7 @@ export default function ListItemProductCard({
   // instead of navigating to a deal page for a deal that isn't really
   // "on" right now.
   const handleActivate = () => {
+    if (isLocked) return;
     if (isNotOnSpecial) {
       onBeforeNavigate?.();
       setShowNotOnSpecialSheet(true);
@@ -305,9 +311,10 @@ export default function ListItemProductCard({
       ].join(" ")}
       ref={cardRef}
       style={{
-        cursor: confirmingRemove ? "default" : "pointer",
+        cursor: isLocked || confirmingRemove ? "default" : "pointer",
         touchAction: isCheaperOptionsExpanded ? "auto" : "pan-y",
       }}
+      aria-disabled={isLocked || undefined}
       >
       <div
         className={[
@@ -318,7 +325,7 @@ export default function ListItemProductCard({
         ].join(" ")}
         style={confirmingRemove && removeCardHeight ? { minHeight: removeCardHeight } : undefined}
       >
-      {!confirmingRemove && (
+      {!confirmingRemove && !isLocked && (
         <button
           type="button"
           onClick={handleActivate}
@@ -398,7 +405,7 @@ export default function ListItemProductCard({
           {/* Keep the main row's vertical slots stable when a cheaper thumbnail
               swaps in a shorter product name or a product without a brand. */}
           <div className="mb-0.5 flex min-h-5 flex-wrap items-center gap-1.5">
-            {(isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
+            {!isLocked && (isRealSaver || isDodgyDeal || isFairPrice || isAssessmentPending) && (
               <>
                 {isRealSaver && <span className="dd-badge dd-badge-compact dd-badge-fair whitespace-nowrap">Safe to buy</span>}
                 {isDodgyDeal && <span className="dd-badge dd-badge-compact dd-badge-alert whitespace-nowrap">Dodgy, don&apos;t buy</span>}
@@ -410,26 +417,33 @@ export default function ListItemProductCard({
           <span className="block min-h-[1.125rem] truncate dd-type-meta text-stone-600">{brandSentenceCase}</span>
           <h4 className="min-h-10 line-clamp-2 text-[15px] leading-5 font-semibold text-stone-900">{displayedProduct.name}</h4>
           <div className="mt-1 flex min-h-6 flex-wrap items-baseline gap-1.5">
-            <span className="font-display text-base font-extrabold text-stone-900">
-              {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
-              ${displayedDeal.price.toFixed(2)}
-            </span>
-            {selectedAlternativeDeal && selectedAlternativeSaving != null ? (
-              <span className="text-[11px] font-bold leading-4 text-fair-700">
-                Save ${selectedAlternativeSaving.toFixed(2)} vs saved item
-              </span>
-            ) : !isNotOnSpecial ? (
-              <PriceChangeBadge currentPrice={displayedDeal.price} comparisonPrice={displayedDeal.originalPrice} format="amount" compact bare />
+            {isLocked ? (
+              <span className="text-xs font-bold text-stone-500">Subscribe to see current price</span>
             ) : null}
+            {!isLocked && (
+              <>
+                <span className="font-display text-base font-extrabold text-stone-900">
+                  {isNotOnSpecial && <span className="font-sans text-[11px] font-bold uppercase tracking-wide text-stone-500">Current </span>}
+                  ${displayedDeal.price.toFixed(2)}
+                </span>
+                {selectedAlternativeDeal && selectedAlternativeSaving != null ? (
+                  <span className="text-[11px] font-bold leading-4 text-fair-700">
+                    Save ${selectedAlternativeSaving.toFixed(2)} vs saved item
+                  </span>
+                ) : !isNotOnSpecial ? (
+                  <PriceChangeBadge currentPrice={displayedDeal.price} comparisonPrice={displayedDeal.originalPrice} format="amount" compact bare />
+                ) : null}
+              </>
+            )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <StoreLogoBadge store={displayedDeal.store} variant="compact" />
-            {dealFreshnessLabel && (
+            {!isLocked && <StoreLogoBadge store={displayedDeal.store} variant="compact" />}
+            {!isLocked && dealFreshnessLabel && (
               <span className="text-[10px] font-bold text-stone-500">
                 {dealFreshnessLabel}
               </span>
             )}
-            {!selectedAlternativeDeal && otherSpecialStores.length > 0 && (
+            {!isLocked && !selectedAlternativeDeal && otherSpecialStores.length > 0 && (
               <span
                 role="img"
                 className="inline-flex items-center gap-1"

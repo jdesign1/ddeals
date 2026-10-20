@@ -39,7 +39,7 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CategoryPicker from "@/components/CategoryPicker";
 import DealTypePicker, { type WatchlistDealTypeFilter } from "@/components/DealTypePicker";
 import SupermarketPicker from "@/components/WatchlistViewPicker";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import { sortWatchlistItems, watchlistItemDeal } from "@/lib/watchlist-sort";
 import { getLockedWatchlistProductIds, shouldShowWatchlistUpgradePrompt } from "@/lib/watchlist-upgrade";
@@ -132,6 +132,7 @@ export default function ListsPage() {
   const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
   const userId = user?.id;
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
   const {
     unreadListItemKeys,
     unreadAlerts,
@@ -148,6 +149,7 @@ export default function ListsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSupermarkets, setSelectedSupermarkets] = useState<string[]>(["all"]);
   const [isInactiveSectionExpanded, setIsInactiveSectionExpanded] = useState(true);
+  const [isLockedSectionExpanded, setIsLockedSectionExpanded] = useState(true);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
@@ -272,12 +274,19 @@ export default function ListsPage() {
     return grouped;
   }, [unreadAlerts]);
 
+  const lockedWatchlistProductIds = useMemo(
+    () => getLockedWatchlistProductIds(watchlistItems, subscriptionLoading || isPremium),
+    [isPremium, subscriptionLoading, watchlistItems],
+  );
+
   const newPriceItemCount = useMemo(
     () => watchlistItems.reduce(
-      (count, item) => count + (item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`)) ? 1 : 0),
+      (count, item) => lockedWatchlistProductIds.has(item.productId)
+        ? count
+        : count + (item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`)) ? 1 : 0),
       0,
     ),
-    [unreadListItemKeys, watchlistItems],
+    [lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
   );
 
   const categories = useMemo(() => {
@@ -335,10 +344,6 @@ export default function ListsPage() {
     [filterSupermarkets, filteredItems, itemCards, selectedDealType],
   );
 
-  const lockedWatchlistProductIds = useMemo(
-    () => getLockedWatchlistProductIds(watchlistItems, subscriptionLoading || isPremium),
-    [isPremium, subscriptionLoading, watchlistItems],
-  );
   const dealTypeFilteredItems = useMemo(
     () => allDealTypeFilteredItems.filter((item) => !lockedWatchlistProductIds.has(item.productId)),
     [allDealTypeFilteredItems, lockedWatchlistProductIds],
@@ -464,24 +469,25 @@ export default function ListsPage() {
         exit={{ opacity: 0, y: -8, scale: 0.98 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
         data-watchlist-product-id={entry.productId}
-        className={isLocked ? "grayscale opacity-60" : undefined}
+        className={isLocked ? "grayscale" : undefined}
       >
         <UnreadListItem
           listId={sourceItem.list_id}
           productId={entry.productId}
-          isUnread={isUnread}
+          isUnread={!isLocked && isUnread}
           updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
-          onUpdateClick={() => setSelectedWatchlistUpdate(unreadUpdates)}
+          onUpdateClick={isLocked ? undefined : () => setSelectedWatchlistUpdate(unreadUpdates)}
         >
           {card && deal ? (
             <ListItemProductCard
               product={card}
               deal={deal}
+              isLocked={isLocked}
               otherSpecialStores={deal.isOnSpecial ? otherSpecialStores(card, deal.store) : []}
               quantity={entry.item.quantity}
               onRemove={() => void removeProduct(entry.productId)}
               removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
-              onDealAssessmentOpen={onDealAssessmentOpen}
+              onDealAssessmentOpen={isLocked ? undefined : onDealAssessmentOpen}
               onAfterNotOnSpecial={() => void reload(false)}
             />
           ) : (
@@ -618,7 +624,7 @@ export default function ListsPage() {
                       className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-1 text-left text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-400 transition-colors hover:text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
                     >
                       <span>Not currently on special ({inactiveItems.length})</span>
-                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isInactiveSectionExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${isInactiveSectionExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
                     </button>
                     <div id="watchlist-not-on-special-items">
                       <AnimatePresence initial={false}>
@@ -643,20 +649,36 @@ export default function ListsPage() {
         )}
         {!loadingWatchlist && !error && lockedDealTypeFilteredItems.length > 0 && (
           <div className="mt-6 flex flex-col gap-2 border-t border-stone-200 px-5 pt-5">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="max-w-[18rem] text-sm font-extrabold leading-5 text-stone-700">Subscribe for unlimited Watchlist items</h2>
-              <button
-                type="button"
-                onClick={handleWatchlistSubscribe}
-                className="shrink-0 cursor-pointer text-sm font-extrabold text-ink-900 underline decoration-2 underline-offset-4 transition-colors hover:text-fair-700"
-              >
-                Subscribe
-              </button>
+            <button type="button" onClick={handleWatchlistSubscribe} className="dd-btn dd-btn-primary w-fit cursor-pointer px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+              Subscribe for unlimited items
+            </button>
+            <p className="dd-type-secondary text-stone-500">Save up to 5 items with a free account, any extra items saved will remain here until you subscribe</p>
+            <button
+              type="button"
+              aria-expanded={isLockedSectionExpanded}
+              aria-controls="watchlist-locked-items"
+              onClick={() => setIsLockedSectionExpanded((expanded) => !expanded)}
+              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-2 text-left text-[12px] font-extrabold uppercase tracking-[0.12em] text-stone-500 transition-colors hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
+            >
+              <span>Extra saved items ({lockedDealTypeFilteredItems.length})</span>
+              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${isLockedSectionExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+            <div id="watchlist-locked-items">
+              <AnimatePresence initial={false}>
+                {isLockedSectionExpanded && (
+                  <motion.div
+                    key="locked-watchlist-items"
+                    initial={prefersReducedMotion ? false : { opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                    transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+                    className="flex flex-col gap-2 overflow-hidden"
+                  >
+                    {lockedDealTypeFilteredItems.map((entry) => renderItem(entry, true))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <p className="dd-type-secondary text-stone-500">Saved items beyond your free allowance are kept here until you subscribe.</p>
-            <AnimatePresence initial={false} mode="popLayout">
-              {lockedDealTypeFilteredItems.map((entry) => renderItem(entry, true))}
-            </AnimatePresence>
           </div>
         )}
       </div>
