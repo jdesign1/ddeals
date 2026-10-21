@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import { SUBSCRIPTION_PRODUCT_IDS } from "@dodgey-deals/shared";
 
 export interface AppleSubscriptionProduct {
   id: string;
@@ -31,15 +32,22 @@ interface DodgySubscriptionsPlugin {
 
 export const DodgySubscriptions = registerPlugin<DodgySubscriptionsPlugin>("DodgySubscriptions");
 
-export function isNativeAppleSubscriptionsAvailable(): boolean {
+export function isNativeAppleSubscriptionsPlatform(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 }
 
+export function isNativeAppleSubscriptionsAvailable(): boolean {
+  return isNativeAppleSubscriptionsPlatform() && Capacitor.isPluginAvailable("DodgySubscriptions");
+}
+
 export function configuredAppleProductIds(): string[] {
-  return (process.env.NEXT_PUBLIC_APPLE_SUBSCRIPTION_PRODUCT_IDS ?? "")
+  const configuredIds = (process.env.NEXT_PUBLIC_APPLE_SUBSCRIPTION_PRODUCT_IDS ?? "")
     .split(",")
     .map((productId) => productId.trim())
     .filter(Boolean);
+  return configuredIds.length > 0
+    ? configuredIds
+    : [SUBSCRIPTION_PRODUCT_IDS.monthly, SUBSCRIPTION_PRODUCT_IDS.annual];
 }
 
 export async function verifyAppleSubscriptionTransaction(
