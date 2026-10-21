@@ -10,6 +10,7 @@ import {
   type SubscriptionEntitlementRecord,
 } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import MascotImage from "@/components/MascotImage";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import {
@@ -276,7 +277,7 @@ function SubscriptionSheet({
               role="dialog"
               aria-modal="true"
               aria-labelledby="subscription-sheet-title"
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col overflow-y-auto rounded-t-3xl shadow-2xl"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-y-auto rounded-t-3xl shadow-2xl"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -291,6 +292,18 @@ function SubscriptionSheet({
               </div>
 
               <div className="flex flex-col gap-4 px-5 py-5 pb-safe-sm">
+                <div className="flex justify-center">
+                  <MascotImage
+                    src="/subscribe-mascot-thumbs-up.webp"
+                    darkSrc="/subscribe-mascot-thumbs-up.webp"
+                    alt="Dodgy Deal mascot giving two thumbs up"
+                    width={512}
+                    height={532}
+                    sizes="176px"
+                    unoptimized
+                    className="mascot-wave h-auto w-full max-w-[11rem]"
+                  />
+                </div>
                 <p className="dd-type-body text-stone-600">The full deal assessment stays free. Subscribe when you want Dodgy Deal to keep watching prices for you.</p>
                 <div className="flex flex-col gap-2">
                   {["Unlimited Watchlist items", "Automatic price-drop alerts", "Alerts for genuinely good deals", "Custom alert preferences"].map((benefit) => (
