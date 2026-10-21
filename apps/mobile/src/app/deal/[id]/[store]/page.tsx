@@ -827,8 +827,8 @@ export default function DealAssessmentPage() {
                     <span className="flex-shrink-0 text-right">
                       <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
                       {storeUnitPrice && (
-                        <span className="block dd-type-meta text-stone-500" aria-label={`Value price ${storeUnitPrice.replace("/", " per ")}`}>
-                          Value price: {storeUnitPrice}
+                        <span className="block dd-type-meta text-stone-500" aria-label={`Unit price ${storeUnitPrice.replace("/", " per ")}`}>
+                          {storeUnitPrice}
                         </span>
                       )}
                       <span
@@ -997,8 +997,8 @@ export default function DealAssessmentPage() {
                 <span className="text-sm font-bold text-stone-500">ea</span>
               </div>
               {selectedUnitPrice && (
-                <p className="mt-0.5 dd-type-meta text-stone-500" aria-label={`Value price ${selectedUnitPrice.replace("/", " per ")}`}>
-                  Value price: {selectedUnitPrice}
+                <p className="mt-0.5 dd-type-meta text-stone-500" aria-label={`Unit price ${selectedUnitPrice.replace("/", " per ")}`}>
+                  {selectedUnitPrice}
                 </p>
               )}
               {specialPriceRange && (
