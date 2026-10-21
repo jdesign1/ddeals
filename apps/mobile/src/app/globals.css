@@ -1487,6 +1487,20 @@ body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .mobile-scroll-surface 
 .dd-bottom-sheet-titlebar {
   background-color: #fff;
 }
+.dd-bottom-sheet-close {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  border-radius: 9999px;
+}
+.dd-bottom-sheet-close:focus-visible {
+  outline: 2px solid var(--color-ink-600);
+  outline-offset: 2px;
+}
 [data-theme="dark"] .dd-bottom-sheet-titlebar {
   background-color: #24211d;
 }

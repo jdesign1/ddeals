@@ -153,7 +153,7 @@ export default function AssessmentEvidenceCard({
                     type="button"
                     onClick={() => setIsOpen(false)}
                     aria-label="Close"
-                    className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                    className="dd-bottom-sheet-close -mr-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
                   >
                     <X className="h-5 w-5" aria-hidden="true" />
                   </button>

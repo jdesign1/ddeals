@@ -288,7 +288,7 @@ function SubscriptionSheet({
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-fair-100 text-ink-900" aria-hidden="true"><Sparkles className="h-4 w-4" /></span>
                   <h2 id="subscription-sheet-title" className="dd-type-sheet-title text-stone-900">Keep watching prices</h2>
                 </div>
-                <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"><X className="h-5 w-5" aria-hidden="true" /></button>
+                <button type="button" onClick={onClose} aria-label="Close" className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"><X className="h-5 w-5" aria-hidden="true" /></button>
               </div>
 
               <div className="flex flex-col gap-4 px-5 py-5 pb-safe-sm">

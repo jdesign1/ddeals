@@ -56,7 +56,7 @@ export default function WatchlistNotificationSheet({
                 <h2 id="watchlist-notification-title" className="dd-type-sheet-title text-stone-900">
                   Get price alerts
                 </h2>
-                <button type="button" onClick={onClose} disabled={isSaving} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:opacity-40">
+                <button type="button" onClick={onClose} disabled={isSaving} aria-label="Close" className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:opacity-40">
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>

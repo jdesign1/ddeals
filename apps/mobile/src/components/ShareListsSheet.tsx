@@ -137,7 +137,7 @@ export default function ShareListsSheet({
                   type="button"
                   onClick={close}
                   aria-label="Close"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                  className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>

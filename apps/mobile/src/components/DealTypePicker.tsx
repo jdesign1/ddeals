@@ -119,8 +119,8 @@ export default function DealTypePicker({
               >
                 <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                   <h3 className="dd-type-sheet-title text-stone-900">Deal type</h3>
-                  <button type="button" onClick={() => setIsOpen(false)} aria-label="Close deal type filter" className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100">
-                    <X className="h-4 w-4" aria-hidden="true" />
+                  <button type="button" onClick={() => setIsOpen(false)} aria-label="Close deal type filter" className="dd-bottom-sheet-close cursor-pointer text-stone-500 hover:bg-stone-100">
+                    <X className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">

@@ -58,8 +58,8 @@ export default function SortDropdown<T extends string>({
               >
                 <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                   <h3 className="dd-type-sheet-title text-stone-900">Sort by</h3>
-                  <button type="button" onClick={() => setIsOpen(false)} aria-label="Close" className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100">
-                    <X className="h-4 w-4" aria-hidden="true" />
+                  <button type="button" onClick={() => setIsOpen(false)} aria-label="Close" className="dd-bottom-sheet-close cursor-pointer text-stone-500 hover:bg-stone-100">
+                    <X className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
                 <div className="py-2 pb-safe-sm">

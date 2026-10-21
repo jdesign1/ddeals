@@ -773,7 +773,7 @@ function ClearWatchlistSheet({
                   onClick={onClose}
                   disabled={isClearing}
                   aria-label="Close"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>

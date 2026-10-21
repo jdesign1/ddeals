@@ -81,7 +81,7 @@ export default function WatchlistUpdateSheet({
             >
               <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4">
                 <h2 id="watchlist-update-title" className="dd-type-sheet-title text-stone-900">What changed</h2>
-                <button type="button" onClick={onClose} aria-label="Close" className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900">
+                <button type="button" onClick={onClose} aria-label="Close" className="dd-bottom-sheet-close cursor-pointer text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900">
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>

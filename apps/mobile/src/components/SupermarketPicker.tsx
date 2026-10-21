@@ -74,9 +74,9 @@ export default function SupermarketPicker({
                       type="button"
                       onClick={() => setIsOpen(false)}
                       aria-label="Close supermarkets"
-                      className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
+                      className="dd-bottom-sheet-close cursor-pointer text-stone-500 hover:bg-stone-100"
                     >
-                      <X className="h-4 w-4" aria-hidden="true" />
+                      <X className="h-5 w-5" aria-hidden="true" />
                     </button>
                   </div>
                 </div>

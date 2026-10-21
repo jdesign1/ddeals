@@ -548,9 +548,9 @@ function NotOnSpecialSheet({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="cursor-pointer rounded-full p-1.5 text-stone-500 hover:bg-stone-100"
+                className="dd-bottom-sheet-close cursor-pointer text-stone-500 hover:bg-stone-100"
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-5 text-center">

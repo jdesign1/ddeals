@@ -3,7 +3,6 @@
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import { SUBSCRIBE_BUTTON_CLASS_NAME } from "@/components/StickySubscriptionCta";
 
 export default function WatchlistUpgradePrompt({
   open,
@@ -48,7 +47,7 @@ export default function WatchlistUpgradePrompt({
                   type="button"
                   onClick={onClose}
                   aria-label="Close"
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                  className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -61,7 +60,7 @@ export default function WatchlistUpgradePrompt({
                   <button
                     type="button"
                     onClick={onSubscribe}
-                    className={SUBSCRIBE_BUTTON_CLASS_NAME}
+                    className="dd-btn w-full cursor-pointer border-2 border-fair-700 bg-fair-50 px-[26px] py-[14px] text-fair-800 transition-colors hover:bg-fair-100"
                   >
                     Subscribe
                   </button>
