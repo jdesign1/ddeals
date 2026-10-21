@@ -35,6 +35,7 @@ export default function AddToListButton({
   const [removeError, setRemoveError] = useState<string | null>(null);
   const isSaved = savedProductIds.has(productId);
   const isSelected = selectedProductIds.has(productId);
+  const isCheckmarkVisible = isSaved || isSelected;
   const isRemoving = removingProductIds.has(productId);
   const label = productName ? `${productName} — ` : "";
 
@@ -77,10 +78,10 @@ export default function AddToListButton({
           }
           aria-pressed={isSaved || isSelected}
           aria-busy={loadingSavedItems || isRemoving}
-          className={`flex h-11 w-11 items-center justify-center rounded-full ${isSelected ? "ring-2 ring-ink-900/20" : ""}`}
+          className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
         >
-          <span className={buttonClassName} aria-hidden="true">
-            {isSaved || isSelected ? (
+          <span className={isCheckmarkVisible ? "flex items-center justify-center text-stone-900" : buttonClassName} aria-hidden="true">
+            {isCheckmarkVisible ? (
               <Check className={`block ${iconClassName}`} strokeWidth={3} />
             ) : (
               <Plus className={`block ${iconClassName}`} strokeWidth={3} />

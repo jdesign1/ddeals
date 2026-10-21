@@ -23,6 +23,7 @@ import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
 import LoadingMascot from "@/components/LoadingMascot";
 import MascotImage from "@/components/MascotImage";
+import StickySubscriptionCta from "@/components/StickySubscriptionCta";
 
 /**
  * All Checks — ported from Prototype/index.html's `HistoryTab` (2026-08-11,
@@ -334,14 +335,11 @@ export default function HistoryPage() {
                 <Fragment key={h.id}>
                   {isLocked && index === firstLockedHistoryIndex && (
                     <div className="mt-3 flex flex-col gap-2 border-t border-stone-200 pt-5">
-                      <button
-                        type="button"
-                        onClick={openSubscriptionSheet}
-                        className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
-                      >
-                        Subscribe for unlimited items
-                      </button>
-                      <p className="dd-type-secondary text-stone-500">Subscribe to unlock your full check history.</p>
+                      <StickySubscriptionCta
+                        label="Subscribe for unlimited items"
+                        description="Subscribe to unlock your full check history."
+                        onSubscribe={openSubscriptionSheet}
+                      />
                     </div>
                   )}
                   <div className="flex flex-col gap-2" style={isLocked ? { opacity: lockedOpacity } : undefined}>
