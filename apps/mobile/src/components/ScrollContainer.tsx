@@ -450,7 +450,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     </div>
     <BackToTopButton
       scrollRef={scrollRef}
-      enabled={!isDrawerOpen && (pathname === "/" || pathname === "/history" || pathname === "/lists")}
+      enabled={!isDrawerOpen && (pathname === "/" || pathname === "/history" || pathname === "/lists" || pathname === "/me")}
     />
     </>
   );

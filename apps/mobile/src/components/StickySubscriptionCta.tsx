@@ -130,7 +130,7 @@ export default function StickySubscriptionCta({
         type="button"
         onClick={onSubscribe}
         tabIndex={isStickyVisible ? 0 : -1}
-        style={{ pointerEvents: isStickyVisible ? "auto" : "none" }}
+        style={{ backgroundColor: "white", pointerEvents: isStickyVisible ? "auto" : "none" }}
         className={SUBSCRIBE_BUTTON_CLASS_NAME}
       >
         {label}
