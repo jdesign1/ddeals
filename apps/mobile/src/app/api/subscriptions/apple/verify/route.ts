@@ -34,23 +34,42 @@ export async function POST(request: Request) {
     if (!accountId) return Response.json({ error: "Your session has expired. Please sign in again." }, { status: 401, headers: NO_STORE_HEADERS });
 
     const config = getAppleSubscriptionConfig();
-    const transaction = await createAppleSignedDataVerifier(config).verifyAndDecodeTransaction(body.signedTransaction);
+    const verifier = createAppleSignedDataVerifier(config);
+    let transaction;
+    try {
+      transaction = await verifier.verifyAndDecodeTransaction(body.signedTransaction);
+    } catch (verificationError) {
+      console.error("Apple transaction signature verification failed.", verificationError instanceof Error ? verificationError.message : "Unknown error");
+      return Response.json({ error: "We could not verify this Apple purchase." }, { status: 422, headers: NO_STORE_HEADERS });
+    }
     if (!transaction.productId || transaction.appAccountToken !== accountId) {
       return Response.json({ error: "This Apple purchase is not linked to the signed-in account." }, { status: 403, headers: NO_STORE_HEADERS });
     }
 
     const entitlementKeys = getEntitlementKeys(config, transaction.productId);
-    const accounts = requireAccountsAdmin();
     const status = entitlementStatusForTransaction(transaction);
-    await upsertAppleEntitlements({ accounts, accountId, transaction, entitlementKeys, status });
-    await recordAppleEvent({
-      accounts,
-      eventId: `device:${config.environment}:${transaction.transactionId}`,
-      eventType: "DEVICE_TRANSACTION_VERIFIED",
-      transaction,
-      payload: safeTransactionPayload(transaction),
-      processedAt: new Date().toISOString(),
-    });
+    try {
+      const accounts = requireAccountsAdmin();
+      await upsertAppleEntitlements({ accounts, accountId, transaction, entitlementKeys, status });
+      await recordAppleEvent({
+        accounts,
+        eventId: `device:${config.environment}:${transaction.transactionId}`,
+        eventType: "DEVICE_TRANSACTION_VERIFIED",
+        transaction,
+        payload: safeTransactionPayload(transaction),
+        processedAt: new Date().toISOString(),
+      });
+    } catch (persistenceError) {
+      // Apple has already accepted the payment at this point. A 503 tells the
+      // native client to retry the same unfinished transaction instead of
+      // presenting a misleading generic purchase failure or asking the user
+      // to buy the subscription again.
+      console.error("Apple entitlement persistence failed.", persistenceError instanceof Error ? persistenceError.message : "Unknown error");
+      return Response.json(
+        { error: "Your payment was received, but your subscription is still being activated. Please try again in a moment." },
+        { status: 503, headers: NO_STORE_HEADERS },
+      );
+    }
 
     return Response.json({ ok: true, entitlementKeys, status, productId: transaction.productId }, { headers: NO_STORE_HEADERS });
   } catch (error) {

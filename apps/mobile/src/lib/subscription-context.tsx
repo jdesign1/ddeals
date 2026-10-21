@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Sparkles, X } from "lucide-react";
 import {
   fetchUserEntitlements,
@@ -35,7 +36,7 @@ interface SubscriptionContextValue {
   isNativeAvailable: boolean;
   openSubscriptionSheet: () => void;
   closeSubscriptionSheet: () => void;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<SubscriptionEntitlementRecord[]>;
   purchase: (productId: string) => Promise<boolean>;
 }
 
@@ -52,7 +53,10 @@ function subscriptionError(error: unknown): string {
   if (/USER_CANCELLED|cancelled/i.test(message)) {
     return "Purchase cancelled.";
   }
-  if (/PENDING/i.test(message)) {
+  if (/SUBSCRIPTION_SYNC_PENDING|still being activated|payment was received/i.test(message)) {
+    return "Your payment was received. We're still activating your subscription — please wait a moment and try again.";
+  }
+  if (/\bPENDING\b/i.test(message)) {
     return "Your purchase is waiting for approval.";
   }
   return "We couldn't update your subscription. Please try again.";
@@ -66,6 +70,7 @@ function productSortValue(productId: string): number {
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, session, openAuthSheet } = useAuth();
+  const router = useRouter();
   const client = getAccountsSupabaseClient();
   const [entitlements, setEntitlements] = useState<SubscriptionEntitlementRecord[]>([]);
   const [products, setProducts] = useState<AppleSubscriptionProduct[]>([]);
@@ -73,6 +78,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isSubscriptionSheetOpen, setIsSubscriptionSheetOpen] = useState(false);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
+  const purchaseInFlightRef = useRef(false);
 
   const nativeAvailable = isNativeAppleSubscriptionsAvailable();
   const nativeAppleApp = isNativeAppleSubscriptionsPlatform();
@@ -87,7 +93,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (!client || !user) {
       setEntitlements([]);
       setLoading(false);
-      return;
+      return [];
     }
 
     setLoading(true);
@@ -95,12 +101,29 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const nextEntitlements = await fetchUserEntitlements(client);
       setEntitlements(nextEntitlements);
       setError(null);
+      return nextEntitlements;
     } catch (refreshError) {
       setError(subscriptionError(refreshError));
+      return [];
     } finally {
       setLoading(false);
     }
   }, [client, user]);
+
+  const refreshUntilPremium = useCallback(async (): Promise<boolean> => {
+    let nextEntitlements = await refresh();
+    if (hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) return true;
+
+    // The server writes the entitlement before responding, but the client can
+    // briefly read before that write is visible. A short bounded retry keeps
+    // the UI and server gates in step without making the purchase feel stuck.
+    for (const delay of [250, 750, 1500]) {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, delay));
+      nextEntitlements = await refresh();
+      if (hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) return true;
+    }
+    return false;
+  }, [refresh]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
@@ -169,21 +192,47 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setError(unavailableMessage);
       return false;
     }
+    if (purchaseInFlightRef.current) return false;
 
+    purchaseInFlightRef.current = true;
     setBusyProductId(productId);
     setError(null);
     try {
       await purchaseAppleSubscription(productId, user.id, session.access_token);
-      await refresh();
+      if (!await refreshUntilPremium()) {
+        throw new Error("SUBSCRIPTION_SYNC_PENDING");
+      }
       setIsSubscriptionSheetOpen(false);
+      router.push("/subscribe/success");
       return true;
     } catch (purchaseError) {
+      // A StoreKit purchase can complete even if the first server sync is
+      // interrupted. The transaction remains available to currentEntitlements
+      // until it is finished, so reconcile it once before showing an error.
+      if (!/USER_CANCELLED|cancelled|\bPENDING\b|PRODUCT_NOT_FOUND|PRODUCTS_UNAVAILABLE/i.test(String(purchaseError))) {
+        try {
+          await syncCurrentAppleSubscriptions(session.access_token);
+        } catch {
+          // The final entitlement read below is still useful if the server
+          // saved the entitlement but a later cleanup/event step failed.
+        }
+        try {
+          if (await refreshUntilPremium()) {
+            setIsSubscriptionSheetOpen(false);
+            router.push("/subscribe/success");
+            return true;
+          }
+        } catch {
+          // Keep the original purchase error for the user-facing message.
+        }
+      }
       setError(subscriptionError(purchaseError));
       return false;
     } finally {
+      purchaseInFlightRef.current = false;
       setBusyProductId(null);
     }
-  }, [nativeAvailable, openAuthSheet, refresh, session, unavailableMessage, user]);
+  }, [nativeAvailable, openAuthSheet, refreshUntilPremium, router, session, unavailableMessage, user]);
 
   const value = useMemo<SubscriptionContextValue>(() => ({
     entitlements,

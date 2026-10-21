@@ -32,6 +32,34 @@ interface DodgySubscriptionsPlugin {
 
 export const DodgySubscriptions = registerPlugin<DodgySubscriptionsPlugin>("DodgySubscriptions");
 
+class AppleSubscriptionVerificationError extends Error {
+  readonly status: number;
+  readonly retryable: boolean;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AppleSubscriptionVerificationError";
+    this.status = status;
+    this.retryable = status === 408 || status === 429 || status >= 500;
+  }
+}
+
+// A purchase is returned immediately by StoreKit and then also emitted through
+// Transaction.updates. Share the same verification promise for both paths so
+// one Apple transaction cannot trigger two server writes or two finish calls.
+const transactionVerificationPromises = new Map<string, Promise<void>>();
+const completedTransactionVerifications = new Set<string>();
+
+const VERIFICATION_RETRY_DELAYS_MS = [350, 900];
+
+function transactionVerificationKey(transaction: AppleSubscriptionTransaction): string {
+  return transaction.transactionId || transaction.jwsRepresentation;
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 export function isNativeAppleSubscriptionsPlatform(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 }
@@ -54,20 +82,58 @@ export async function verifyAppleSubscriptionTransaction(
   transaction: AppleSubscriptionTransaction,
   accessToken: string,
 ): Promise<void> {
-  const response = await fetch("/api/subscriptions/apple/verify", {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ signedTransaction: transaction.jwsRepresentation }),
-  });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(payload?.error || "We could not verify the Apple subscription.");
+  const key = transactionVerificationKey(transaction);
+  if (completedTransactionVerifications.has(key)) return;
+  const existingVerification = transactionVerificationPromises.get(key);
+  if (existingVerification) return existingVerification;
+
+  const verification = (async () => {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        const response = await fetch("/api/subscriptions/apple/verify", {
+          method: "POST",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ signedTransaction: transaction.jwsRepresentation }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as { error?: string } | null;
+          throw new AppleSubscriptionVerificationError(
+            payload?.error || "We could not verify the Apple subscription.",
+            response.status,
+          );
+        }
+        // The entitlement write above is the authoritative success. Finishing
+        // is StoreKit cleanup; if it is temporarily unavailable, let the
+        // caller unlock the account and allow Transaction.updates to retry the
+        // cleanup later instead of reporting a failed purchase to the user.
+        try {
+          await finishAppleSubscriptionTransaction(transaction.transactionId);
+          completedTransactionVerifications.add(key);
+        } catch {
+          // Keep the transaction unfinished so StoreKit can deliver it again.
+        }
+        return;
+      } catch (error) {
+        const retryable = error instanceof AppleSubscriptionVerificationError
+          ? error.retryable
+          : true;
+        const retryDelay = VERIFICATION_RETRY_DELAYS_MS[attempt];
+        if (!retryable || retryDelay === undefined) throw error;
+        await wait(retryDelay);
+      }
+    }
+  })();
+
+  transactionVerificationPromises.set(key, verification);
+  try {
+    await verification;
+  } finally {
+    if (transactionVerificationPromises.get(key) === verification) transactionVerificationPromises.delete(key);
   }
-  await finishAppleSubscriptionTransaction(transaction.transactionId);
 }
 
 export async function finishAppleSubscriptionTransaction(transactionId: string): Promise<void> {
