@@ -80,7 +80,7 @@ export default function AddToListButton({
           aria-busy={loadingSavedItems || isRemoving}
           className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
         >
-          <span className={isCheckmarkVisible ? "flex items-center justify-center text-stone-900" : buttonClassName} aria-hidden="true">
+          <span className={buttonClassName} aria-hidden="true">
             {isCheckmarkVisible ? (
               <Check className={`block ${iconClassName}`} strokeWidth={3} />
             ) : (
