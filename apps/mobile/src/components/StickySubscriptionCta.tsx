@@ -39,22 +39,46 @@ export default function StickySubscriptionCta({
 
   useEffect(() => {
     const inlineButton = inlineButtonRef.current;
-    if (!inlineButton || typeof IntersectionObserver === "undefined") return;
+    if (!inlineButton) return;
     const scrollRoot = inlineButton.closest<HTMLElement>(".mobile-scroll-surface");
+    let frame: number | null = null;
 
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry) return;
-      const isComfortablyVisible = entry.isIntersecting && entry.intersectionRatio >= 0.5;
-      if (isComfortablyVisible) {
+    const updateStickyVisibility = () => {
+      frame = null;
+      const buttonRect = inlineButton.getBoundingClientRect();
+      const rootRect = scrollRoot?.getBoundingClientRect();
+      const visibleTop = rootRect?.top ?? 0;
+      const visibleBottom = rootRect?.bottom ?? window.innerHeight;
+      const isVisible = buttonRect.bottom > visibleTop && buttonRect.top < visibleBottom;
+
+      if (isVisible) {
         hasSeenInlineRef.current = true;
         setShowSticky(false);
-      } else if (hasSeenInlineRef.current) {
+        return;
+      }
+
+      // If a route restores a scroll position past the inline CTA, treat it
+      // as already seen so the free-account action is still reachable.
+      const isPastInlineCta = buttonRect.bottom <= visibleTop;
+      if (hasSeenInlineRef.current || isPastInlineCta) {
+        hasSeenInlineRef.current = true;
         setShowSticky(true);
       }
-    }, { root: scrollRoot, threshold: [0, 0.5] });
+    };
 
-    observer.observe(inlineButton);
-    return () => observer.disconnect();
+    const scheduleStickyVisibilityUpdate = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(updateStickyVisibility);
+    };
+
+    scheduleStickyVisibilityUpdate();
+    scrollRoot?.addEventListener("scroll", scheduleStickyVisibilityUpdate, { passive: true });
+    window.addEventListener("resize", scheduleStickyVisibilityUpdate);
+    return () => {
+      scrollRoot?.removeEventListener("scroll", scheduleStickyVisibilityUpdate);
+      window.removeEventListener("resize", scheduleStickyVisibilityUpdate);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   return (
