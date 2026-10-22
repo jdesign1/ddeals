@@ -38,7 +38,7 @@ export default function SubscriptionSuccessPage() {
           <h1 id="subscription-success-title" className="dd-type-section text-stone-900">You&rsquo;re subscribed</h1>
           <p className="dd-type-body text-stone-600">Your subscription is active and your paid features are now unlocked.</p>
         </div>
-        <p className="dd-type-secondary text-stone-600">Your Watchlist, All Checks and Deal Stats are no longer limited.</p>
+        <p className="dd-type-secondary text-stone-600">Your Watchlist, all checks and deal stats are no longer limited.</p>
         <button type="button" onClick={() => router.replace("/")} className="dd-btn dd-btn-primary w-full cursor-pointer">Continue</button>
       </section>
     </main>

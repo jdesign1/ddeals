@@ -35,12 +35,12 @@ const SUBSCRIPTION_BENEFITS: { label: string; detail: string; icon: LucideIcon }
     icon: ListPlus,
   },
   {
-    label: "Full All Checks access",
+    label: "Full access to all checks",
     detail: "See your complete deal-check history, not just the latest few.",
     icon: ScanSearch,
   },
   {
-    label: "Full deal stats and insights",
+    label: "Full access to deal stats and insights",
     detail: "Understand your savings, patterns and best supermarket finds.",
     icon: BarChart3,
   },
