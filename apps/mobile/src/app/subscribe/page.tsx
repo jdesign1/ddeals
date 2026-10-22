@@ -183,7 +183,7 @@ export default function SubscribePage() {
           )}
 
           {showPurchaseOptions && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
               {purchaseOptionsLoading ? (
                 <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600" aria-busy="true">Loading subscription options…</p>
               ) : products.length > 0 ? (
@@ -254,13 +254,12 @@ export default function SubscribePage() {
             </div>
           )}
 
-          {error && products.length > 0 && <p role="status" className="text-sm leading-5 text-alert-700">{error}</p>}
           {user && isNativeAvailable && (
             <div className="pt-1 text-center">
               <p className="dd-type-meta text-stone-500">
-                <Link href="/privacy" className="underline underline-offset-2 hover:text-stone-800">Privacy</Link>
+                <Link href="/privacy" className="underline underline-offset-2 hover:text-stone-800">Privacy policy</Link>
                 <span aria-hidden="true">{" · "}</span>
-                <Link href="/terms" className="underline underline-offset-2 hover:text-stone-800">Terms</Link>
+                <Link href="/terms" className="underline underline-offset-2 hover:text-stone-800">Terms of use</Link>
               </p>
             </div>
           )}
