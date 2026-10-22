@@ -230,6 +230,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           // Keep the original purchase error for the user-facing message.
         }
       }
+      if (/USER_CANCELLED|cancelled/i.test(String(purchaseError))) {
+        setError(null);
+        return false;
+      }
       setError(subscriptionError(purchaseError));
       return false;
     } finally {

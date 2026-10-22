@@ -10,6 +10,7 @@ import {
   ExternalLink,
   HeartHandshake,
   ListPlus,
+  LoaderCircle,
   ScanSearch,
   type LucideIcon,
 } from "lucide-react";
@@ -182,7 +183,7 @@ export default function SubscribePage() {
           )}
 
           {showPurchaseOptions && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               {purchaseOptionsLoading ? (
                 <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600" aria-busy="true">Loading subscription options…</p>
               ) : products.length > 0 ? (
@@ -210,7 +211,7 @@ export default function SubscribePage() {
                             />
                             <span
                               className={[
-                                "relative flex min-h-[8.5rem] flex-col items-start justify-between rounded-2xl border px-3.5 py-4 text-left transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
+                                "relative flex min-h-[7.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
                                 isSelected ? "border-fair-400 bg-fair-50 ring-2 ring-fair-200" : "border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
                                 busyProductId !== null ? "cursor-wait opacity-60" : "",
                               ].join(" ")}
@@ -235,9 +236,13 @@ export default function SubscribePage() {
                       type="button"
                       onClick={() => void purchase(selectedProduct.id)}
                       disabled={busyProductId !== null}
-                      className="dd-btn dd-btn-primary mt-1 w-full cursor-pointer"
+                      aria-busy={busyProductId === selectedProduct.id}
+                      aria-label={busyProductId === selectedProduct.id ? "Processing subscription" : "Subscribe now"}
+                      className="dd-btn dd-btn-primary w-full cursor-pointer"
                     >
-                      {busyProductId === selectedProduct.id ? "Starting…" : "Subscribe now"}
+                      {busyProductId === selectedProduct.id ? (
+                        <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+                      ) : "Subscribe now"}
                     </button>
                   )}
                 </>
