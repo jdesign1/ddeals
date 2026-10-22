@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Pencil, X } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
@@ -15,6 +15,15 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import { useNotifications } from "@/lib/notifications-context";
+import { useSubscriptions } from "@/lib/subscription-context";
+import {
+  formatSubscriptionDate,
+  getSubscriptionPlanLabel,
+  getSubscriptionRenewalLabel,
+  getSubscriptionStatusLabel,
+} from "@/lib/subscription-display";
+
+const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 
 const CARD_LAYOUT_OPTIONS = [
   { value: "grid" as const, label: "Grid", detail: "Two across" },
@@ -36,6 +45,12 @@ export default function SettingsPage() {
     setPushEnabled,
     openNotificationSettings,
   } = useNotifications();
+  const {
+    isPremium,
+    loading: subscriptionLoading,
+    currentSubscription,
+    openSubscriptionPage,
+  } = useSubscriptions();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -422,6 +437,56 @@ export default function SettingsPage() {
             <p className="mt-1 text-sm leading-6 text-stone-600">Manage your account details and sign-in.</p>
           </div>
           <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-4" aria-labelledby="settings-subscription-title">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="dd-type-meta dd-type-meta-strong text-stone-500">Subscription</p>
+                  <p id="settings-subscription-title" className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">
+                    {subscriptionLoading
+                      ? "Checking subscription…"
+                      : isPremium && currentSubscription
+                        ? "Dodgy Deal Plus"
+                        : "Free account"}
+                  </p>
+                </div>
+                {!subscriptionLoading && isPremium && currentSubscription && (
+                  <span className="shrink-0 rounded-full bg-fair-100 px-2.5 py-1 text-xs font-bold text-fair-800">Active</span>
+                )}
+              </div>
+              {!subscriptionLoading && isPremium && currentSubscription ? (
+                <>
+                  <div className="mt-3 space-y-1 text-[13px] leading-5 text-stone-600">
+                    <p>{getSubscriptionPlanLabel(currentSubscription.product_id)}</p>
+                    <p className="font-semibold text-ink-700">{getSubscriptionStatusLabel(currentSubscription.status)}</p>
+                    {formatSubscriptionDate(currentSubscription.expires_at) && (
+                      <p>Access until {formatSubscriptionDate(currentSubscription.expires_at)}</p>
+                    )}
+                    <p>{getSubscriptionRenewalLabel(currentSubscription.product_id)}.</p>
+                  </div>
+                  <a
+                    href={APPLE_SUBSCRIPTIONS_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 flex items-center justify-between gap-3 border-t border-stone-200 pt-3 text-sm font-semibold text-ink-800"
+                  >
+                    <span>Manage or cancel in Apple</span>
+                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  </a>
+                  <p className="mt-2 text-xs leading-5 text-stone-500">Cancellation takes effect at the end of your current billing period.</p>
+                </>
+              ) : !subscriptionLoading ? (
+                <>
+                  <p className="mt-2 text-[13px] leading-5 text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
+                  <button
+                    type="button"
+                    onClick={openSubscriptionPage}
+                    className="dd-btn dd-btn-outline mt-3 w-full cursor-pointer"
+                  >
+                    See subscription options
+                  </button>
+                </>
+              ) : null}
+            </div>
             <div>
               <p className="dd-type-meta dd-type-meta-strong text-stone-500">Sign-in method</p>
               <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{accountSignInMethod}</p>

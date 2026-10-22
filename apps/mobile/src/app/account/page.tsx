@@ -42,7 +42,7 @@ import { useSubscriptions } from "@/lib/subscription-context";
 export default function AccountPage() {
   const router = useRouter();
   const { user, loading, signOut, openAuthSheet } = useAuth();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   usePageHeader("Manage Account", () => router.back());
@@ -108,7 +108,7 @@ export default function AccountPage() {
         <div>
           <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-ink-700">Dodgy Deal Plus</p>
           <h2 id="subscription-heading" className="mt-1 dd-type-section text-ink-950">
-            {isPremium ? "Your subscription is active" : "Keep watching prices for you"}
+            {isPremium ? "Your subscription is active" : "Unlock more Watchlist space"}
           </h2>
           <p className="mt-1 dd-type-secondary text-ink-800/75">
             {isPremium
@@ -118,7 +118,7 @@ export default function AccountPage() {
         </div>
         <button
           type="button"
-          onClick={openSubscriptionSheet}
+          onClick={openSubscriptionPage}
           disabled={subscriptionLoading}
           className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
         >

@@ -55,7 +55,7 @@ function isNativeIos(): boolean {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const userId = user?.id;
   const client = getAccountsSupabaseClient();
   const [pushEnabled, setPushEnabledState] = useState(false);
@@ -301,7 +301,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
     if (enabled && !isPremium) {
       setNotificationError("Subscribe to Dodgy Deal Plus to receive price alerts.");
-      openSubscriptionSheet();
+      openSubscriptionPage();
       return false;
     }
     if (enabled && !isNativeIos()) {
@@ -343,7 +343,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       registeredTokenRef.current = null;
     }
     return true;
-  }, [client, isPremium, openSubscriptionSheet, pushReady, subscriptionLoading, user]);
+  }, [client, isPremium, openSubscriptionPage, pushReady, subscriptionLoading, user]);
 
   const openNotificationSettings = useCallback(async () => {
     setNotificationError(null);

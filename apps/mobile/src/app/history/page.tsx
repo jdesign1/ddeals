@@ -69,7 +69,7 @@ import StickySubscriptionCta from "@/components/StickySubscriptionCta";
  */
 export default function HistoryPage() {
   const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
-  const { isPremium, openSubscriptionSheet } = useSubscriptions();
+  const { isPremium, openSubscriptionPage } = useSubscriptions();
   const router = useRouter();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
   const [verdictFilter, setVerdictFilter] = useState<"real" | "dodgy" | null>(null);
@@ -338,7 +338,7 @@ export default function HistoryPage() {
                       <StickySubscriptionCta
                         label="Subscribe for unlimited items"
                         description="Subscribe to unlock your full check history."
-                        onSubscribe={openSubscriptionSheet}
+                        onSubscribe={openSubscriptionPage}
                       />
                     </div>
                   )}

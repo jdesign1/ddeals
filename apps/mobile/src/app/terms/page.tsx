@@ -163,12 +163,14 @@ export default function TermsPage() {
 
       <TermsSection title="10. Fees and purchases">
         <p>
-          Dodgy Deal is currently provided without a subscription or in-app purchase. We do not currently process
-          purchases for retailer products.
+          Dodgy Deal Plus is an optional auto-renewable subscription available through Apple in the iOS app. The
+          available monthly and annual plans, prices, and any introductory offer are shown before you confirm a
+          purchase. Apple processes the payment; Dodgy Deal does not process purchases for retailer products.
         </p>
         <p className="mt-3">
-          If we introduce paid features, subscriptions, advertising, or another commercial model, we will provide the
-          relevant price, renewal, cancellation, refund, and other material terms before you commit to pay.
+          Apple renews the plan you choose automatically unless you cancel it in your Apple Account subscription
+          settings. If you cancel, access continues until the end of the current billing period. Apple controls
+          purchase history, billing, and refunds under its applicable terms and policies.
         </p>
       </TermsSection>
 

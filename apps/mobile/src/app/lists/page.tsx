@@ -131,7 +131,7 @@ function otherSpecialStores(product: ProductCardData, displayedStore: string): s
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const userId = user?.id;
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
@@ -443,8 +443,8 @@ export default function ListsPage() {
 
   const handleWatchlistSubscribe = useCallback(() => {
     setIsWatchlistUpgradePromptOpen(false);
-    openSubscriptionSheet();
-  }, [openSubscriptionSheet]);
+    openSubscriptionPage();
+  }, [openSubscriptionPage]);
 
   const activeItems = useMemo(
     () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, selectedDealType)?.isOnSpecial === true),

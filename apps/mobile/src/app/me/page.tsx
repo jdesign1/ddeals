@@ -157,7 +157,7 @@ function buildMonthlyStats(products: ProductCard[]): MonthlyStats[] {
 /** Deal Stats — Watchlist summary and NZ-wide price trends. */
 export default function MePage() {
   const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionSheet } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const { products, loadingProducts, toggleStore, setDealFilter } = useSearch();
   const { savedProductIds, loadingSavedItems } = useWatchlist();
   const [isSavingsOpen, setIsSavingsOpen] = useState(false);
@@ -224,7 +224,7 @@ export default function MePage() {
         })}
       </div>
       {isAnonymousSession && <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3"><p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p><p className="dd-type-secondary text-amber-700">You&rsquo;re using a test account. These stats are real, but you can&rsquo;t sign in to this account on another device.</p></div>}
-      {activeStatsTab === "watchlist" ? <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems} productCount={watchlistProductCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionSheet} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} /> : <section id="deal-stats-panel-trends" role="tabpanel" aria-labelledby="deal-stats-tab-trends" className="flex flex-col gap-6 px-5">
+      {activeStatsTab === "watchlist" ? <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems} productCount={watchlistProductCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionPage} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} /> : <section id="deal-stats-panel-trends" role="tabpanel" aria-labelledby="deal-stats-tab-trends" className="flex flex-col gap-6 px-5">
         <header className="pt-2 text-center"><MascotImage src="/deal-stats-calculating.webp" darkSrc="/deal-stats-calculating-dark.webp" alt="Dodgy Deal mascot calculating deal statistics" width={320} height={292} sizes="160px" priority unoptimized className="animate-deal-stats-mascot mx-auto mb-2 h-auto w-36 sm:w-40" /><h1 className="dd-type-section text-stone-900">NZ Trends in supermarket specials</h1></header>
         <NZTrendsPanel loading={loadingProducts} currentStoreStats={currentStoreStats} maxCurrentSpecials={maxCurrentSpecials} chronologicalMonthlySummaries={chronologicalMonthlySummaries} maxMonthlySpecials={maxMonthlySpecials} storeRankings={storeRankings} maxAverageDiscount={maxAverageDiscount} priceChangeStats={priceChangeStats} maxPriceChangeRate={maxPriceChangeRate} monthlySpotlight={monthlySpotlight} busiestMonth={busiestMonth} bestValueRanking={bestValueRanking} mostPriceChangeStore={mostPriceChangeStore} openFilteredDeals={openFilteredDeals} toggleStore={toggleStore} />
       </section>}
