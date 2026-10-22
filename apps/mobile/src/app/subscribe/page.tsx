@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   BellRing,
@@ -63,6 +64,7 @@ export default function SubscribePage() {
     currentSubscription,
     purchase,
   } = useSubscriptions();
+  const [selectedProductId, setSelectedProductId] = useState<string>(SUBSCRIPTION_PRODUCT_IDS.monthly);
 
   usePageHeader("Subscribe", () => router.back());
 
@@ -73,12 +75,14 @@ export default function SubscribePage() {
   const accessUntil = formatSubscriptionDate(currentSubscription?.expires_at);
   const showPurchaseOptions = Boolean(user && !isPremium && isNativeAvailable);
   const purchaseOptionsLoading = subscriptionLoading || productsLoading;
+  const selectedProduct = products.find((product) => product.id === selectedProductId)
+    ?? products.find((product) => product.id === SUBSCRIPTION_PRODUCT_IDS.monthly)
+    ?? products[0]
+    ?? null;
 
   return (
     <main className="flex flex-col gap-4 bg-fair-50/70 px-5 py-5 pb-safe-nav">
       <section className="relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-fair-100 bg-white px-5 pb-6 pt-4 shadow-sm" aria-labelledby="subscribe-page-title">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-fair-100/60" aria-hidden="true" />
-        <div className="pointer-events-none absolute -left-20 bottom-10 h-32 w-32 rounded-full bg-fair-50" aria-hidden="true" />
         <div className="relative flex justify-center">
           <MascotImage
             src="/subscribe-mascot-thumbs-up.webp"
@@ -93,7 +97,7 @@ export default function SubscribePage() {
         </div>
         <div className="relative text-center">
           <p className="font-display text-[1.45rem] font-extrabold leading-tight tracking-[-0.04em] text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
-          <h1 id="subscribe-page-title" className="mx-auto mt-3 max-w-[18rem] dd-type-page-title text-stone-900">
+          <h1 id="subscribe-page-title" className="mx-auto mt-3 max-w-[18rem] text-[1.35rem] font-extrabold leading-tight tracking-[-0.02em] text-stone-900">
             {isPremium ? "Your subscription is active" : "More savings. Less guesswork."}
           </h1>
           <p className="mx-auto mt-2 max-w-[20rem] dd-type-body text-stone-600">
@@ -111,10 +115,7 @@ export default function SubscribePage() {
                   <BenefitIcon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2.25} />
                 </span>
                 <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 dd-type-control text-stone-800">
-                    <Check className="h-3.5 w-3.5 shrink-0 text-fair-700" aria-hidden="true" />
-                    {benefit.label}
-                  </span>
+                  <span className="block dd-type-control text-stone-800">{benefit.label}</span>
                   <span className="mt-0.5 block dd-type-meta text-stone-600">{benefit.detail}</span>
                 </span>
               </li>
@@ -185,31 +186,61 @@ export default function SubscribePage() {
               {purchaseOptionsLoading ? (
                 <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600" aria-busy="true">Loading subscription options…</p>
               ) : products.length > 0 ? (
-                <div className={products.length > 1 ? "grid grid-cols-2 gap-3" : "grid gap-3"}>
-                  {products.map((product) => {
-                    const isAnnual = product.id === SUBSCRIPTION_PRODUCT_IDS.annual;
-                    const isBusy = busyProductId === product.id;
-                    return (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onClick={() => void purchase(product.id)}
-                        disabled={busyProductId !== null}
-                        aria-label={["Subscribe to the", isAnnual ? "annual" : "monthly", "plan for", product.displayPrice].join(" ")}
-                        className={[
-                          "relative flex min-h-[10.5rem] flex-col items-start justify-between rounded-2xl border px-3.5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-wait disabled:opacity-60",
-                          isAnnual ? "border-fair-300 bg-fair-50 hover:border-fair-400" : "border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
-                        ].join(" ")}
-                      >
-                        <span>
-                          <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
-                          <span className="mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{isBusy ? "Starting…" : product.displayPrice}</span>
-                        </span>
-                        <span className="block dd-type-meta text-stone-600">{product.description || (isAnnual ? "Renews yearly" : "Renews monthly")}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  <fieldset>
+                    <legend className="sr-only">Choose a subscription plan</legend>
+                    <div className={products.length > 1 ? "grid grid-cols-2 gap-3" : "grid gap-3"}>
+                      {products.map((product) => {
+                        const isAnnual = product.id === SUBSCRIPTION_PRODUCT_IDS.annual;
+                        const isSelected = selectedProduct?.id === product.id;
+                        return (
+                          <label
+                            key={product.id}
+                            className="cursor-pointer"
+                          >
+                            <input
+                              type="radio"
+                              name="subscription-plan"
+                              value={product.id}
+                              checked={isSelected}
+                              onChange={() => setSelectedProductId(product.id)}
+                              disabled={busyProductId !== null}
+                              aria-label={["Select the", isAnnual ? "annual" : "monthly", "plan for", product.displayPrice].join(" ")}
+                              className="peer sr-only"
+                            />
+                            <span
+                              className={[
+                                "relative flex min-h-[8.5rem] flex-col items-start justify-between rounded-2xl border px-3.5 py-4 text-left transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
+                                isSelected ? "border-fair-400 bg-fair-50 ring-2 ring-fair-200" : "border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
+                                busyProductId !== null ? "cursor-wait opacity-60" : "",
+                              ].join(" ")}
+                            >
+                              {isSelected && (
+                                <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 text-white" aria-hidden="true">
+                                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                                </span>
+                              )}
+                              <span>
+                                <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
+                                <span className="mt-3 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                  {selectedProduct && (
+                    <button
+                      type="button"
+                      onClick={() => void purchase(selectedProduct.id)}
+                      disabled={busyProductId !== null}
+                      className="dd-btn dd-btn-primary mt-1 w-full cursor-pointer"
+                    >
+                      {busyProductId === selectedProduct.id ? "Starting…" : "Subscribe now"}
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
                   {error ?? "Subscription options are temporarily unavailable. Please try again later."}
@@ -220,9 +251,8 @@ export default function SubscribePage() {
 
           {error && products.length > 0 && <p role="status" className="text-sm leading-5 text-alert-700">{error}</p>}
           {user && isNativeAvailable && (
-            <div className="border-t border-stone-100 pt-3 text-center">
-              <p className="dd-type-meta text-stone-500">Plans renew automatically until cancelled in Settings.</p>
-              <p className="mt-1 dd-type-meta text-stone-500">
+            <div className="pt-1 text-center">
+              <p className="dd-type-meta text-stone-500">
                 <Link href="/privacy" className="underline underline-offset-2 hover:text-stone-800">Privacy</Link>
                 <span aria-hidden="true">{" · "}</span>
                 <Link href="/terms" className="underline underline-offset-2 hover:text-stone-800">Terms</Link>
