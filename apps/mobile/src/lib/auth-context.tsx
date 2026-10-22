@@ -6,6 +6,7 @@ import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
 import { isNativeAppleSignInAvailable, linkWithNativeApple, signInWithNativeApple } from "./native-apple-auth";
 import { isNativeGoogleSignInAvailable, signInWithNativeGoogle } from "./native-google-auth";
+import { suppressNewSpecialsPopupUntilHomeExit } from "./new-specials";
 
 export interface AccountProfile {
   id: string;
@@ -378,6 +379,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         if (!client) return;
+        // Prevent the automatic new-deals popup from interrupting the logout
+        // transition, including while push-device cleanup is in flight.
+        suppressNewSpecialsPopupUntilHomeExit();
         // Push tokens are unique to this installed app. Remove this account's
         // server registration before clearing its auth session, so a signed-out
         // device does not keep receiving list updates for the previous user.

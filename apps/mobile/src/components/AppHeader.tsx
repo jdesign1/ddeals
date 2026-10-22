@@ -49,6 +49,7 @@ export default function AppHeader({
   const {
     digest,
     popupPresented,
+    popupSuppressedUntilHomeExit,
     openRequested,
     consumeOpenRequest,
     markPopupShown,
@@ -68,7 +69,10 @@ export default function AppHeader({
 
   useEffect(() => subscribeToCheckDealsHeaderVisibility(setIsHiddenOnCheckDeals), []);
 
-  const shouldPresentNewSpecialsModal = isLaunchSplashFinished && (digest?.total ?? 0) > 0 && pathname === "/";
+  const shouldPresentNewSpecialsModal = isLaunchSplashFinished
+    && (digest?.total ?? 0) > 0
+    && pathname === "/"
+    && !popupSuppressedUntilHomeExit;
   useEffect(() => {
     if (!shouldPresentNewSpecialsModal || (!openRequested && popupPresented)) return;
     const presentationTimer = window.setTimeout(() => {
@@ -76,12 +80,15 @@ export default function AppHeader({
       consumeOpenRequest();
       if (!digest) return;
       const summaryToPresent = digest;
-      markPopupShown();
       setNewSpecialsModalSummary(summaryToPresent);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [consumeOpenRequest, digest, markPopupShown, openRequested, popupPresented, shouldPresentNewSpecialsModal]);
+  }, [consumeOpenRequest, digest, openRequested, popupPresented, popupSuppressedUntilHomeExit, shouldPresentNewSpecialsModal]);
+
+  useEffect(() => {
+    if (isNewSpecialsModalOpen && newSpecialsModalSummary) markPopupShown();
+  }, [isNewSpecialsModalOpen, markPopupShown, newSpecialsModalSummary]);
 
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
@@ -184,7 +191,7 @@ export default function AppHeader({
 
       {newSpecialsModalSummary && (
         <NewSpecialsModal
-          open={isNewSpecialsModalOpen && pathname === "/"}
+          open={isNewSpecialsModalOpen && pathname === "/" && !popupSuppressedUntilHomeExit}
           summary={newSpecialsModalSummary}
           onClose={handleNewSpecialsClose}
           onSelectFilter={(filter, dealKeys) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { useSearch } from "./search-context";
 import {
@@ -10,6 +11,7 @@ import {
   getNewSpecialsStorageScope,
   isNewSpecialsPendingActive,
   isNewSpecialsPopupPresented,
+  NEW_SPECIALS_POPUP_SUPPRESS_EVENT,
   readNewSpecialsPending,
   readNewSpecialsSnapshot,
   removeReviewedNewSpecials,
@@ -26,6 +28,7 @@ interface NewSpecialsContextValue {
   digest: NewSpecialsSummary | null;
   hasPendingDigest: boolean;
   popupPresented: boolean;
+  popupSuppressedUntilHomeExit: boolean;
   openRequested: boolean;
   requestOpen: () => void;
   consumeOpenRequest: () => void;
@@ -80,6 +83,7 @@ function baselineAfterReview(
 }
 
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
   const { user, loading: authLoading, isAnonymousSession } = useAuth();
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
@@ -87,6 +91,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const [openRequested, setOpenRequested] = useState(false);
   const lastProcessedPublicationRef = useRef<string | null>(null);
   const [sessionPresentedBatchId, setSessionPresentedBatchId] = useState<string | null>(null);
+  const [popupSuppressedUntilHomeExit, setPopupSuppressedUntilHomeExit] = useState(false);
+  const suppressionReachedHomeRef = useRef(false);
 
   /* These effects hydrate and reconcile the localStorage-backed external
    * batch store. The state writes are the subscription bridge for that store,
@@ -103,6 +109,27 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     });
     setOpenRequested(false);
   }, [scope]);
+
+  useEffect(() => {
+    const suppressPopup = () => {
+      suppressionReachedHomeRef.current = false;
+      setPopupSuppressedUntilHomeExit(true);
+    };
+    window.addEventListener(NEW_SPECIALS_POPUP_SUPPRESS_EVENT, suppressPopup);
+    return () => window.removeEventListener(NEW_SPECIALS_POPUP_SUPPRESS_EVENT, suppressPopup);
+  }, []);
+
+  useEffect(() => {
+    if (!popupSuppressedUntilHomeExit) return;
+    if (pathname === "/") {
+      suppressionReachedHomeRef.current = true;
+      return;
+    }
+    if (suppressionReachedHomeRef.current) {
+      suppressionReachedHomeRef.current = false;
+      setPopupSuppressedUntilHomeExit(false);
+    }
+  }, [pathname, popupSuppressedUntilHomeExit]);
 
   const storageReady = scope !== null && stored.scope === scope;
   const previousSnapshot = storageReady ? stored.snapshot : null;
@@ -196,8 +223,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const popupPresented = isNewSpecialsPopupPresented(activePending, sessionPresentedBatchId);
 
   const requestOpen = useCallback(() => {
-    if (pendingDigest?.total && !popupPresented) setOpenRequested(true);
-  }, [pendingDigest, popupPresented]);
+    if (!popupSuppressedUntilHomeExit && pendingDigest?.total && !popupPresented) setOpenRequested(true);
+  }, [pendingDigest, popupPresented, popupSuppressedUntilHomeExit]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
@@ -242,13 +269,14 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       digest,
       hasPendingDigest: Boolean(pendingDigest?.total),
       popupPresented,
+      popupSuppressedUntilHomeExit,
       openRequested,
       requestOpen,
       consumeOpenRequest,
       markPopupShown,
       markReviewed,
     }),
-    [consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, popupPresented, requestOpen],
+    [consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, popupPresented, popupSuppressedUntilHomeExit, requestOpen],
   );
 
   return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;

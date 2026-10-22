@@ -5,6 +5,7 @@ const SNAPSHOT_VERSION = 2;
 const SNAPSHOT_STORAGE_PREFIX = "dd-semantic-specials-snapshot-v2:";
 export const NEW_SPECIALS_PENDING_TTL_MS = 48 * 60 * 60 * 1000;
 export const NEW_SPECIALS_PENDING_VERSION = 3;
+export const NEW_SPECIALS_POPUP_SUPPRESS_EVENT = "dd:suppress-new-specials-popup-until-home-exit";
 const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v3:";
 const PRICE_CHANGE_EPSILON = 0.005;
 
@@ -50,6 +51,17 @@ export type NewSpecialsPending = {
   summary: NewSpecialsSummary;
   snapshot: NewSpecialsSnapshot;
 };
+
+/**
+ * Suppress the automatic popup during the route transition caused by logout.
+ * This is intentionally an in-memory event rather than persisted state so a
+ * later app launch can still surface the unread batch.
+ */
+export function suppressNewSpecialsPopupUntilHomeExit(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(NEW_SPECIALS_POPUP_SUPPRESS_EVENT));
+  }
+}
 
 export function createNewSpecialsBatchId(now = Date.now()): string {
   const randomId = typeof globalThis.crypto?.randomUUID === "function"
