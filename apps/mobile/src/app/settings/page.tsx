@@ -220,7 +220,7 @@ export default function SettingsPage() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 id="settings-profile-title" className="min-w-0 truncate font-display text-[19px] font-extrabold leading-6 text-stone-900">
+                <h2 id="settings-profile-title" className="min-w-0 truncate dd-type-section text-stone-900">
                   {profileName}
                 </h2>
                 <button
@@ -244,16 +244,16 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
-          <h1 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Display</h1>
-          <p className="mt-1 text-sm leading-6 text-stone-600">
+          <h1 className="dd-type-section text-stone-900">Display</h1>
+          <p className="mt-1 dd-type-secondary text-stone-600">
             Choose how the app and deal cards are displayed.
           </p>
         </div>
 
         <div className="border-t border-stone-100 pt-4">
           <div className="mb-3">
-            <p className="text-[15px] font-semibold leading-5 text-stone-900">Card layout</p>
-            <p className="mt-1 text-[13px] leading-5 text-stone-500">
+            <p className="dd-type-control text-stone-900">Card layout</p>
+            <p className="mt-1 dd-type-meta text-stone-500">
               {cardLayout === "grid"
                 ? "Grid layout — two cards per row"
                 : cardLayout === "single"
@@ -277,8 +277,8 @@ export default function SettingsPage() {
                       : "border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100"
                   }`}
                 >
-                  <span className="text-sm font-bold leading-5">{option.label}</span>
-                  <span className="mt-0.5 text-[11px] leading-4">{option.detail}</span>
+                  <span className="dd-type-control">{option.label}</span>
+                  <span className="mt-0.5 dd-type-meta">{option.detail}</span>
                 </button>
               );
             })}
@@ -287,10 +287,10 @@ export default function SettingsPage() {
 
         <div className="mt-4 flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
           <div>
-            <p className="text-[15px] font-semibold leading-5 text-stone-900">
+            <p className="dd-type-control text-stone-900">
               {isDarkMode ? "Dark mode" : "Light mode"}
             </p>
-            <p className="mt-1 text-[13px] leading-5 text-stone-500">
+            <p className="mt-1 dd-type-meta text-stone-500">
               {isDarkMode ? "A darker appearance for low light" : "A lighter appearance for daytime"}
             </p>
           </div>
@@ -311,17 +311,17 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl bg-white p-5 shadow-sm" aria-labelledby="settings-notifications-title">
         <div className="mb-4">
-          <h2 id="settings-notifications-title" className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">
+          <h2 id="settings-notifications-title" className="dd-type-section text-stone-900">
             Notifications
           </h2>
-          <p className="mt-1 text-sm leading-6 text-stone-600">
+          <p className="mt-1 dd-type-secondary text-stone-600">
             Get a quiet update when something on your list returns on special or gets a meaningfully better price.
           </p>
         </div>
         <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold leading-5 text-stone-900">Push notifications</p>
-            <p className="mt-1 text-[13px] leading-5 text-stone-500">{pushNotificationDescription}</p>
+            <p className="dd-type-control text-stone-900">Push notifications</p>
+            <p className="mt-1 dd-type-meta text-stone-500">{pushNotificationDescription}</p>
           </div>
           {canManagePushNotifications && pushPermissionState === "granted" && (
             <button
@@ -344,29 +344,29 @@ export default function SettingsPage() {
             type="button"
             disabled={authLoading || isSavingNotifications}
             onClick={() => void (notificationPermissionDenied ? handleOpenNotificationSettings() : handleEnableNotifications())}
-            className="mt-4 flex w-full items-center justify-between rounded-xl border border-stone-200 px-4 py-3 text-left text-[14px] font-semibold text-ink-700 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 flex w-full items-center justify-between rounded-xl border border-stone-200 px-4 py-3 text-left dd-type-control text-ink-700 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span>{notificationPermissionDenied ? "Open iPhone Settings" : "Enable notifications"}</span>
             <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
           </button>
         )}
-        {notificationError && <p role="status" className="mt-3 text-[13px] leading-5 text-alert-700">{notificationError}</p>}
+        {notificationError && <p role="status" className="mt-3 dd-type-secondary text-alert-700">{notificationError}</p>}
       </section>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Legal</h2>
-          <p className="mt-1 text-sm leading-6 text-stone-600">
+          <h2 className="dd-type-section text-stone-900">Legal</h2>
+          <p className="mt-1 dd-type-secondary text-stone-600">
             Learn how Dodgy Deal handles your information.
           </p>
         </div>
         <Link
           href="/privacy"
-          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800"
+          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 dd-type-control text-stone-800"
         >
           <span>
             <span className="block">Privacy policy</span>
-            <span className="mt-1 block text-[13px] font-normal leading-5 text-stone-500">
+            <span className="mt-1 block dd-type-meta text-stone-500">
               Collection, use, storage, and your privacy rights
             </span>
           </span>
@@ -374,11 +374,11 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/terms"
-          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800"
+          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 dd-type-control text-stone-800"
         >
           <span>
             <span className="block">Terms of use</span>
-            <span className="mt-1 block text-[13px] font-normal leading-5 text-stone-500">
+            <span className="mt-1 block dd-type-meta text-stone-500">
               Rules for using Dodgy Deal
             </span>
           </span>
@@ -388,19 +388,19 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Help</h2>
-          <p className="mt-1 text-sm leading-6 text-stone-600">
+          <h2 className="dd-type-section text-stone-900">Help</h2>
+          <p className="mt-1 dd-type-secondary text-stone-600">
             Get help or let us know when something needs fixing.
           </p>
         </div>
         <Link
           href="/support"
           onClick={captureSettingsScrollPosition}
-          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800"
+          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 dd-type-control text-stone-800"
         >
           <span>
             <span className="block">Contact support</span>
-            <span className="mt-1 block text-[13px] font-normal leading-5 text-stone-500">
+            <span className="mt-1 block dd-type-meta text-stone-500">
               Get help with the app
             </span>
           </span>
@@ -409,32 +409,32 @@ export default function SettingsPage() {
         <Link
           href="/report-deal"
           onClick={captureSettingsScrollPosition}
-          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800"
+          className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 dd-type-control text-stone-800"
         >
           <span>
             <span className="block">Report an incorrect deal</span>
-            <span className="mt-1 block text-[13px] font-normal leading-5 text-stone-500">
+            <span className="mt-1 block dd-type-meta text-stone-500">
               Help us keep prices and specials accurate
             </span>
           </span>
           <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
         </Link>
-        <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 text-[15px] font-semibold leading-5 text-stone-800">
+        <div className="flex items-center justify-between gap-4 border-t border-stone-100 pt-4 dd-type-control text-stone-800">
           <span>
             <span className="block">App version</span>
-            <span className="mt-1 block text-[13px] font-normal leading-5 text-stone-500">
+            <span className="mt-1 block dd-type-meta text-stone-500">
               Dodgy Deal mobile app
             </span>
           </span>
-          <span className="text-[13px] font-semibold tabular-nums text-stone-500">0.1.0</span>
+          <span className="dd-type-meta dd-type-meta-strong tabular-nums text-stone-500">0.1.0</span>
         </div>
       </section>
 
       {!authLoading && user && (
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="font-display text-[17px] font-extrabold tracking-normal text-stone-900">Account</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-600">Manage your account details and sign-in.</p>
+            <h2 className="dd-type-section text-stone-900">Account</h2>
+            <p className="mt-1 dd-type-secondary text-stone-600">Manage your account details and sign-in.</p>
           </div>
           <div className="flex flex-col gap-4 border-t border-stone-100 pt-4">
             <div className="rounded-xl border border-stone-200 bg-stone-50 p-4" aria-labelledby="settings-subscription-title">
@@ -450,14 +450,14 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 {!subscriptionLoading && isPremium && currentSubscription && (
-                  <span className="shrink-0 rounded-full bg-fair-100 px-2.5 py-1 text-xs font-bold text-fair-800">Active</span>
+                  <span className="shrink-0 rounded-full bg-fair-100 px-2.5 py-1 dd-type-badge text-fair-800">Active</span>
                 )}
               </div>
               {!subscriptionLoading && isPremium && currentSubscription ? (
                 <>
-                  <div className="mt-3 space-y-1 text-[13px] leading-5 text-stone-600">
+                  <div className="mt-3 space-y-1 dd-type-meta text-stone-600">
                     <p>{getSubscriptionPlanLabel(currentSubscription.product_id)}</p>
-                    <p className="font-semibold text-ink-700">{getSubscriptionStatusLabel(currentSubscription.status)}</p>
+                    <p className="dd-type-meta-strong text-ink-700">{getSubscriptionStatusLabel(currentSubscription.status)}</p>
                     {formatSubscriptionDate(currentSubscription.expires_at) && (
                       <p>Access until {formatSubscriptionDate(currentSubscription.expires_at)}</p>
                     )}
@@ -467,16 +467,16 @@ export default function SettingsPage() {
                     href={APPLE_SUBSCRIPTIONS_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 flex items-center justify-between gap-3 border-t border-stone-200 pt-3 text-sm font-semibold text-ink-800"
+                    className="mt-3 flex items-center justify-between gap-3 border-t border-stone-200 pt-3 dd-type-control text-ink-800"
                   >
                     <span>Manage or cancel in Apple</span>
                     <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
                   </a>
-                  <p className="mt-2 text-xs leading-5 text-stone-500">Cancellation takes effect at the end of your current billing period.</p>
+                  <p className="mt-2 dd-type-meta text-stone-500">Cancellation takes effect at the end of your current billing period.</p>
                 </>
               ) : !subscriptionLoading ? (
                 <>
-                  <p className="mt-2 text-[13px] leading-5 text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
+                  <p className="mt-2 dd-type-secondary text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
                   <button
                     type="button"
                     onClick={openSubscriptionPage}
@@ -518,15 +518,15 @@ export default function SettingsPage() {
       {!authLoading && user && (
         <section className="rounded-2xl border border-alert-100 bg-white p-5 shadow-sm" aria-labelledby="settings-danger-zone-title">
           <div className="mb-4">
-            <h2 id="settings-danger-zone-title" className="font-display text-[17px] font-extrabold tracking-normal text-alert-700">
+            <h2 id="settings-danger-zone-title" className="dd-type-section text-alert-700">
               Danger zone
             </h2>
-            <p className="mt-1 text-sm leading-6 text-stone-600">
+            <p className="mt-1 dd-type-secondary text-stone-600">
               Permanently remove your account and personal data.
             </p>
           </div>
           <div className="border-t border-alert-100 pt-4">
-            <p className="text-[13px] leading-5 text-stone-600">
+            <p className="dd-type-secondary text-stone-600">
               This permanently deletes your profile, saved lists, and browsing history. You can&apos;t undo this.
             </p>
             <button
