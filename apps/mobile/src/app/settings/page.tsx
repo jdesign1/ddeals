@@ -50,6 +50,9 @@ export default function SettingsPage() {
     loading: subscriptionLoading,
     currentSubscription,
     openSubscriptionPage,
+    isNativeAvailable,
+    restoring,
+    restore,
   } = useSubscriptions();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
@@ -487,6 +490,20 @@ export default function SettingsPage() {
                   >
                     See subscription options
                   </button>
+                  {isNativeAvailable && (
+                    <div className="mt-3 border-t border-stone-200 pt-3">
+                      <p className="dd-type-meta text-stone-500">Already subscribed through Apple but not seeing access? We normally check automatically.</p>
+                      <button
+                        type="button"
+                        onClick={() => void restore()}
+                        disabled={restoring}
+                        className="dd-btn dd-btn-outline mt-2 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                        aria-busy={restoring}
+                      >
+                        {restoring ? "Checking Apple purchases…" : "Check Apple purchases"}
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>

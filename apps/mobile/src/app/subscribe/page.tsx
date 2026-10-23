@@ -185,6 +185,12 @@ export default function SubscribePage() {
             </p>
           )}
 
+          {error && (
+            <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 dd-type-secondary text-red-800">
+              {error}
+            </p>
+          )}
+
           {showPurchaseOptions && (
             <div className="flex flex-col gap-6">
               {purchaseOptionsLoading ? (
@@ -256,11 +262,6 @@ export default function SubscribePage() {
                         <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
                       ) : "Subscribe now"}
                     </button>
-                  )}
-                  {error && (
-                    <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 dd-type-secondary text-red-800">
-                      {error}
-                    </p>
                   )}
                 </>
               ) : (

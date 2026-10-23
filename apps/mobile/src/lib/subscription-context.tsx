@@ -19,10 +19,12 @@ import {
   isNativeAppleSubscriptionsPlatform,
   loadAppleSubscriptionProducts,
   purchaseAppleSubscription,
+  restoreAppleSubscriptions,
   syncCurrentAppleSubscriptions,
   verifyAppleSubscriptionTransaction,
   type AppleSubscriptionProduct,
 } from "@/lib/native-apple-subscriptions";
+import { subscriptionErrorMessage } from "@/lib/subscription-errors";
 
 interface SubscriptionContextValue {
   entitlements: SubscriptionEntitlementRecord[];
@@ -32,34 +34,16 @@ interface SubscriptionContextValue {
   products: AppleSubscriptionProduct[];
   productsLoading: boolean;
   busyProductId: string | null;
+  restoring: boolean;
   isNativeAvailable: boolean;
   currentSubscription: SubscriptionEntitlementRecord | null;
   openSubscriptionPage: () => void;
   refresh: () => Promise<SubscriptionEntitlementRecord[] | null>;
   purchase: (productId: string) => Promise<boolean>;
+  restore: () => Promise<boolean>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
-
-function subscriptionError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  if (/DodgySubscriptions|not implemented on ios|UNIMPLEMENTED/i.test(message)) {
-    return "Subscriptions need the latest version of the app. Please update and try again.";
-  }
-  if (/PRODUCT_NOT_FOUND|PRODUCTS_UNAVAILABLE/i.test(message)) {
-    return "Subscription options are temporarily unavailable. Please try again later.";
-  }
-  if (/USER_CANCELLED|cancelled/i.test(message)) {
-    return "Purchase cancelled.";
-  }
-  if (/SUBSCRIPTION_SYNC_PENDING|still being activated|payment was received/i.test(message)) {
-    return "Your payment was received. We're still activating your subscription — please wait a moment and try again.";
-  }
-  if (/\bPENDING\b/i.test(message)) {
-    return "Your purchase is waiting for approval.";
-  }
-  return "We couldn't update your subscription. Please try again.";
-}
 
 function productSortValue(productId: string): number {
   if (productId === SUBSCRIPTION_PRODUCT_IDS.annual) return 0;
@@ -79,6 +63,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const purchaseInFlightRef = useRef(false);
   const refreshRequestRef = useRef(0);
 
@@ -112,7 +97,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setError(null);
       return nextEntitlements;
     } catch (refreshError) {
-      if (requestId === refreshRequestRef.current) setError(subscriptionError(refreshError));
+      if (requestId === refreshRequestRef.current) setError(subscriptionErrorMessage(refreshError));
       // Preserve the distinction between "no entitlement" and "could not
       // read entitlements" so the success screen does not redirect on a
       // temporary network or backend failure.
@@ -148,25 +133,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     let transactionHandle: { remove: () => Promise<void> } | undefined;
 
     void DodgySubscriptions.addListener("transactionUpdated", ({ transaction }) => {
-      void verifyAppleSubscriptionTransaction(transaction, session.access_token)
+      void verifyAppleSubscriptionTransaction(transaction, session.access_token, user.id)
         .then(() => {
           if (!cancelled) void refresh();
         })
         .catch((syncError) => {
-          if (!cancelled) setError(subscriptionError(syncError));
+          if (!cancelled) setError(subscriptionErrorMessage(syncError));
         });
     }).then((handle) => {
       if (cancelled) void handle.remove();
       else transactionHandle = handle;
     });
 
-    void syncCurrentAppleSubscriptions(session.access_token)
+    void syncCurrentAppleSubscriptions(session.access_token, user.id)
       .then(() => {
         if (!cancelled) return refresh();
         return undefined;
       })
       .catch((syncError) => {
-        if (!cancelled) setError(subscriptionError(syncError));
+        if (!cancelled) setError(subscriptionErrorMessage(syncError));
       });
     return () => {
       cancelled = true;
@@ -192,7 +177,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       .catch((loadError) => {
         if (!cancelled) {
           setProductsLoading(false);
-          setError(subscriptionError(loadError));
+          setError(subscriptionErrorMessage(loadError));
         }
       });
 
@@ -228,7 +213,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // until it is finished, so reconcile it once before showing an error.
       if (!/USER_CANCELLED|cancelled|\bPENDING\b|PRODUCT_NOT_FOUND|PRODUCTS_UNAVAILABLE/i.test(String(purchaseError))) {
         try {
-          await syncCurrentAppleSubscriptions(session.access_token);
+          await syncCurrentAppleSubscriptions(session.access_token, user.id);
         } catch {
           // The final entitlement read below is still useful if the server
           // saved the entitlement but a later cleanup/event step failed.
@@ -246,13 +231,53 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setError(null);
         return false;
       }
-      setError(subscriptionError(purchaseError));
+      setError(subscriptionErrorMessage(purchaseError));
       return false;
     } finally {
       purchaseInFlightRef.current = false;
       setBusyProductId(null);
     }
   }, [nativeAvailable, openAuthSheet, refreshUntilPremium, router, session, unavailableMessage, user]);
+
+  const restore = useCallback(async (): Promise<boolean> => {
+    if (!user || !session) {
+      openAuthSheet("Sign in to restore your Apple subscription.");
+      return false;
+    }
+    if (!nativeAvailable) {
+      setError(unavailableMessage);
+      return false;
+    }
+    if (purchaseInFlightRef.current || restoring) return false;
+
+    purchaseInFlightRef.current = true;
+    setRestoring(true);
+    setError(null);
+    try {
+      const transactionCount = await restoreAppleSubscriptions(session.access_token, user.id);
+      if (transactionCount === 0) throw new Error("No active Apple subscription was found.");
+      if (!await refreshUntilPremium()) throw new Error("SUBSCRIPTION_SYNC_PENDING");
+      router.push("/subscribe/success");
+      return true;
+    } catch (restoreError) {
+      if (!/USER_CANCELLED|cancelled|No active Apple subscription|not linked|linked to another Dodgy Deal account|PRODUCT_NOT_FOUND|PRODUCTS_UNAVAILABLE/i.test(String(restoreError))) {
+        try {
+          await syncCurrentAppleSubscriptions(session.access_token, user.id);
+          if (await refreshUntilPremium()) {
+            router.push("/subscribe/success");
+            return true;
+          }
+        } catch {
+          // Keep the original restore error for the user-facing message.
+        }
+      }
+      setError(subscriptionErrorMessage(restoreError));
+      return false;
+    } finally {
+      purchaseInFlightRef.current = false;
+      setRestoring(false);
+    }
+  }, [nativeAvailable, openAuthSheet, refreshUntilPremium, restoring, router, session, unavailableMessage, user]);
 
   const value = useMemo<SubscriptionContextValue>(() => ({
     entitlements,
@@ -262,6 +287,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     products,
     productsLoading,
     busyProductId,
+    restoring,
     isNativeAvailable: nativeAvailable,
     currentSubscription,
     openSubscriptionPage: () => {
@@ -270,7 +296,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     },
     refresh,
     purchase,
-  }), [busyProductId, currentSubscription, entitlements, error, isPremium, loading, nativeAvailable, products, productsLoading, purchase, refresh, router]);
+    restore,
+  }), [busyProductId, currentSubscription, entitlements, error, isPremium, loading, nativeAvailable, products, productsLoading, purchase, refresh, restore, restoring, router]);
 
   return (
     <SubscriptionContext.Provider value={value}>

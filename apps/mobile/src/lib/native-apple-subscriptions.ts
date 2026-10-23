@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import { SUBSCRIPTION_PRODUCT_IDS } from "@dodgey-deals/shared";
+import { appleTransactionVerificationKey } from "@/lib/subscription-verification";
 
 export interface AppleSubscriptionProduct {
   id: string;
@@ -35,12 +36,14 @@ export const DodgySubscriptions = registerPlugin<DodgySubscriptionsPlugin>("Dodg
 class AppleSubscriptionVerificationError extends Error {
   readonly status: number;
   readonly retryable: boolean;
+  readonly code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "AppleSubscriptionVerificationError";
     this.status = status;
     this.retryable = status === 408 || status === 429 || status >= 500;
+    this.code = code;
   }
 }
 
@@ -48,13 +51,8 @@ class AppleSubscriptionVerificationError extends Error {
 // Transaction.updates. Share the same verification promise for both paths so
 // one Apple transaction cannot trigger two server writes or two finish calls.
 const transactionVerificationPromises = new Map<string, Promise<void>>();
-const completedTransactionVerifications = new Set<string>();
 
 const VERIFICATION_RETRY_DELAYS_MS = [350, 900];
-
-function transactionVerificationKey(transaction: AppleSubscriptionTransaction): string {
-  return transaction.transactionId || transaction.jwsRepresentation;
-}
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -81,9 +79,9 @@ export function configuredAppleProductIds(): string[] {
 export async function verifyAppleSubscriptionTransaction(
   transaction: AppleSubscriptionTransaction,
   accessToken: string,
+  accountId: string,
 ): Promise<void> {
-  const key = transactionVerificationKey(transaction);
-  if (completedTransactionVerifications.has(key)) return;
+  const key = appleTransactionVerificationKey(transaction.transactionId, transaction.jwsRepresentation, accountId);
   const existingVerification = transactionVerificationPromises.get(key);
   if (existingVerification) return existingVerification;
 
@@ -100,10 +98,11 @@ export async function verifyAppleSubscriptionTransaction(
           body: JSON.stringify({ signedTransaction: transaction.jwsRepresentation }),
         });
         if (!response.ok) {
-          const payload = await response.json().catch(() => null) as { error?: string } | null;
+          const payload = await response.json().catch(() => null) as { code?: string; error?: string } | null;
           throw new AppleSubscriptionVerificationError(
             payload?.error || "We could not verify the Apple subscription.",
             response.status,
+            payload?.code,
           );
         }
         // The entitlement write above is the authoritative success. Finishing
@@ -111,8 +110,7 @@ export async function verifyAppleSubscriptionTransaction(
         // caller unlock the account and allow Transaction.updates to retry the
         // cleanup later instead of reporting a failed purchase to the user.
         try {
-          const { finished } = await finishAppleSubscriptionTransaction(transaction.transactionId, transaction.productId);
-          if (finished) completedTransactionVerifications.add(key);
+          await finishAppleSubscriptionTransaction(transaction.transactionId, transaction.productId);
         } catch {
           // Keep the transaction unfinished so StoreKit can deliver it again.
         }
@@ -150,20 +148,20 @@ export async function loadAppleSubscriptionProducts(): Promise<AppleSubscription
 export async function purchaseAppleSubscription(productId: string, accountId: string, accessToken: string): Promise<AppleSubscriptionTransaction> {
   if (!isNativeAppleSubscriptionsAvailable()) throw new Error("Apple subscriptions are only available in the iOS app.");
   const transaction = await DodgySubscriptions.purchase({ productId, appAccountToken: accountId });
-  await verifyAppleSubscriptionTransaction(transaction, accessToken);
+  await verifyAppleSubscriptionTransaction(transaction, accessToken, accountId);
   return transaction;
 }
 
-export async function syncCurrentAppleSubscriptions(accessToken: string): Promise<number> {
+export async function syncCurrentAppleSubscriptions(accessToken: string, accountId: string): Promise<number> {
   if (!isNativeAppleSubscriptionsAvailable()) return 0;
   const { transactions } = await DodgySubscriptions.currentEntitlements();
-  for (const transaction of transactions) await verifyAppleSubscriptionTransaction(transaction, accessToken);
+  for (const transaction of transactions) await verifyAppleSubscriptionTransaction(transaction, accessToken, accountId);
   return transactions.length;
 }
 
-export async function restoreAppleSubscriptions(accessToken: string): Promise<number> {
+export async function restoreAppleSubscriptions(accessToken: string, accountId: string): Promise<number> {
   if (!isNativeAppleSubscriptionsAvailable()) return 0;
   const { transactions } = await DodgySubscriptions.restore();
-  for (const transaction of transactions) await verifyAppleSubscriptionTransaction(transaction, accessToken);
+  for (const transaction of transactions) await verifyAppleSubscriptionTransaction(transaction, accessToken, accountId);
   return transactions.length;
 }

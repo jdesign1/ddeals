@@ -42,8 +42,20 @@ export async function POST(request: Request) {
       console.error("Apple transaction signature verification failed.", verificationError instanceof Error ? verificationError.message : "Unknown error");
       return Response.json({ error: "We could not verify this Apple purchase." }, { status: 422, headers: NO_STORE_HEADERS });
     }
-    if (!transaction.productId || transaction.appAccountToken !== accountId) {
-      return Response.json({ error: "This Apple purchase is not linked to the signed-in account." }, { status: 403, headers: NO_STORE_HEADERS });
+    if (!transaction.productId) {
+      return Response.json({ code: "APPLE_PRODUCT_MISSING", error: "This Apple purchase does not contain a supported product." }, { status: 422, headers: NO_STORE_HEADERS });
+    }
+    if (!transaction.appAccountToken) {
+      return Response.json(
+        { code: "APPLE_PURCHASE_UNLINKED", error: "This Apple purchase is not linked to a Dodgy Deal account." },
+        { status: 403, headers: NO_STORE_HEADERS },
+      );
+    }
+    if (transaction.appAccountToken !== accountId) {
+      return Response.json(
+        { code: "APPLE_PURCHASE_LINKED_TO_OTHER_ACCOUNT", error: "This Apple purchase is linked to another Dodgy Deal account." },
+        { status: 403, headers: NO_STORE_HEADERS },
+      );
     }
 
     const entitlementKeys = getEntitlementKeys(config, transaction.productId);
