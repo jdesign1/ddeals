@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -105,7 +105,6 @@ function NoteComposer({
   const { session } = useAuth();
   const prefersReducedMotion = useReducedMotion();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const firstFieldRef = useRef<HTMLTextAreaElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -148,7 +147,7 @@ function NoteComposer({
   useEffect(() => {
     if (!isOpen) return;
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : returnFocusRef.current;
-    const frame = window.requestAnimationFrame(() => firstFieldRef.current?.focus());
+    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         closeComposerSheet();
@@ -240,27 +239,24 @@ function NoteComposer({
               role="dialog"
               aria-modal="true"
               aria-labelledby="community-note-composer-title"
-              aria-describedby="community-note-composer-description"
+              aria-describedby={submitted ? undefined : "community-note-composer-description"}
+              tabIndex={-1}
               ref={dialogRef}
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl shadow-2xl outline-none"
             >
-              <div className="flex flex-shrink-0 flex-col border-b border-stone-100 px-5 pb-4 pt-3">
-                <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-300" aria-hidden="true" />
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={closeComposerSheet}
-                    disabled={submitting}
-                    className="min-h-11 w-16 flex-shrink-0 text-left text-sm font-bold text-stone-600 transition-colors hover:text-stone-900 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <div className="min-w-0 flex-1 text-center">
-                    <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Share a shopper tip</h2>
-                    <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Help other shoppers with a price, tip, or useful detail.</p>
-                  </div>
-                  <span className="w-16 flex-shrink-0" aria-hidden="true" />
+              <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between gap-4 border-b border-stone-100 px-5 py-4">
+                <div className="min-w-0">
+                  <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Share a shopper tip</h2>
                 </div>
+                <button
+                  type="button"
+                  onClick={closeComposerSheet}
+                  disabled={submitting}
+                  aria-label="Close share a shopper tip"
+                  className="dd-bottom-sheet-close cursor-pointer text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
               </div>
 
               {submitted ? (
@@ -273,32 +269,31 @@ function NoteComposer({
                 </div>
               ) : (
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                  <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
                     <div className="space-y-2">
                       <label htmlFor="community-note-body" className="dd-type-meta dd-type-meta-strong text-stone-700">Your tip</label>
-                      <p id="community-note-body-hint" className="text-sm leading-5 text-stone-500">Share a price, a tip, or something useful about this item.</p>
+                      <p id="community-note-composer-description" className="text-sm leading-5 text-stone-500">Help other shoppers with a price, tip, or useful detail. Price details are optional.</p>
                       <textarea
                         id="community-note-body"
-                        ref={firstFieldRef}
                         maxLength={500}
                         rows={4}
                         value={body}
                         onChange={(event) => setBody(event.target.value)}
                         placeholder="For example, which size or flavour you saw"
                         autoCapitalize="sentences"
-                        aria-describedby="community-note-body-hint community-note-body-counter"
+                        aria-describedby="community-note-composer-description community-note-body-counter"
                         className="mt-1 w-full resize-none rounded-xl border border-stone-300 bg-white px-3 py-3 text-base leading-5 text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-900 focus:outline-none"
                       />
                       <p id="community-note-body-counter" className="text-right text-xs text-stone-400" aria-live="polite">{body.length}/500</p>
                     </div>
 
-                    <div className="rounded-2xl border border-stone-200 bg-stone-50">
+                    <div className="rounded-xl border border-stone-200 bg-stone-50">
                       <button
                         type="button"
                         aria-expanded={evidenceOpen}
                         aria-controls="community-note-evidence"
                         onClick={() => setEvidenceOpen((open) => !open)}
-                        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left"
+                        className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 px-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-600"
                       >
                         <span>
                           <span className="block text-sm font-extrabold text-stone-800">Add price details</span>
@@ -322,7 +317,7 @@ function NoteComposer({
                             </select>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid gap-4 sm:grid-cols-2">
                             <div>
                               <label htmlFor="community-note-price" className="dd-type-meta dd-type-meta-strong text-stone-600">Price <span className="font-normal text-stone-400">(optional)</span></label>
                               <div className="relative mt-1">
@@ -372,11 +367,10 @@ function NoteComposer({
                     {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
                     <p className="text-xs leading-4 text-stone-500">Notes are checked before they appear. Please keep it about the item — no links, contact details, or abusive language.</p>
                   </div>
-                  <div className="flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                  <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
                     <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-12 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
                       {submitting ? "Sending…" : "Send tip for review"}
                     </button>
-                    <p className="mt-2 text-center text-xs font-semibold text-stone-400">Your note will be checked before it&rsquo;s shared.</p>
                   </div>
                 </form>
               )}
