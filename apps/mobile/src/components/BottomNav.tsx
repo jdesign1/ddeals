@@ -233,7 +233,7 @@ export default function BottomNav() {
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest, requestOpen } = useNewSpecials();
 
-  if (pathname.startsWith("/deal/") || pathname === "/settings" || CONTACT_ROUTES.includes(pathname)) return null;
+  if (pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/subscribe" || CONTACT_ROUTES.includes(pathname)) return null;
 
   return (
     <>

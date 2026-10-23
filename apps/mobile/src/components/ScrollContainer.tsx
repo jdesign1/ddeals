@@ -50,7 +50,7 @@ const CONTACT_ROUTES = ["/support", "/report-deal"];
  */
 export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings" && !CONTACT_ROUTES.includes(pathname);
+  const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings" && pathname !== "/subscribe" && !CONTACT_ROUTES.includes(pathname);
   const { refreshCatalogue, dealFilter } = useSearch();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,6 +102,21 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
         settingsScrollTopRef.current = getCapturedSettingsScrollPosition();
       }
 
+      const resetToTop = () => {
+        const element = scrollRef.current;
+        if (!element) return;
+        element.scrollTop = 0;
+        lastScrollTopRef.current = 0;
+      };
+
+      resetToTop();
+      const firstFrame = window.requestAnimationFrame(() => {
+        resetToTop();
+      });
+      return () => window.cancelAnimationFrame(firstFrame);
+    }
+
+    if (pathname === "/subscribe") {
       const resetToTop = () => {
         const element = scrollRef.current;
         if (!element) return;

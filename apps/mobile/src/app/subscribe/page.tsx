@@ -82,7 +82,7 @@ export default function SubscribePage() {
     ?? null;
 
   return (
-    <main className="flex flex-col gap-4 bg-fair-50/70 px-5 py-5 pb-safe-nav">
+    <main className="dd-subscribe-content flex flex-col gap-4 bg-fair-50/70 px-5 py-5 pb-safe-sm">
       <section className="relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-fair-100 bg-white px-5 pb-6 pt-4 shadow-sm" aria-labelledby="subscribe-page-title">
         <div className="relative flex justify-center">
           <MascotImage
@@ -91,14 +91,14 @@ export default function SubscribePage() {
             alt="Dodgy Deal mascot investigating watchlist prices, deal history, and alerts"
             width={640}
             height={530}
-            sizes="230px"
+            sizes="208px"
             unoptimized
-            className="mascot-wave h-auto w-full max-w-[14.5rem]"
+            className="mascot-wave h-auto w-full max-w-[13rem]"
           />
         </div>
         <div className="relative text-center">
           <p className="dd-type-section text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
-          <h1 id="subscribe-page-title" className="dd-type-page-title mx-auto mt-3 max-w-[18rem] text-stone-900">
+          <h1 id="subscribe-page-title" className="dd-type-page-title dd-type-page-title-compact mx-auto mt-3 max-w-[18rem] text-stone-900">
             {isPremium ? "Your subscription is active" : "Make more confident deal decisions."}
           </h1>
           <p className="mx-auto mt-2 max-w-[20rem] dd-type-body text-stone-600">
@@ -250,7 +250,7 @@ export default function SubscribePage() {
                       disabled={busyProductId !== null}
                       aria-busy={busyProductId === selectedProduct.id}
                       aria-label={busyProductId === selectedProduct.id ? "Processing subscription" : "Subscribe now"}
-                      className="dd-btn dd-btn-primary w-full cursor-pointer"
+                      className="dd-btn dd-btn-primary my-2 w-full cursor-pointer"
                     >
                       {busyProductId === selectedProduct.id ? (
                         <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
