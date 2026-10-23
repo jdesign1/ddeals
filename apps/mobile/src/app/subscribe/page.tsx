@@ -211,7 +211,7 @@ export default function SubscribePage() {
                             />
                             <span
                               className={[
-                                "relative flex min-h-[7.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
+                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
                                 isSelected ? "border-fair-400 bg-fair-50 ring-2 ring-fair-200" : "border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
                                 busyProductId !== null ? "cursor-wait opacity-60" : "",
                               ].join(" ")}
@@ -223,12 +223,12 @@ export default function SubscribePage() {
                               )}
                               <span>
                                 <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
+                                <span className="mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
                                 <span className="mt-1.5 block max-w-[9rem] text-xs leading-4 text-stone-600">
                                   {isAnnual
                                     ? "Save with one annual payment. Renews yearly until cancelled."
                                     : "Pay monthly. Renews each month until cancelled."}
                                 </span>
-                                <span className="mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
                               </span>
                             </span>
                           </label>
