@@ -24,11 +24,11 @@ export default function SubscriptionSuccessPage() {
     <main className="flex min-h-full flex-col items-center justify-center px-5 py-10 pb-safe-nav">
       <section className="flex w-full max-w-sm flex-col items-center gap-5 rounded-3xl border border-fair-200 bg-fair-50 px-5 py-8 text-center shadow-sm" aria-labelledby="subscription-success-title">
         <MascotImage
-          src="/subscribe-mascot-thumbs-up.webp"
-          darkSrc="/subscribe-mascot-thumbs-up.webp"
-          alt="Dodgy Deal mascot celebrating"
-          width={512}
-          height={532}
+          src="/subscribe-mascot-deal-detective-promoted.webp"
+          darkSrc="/subscribe-mascot-deal-detective-promoted.webp"
+          alt="Dodgy Deal mascot promoted to Deal Detective"
+          width={1230}
+          height={1279}
           sizes="144px"
           unoptimized
           className="mascot-wave h-auto w-36"
