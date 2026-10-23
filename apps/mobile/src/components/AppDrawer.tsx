@@ -90,7 +90,12 @@ export default function AppDrawer() {
                 {avatarInitial}
               </span>
               <span className="min-w-0">
-                <span className="block truncate dd-type-control font-semibold text-stone-900">{displayName}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate dd-type-control text-stone-900">{displayName}</span>
+                  {!subscriptionLoading && isPremium && (
+                    <span className="shrink-0 rounded-full bg-fair-100 px-2 py-0.5 dd-type-badge text-fair-800">Plus</span>
+                  )}
+                </span>
                 <span className="block dd-type-meta text-stone-500">Deal detective</span>
               </span>
             </div>

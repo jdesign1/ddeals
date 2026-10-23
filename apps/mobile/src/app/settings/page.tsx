@@ -219,10 +219,13 @@ export default function SettingsPage() {
               </span>
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 id="settings-profile-title" className="min-w-0 truncate dd-type-section text-stone-900">
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 id="settings-profile-title" className="min-w-0 flex-1 truncate dd-type-section text-stone-900">
                   {profileName}
                 </h2>
+                {!subscriptionLoading && isPremium && (
+                  <span className="shrink-0 rounded-full bg-fair-100 px-2 py-0.5 dd-type-badge text-fair-800">Plus</span>
+                )}
                 <button
                   type="button"
                   onClick={openNameSheet}
@@ -237,7 +240,7 @@ export default function SettingsPage() {
           </div>
           <div className="mt-5 border-t border-stone-100 pt-4">
             <p className="dd-type-meta dd-type-meta-strong text-stone-500">Profile</p>
-            <p className="mt-1 dd-type-secondary text-stone-600">Your Dodgy Deal shopper profile</p>
+            <p className="mt-1 dd-type-secondary text-stone-600">Your Dodgy Deal Detective profile</p>
           </div>
         </section>
       )}
@@ -486,10 +489,6 @@ export default function SettingsPage() {
                   </button>
                 </>
               ) : null}
-            </div>
-            <div>
-              <p className="dd-type-meta dd-type-meta-strong text-stone-500">Sign-in method</p>
-              <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">{accountSignInMethod}</p>
             </div>
             {user.created_at && (
               <div>
