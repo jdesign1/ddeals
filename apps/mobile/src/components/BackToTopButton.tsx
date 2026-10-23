@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 
 const SHOW_AFTER_PX = 480;
 const HIDE_BEFORE_PX = 48;
-const MIN_SCROLLABLE_DISTANCE_PX = 720;
+const DEFAULT_MIN_SCROLLABLE_DISTANCE_PX = 720;
 const SCROLL_TO_TOP_DURATION_MS = 220;
 
 /**
@@ -17,9 +17,11 @@ const SCROLL_TO_TOP_DURATION_MS = 220;
 export default function BackToTopButton({
   scrollRef,
   enabled = true,
+  minimumScrollableDistance = DEFAULT_MIN_SCROLLABLE_DISTANCE_PX,
 }: {
   scrollRef: RefObject<HTMLElement | null>;
   enabled?: boolean;
+  minimumScrollableDistance?: number;
 }) {
   const [visible, setVisible] = useState(false);
   const visibleRef = useRef(false);
@@ -40,7 +42,7 @@ export default function BackToTopButton({
         setButtonVisible(false);
         return;
       }
-      const isLongList = element.scrollHeight - element.clientHeight >= MIN_SCROLLABLE_DISTANCE_PX;
+      const isLongList = element.scrollHeight - element.clientHeight >= minimumScrollableDistance;
       if (!isLongList) {
         setButtonVisible(false);
         return;
@@ -73,7 +75,7 @@ export default function BackToTopButton({
         window.cancelAnimationFrame(scrollAnimationFrameRef.current);
       }
     };
-  }, [enabled, scrollRef]);
+  }, [enabled, minimumScrollableDistance, scrollRef]);
 
   const scrollToTop = () => {
     const element = scrollRef.current;

@@ -451,6 +451,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     <BackToTopButton
       scrollRef={scrollRef}
       enabled={!isDrawerOpen && (pathname === "/" || pathname === "/history" || pathname === "/lists" || pathname === "/me")}
+      minimumScrollableDistance={pathname === "/history" ? 480 : undefined}
     />
     </>
   );

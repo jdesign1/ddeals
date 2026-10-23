@@ -12,6 +12,8 @@ export const SUBSCRIBE_BUTTON_CLASS_NAME = "pointer-events-auto flex min-h-11 w-
 const subscribeToMount = () => () => {};
 const getClientMounted = () => true;
 const getServerMounted = () => false;
+const SCROLL_DIRECTION_DELTA_PX = 2;
+const SCROLL_TOP_THRESHOLD_PX = 4;
 
 /**
  * Keeps the subscription action close to its explanation, then offers the
@@ -29,9 +31,10 @@ export default function StickySubscriptionCta({
 }) {
   const inlineButtonRef = useRef<HTMLButtonElement>(null);
   const stickyButtonRef = useRef<HTMLButtonElement>(null);
-  const hasSeenInlineRef = useRef(false);
   const showStickyRef = useRef(false);
   const wasStickyVisibleRef = useRef(false);
+  const scrollDirectionAnchorRef = useRef<number | null>(null);
+  const scrollDirectionRef = useRef<"up" | "down" | null>(null);
   const [showSticky, setShowSticky] = useState(false);
   const prefersReducedMotion = useReducedMotion() ?? false;
   const isClientMounted = useSyncExternalStore(subscribeToMount, getClientMounted, getServerMounted);
@@ -76,6 +79,28 @@ export default function StickySubscriptionCta({
 
     const updateStickyVisibility = () => {
       frame = null;
+      const scrollTop = scrollRoot?.scrollTop ?? window.scrollY;
+      const directionAnchor = scrollDirectionAnchorRef.current;
+      if (directionAnchor === null) {
+        scrollDirectionAnchorRef.current = scrollTop;
+      } else {
+        const scrollDelta = scrollTop - directionAnchor;
+        if (scrollDelta >= SCROLL_DIRECTION_DELTA_PX) scrollDirectionRef.current = "down";
+        if (scrollDelta >= SCROLL_DIRECTION_DELTA_PX || scrollDelta <= -SCROLL_DIRECTION_DELTA_PX) {
+          scrollDirectionAnchorRef.current = scrollTop;
+        }
+        if (scrollDelta <= -SCROLL_DIRECTION_DELTA_PX) scrollDirectionRef.current = "up";
+      }
+
+      // Never leave the floating CTA visible at the top of the Watchlist,
+      // including during iOS rubber-band movement around scrollTop 0.
+      if (scrollTop <= SCROLL_TOP_THRESHOLD_PX) {
+        scrollDirectionAnchorRef.current = scrollTop;
+        scrollDirectionRef.current = null;
+        setStickyVisibility(false);
+        return;
+      }
+
       const buttonRect = inlineButton.getBoundingClientRect();
       const rootRect = scrollRoot?.getBoundingClientRect();
       const visibleTop = rootRect?.top ?? 0;
@@ -83,18 +108,15 @@ export default function StickySubscriptionCta({
       const isVisible = buttonRect.bottom > visibleTop && buttonRect.top < visibleBottom;
 
       if (isVisible) {
-        hasSeenInlineRef.current = true;
         setStickyVisibility(false);
         return;
       }
 
-      // If a route restores a scroll position past the inline CTA, treat it
-      // as already seen so the free-account action is still reachable.
+      // Show the floating CTA only after the inline CTA has moved above the
+      // viewport during a downward scroll. This prevents it reappearing while
+      // the user is moving back up through the content or sitting near the top.
       const isPastInlineCta = buttonRect.bottom <= visibleTop;
-      if (hasSeenInlineRef.current || isPastInlineCta) {
-        hasSeenInlineRef.current = true;
-        setStickyVisibility(true);
-      }
+      setStickyVisibility(isPastInlineCta && scrollDirectionRef.current === "down");
     };
 
     const scheduleStickyVisibilityUpdate = () => {
