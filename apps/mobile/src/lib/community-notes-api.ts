@@ -1,10 +1,10 @@
 export interface CommunityPriceNote {
   id: string;
   product_id: string;
-  source_store_id: string;
-  store_name: string;
-  price: number;
-  observed_on: string;
+  source_store_id: string | null;
+  store_name: string | null;
+  price: number | null;
+  observed_on: string | null;
   region_code: string | null;
   body: string | null;
   author_display_name_snapshot: string;
@@ -21,10 +21,10 @@ export interface CommunityPriceNotesResult {
 
 export interface SubmitCommunityPriceNoteInput {
   productId: string;
-  sourceStoreId: string;
-  price: string;
-  observedOn: string;
-  regionCode: string;
+  sourceStoreId?: string;
+  price?: string;
+  observedOn?: string;
+  regionCode?: string;
   body: string;
 }
 
@@ -51,7 +51,7 @@ export async function fetchCommunityPriceNotes(
     | { available?: boolean; notes?: CommunityPriceNote[]; submissions_enabled?: boolean; error?: string }
     | null;
   if (response.status === 503 && payload?.available === false) return { available: false, notes: [], submissionsEnabled: false };
-  if (!response.ok) throw new Error(payload?.error ?? "Community notes are unavailable right now.");
+  if (!response.ok) throw new Error(payload?.error ?? "Community tips are unavailable right now.");
   return {
     available: payload?.available !== false,
     notes: Array.isArray(payload?.notes) ? payload.notes : [],

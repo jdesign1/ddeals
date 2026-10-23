@@ -57,15 +57,21 @@ function NoteDetail({ note }: { note: CommunityPriceNote }) {
     <article className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>
-          <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>
+          {note.price !== null ? (
+            <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>
+          ) : (
+            <p className="font-display text-xl font-extrabold leading-7 text-stone-900">A shopper tip</p>
+          )}
+          {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-500">Community note</span>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-500">Community tip</span>
       </div>
-      <p className="mt-3 text-xs font-semibold text-stone-500">
-        Seen {formatObservedDate(note.observed_on)}
-        {note.region_code ? ` · ${formatRegion(note.region_code)}` : ""}
-      </p>
+      {(note.observed_on || note.region_code) && (
+        <p className="mt-3 text-xs font-semibold text-stone-500">
+          {note.observed_on ? `Seen ${formatObservedDate(note.observed_on)}` : "Shared by a shopper"}
+          {note.region_code ? ` · ${formatRegion(note.region_code)}` : ""}
+        </p>
+      )}
       {note.body && <p className="mt-3 text-sm leading-5 text-stone-700">{note.body}</p>}
       <p className="mt-4 text-xs font-semibold text-stone-500">{note.author_display_name_snapshot}</p>
     </article>
@@ -287,15 +293,15 @@ export default function CommunityPriceNotesSheet({
             >
               <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
                 <div>
-                  <h2 id="community-notes-sheet-title" className="dd-type-sheet-title text-stone-900">Community price notes</h2>
-                  <p id="community-notes-sheet-description" className="mt-1 text-sm text-stone-500">Shopper-reported prices, separate from our official assessment.</p>
+                  <h2 id="community-notes-sheet-title" className="dd-type-sheet-title text-stone-900">Community tips</h2>
+                  <p id="community-notes-sheet-description" className="mt-1 text-sm text-stone-500">Helpful tips from other shoppers, separate from our official assessment.</p>
                 </div>
                 <button
                   type="button"
                   ref={firstControlRef}
                   onClick={onClose}
                   disabled={reportState === "sending" || blockState === "sending"}
-                  aria-label="Close community price notes"
+                  aria-label="Close community tips"
                   className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
@@ -304,7 +310,7 @@ export default function CommunityPriceNotesSheet({
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
                 {statusMessage && !showLoading && <p ref={statusRef} tabIndex={-1} className="mb-4 rounded-xl border border-fair-100 bg-fair-50 p-3 text-sm font-semibold text-fair-950 outline-none" role="status">{statusMessage}</p>}
-                {showLoading && <p className="text-sm font-semibold text-stone-600" role="status">Loading community notes…</p>}
+                {showLoading && <p className="text-sm font-semibold text-stone-600" role="status">Loading community tips…</p>}
                 {!showLoading && error && (
                   <div className="rounded-xl border border-alert-100 bg-alert-50 p-4" role="alert">
                     <p className="text-sm font-semibold text-alert-950">{error}</p>
@@ -312,7 +318,7 @@ export default function CommunityPriceNotesSheet({
                   </div>
                 )}
                 {!showLoading && !error && notes.length === 0 && (
-                  <p ref={statusRef} tabIndex={-1} className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm font-semibold leading-5 text-stone-700 outline-none">No community notes are available for this product.</p>
+                  <p ref={statusRef} tabIndex={-1} className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm font-semibold leading-5 text-stone-700 outline-none">No community tips are available for this product.</p>
                 )}
                 {!showLoading && !error && notes.length > 0 && (
                   <div className="space-y-4">
@@ -322,7 +328,7 @@ export default function CommunityPriceNotesSheet({
                         <div className="mt-2 flex justify-end">
                           <button
                             type="button"
-                            aria-label={`Actions for ${note.store_name} note`}
+                            aria-label={`Actions for ${note.store_name ?? "community"} note`}
                             aria-controls={`community-note-actions-${note.id}`}
                             aria-expanded={actionMenuNoteId === note.id}
                             onClick={() => setActionMenuNoteId((current) => current === note.id ? null : note.id)}
@@ -332,7 +338,7 @@ export default function CommunityPriceNotesSheet({
                           </button>
                         </div>
                         {actionMenuNoteId === note.id && (
-                          <div id={`community-note-actions-${note.id}`} className="mt-2 rounded-xl border border-stone-200 bg-white p-3" role="group" aria-label={`Actions for note from ${note.store_name}`}>
+                          <div id={`community-note-actions-${note.id}`} className="mt-2 rounded-xl border border-stone-200 bg-white p-3" role="group" aria-label={`Actions for note from ${note.store_name ?? "community"}`}>
                             {reportNoteId === note.id ? (
                               reportState === "success" ? (
                                 <div className="space-y-3" role="status">

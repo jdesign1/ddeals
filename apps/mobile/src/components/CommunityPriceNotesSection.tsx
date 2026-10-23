@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -70,15 +70,21 @@ function NoteCard({ note }: { note: CommunityPriceNote }) {
     <article className="flex min-h-48 flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>
-          <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>
+          {note.price !== null ? (
+            <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>
+          ) : (
+            <p className="font-display text-xl font-extrabold leading-7 text-stone-900">A shopper tip</p>
+          )}
+          {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-500">Community note</span>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-500">Community tip</span>
       </div>
-      <p className="mt-3 text-xs font-semibold text-stone-500">
-        Seen {formatObservedDate(note.observed_on)}
-        {note.region_code ? ` · ${formatRegion(note.region_code)}` : ""}
-      </p>
+      {(note.observed_on || note.region_code) && (
+        <p className="mt-3 text-xs font-semibold text-stone-500">
+          {note.observed_on ? `Seen ${formatObservedDate(note.observed_on)}` : "Shared by a shopper"}
+          {note.region_code ? ` · ${formatRegion(note.region_code)}` : ""}
+        </p>
+      )}
       {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">{note.body}</p>}
       <p className="mt-auto pt-4 text-xs font-semibold text-stone-500">{note.author_display_name_snapshot}</p>
     </article>
@@ -99,16 +105,18 @@ function NoteComposer({
   const { session } = useAuth();
   const prefersReducedMotion = useReducedMotion();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const firstFieldRef = useRef<HTMLSelectElement>(null);
+  const firstFieldRef = useRef<HTMLTextAreaElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const submittingRef = useRef(false);
+  const hasUnsavedInputRef = useRef(false);
   const [storeId, setStoreId] = useState("");
   const [price, setPrice] = useState("");
-  const [observedOn, setObservedOn] = useState(nzToday);
+  const [observedOn, setObservedOn] = useState("");
   const [regionCode, setRegionCode] = useState("");
   const [body, setBody] = useState("");
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -120,16 +128,19 @@ function NoteComposer({
   const resetForm = useCallback(() => {
     setStoreId("");
     setPrice("");
-    setObservedOn(nzToday());
+    setObservedOn("");
     setRegionCode("");
     setBody("");
+    setEvidenceOpen(false);
     setSubmitting(false);
     setError(null);
     setSubmitted(false);
+    hasUnsavedInputRef.current = false;
   }, []);
 
   const closeComposerSheet = useCallback(() => {
     if (submittingRef.current) return;
+    if (hasUnsavedInputRef.current && !window.confirm("Discard this tip?")) return;
     resetForm();
     onClose();
   }, [onClose, resetForm]);
@@ -177,19 +188,29 @@ function NoteComposer({
     if (error) errorRef.current?.focus();
   }, [error]);
 
+  useEffect(() => {
+    hasUnsavedInputRef.current = !submitted && Boolean(body.trim() || storeId || price || observedOn || regionCode);
+  }, [body, observedOn, price, regionCode, storeId, submitted]);
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!session?.access_token) {
       setError("Please log in again before sharing a note.");
       return;
     }
+    const hasCompletePriceEvidence = Boolean(storeId && price && observedOn);
+    if (!body.trim() && !hasCompletePriceEvidence) {
+      setError("Add a short tip, or add the supermarket, price and date so there’s something useful to share.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
       await submitCommunityPriceNote(
-        { productId, sourceStoreId: storeId, price, observedOn, regionCode, body },
+        { productId, sourceStoreId: storeId || undefined, price: price || undefined, observedOn: observedOn || undefined, regionCode: regionCode || undefined, body },
         session.access_token,
       );
+      hasUnsavedInputRef.current = false;
       setSubmitted(true);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "We couldn't send your note right now.");
@@ -204,17 +225,17 @@ function NoteComposer({
         {isOpen && (
           <>
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={prefersReducedMotion ? undefined : { opacity: 0 }}
               onClick={closeComposerSheet}
               className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
               aria-hidden="true"
             />
             <motion.div
-              initial={{ y: "100%", opacity: 0.5 }}
+              initial={prefersReducedMotion ? false : { y: "100%", opacity: 0.5 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0.5 }}
+              exit={prefersReducedMotion ? undefined : { y: "100%", opacity: 0.5 }}
               transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", damping: 25, stiffness: 220 }}
               role="dialog"
               aria-modal="true"
@@ -223,116 +244,139 @@ function NoteComposer({
               ref={dialogRef}
               className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
             >
-              <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
-                <div>
-                  <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Add a price note</h2>
-                  <p id="community-note-composer-description" className="mt-1 text-sm text-stone-500">Share a price you spotted in New Zealand.</p>
+              <div className="flex flex-shrink-0 flex-col border-b border-stone-100 px-5 pb-4 pt-3">
+                <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-300" aria-hidden="true" />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={closeComposerSheet}
+                    disabled={submitting}
+                    className="min-h-11 w-16 flex-shrink-0 text-left text-sm font-bold text-stone-600 transition-colors hover:text-stone-900 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <div className="min-w-0 flex-1 text-center">
+                    <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Share a shopper tip</h2>
+                    <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Help other shoppers with a price, tip, or useful detail.</p>
+                  </div>
+                  <span className="w-16 flex-shrink-0" aria-hidden="true" />
                 </div>
-                <button
-                  type="button"
-                  onClick={closeComposerSheet}
-                  disabled={submitting}
-                  aria-label="Close price note form"
-                  className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
               </div>
 
               {submitted ? (
                 <div ref={successRef} tabIndex={-1} className="flex flex-1 flex-col justify-center gap-5 overflow-y-auto px-5 py-8 outline-none" role="status">
                   <div>
-                    <p className="text-lg font-extrabold text-stone-900">Thanks — your price note was sent for review.</p>
+                    <p className="text-lg font-extrabold text-stone-900">Thanks — your tip is queued for review.</p>
                     <p className="mt-2 text-sm leading-5 text-stone-600">We&rsquo;ll check it before it appears for other shoppers.</p>
                   </div>
                   <button type="button" onClick={closeComposerSheet} className="dd-btn dd-btn-primary min-h-11 w-full cursor-pointer">Done</button>
                 </div>
               ) : (
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 flex-1 flex-col">
-                  <div className="space-y-4 overflow-y-auto px-5 py-5">
-                    <div>
-                      <label htmlFor="community-note-store" className="dd-type-meta dd-type-meta-strong text-stone-600">Supermarket</label>
-                      <select
-                        id="community-note-store"
-                        ref={firstFieldRef}
-                        required
-                        value={storeId}
-                        onChange={(event) => setStoreId(event.target.value)}
-                        className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                      >
-                        <option value="">Choose a supermarket</option>
-                        {STORE_OPTIONS.map((store) => <option key={store.id} value={store.id}>{store.label}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label htmlFor="community-note-price" className="dd-type-meta dd-type-meta-strong text-stone-600">Price</label>
-                        <div className="relative mt-1">
-                          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-500">$</span>
-                          <input
-                            id="community-note-price"
-                            required
-                            type="number"
-                            min="0.01"
-                            max="100000"
-                            step="0.01"
-                            inputMode="decimal"
-                            value={price}
-                            onChange={(event) => setPrice(event.target.value)}
-                            className="min-h-11 w-full rounded-xl border border-stone-300 bg-white pl-7 pr-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label htmlFor="community-note-date" className="dd-type-meta dd-type-meta-strong text-stone-600">Seen on</label>
-                        <input
-                          id="community-note-date"
-                          required
-                          type="date"
-                          max={nzToday()}
-                          value={observedOn}
-                          onChange={(event) => setObservedOn(event.target.value)}
-                          className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="community-note-region" className="dd-type-meta dd-type-meta-strong text-stone-600">Region <span className="font-normal text-stone-400">(optional)</span></label>
-                      <select
-                        id="community-note-region"
-                        value={regionCode}
-                        onChange={(event) => setRegionCode(event.target.value)}
-                        className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                      >
-                        <option value="">Prefer not to say</option>
-                        {REGION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="community-note-body" className="dd-type-meta dd-type-meta-strong text-stone-600">Note <span className="font-normal text-stone-400">(optional)</span></label>
+                  <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                    <div className="space-y-2">
+                      <label htmlFor="community-note-body" className="dd-type-meta dd-type-meta-strong text-stone-700">Your tip</label>
+                      <p id="community-note-body-hint" className="text-sm leading-5 text-stone-500">Share a price, a tip, or something useful about this item.</p>
                       <textarea
                         id="community-note-body"
+                        ref={firstFieldRef}
                         maxLength={500}
-                        rows={3}
+                        rows={4}
                         value={body}
                         onChange={(event) => setBody(event.target.value)}
                         placeholder="For example, which size or flavour you saw"
-                        aria-describedby="community-note-body-counter"
-                        className="mt-1 w-full resize-none rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base leading-5 text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-900 focus:outline-none"
+                        autoCapitalize="sentences"
+                        aria-describedby="community-note-body-hint community-note-body-counter"
+                        className="mt-1 w-full resize-none rounded-xl border border-stone-300 bg-white px-3 py-3 text-base leading-5 text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-900 focus:outline-none"
                       />
-                      <p id="community-note-body-counter" className="mt-1 text-right text-xs text-stone-400">{body.length}/500</p>
+                      <p id="community-note-body-counter" className="text-right text-xs text-stone-400" aria-live="polite">{body.length}/500</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-stone-200 bg-stone-50">
+                      <button
+                        type="button"
+                        aria-expanded={evidenceOpen}
+                        aria-controls="community-note-evidence"
+                        onClick={() => setEvidenceOpen((open) => !open)}
+                        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left"
+                      >
+                        <span>
+                          <span className="block text-sm font-extrabold text-stone-800">Add price details</span>
+                          <span className="mt-0.5 block text-xs font-semibold text-stone-500">Optional — add these details if you spotted a specific price</span>
+                        </span>
+                        <ChevronDown className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${evidenceOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                      </button>
+
+                      {evidenceOpen && (
+                        <div id="community-note-evidence" className="space-y-4 border-t border-stone-200 px-4 pb-4 pt-4">
+                          <div>
+                            <label htmlFor="community-note-store" className="dd-type-meta dd-type-meta-strong text-stone-600">Supermarket <span className="font-normal text-stone-400">(optional)</span></label>
+                            <select
+                              id="community-note-store"
+                              value={storeId}
+                              onChange={(event) => setStoreId(event.target.value)}
+                              className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
+                            >
+                              <option value="">Choose a supermarket</option>
+                              {STORE_OPTIONS.map((store) => <option key={store.id} value={store.id}>{store.label}</option>)}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor="community-note-price" className="dd-type-meta dd-type-meta-strong text-stone-600">Price <span className="font-normal text-stone-400">(optional)</span></label>
+                              <div className="relative mt-1">
+                                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-500">$</span>
+                                <input
+                                  id="community-note-price"
+                                  type="number"
+                                  min="0.01"
+                                  max="100000"
+                                  step="0.01"
+                                  inputMode="decimal"
+                                  value={price}
+                                  onChange={(event) => setPrice(event.target.value)}
+                                  className="min-h-11 w-full rounded-xl border border-stone-300 bg-white pl-7 pr-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label htmlFor="community-note-date" className="dd-type-meta dd-type-meta-strong text-stone-600">Date spotted <span className="font-normal text-stone-400">(optional)</span></label>
+                              <input
+                                id="community-note-date"
+                                type="date"
+                                max={nzToday()}
+                                value={observedOn}
+                                onChange={(event) => setObservedOn(event.target.value)}
+                                className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label htmlFor="community-note-region" className="dd-type-meta dd-type-meta-strong text-stone-600">Area <span className="font-normal text-stone-400">(optional)</span></label>
+                            <select
+                              id="community-note-region"
+                              value={regionCode}
+                              onChange={(event) => setRegionCode(event.target.value)}
+                              className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
+                            >
+                              <option value="">Prefer not to say</option>
+                              {REGION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
-                    <p className="text-xs leading-4 text-stone-500">We check notes for safety and relevance before they appear publicly. Please share only price information—no contact details, links, or abusive language.</p>
+                    <p className="text-xs leading-4 text-stone-500">Notes are checked before they appear. Please keep it about the item — no links, contact details, or abusive language.</p>
                   </div>
-                  <div className="flex-shrink-0 border-t border-stone-100 px-5 pb-5 pt-3">
-                    <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-11 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-                      {submitting ? "Sending…" : "Send for review"}
+                  <div className="flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                    <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-12 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                      {submitting ? "Sending…" : "Send tip for review"}
                     </button>
+                    <p className="mt-2 text-center text-xs font-semibold text-stone-400">Your note will be checked before it&rsquo;s shared.</p>
                   </div>
                 </form>
               )}
@@ -398,7 +442,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
 
   const openComposer = () => {
     if (!user || isAnonymousSession || !session?.access_token) {
-      openAuthSheet("Log in to share a price note. After signing in, return here and tap Add a price note again.", pathname);
+      openAuthSheet("Log in to share a community tip. After signing in, return here and tap Share a tip again.", pathname);
       return;
     }
     setComposerOpen(true);
@@ -416,33 +460,33 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         aria-labelledby="community-price-notes-heading"
       >
         <div>
-          <h2 id="community-price-notes-heading" className="dd-type-section text-stone-900">Community price notes</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">Price sightings shared by other shoppers. They are separate from our official deal assessment.</p>
+          <h2 id="community-price-notes-heading" className="dd-type-section text-stone-900">Help other shoppers</h2>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">Seen this cheaper somewhere, or noticed something useful? Share a quick tip with the community. Price details are optional.</p>
         </div>
 
         {isLoadingCurrentProduct && (
-          <div className="space-y-3" role="status" aria-label="Loading community price notes" aria-busy="true">
+          <div className="space-y-3" role="status" aria-label="Loading community tips" aria-busy="true">
             <div className="h-48 animate-pulse rounded-2xl bg-stone-100" />
           </div>
         )}
 
         {!isLoadingCurrentProduct && error && (
           <div className="rounded-xl border border-stone-200 bg-stone-50 p-4" role="alert">
-            <p className="text-sm font-semibold text-stone-700">Community notes aren&rsquo;t available right now.</p>
+            <p className="text-sm font-semibold text-stone-700">Community tips aren&rsquo;t available right now.</p>
             <button type="button" onClick={() => { setLoadedProductId(null); setRetryTick((tick) => tick + 1); }} className="mt-3 min-h-11 rounded-full border border-stone-400 px-4 py-2 text-sm font-bold text-stone-700 hover:bg-white">Try again</button>
           </div>
         )}
 
         {!isLoadingCurrentProduct && !error && notes.length === 0 && (
           <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4">
-            <p className="text-sm font-semibold leading-5 text-stone-700">No community notes yet.</p>
-            <p className="mt-1 text-sm leading-5 text-stone-500">Seen this product at another price? Be the first to share it.</p>
+            <p className="text-sm font-semibold leading-5 text-stone-700">No community tips yet.</p>
+            <p className="mt-1 text-sm leading-5 text-stone-500">Know something useful about this item? Be the first to share it.</p>
           </div>
         )}
 
         {!isLoadingCurrentProduct && !error && notes.length > 0 && (
           <div>
-            <InsightCarousel ariaLabel="Community price note previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
+            <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
               {notes.map((note) => <NoteCard key={note.id} note={note} />)}
             </InsightCarousel>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -453,16 +497,16 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
                 onClick={openNotesSheet}
                 className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900"
               >
-                See all notes
+                See all tips
               </button>
             </div>
           </div>
         )}
 
         {!isLoadingCurrentProduct && !error && submissionEnabled && (
-          <div className="flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
-            <p className="text-sm leading-5 text-stone-500">Share a price you spotted. It&rsquo;ll be checked before appearing here.</p>
-            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-secondary min-h-11 flex-shrink-0 cursor-pointer px-3 text-sm">Add a price note</button>
+          <div className="flex flex-col items-stretch gap-3 border-t border-stone-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-5 text-stone-500">Share a price, a tip, or something useful you&rsquo;ve noticed.</p>
+            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-secondary min-h-11 w-full flex-shrink-0 cursor-pointer px-3 text-sm sm:w-auto">Share a tip</button>
           </div>
         )}
       </section>

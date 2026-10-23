@@ -45,7 +45,7 @@ const REGION_CODES = new Set([
 
 const CONTENT_RESTRICTIONS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 
-const BLOCKED_NOTE_MESSAGE = "We couldn’t send this note. It may contain language or information we can’t publish. Please remove links, contact details, or inappropriate language, then try again.";
+const BLOCKED_NOTE_MESSAGE = "We couldn’t send this tip. It may contain language or information we can’t publish. Please remove links, contact details, or inappropriate language, then try again.";
 
 function parseLimit(value: string | null): number {
   const parsed = Number(value ?? MAX_PREVIEW_NOTES);
@@ -76,11 +76,12 @@ function validDate(value: unknown): value is string {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-function parsePrice(value: unknown): number | null {
-  if (typeof value !== "string" || !/^(?:0|[1-9]\d{0,5})(?:\.\d{1,2})?$/.test(value.trim())) return null;
+function parsePrice(value: unknown): number | null | undefined {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !/^(?:0|[1-9]\d{0,5})(?:\.\d{1,2})?$/.test(value.trim())) return undefined;
   const raw = Number(value);
-  if (!Number.isFinite(raw) || raw <= 0 || raw > 100000) return null;
-  if (Math.abs(raw * 100 - Math.round(raw * 100)) > 0.0001) return null;
+  if (!Number.isFinite(raw) || raw <= 0 || raw > 100000) return undefined;
+  if (Math.abs(raw * 100 - Math.round(raw * 100)) > 0.0001) return undefined;
   return Math.round(raw * 100) / 100;
 }
 
@@ -127,7 +128,7 @@ export async function GET(request: Request) {
       .eq("product_id", productId)
       .eq("status", "approved")
       .not("published_at", "is", null)
-      .order("observed_on", { ascending: false })
+      .order("observed_on", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
 
     const { data, error } = await notesQuery.limit(parseLimit(url.searchParams.get("limit")));
@@ -138,7 +139,7 @@ export async function GET(request: Request) {
       void author_id;
       return {
         ...publicNote,
-        price: Number(note.price),
+        price: note.price === null ? null : Number(note.price),
         helpful_count: Number(note.helpful_count),
       };
     });
@@ -164,11 +165,11 @@ export async function POST(request: Request) {
   }
 
   const token = getBearerToken(request);
-  if (!token) return jsonError("Log in to share a price note.", 401);
+  if (!token) return jsonError("Log in to share a community tip.", 401);
 
   const account = await getAuthenticatedAccount(token);
   if (!account) return jsonError("Your sign-in has expired. Please log in again.", 401);
-  if (account.is_anonymous) return jsonError("Log in with an account to share a price note.", 403);
+  if (account.is_anonymous) return jsonError("Log in with an account to share a community tip.", 403);
 
   let payload: Record<string, unknown>;
   try {
@@ -184,8 +185,16 @@ export async function POST(request: Request) {
   }
 
   const productId = typeof payload.productId === "string" ? payload.productId.trim() : "";
-  const sourceStoreId = typeof payload.sourceStoreId === "string" ? payload.sourceStoreId.trim().toLowerCase() : "";
-  const observedOn = payload.observedOn;
+  const sourceStoreId = payload.sourceStoreId === null || payload.sourceStoreId === undefined || payload.sourceStoreId === ""
+    ? null
+    : typeof payload.sourceStoreId === "string"
+      ? payload.sourceStoreId.trim().toLowerCase()
+      : undefined;
+  const observedOn = payload.observedOn === null || payload.observedOn === undefined || payload.observedOn === ""
+    ? null
+    : typeof payload.observedOn === "string"
+      ? payload.observedOn.trim()
+      : undefined;
   const regionCode = payload.regionCode === null || payload.regionCode === undefined || payload.regionCode === ""
     ? null
     : typeof payload.regionCode === "string"
@@ -196,14 +205,19 @@ export async function POST(request: Request) {
   const today = nzToday();
 
   if (!isUuid(productId)) return jsonError("That product could not be recognised.", 400);
-  if (!STORE_NAMES[sourceStoreId]) return jsonError("Choose a supermarket from the list.", 400);
-  if (price === null) return jsonError("Enter a valid price with up to two decimal places.", 400);
-  if (!validDate(observedOn)) return jsonError("Choose a valid date.", 400);
-  if (observedOn > today) return jsonError("The date cannot be in the future.", 400);
-  const oldestAllowed = new Date(`${today}T00:00:00Z`);
-  oldestAllowed.setUTCDate(oldestAllowed.getUTCDate() - MAX_NOTE_AGE_DAYS);
-  if (Date.parse(`${observedOn}T00:00:00Z`) < oldestAllowed.getTime()) {
-    return jsonError("Please choose a date within the last year.", 400);
+  if (sourceStoreId === undefined || (sourceStoreId !== null && !STORE_NAMES[sourceStoreId])) {
+    return jsonError("Choose a supermarket from the list.", 400);
+  }
+  if (price === undefined) return jsonError("Enter a valid price with up to two decimal places.", 400);
+  if (observedOn === undefined) return jsonError("Choose a valid date.", 400);
+  if (observedOn !== null) {
+    if (!validDate(observedOn)) return jsonError("Choose a valid date.", 400);
+    if (observedOn > today) return jsonError("The date cannot be in the future.", 400);
+    const oldestAllowed = new Date(`${today}T00:00:00Z`);
+    oldestAllowed.setUTCDate(oldestAllowed.getUTCDate() - MAX_NOTE_AGE_DAYS);
+    if (Date.parse(`${observedOn}T00:00:00Z`) < oldestAllowed.getTime()) {
+      return jsonError("Please choose a date within the last year.", 400);
+    }
   }
   if (regionCode !== null && (regionCode === undefined || !REGION_CODES.has(regionCode))) {
     return jsonError("Choose a region from the list.", 400);
@@ -212,6 +226,10 @@ export async function POST(request: Request) {
     const rawBody = typeof payload.body === "string" ? payload.body.trim() : "";
     if (rawBody.length > MAX_NOTE_BODY_LENGTH) return jsonError("Shorten your note to 500 characters or fewer.", 400);
     return jsonError(BLOCKED_NOTE_MESSAGE, 422);
+  }
+  const hasCompletePriceEvidence = sourceStoreId !== null && price !== null && observedOn !== null;
+  if (!body && !hasCompletePriceEvidence) {
+    return jsonError("Add a short tip, or add the supermarket, price and date so there’s something useful to share.", 400);
   }
 
   const contentModeration = moderateCommunityNoteBody(body);
@@ -245,18 +263,18 @@ export async function POST(request: Request) {
         return jsonError("You have shared a few notes recently. Please try again later.", 429, { "Retry-After": "3600" });
       }
       if (error.code === "P0002" || error.code === "23505" || /duplicate key/i.test(error.message)) {
-        return jsonError("You have already shared this price note.", 409);
+        return jsonError("You have already shared this tip.", 409);
       }
       throw error;
     }
 
     return Response.json(
-      { ok: true, status: "pending", message: "Thanks — your price note was sent for review." },
+      { ok: true, status: "pending", message: "Thanks — your tip was sent for review." },
       { status: 202, headers: NO_STORE_HEADERS },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (/23505|duplicate key/i.test(message)) return jsonError("You have already shared this price note.", 409);
+    if (/23505|duplicate key/i.test(message)) return jsonError("You have already shared this tip.", 409);
     if (/not configured|community_price_notes|PGRST205|42P01/i.test(message)) {
       return Response.json({ available: false }, { status: 503, headers: NO_STORE_HEADERS });
     }

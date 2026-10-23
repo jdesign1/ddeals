@@ -135,7 +135,7 @@ export async function GET(request: Request) {
 
     const safeNotes = (notes ?? []).map((note) => ({
       ...note,
-      price: Number(note.price),
+      price: note.price === null ? null : Number(note.price),
       report_count: (reportsByNote.get(note.id) ?? []).filter((report) => report.status === "open").length,
       reports: reportsByNote.get(note.id) ?? [],
     }));

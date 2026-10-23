@@ -17,9 +17,9 @@ type ModerationReport = {
 
 type ModerationNote = {
   id: string;
-  store_name: string;
-  price: number;
-  observed_on: string;
+  store_name: string | null;
+  price: number | null;
+  observed_on: string | null;
   region_code: string | null;
   body: string | null;
   author_display_name_snapshot: string;
@@ -196,8 +196,12 @@ export default function CommunityModerationPage() {
         <article key={note.id} aria-labelledby={`moderation-note-${note.id}`} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 id={`moderation-note-${note.id}`} className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</h2>
-              <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name} · Seen {note.observed_on}</p>
+              <h2 id={`moderation-note-${note.id}`} className="font-display text-2xl font-extrabold leading-7 text-stone-900">{note.price !== null ? `$${note.price.toFixed(2)}` : "A shopper tip"}</h2>
+              {(note.store_name || note.observed_on) && (
+                <p className="mt-1 text-sm font-bold text-stone-700">
+                  {note.store_name ?? "Community note"}{note.store_name && note.observed_on ? " · " : ""}{note.observed_on ? `Seen ${note.observed_on}` : ""}
+                </p>
+              )}
             </div>
             <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold capitalize text-stone-600">{note.status}</span>
           </div>
