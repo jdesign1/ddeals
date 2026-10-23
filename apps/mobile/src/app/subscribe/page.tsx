@@ -214,16 +214,20 @@ export default function SubscribePage() {
                             />
                             <span
                               className={[
-                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
+                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-[background-color,border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
                                 isSelected ? "border-fair-400 bg-fair-50 ring-2 ring-fair-200" : "border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
                                 busyProductId !== null ? "cursor-wait opacity-60" : "",
                               ].join(" ")}
                             >
-                              {isSelected && (
-                                <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 text-white" aria-hidden="true">
-                                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                                </span>
-                              )}
+                              <span
+                                className={[
+                                  "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 text-white transition-[opacity,transform] duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none",
+                                  isSelected ? "scale-100 opacity-100" : "pointer-events-none scale-50 opacity-0",
+                                ].join(" ")}
+                                aria-hidden="true"
+                              >
+                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                              </span>
                               <span>
                                 <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
                                 <span className="mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
