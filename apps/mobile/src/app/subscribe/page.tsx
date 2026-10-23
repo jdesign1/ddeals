@@ -30,23 +30,23 @@ const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 
 const SUBSCRIPTION_BENEFITS: { label: string; detail: string; icon: LucideIcon }[] = [
   {
-    label: "Unlimited watchlist items",
-    detail: "Keep every product you want to watch in one place.",
+    label: "Keep your full watchlist",
+    detail: "Save every product you want to monitor in one place.",
     icon: ListPlus,
   },
   {
-    label: "Full access to all checks",
-    detail: "See your complete deal-check history, not just the latest few.",
+    label: "All checks, fully unlocked",
+    detail: "See your complete check history, not just your latest checks.",
     icon: ScanSearch,
   },
   {
-    label: "Full access to deal stats and insights",
-    detail: "Understand your savings, patterns and best supermarket finds.",
+    label: "Deal stats and insights",
+    detail: "See which products and supermarkets deliver the best value over time.",
     icon: BarChart3,
   },
   {
-    label: "Price-drop alerts",
-    detail: "Get notified when watched products become better value.",
+    label: "Catch better prices",
+    detail: "Get notified when a watched product becomes a better deal.",
     icon: BellRing,
   },
 ];
@@ -99,12 +99,15 @@ export default function SubscribePage() {
         <div className="relative text-center">
           <p className="font-display text-[1.45rem] font-extrabold leading-tight tracking-[-0.04em] text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
           <h1 id="subscribe-page-title" className="mx-auto mt-3 max-w-[18rem] text-[1.35rem] font-extrabold leading-tight tracking-[-0.02em] text-stone-900">
-            {isPremium ? "Your subscription is active" : "More savings. Less guesswork."}
+            {isPremium ? "Your subscription is active" : "Make more confident deal decisions."}
           </h1>
           <p className="mx-auto mt-2 max-w-[20rem] dd-type-body text-stone-600">
             {isPremium
               ? "Your subscription keeps your watchlist unlimited and your price alerts active."
-              : "Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights."}
+              : <>
+                <span className="block">More savings. Less guesswork.</span>
+                <span className="mt-1 block">Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights.</span>
+              </>}
           </p>
         </div>
         <ul className="relative grid gap-2.5" aria-label="Subscription benefits">
@@ -163,7 +166,7 @@ export default function SubscribePage() {
         <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm" aria-labelledby="subscription-options-title">
           <div className="text-center">
             <h2 id="subscription-options-title" className="dd-type-section text-stone-900">Choose your plan</h2>
-            <p className="mt-1 dd-type-secondary text-stone-600">Start with the plan that suits your shopping rhythm.</p>
+            <p className="mt-1 dd-type-secondary text-stone-600">Choose the plan that suits you.</p>
           </div>
 
           {!user && (
