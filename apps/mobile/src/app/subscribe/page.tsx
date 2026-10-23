@@ -97,8 +97,8 @@ export default function SubscribePage() {
           />
         </div>
         <div className="relative text-center">
-          <p className="font-display text-[1.45rem] font-extrabold leading-tight tracking-[-0.04em] text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
-          <h1 id="subscribe-page-title" className="mx-auto mt-3 max-w-[18rem] text-[1.35rem] font-extrabold leading-tight tracking-[-0.02em] text-stone-900">
+          <p className="dd-type-section text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
+          <h1 id="subscribe-page-title" className="dd-type-page-title mx-auto mt-3 max-w-[18rem] text-stone-900">
             {isPremium ? "Your subscription is active" : "Make more confident deal decisions."}
           </h1>
           <p className="mx-auto mt-2 max-w-[20rem] dd-type-body text-stone-600">
@@ -143,9 +143,9 @@ export default function SubscribePage() {
             <h2 id="current-subscription-title" className="mt-1 dd-type-section text-stone-900">
               {getSubscriptionPlanLabel(currentSubscription.product_id)}
             </h2>
-            <p className="mt-1 text-sm font-semibold text-ink-700">{getSubscriptionStatusLabel(currentSubscription.status)}</p>
+            <p className="mt-1 dd-type-secondary dd-type-secondary-strong text-ink-700">{getSubscriptionStatusLabel(currentSubscription.status)}</p>
           </div>
-          <div className="border-t border-stone-100 pt-4 text-sm leading-6 text-stone-600">
+          <div className="border-t border-stone-100 pt-4 dd-type-secondary text-stone-600">
             {accessUntil && <p>Access continues until {accessUntil}.</p>}
             <p>{getSubscriptionRenewalLabel(currentSubscription.product_id)}.</p>
           </div>
@@ -158,7 +158,7 @@ export default function SubscribePage() {
             Manage or cancel in Apple
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
           </a>
-          <p className="text-xs leading-5 text-stone-500">
+          <p className="dd-type-meta text-stone-500">
             If you cancel, your access stays active until the end of the current {currentSubscription.product_id === SUBSCRIPTION_PRODUCT_IDS.annual ? "annual" : "monthly"} period.
           </p>
         </section>
@@ -180,7 +180,7 @@ export default function SubscribePage() {
           )}
 
           {user && !isNativeAvailable && (
-            <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+            <p className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
               Subscription purchases are available in the iOS app. Open Dodgy Deal on your iPhone, sign in with this account, and return here to choose a plan.
             </p>
           )}
@@ -188,7 +188,7 @@ export default function SubscribePage() {
           {showPurchaseOptions && (
             <div className="flex flex-col gap-6">
               {purchaseOptionsLoading ? (
-                <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600" aria-busy="true">Loading subscription options…</p>
+                <p className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600" aria-busy="true">Loading subscription options…</p>
               ) : products.length > 0 ? (
                 <>
                   <fieldset>
@@ -230,8 +230,8 @@ export default function SubscribePage() {
                               </span>
                               <span>
                                 <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
-                                <span className="mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
-                                <span className="mt-1.5 block max-w-[9rem] text-xs leading-4 text-stone-600">
+                                <span className="mt-2 block text-xl leading-7 font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
+                                <span className="mt-1.5 block max-w-[9rem] dd-type-meta text-stone-600">
                                   {isAnnual
                                     ? "Save with one annual payment. Renews yearly until cancelled."
                                     : "Pay monthly. Renews each month until cancelled."}
@@ -259,7 +259,7 @@ export default function SubscribePage() {
                   )}
                 </>
               ) : (
-                <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+                <p className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
                   {error ?? "Subscription options are temporarily unavailable. Please try again later."}
                 </p>
               )}
