@@ -95,11 +95,13 @@ function NoteComposer({
   productId,
   isOpen,
   onClose,
+  onSubmitted,
   returnFocusRef,
 }: {
   productId: string;
   isOpen: boolean;
   onClose: () => void;
+  onSubmitted: (status: "pending" | "approved") => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
   const { session } = useAuth();
@@ -119,6 +121,7 @@ function NoteComposer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<"pending" | "approved">("pending");
 
   useEffect(() => {
     submittingRef.current = submitting;
@@ -134,6 +137,7 @@ function NoteComposer({
     setSubmitting(false);
     setError(null);
     setSubmitted(false);
+    setSubmissionStatus("pending");
     hasUnsavedInputRef.current = false;
   }, []);
 
@@ -205,12 +209,14 @@ function NoteComposer({
     setError(null);
     setSubmitting(true);
     try {
-      await submitCommunityPriceNote(
+      const submissionResult = await submitCommunityPriceNote(
         { productId, sourceStoreId: storeId || undefined, price: price || undefined, observedOn: observedOn || undefined, regionCode: regionCode || undefined, body },
         session.access_token,
       );
       hasUnsavedInputRef.current = false;
+      setSubmissionStatus(submissionResult.status);
       setSubmitted(true);
+      onSubmitted(submissionResult.status);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "We couldn't send your note right now.");
     } finally {
@@ -262,8 +268,12 @@ function NoteComposer({
               {submitted ? (
                 <div ref={successRef} tabIndex={-1} className="flex flex-1 flex-col justify-center gap-5 overflow-y-auto px-5 py-8 outline-none" role="status">
                   <div>
-                    <p className="text-lg font-extrabold text-stone-900">Thanks — your tip is queued for review.</p>
-                    <p className="mt-2 text-sm leading-5 text-stone-600">We&rsquo;ll check it before it appears for other shoppers.</p>
+                    <p className="text-lg font-extrabold text-stone-900">
+                      {submissionStatus === "approved" ? "Thanks — your tip is live for other shoppers." : "Thanks — your tip is queued for review."}
+                    </p>
+                    <p className="mt-2 text-sm leading-5 text-stone-600">
+                      {submissionStatus === "approved" ? "It passed our quick safety check and is now shared with the community." : "We'll check it before it appears for other shoppers."}
+                    </p>
                   </div>
                   <button type="button" onClick={closeComposerSheet} className="dd-btn dd-btn-primary min-h-11 w-full cursor-pointer">Done</button>
                 </div>
@@ -365,11 +375,11 @@ function NoteComposer({
                     </div>
 
                     {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
-                    <p className="text-xs leading-4 text-stone-500">Notes are checked before they appear. Please keep it about the item — no links, contact details, or abusive language.</p>
+                    <p className="text-xs leading-4 text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
                   </div>
                   <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
                     <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-12 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-                      {submitting ? "Sending…" : "Send tip for review"}
+                      {submitting ? "Sharing…" : "Share tip"}
                     </button>
                   </div>
                 </form>
@@ -508,6 +518,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         productId={productId}
         isOpen={composerOpen}
         onClose={closeComposer}
+        onSubmitted={(status) => { if (status === "approved") reloadNotes(); }}
         returnFocusRef={addNoteButtonRef}
       />
       <CommunityPriceNotesSheet

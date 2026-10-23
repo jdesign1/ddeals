@@ -1,5 +1,11 @@
-import { createSupabaseClient } from "@dodgey-deals/shared";
+import { createSupabaseClient, type User } from "@dodgey-deals/shared";
 import { getAuthenticatedAccount, isUuid, requireAccountsAdmin } from "@/lib/accounts-server";
+import {
+  COMMUNITY_AUTO_APPROVAL_RULES_VERSION,
+  isAccountOldEnoughForCommunityAutoApproval,
+  parseCommunityAutoApprovalMode,
+  shouldAutoApproveCommunityNote,
+} from "@/lib/community-auto-approval";
 import { moderateCommunityNoteBody } from "@/lib/community-content-moderation";
 import { supabaseConfig } from "@/lib/config";
 
@@ -14,6 +20,8 @@ const MAX_NOTE_BODY_LENGTH = 500;
 const MAX_NOTE_AGE_DAYS = 365;
 const MAX_REQUEST_BYTES = 8192;
 const SUBMISSION_ENABLED = process.env.COMMUNITY_NOTES_SUBMISSION_ENABLED === "true";
+const AUTO_APPROVAL_MODE = parseCommunityAutoApprovalMode(process.env.COMMUNITY_NOTES_AUTO_APPROVAL_MODE);
+const AUTO_APPROVAL_PROVIDER = COMMUNITY_AUTO_APPROVAL_RULES_VERSION;
 
 const STORE_NAMES: Record<string, string> = {
   newworld: "New World",
@@ -57,6 +65,34 @@ function getBearerToken(request: Request): string | null {
   const header = request.headers.get("authorization") ?? "";
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || null;
+}
+
+async function isTrustedCommunityContributor(
+  accounts: ReturnType<typeof requireAccountsAdmin>,
+  account: User,
+): Promise<boolean> {
+  if (
+    account.is_anonymous
+    || !account.email_confirmed_at
+    || !isAccountOldEnoughForCommunityAutoApproval(account.created_at)
+  ) {
+    return false;
+  }
+
+  try {
+    const { count, error } = await accounts
+      .from("community_price_notes")
+      .select("id", { count: "exact", head: true })
+      .eq("author_id", account.id)
+      .in("status", ["rejected", "hidden"]);
+    if (error) throw error;
+    return (count ?? 0) === 0;
+  } catch (error) {
+    // A failed trust check must only fall back to human review, not block the
+    // shopper from submitting a useful tip.
+    console.warn("Community auto-approval trust check failed.", error instanceof Error ? error.message : "Unknown error");
+    return false;
+  }
 }
 
 function nzToday(): string {
@@ -237,6 +273,10 @@ export async function POST(request: Request) {
 
   try {
     const accounts = requireAccountsAdmin();
+    const trustedAccount = AUTO_APPROVAL_MODE === "active"
+      ? await isTrustedCommunityContributor(accounts, account)
+      : false;
+    const autoApprove = shouldAutoApproveCommunityNote(AUTO_APPROVAL_MODE, contentModeration.decision, trustedAccount);
     if (!supabaseConfig.url || !supabaseConfig.anonKey) throw new Error("Catalogue is not configured");
     const catalogue = createSupabaseClient(supabaseConfig.url, supabaseConfig.anonKey);
     const { data: product, error: productError } = await catalogue
@@ -247,7 +287,7 @@ export async function POST(request: Request) {
     if (productError) throw productError;
     if (!product) return jsonError("That product could not be found.", 400);
 
-    const { error } = await accounts.rpc("submit_community_price_note", {
+    const { data: submission, error } = await accounts.rpc("submit_community_price_note", {
       p_author_id: account.id,
       p_product_id: productId,
       p_source_store_id: sourceStoreId,
@@ -257,6 +297,8 @@ export async function POST(request: Request) {
       p_body: body,
       p_automated_decision: contentModeration.decision === "review" ? "review" : "allowed",
       p_automated_reason: contentModeration.labels.length > 0 ? contentModeration.labels.join(",") : null,
+      p_automated_mode: AUTO_APPROVAL_MODE,
+      p_auto_approve: autoApprove,
     });
     if (error) {
       if (error.code === "P0001" || /rate limit/i.test(error.message)) {
@@ -268,9 +310,18 @@ export async function POST(request: Request) {
       throw error;
     }
 
+    const submissionStatus = Array.isArray(submission) && submission[0]?.status === "approved" ? "approved" : "pending";
+
     return Response.json(
-      { ok: true, status: "pending", message: "Thanks — your tip was sent for review." },
-      { status: 202, headers: NO_STORE_HEADERS },
+      {
+        ok: true,
+        status: submissionStatus,
+        message: submissionStatus === "approved"
+          ? "Thanks — your tip is live for other shoppers."
+          : "Thanks — your tip is queued for review.",
+        moderation_provider: AUTO_APPROVAL_PROVIDER,
+      },
+      { status: submissionStatus === "approved" ? 200 : 202, headers: NO_STORE_HEADERS },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

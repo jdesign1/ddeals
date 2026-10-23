@@ -62,7 +62,7 @@ export async function fetchCommunityPriceNotes(
 export async function submitCommunityPriceNote(
   input: SubmitCommunityPriceNoteInput,
   accessToken: string,
-): Promise<{ status: "pending" }> {
+): Promise<{ status: "pending" | "approved" }> {
   const response = await fetch("/api/community/notes", {
     method: "POST",
     headers: {
@@ -72,11 +72,13 @@ export async function submitCommunityPriceNote(
     body: JSON.stringify(input),
   });
   const payload = (await response.json().catch(() => null)) as
-    | { status?: "pending"; error?: string; message?: string }
+    | { status?: "pending" | "approved"; error?: string; message?: string }
     | null;
   if (!response.ok) throw new Error(payload?.error ?? "We couldn't send your note right now. Please try again.");
-  if (payload?.status !== "pending") throw new Error("We couldn't confirm your note was sent. Please try again.");
-  return { status: "pending" };
+  if (payload?.status !== "pending" && payload?.status !== "approved") {
+    throw new Error("We couldn't confirm your note was sent. Please try again.");
+  }
+  return { status: payload.status };
 }
 
 async function postCommunityAction<T extends object>(path: string, input: T, accessToken: string): Promise<void> {

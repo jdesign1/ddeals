@@ -30,6 +30,9 @@ type ModerationNote = {
   automated_moderation_decision: "not_checked" | "allowed" | "review" | "blocked";
   automated_moderation_reason: string | null;
   automated_moderation_provider: string;
+  automated_moderation_mode: "off" | "shadow" | "active";
+  publication_method: "human_review" | "automated";
+  automated_approved_at: string | null;
 };
 
 type ModerationAction = "approve" | "reject" | "hide" | "dismiss_report";
@@ -211,7 +214,15 @@ export default function CommunityModerationPage() {
           <div className="mt-3 rounded-xl border border-stone-200 bg-white p-3">
             <p className="text-xs font-bold uppercase tracking-[0.08em] text-stone-500">Automated safety check</p>
             <p className="mt-1 text-sm font-semibold text-stone-700">
-              {note.automated_moderation_decision === "review" ? "Held for human review" : note.automated_moderation_decision === "allowed" ? "No automated issue found — human review still required" : "Not checked"}
+              {note.automated_moderation_decision === "review"
+                ? "Held for human review"
+                : note.publication_method === "automated"
+                  ? "Published automatically after passing the safety check"
+                  : note.automated_moderation_mode === "shadow" && note.automated_moderation_decision === "allowed"
+                    ? "Shadow mode: would be eligible for automatic publishing"
+                    : note.automated_moderation_decision === "allowed"
+                      ? "No automated issue found — awaiting human review"
+                      : "Not checked"}
             </p>
             {note.automated_moderation_reason && <p className="mt-1 text-xs leading-4 text-stone-500">Signals: {note.automated_moderation_reason.split(",").map((label) => AUTOMATED_LABELS[label] ?? label).join(", ")}</p>}
             <p className="mt-1 text-xs text-stone-400">Automated safety rules</p>

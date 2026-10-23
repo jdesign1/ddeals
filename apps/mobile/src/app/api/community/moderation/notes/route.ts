@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     const includePending = reportsDone;
     const pendingQuery = accounts
       .from("community_price_notes")
-      .select("id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,status,created_at,published_at,moderation_reason,moderated_at,automated_moderation_decision,automated_moderation_reason,automated_moderation_provider,automated_moderation_checked_at")
+      .select("id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,status,created_at,published_at,moderation_reason,moderated_at,automated_moderation_decision,automated_moderation_reason,automated_moderation_provider,automated_moderation_checked_at,automated_moderation_mode,publication_method,automated_approved_at")
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
     const { data: reportedNotes, error: reportedNotesError } = reportedNoteIds.length > 0
       ? await accounts
         .from("community_price_notes")
-        .select("id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,status,created_at,published_at,moderation_reason,moderated_at,automated_moderation_decision,automated_moderation_reason,automated_moderation_provider,automated_moderation_checked_at")
+        .select("id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,status,created_at,published_at,moderation_reason,moderated_at,automated_moderation_decision,automated_moderation_reason,automated_moderation_provider,automated_moderation_checked_at,automated_moderation_mode,publication_method,automated_approved_at")
         .in("id", reportedNoteIds)
         .in("status", ["approved", "hidden"])
       : { data: [], error: null };
