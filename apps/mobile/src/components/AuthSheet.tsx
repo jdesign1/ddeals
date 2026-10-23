@@ -29,10 +29,12 @@ import { useAuth } from "@/lib/auth-context";
  * same "kind" of sheet as the scanner and the deal page's own cheaper-
  * alternatives sheet, not a fourth slightly-different pattern.
  *
- * Successful sign-in/sign-up returns the user to Home (`router.push("/")`),
- * where the post-login new-specials notice can appear after the launch
- * animation and catalogue have settled. Provider flows that close this sheet
- * from `AuthProvider` directly are covered by the completion effect below.
+ * Successful sign-in/sign-up returns the user to an optional caller-supplied
+ * return path (used by flows such as adding a community price note); without
+ * one it returns to Home (`router.push("/")`), where the post-login
+ * new-specials notice can appear after the launch animation and catalogue
+ * have settled. Provider flows that close this sheet from `AuthProvider`
+ * directly are covered by the completion effect below.
  *
  * Header `border-b` and tab-track `border-b` both removed 2026-08-20 (per
  * Jay: "login create account bottom sheet - remove the border lines above
@@ -119,20 +121,21 @@ export default function AuthSheet({
   const formScrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, profileLoading } = useAuth();
+  const { user, profile, profileLoading, authSheetReturnPath } = useAuth();
   const wasOpenRef = useRef(isOpen);
   const hasRedirectedAfterAuthRef = useRef(false);
 
   const handleAuthSuccess = useCallback(() => {
     if (hasRedirectedAfterAuthRef.current) return;
     hasRedirectedAfterAuthRef.current = true;
+    const destination = authSheetReturnPath ?? (pathname !== "/" ? "/" : null);
     onClose();
-    if (pathname !== "/") router.push("/");
-  }, [onClose, pathname, router]);
+    if (destination && destination !== pathname) router.push(destination);
+  }, [authSheetReturnPath, onClose, pathname, router]);
 
   // Native/provider flows can complete in AuthProvider and close the sheet
   // without going through AuthPanel's explicit onSuccess callback. Preserve
-  // the same Home destination for those flows as for email OTP sign-in.
+  // the same caller-supplied-or-Home destination as email OTP sign-in.
   useEffect(() => {
     const wasOpen = wasOpenRef.current;
     wasOpenRef.current = isOpen;

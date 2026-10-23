@@ -45,6 +45,7 @@ export default function InsightCarousel({
   children,
   slideWidthClassName = "w-full",
   trackPaddingClassName = "",
+  ariaLabel = "Carousel slides",
 }: {
   children: React.ReactNode;
   /** Tailwind width class for each slide. Defaults to `w-full` (one slide
@@ -69,6 +70,8 @@ export default function InsightCarousel({
    * never had this gap issue (its slides are `w-full`, no peek to reach
    * an edge with), is unaffected. */
   trackPaddingClassName?: string;
+  /** Accessible name for the scrollable carousel group. */
+  ariaLabel?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -163,6 +166,7 @@ export default function InsightCarousel({
         className={`hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth ${trackPaddingClassName}`}
         role="group"
         aria-roledescription="carousel"
+        aria-label={ariaLabel}
       >
         {slides.map((slide, i) => (
           <div key={i} className={`${slideWidthClassName} flex-shrink-0 snap-center`} aria-hidden={i !== activeIndex}>

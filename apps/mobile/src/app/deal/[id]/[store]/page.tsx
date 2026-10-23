@@ -54,6 +54,7 @@ import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
 import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
+import CommunityPriceNotesSection from "@/components/CommunityPriceNotesSection";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
 import { getVerdictTitle, VERDICT_BADGE } from "@/lib/assessment-verdict";
 
@@ -1447,6 +1448,7 @@ export default function DealAssessmentPage() {
           </div>
         </div>
       </div>
+      <CommunityPriceNotesSection productId={product.id} />
       <section className="rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" aria-labelledby="report-deal-heading">
         <h2 id="report-deal-heading" className="dd-type-section text-stone-900">
           Is this deal incorrect?

@@ -46,8 +46,9 @@ interface AuthContextValue {
   /** True after the auth sheet has been opened once this session. */
   hasOpenedAuthSheet: boolean;
   authSheetPrompt: string | undefined;
+  authSheetReturnPath: string | undefined;
   onboardingTourRequest: "new" | "replay" | null;
-  openAuthSheet: (prompt?: string) => void;
+  openAuthSheet: (prompt?: string, returnPath?: string) => void;
   closeAuthSheet: () => void;
   requestOnboardingTour: () => void;
   dismissOnboardingTour: () => void;
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthSheetOpen, setIsAuthSheetOpen] = useState(false);
   const [hasOpenedAuthSheet, setHasOpenedAuthSheet] = useState(false);
   const [authSheetPrompt, setAuthSheetPrompt] = useState<string | undefined>(undefined);
+  const [authSheetReturnPath, setAuthSheetReturnPath] = useState<string | undefined>(undefined);
   const [onboardingTourRequest, setOnboardingTourRequest] = useState<"new" | "replay" | null>(null);
   const pendingProviderProfileRef = useRef(false);
   const profileRecoveryInFlightRef = useRef(false);
@@ -212,13 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthSheetOpen,
       hasOpenedAuthSheet,
       authSheetPrompt,
+      authSheetReturnPath,
       onboardingTourRequest,
-      openAuthSheet: (prompt) => {
+      openAuthSheet: (prompt, returnPath) => {
         setHasOpenedAuthSheet(true);
         setAuthSheetPrompt(prompt);
+        setAuthSheetReturnPath(returnPath);
         setIsAuthSheetOpen(true);
       },
-      closeAuthSheet: () => setIsAuthSheetOpen(false),
+      closeAuthSheet: () => {
+        setIsAuthSheetOpen(false);
+        setAuthSheetReturnPath(undefined);
+      },
       requestOnboardingTour: () => setOnboardingTourRequest("replay"),
       dismissOnboardingTour: () => setOnboardingTourRequest(null),
       requestOtp: async (email, shouldCreateUser) => {
@@ -413,6 +420,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthSheetOpen,
       hasOpenedAuthSheet,
       authSheetPrompt,
+      authSheetReturnPath,
       onboardingTourRequest,
     ]
   );
