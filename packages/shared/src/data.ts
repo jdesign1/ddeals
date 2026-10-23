@@ -222,6 +222,7 @@ export const STORE_DISPLAY_FALLBACK: Record<string, string> = {
   woolworths: "Woolworths",
   foursquare: "Four Square",
   supervalue: "SuperValue",
+  chemistwarehouse: "Chemist Warehouse",
 };
 
 export const FALLBACK_PRODUCT_IMAGE = "https://placehold.co/300x300?text=No+Image";
@@ -2052,7 +2053,7 @@ export const matchesAnySelectedStore = (storeName: string, selectedStores: strin
  * there too until this refactor folded it into the shared, substring-
  * matching version.
  */
-export const STORE_PILL_ORDER = ["newworld", "paknsave", "woolworths", "foursquare", "supervalue"];
+export const STORE_PILL_ORDER = ["newworld", "paknsave", "woolworths", "foursquare", "supervalue", "chemistwarehouse"];
 
 export function deriveAvailableStoreKeys(
   products: ProductCard[],

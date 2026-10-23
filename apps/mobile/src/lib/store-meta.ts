@@ -85,6 +85,11 @@ const STORE_LOGOS: Record<string, StoreLogoMeta> = {
     logoWidth: 277,
     logoHeight: 60,
   },
+  chemistwarehouse: {
+    short: "CW",
+    bg: "bg-blue-700",
+    text: "text-white",
+  },
 };
 
 export function getStoreLogoMeta(storeName: string): StoreLogoMeta {
@@ -94,5 +99,6 @@ export function getStoreLogoMeta(storeName: string): StoreLogoMeta {
   if (norm.includes("newworld")) return STORE_LOGOS.newworld;
   if (norm.includes("foursquare")) return STORE_LOGOS.foursquare;
   if (norm.includes("supervalue")) return STORE_LOGOS.supervalue;
+  if (norm.includes("chemistwarehouse")) return STORE_LOGOS.chemistwarehouse;
   return { short: storeName.substring(0, 2).toUpperCase(), bg: "bg-stone-600", text: "text-white" };
 }
