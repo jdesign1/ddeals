@@ -91,9 +91,9 @@ export default function SubscribePage() {
             alt="Dodgy Deal mascot investigating watchlist prices, deal history, and alerts"
             width={640}
             height={530}
-            sizes="288px"
+            sizes="230px"
             unoptimized
-            className="mascot-wave h-auto w-full max-w-[18rem]"
+            className="mascot-wave h-auto w-full max-w-[14.5rem]"
           />
         </div>
         <div className="relative text-center">
@@ -214,14 +214,14 @@ export default function SubscribePage() {
                             />
                             <span
                               className={[
-                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-[background-color,border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
-                                isSelected ? "border-fair-400 bg-fair-50 ring-2 ring-fair-200" : "border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
+                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-[background-color,border-color,box-shadow,transform] duration-300 ease-out motion-reduce:transition-none peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
+                                isSelected ? "scale-[1.01] border-fair-400 bg-fair-50 ring-2 ring-fair-200 shadow-sm" : "scale-100 border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
                                 busyProductId !== null ? "cursor-wait opacity-60" : "",
                               ].join(" ")}
                             >
                               <span
                                 className={[
-                                  "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 text-white transition-[opacity,transform] duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none",
+                                  "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 text-white transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none motion-reduce:transition-none",
                                   isSelected ? "scale-100 opacity-100" : "pointer-events-none scale-50 opacity-0",
                                 ].join(" ")}
                                 aria-hidden="true"
