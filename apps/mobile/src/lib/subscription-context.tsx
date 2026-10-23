@@ -35,7 +35,7 @@ interface SubscriptionContextValue {
   isNativeAvailable: boolean;
   currentSubscription: SubscriptionEntitlementRecord | null;
   openSubscriptionPage: () => void;
-  refresh: () => Promise<SubscriptionEntitlementRecord[]>;
+  refresh: () => Promise<SubscriptionEntitlementRecord[] | null>;
   purchase: (productId: string) => Promise<boolean>;
 }
 
@@ -67,6 +67,8 @@ function productSortValue(productId: string): number {
   return 2;
 }
 
+const PREMIUM_REFRESH_DELAYS_MS = [250, 750, 1500, 3000, 5000, 5000];
+
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, session, openAuthSheet } = useAuth();
   const router = useRouter();
@@ -78,6 +80,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
   const purchaseInFlightRef = useRef(false);
+  const refreshRequestRef = useRef(0);
 
   const nativeAvailable = isNativeAppleSubscriptionsAvailable();
   const nativeAppleApp = isNativeAppleSubscriptionsPlatform();
@@ -90,37 +93,46 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const currentSubscription = chooseCurrentSubscription(entitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess);
 
   const refresh = useCallback(async () => {
+    const requestId = refreshRequestRef.current + 1;
+    refreshRequestRef.current = requestId;
+
     if (!client || !user) {
-      setEntitlements([]);
-      setLoading(false);
+      if (requestId === refreshRequestRef.current) {
+        setEntitlements([]);
+        setLoading(false);
+      }
       return [];
     }
 
     setLoading(true);
     try {
       const nextEntitlements = await fetchUserEntitlements(client);
+      if (requestId !== refreshRequestRef.current) return null;
       setEntitlements(nextEntitlements);
       setError(null);
       return nextEntitlements;
     } catch (refreshError) {
-      setError(subscriptionError(refreshError));
-      return [];
+      if (requestId === refreshRequestRef.current) setError(subscriptionError(refreshError));
+      // Preserve the distinction between "no entitlement" and "could not
+      // read entitlements" so the success screen does not redirect on a
+      // temporary network or backend failure.
+      return null;
     } finally {
-      setLoading(false);
+      if (requestId === refreshRequestRef.current) setLoading(false);
     }
   }, [client, user]);
 
   const refreshUntilPremium = useCallback(async (): Promise<boolean> => {
     let nextEntitlements = await refresh();
-    if (hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) return true;
+    if (nextEntitlements && hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) return true;
 
     // The server writes the entitlement before responding, but the client can
-    // briefly read before that write is visible. A short bounded retry keeps
-    // the UI and server gates in step without making the purchase feel stuck.
-    for (const delay of [250, 750, 1500]) {
+    // briefly read before that write is visible. A bounded backoff keeps the
+    // UI and server gates in step without failing a valid payment too early.
+    for (const delay of PREMIUM_REFRESH_DELAYS_MS) {
       await new Promise<void>((resolve) => window.setTimeout(resolve, delay));
       nextEntitlements = await refresh();
-      if (hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) return true;
+      if (nextEntitlements && hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) return true;
     }
     return false;
   }, [refresh]);

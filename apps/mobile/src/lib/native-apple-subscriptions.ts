@@ -23,7 +23,7 @@ interface DodgySubscriptionsPlugin {
   purchase(options: { productId: string; appAccountToken: string }): Promise<AppleSubscriptionTransaction>;
   currentEntitlements(): Promise<{ transactions: AppleSubscriptionTransaction[] }>;
   restore(): Promise<{ transactions: AppleSubscriptionTransaction[] }>;
-  finish(options: { transactionId: string }): Promise<{ finished: boolean }>;
+  finish(options: { transactionId: string; productId: string }): Promise<{ finished: boolean }>;
   addListener(
     eventName: "transactionUpdated",
     listenerFunc: (event: { transaction: AppleSubscriptionTransaction }) => void
@@ -111,8 +111,8 @@ export async function verifyAppleSubscriptionTransaction(
         // caller unlock the account and allow Transaction.updates to retry the
         // cleanup later instead of reporting a failed purchase to the user.
         try {
-          await finishAppleSubscriptionTransaction(transaction.transactionId);
-          completedTransactionVerifications.add(key);
+          const { finished } = await finishAppleSubscriptionTransaction(transaction.transactionId, transaction.productId);
+          if (finished) completedTransactionVerifications.add(key);
         } catch {
           // Keep the transaction unfinished so StoreKit can deliver it again.
         }
@@ -136,9 +136,9 @@ export async function verifyAppleSubscriptionTransaction(
   }
 }
 
-export async function finishAppleSubscriptionTransaction(transactionId: string): Promise<void> {
-  if (!isNativeAppleSubscriptionsAvailable()) return;
-  await DodgySubscriptions.finish({ transactionId });
+export async function finishAppleSubscriptionTransaction(transactionId: string, productId: string): Promise<{ finished: boolean }> {
+  if (!isNativeAppleSubscriptionsAvailable()) return { finished: false };
+  return DodgySubscriptions.finish({ transactionId, productId });
 }
 
 export async function loadAppleSubscriptionProducts(): Promise<AppleSubscriptionProduct[]> {

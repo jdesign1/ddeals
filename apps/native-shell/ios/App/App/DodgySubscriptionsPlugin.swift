@@ -15,12 +15,14 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private var updatesTask: Task<Void, Never>?
+    private var unfinishedTransactions: [UInt64: Transaction] = [:]
 
     @objc override public func load() {
         updatesTask = Task { @MainActor [weak self] in
             for await result in Transaction.updates {
                 guard let self else { return }
                 guard case .verified(let transaction) = result else { continue }
+                self.unfinishedTransactions[transaction.id] = transaction
                 let payload = self.transactionPayload(transaction, jwsRepresentation: result.jwsRepresentation)
                 self.notifyListeners("transactionUpdated", data: ["transaction": payload])
             }
@@ -77,6 +79,7 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
                         call.reject("Apple could not verify this transaction.", "TRANSACTION_UNVERIFIED")
                         return
                     }
+                    self.unfinishedTransactions[transaction.id] = transaction
                     call.resolve(self.transactionPayload(transaction, jwsRepresentation: verification.jwsRepresentation))
                 case .userCancelled:
                     call.reject("The Apple purchase was cancelled.", "USER_CANCELLED")
@@ -110,26 +113,38 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func finish(_ call: CAPPluginCall) {
         guard let transactionIdString = call.getString("transactionId"),
-              let transactionId = UInt64(transactionIdString) else {
-            call.reject("A valid Apple transaction ID is required.", "INVALID_ARGUMENT")
+              let transactionId = UInt64(transactionIdString),
+              let productId = call.getString("productId"),
+              !productId.isEmpty else {
+            call.reject("A valid Apple transaction ID and product ID are required.", "INVALID_ARGUMENT")
             return
         }
 
         Task { @MainActor in
-            var finished = false
-            for await result in Transaction.unfinished {
-                guard case .verified(let transaction) = result else { continue }
-                guard transaction.id == transactionId else { continue }
-                await transaction.finish()
-                finished = true
-                break
+            // Use the latest transaction as a fast path, but only finish it
+            // when its ID is the exact transaction requested by JavaScript.
+            // A product can have newer renewals, so a product-level lookup
+            // must never be treated as proof that an older transaction was
+            // finished.
+            if let unfinishedTransaction = self.unfinishedTransactions.removeValue(forKey: transactionId) {
+                await unfinishedTransaction.finish()
+                call.resolve(["finished": true])
+                return
             }
 
-            // The transaction may already have been finished by a concurrent
-            // listener or a previous retry. Treat that as success because the
-            // server verification has already completed before this method is
-            // called.
-            call.resolve(["finished": finished])
+            if let latestResult = await Transaction.latest(for: productId),
+               case .verified(let latestTransaction) = latestResult,
+               latestTransaction.id == transactionId {
+                await latestTransaction.finish()
+                call.resolve(["finished": true])
+                return
+            }
+
+            // The requested transaction is not currently available to finish.
+            // Return promptly so a stale StoreKit state cannot leave the
+            // Capacitor purchase promise pending forever; Transaction.updates
+            // will cache it if StoreKit delivers it later.
+            call.resolve(["finished": false])
         }
     }
 

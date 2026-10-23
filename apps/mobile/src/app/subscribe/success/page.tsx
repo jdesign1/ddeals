@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { hasEntitlement, SUBSCRIPTION_ENTITLEMENT_KEYS } from "@dodgey-deals/shared";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MascotImage from "@/components/MascotImage";
@@ -9,15 +10,64 @@ import { useSubscriptions } from "@/lib/subscription-context";
 
 export default function SubscriptionSuccessPage() {
   const router = useRouter();
-  const { isPremium, loading } = useSubscriptions();
+  const { isPremium, loading, error, refresh } = useSubscriptions();
+  const refreshAttemptedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const [retrying, setRetrying] = useState(false);
   usePageHeader("Subscription active", () => router.back());
 
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
+
   useEffect(() => {
-    if (!loading && !isPremium) router.replace("/subscribe");
-  }, [isPremium, loading, router]);
+    let cancelled = false;
+    if (loading || isPremium || refreshAttemptedRef.current) return () => {
+      cancelled = true;
+    };
+    refreshAttemptedRef.current = true;
+    void refresh().then((nextEntitlements) => {
+      if (!cancelled && nextEntitlements && !hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) {
+        router.replace("/subscribe");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPremium, loading, refresh, router]);
 
   if (loading || !isPremium) {
-    return <main className="flex min-h-full items-center justify-center px-5 py-10" aria-busy="true" />;
+    return (
+      <main className="flex min-h-full items-center justify-center px-5 py-10" aria-busy="true" aria-live="polite">
+        {error ? (
+          <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+            <p role="alert" className="dd-type-secondary text-stone-600">
+              We couldn&rsquo;t confirm your subscription yet. Check your connection and try again.
+            </p>
+            <button
+              type="button"
+              disabled={loading || retrying}
+              onClick={() => {
+                if (retrying) return;
+                setRetrying(true);
+                void refresh().then((nextEntitlements) => {
+                  if (mountedRef.current && nextEntitlements && !hasEntitlement(nextEntitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess)) {
+                    router.replace("/subscribe");
+                  }
+                }).finally(() => {
+                  if (mountedRef.current) setRetrying(false);
+                });
+              }}
+              className="dd-btn dd-btn-outline cursor-pointer"
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <p className="dd-type-secondary text-stone-600">Confirming your subscription…</p>
+        )}
+      </main>
+    );
   }
 
   return (

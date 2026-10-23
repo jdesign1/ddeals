@@ -257,9 +257,14 @@ export default function SubscribePage() {
                       ) : "Subscribe now"}
                     </button>
                   )}
+                  {error && (
+                    <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 dd-type-secondary text-red-800">
+                      {error}
+                    </p>
+                  )}
                 </>
               ) : (
-                <p className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
+                <p role="alert" className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
                   {error ?? "Subscription options are temporarily unavailable. Please try again later."}
                 </p>
               )}
