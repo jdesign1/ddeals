@@ -30,7 +30,7 @@ const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 
 const SUBSCRIPTION_BENEFITS: { label: string; detail: string; icon: LucideIcon }[] = [
   {
-    label: "Unlimited Watchlist items",
+    label: "Unlimited watchlist items",
     detail: "Keep every product you want to watch in one place.",
     icon: ListPlus,
   },
@@ -103,8 +103,8 @@ export default function SubscribePage() {
           </h1>
           <p className="mx-auto mt-2 max-w-[20rem] dd-type-body text-stone-600">
             {isPremium
-              ? "Your subscription keeps your Watchlist unlimited and your price alerts active."
-              : "Unlock the full Dodgy Deal picture across your Watchlist, deal history and savings insights."}
+              ? "Your subscription keeps your watchlist unlimited and your price alerts active."
+              : "Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights."}
           </p>
         </div>
         <ul className="relative grid gap-2.5" aria-label="Subscription benefits">
@@ -223,7 +223,12 @@ export default function SubscribePage() {
                               )}
                               <span>
                                 <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
-                                <span className="mt-3 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
+                                <span className="mt-1.5 block max-w-[9rem] text-xs leading-4 text-stone-600">
+                                  {isAnnual
+                                    ? "Save with one annual payment. Renews yearly until cancelled."
+                                    : "Pay monthly. Renews each month until cancelled."}
+                                </span>
+                                <span className="mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
                               </span>
                             </span>
                           </label>
