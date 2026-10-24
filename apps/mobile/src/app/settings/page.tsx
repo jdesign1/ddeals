@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useTheme } from "@/lib/theme-context";
@@ -137,6 +137,7 @@ export default function SettingsPage() {
   const [appleSignInUsed, setAppleSignInUsed] = useState(false);
   const [isFinishingDeletion, setIsFinishingDeletion] = useState(false);
   const backNavigationStartedRef = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useSettingsDialogA11y(isDeleteSheetOpen, () => {
     if (!isDeletingAccount && !accountDeleted) setIsDeleteSheetOpen(false);
@@ -154,7 +155,7 @@ export default function SettingsPage() {
     if (backNavigationStartedRef.current) return;
     backNavigationStartedRef.current = true;
     setIsNavigatingBack(true);
-    window.setTimeout(() => router.back(), 280);
+    window.setTimeout(() => router.back(), prefersReducedMotion ? 0 : 220);
   };
 
   usePageHeader("Settings", onBack);
@@ -282,9 +283,9 @@ export default function SettingsPage() {
 
   return (
     <motion.main
-      initial={{ x: "100%" }}
-      animate={{ x: isNavigatingBack ? "100%" : 0 }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+      animate={isNavigatingBack ? { opacity: 0, y: 6 } : { opacity: 1, y: 0 }}
+      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       className="min-h-full w-full flex flex-col gap-4 bg-stone-100 px-4 py-4 pb-10"
     >
       <h1 className="sr-only">Settings</h1>
