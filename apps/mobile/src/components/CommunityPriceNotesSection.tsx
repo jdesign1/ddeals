@@ -44,7 +44,7 @@ const REGION_OPTIONS = [
 
 const REGION_LABELS = new Map<string, string>(REGION_OPTIONS.map(([value, label]) => [value, label]));
 
-const FORM_CONTROL_CLASS = "min-h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-base text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10";
+const FORM_CONTROL_CLASS = "h-14 w-full rounded-2xl border border-stone-200 bg-white px-4 text-base text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10";
 
 function formatObservedDate(value: string): string {
   const date = new Date(`${value}T00:00:00`);
@@ -250,7 +250,7 @@ function NoteComposer({
               ref={dialogRef}
               className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl shadow-2xl outline-none"
             >
-              <div className="dd-bottom-sheet-titlebar relative flex flex-shrink-0 items-center justify-center border-b border-stone-100 px-5 py-3">
+              <div className="dd-bottom-sheet-titlebar relative flex h-16 flex-shrink-0 items-center justify-center border-b border-stone-100 px-5">
                 <button
                   type="button"
                   onClick={closeComposerSheet}
@@ -273,15 +273,15 @@ function NoteComposer({
                       {submissionStatus === "approved" ? "It passed our quick safety check and is now shared with the community." : "We'll check it before it appears for other shoppers."}
                     </p>
                   </div>
-                  <button type="button" onClick={closeComposerSheet} className="dd-btn dd-btn-primary min-h-11 w-full cursor-pointer">Done</button>
+                  <button type="button" onClick={closeComposerSheet} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">Done</button>
                 </div>
               ) : (
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-5 pb-5 pt-6">
+                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
                     <section className="space-y-3" aria-labelledby="community-note-tip-heading">
                       <div>
-                        <h3 id="community-note-tip-heading" className="dd-type-meta dd-type-meta-strong text-stone-700">Your tip</h3>
-                        <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Help other shoppers with a price, tip, or useful detail. Price details are optional.</p>
+                        <label id="community-note-tip-heading" htmlFor="community-note-body" className="text-base font-bold leading-6 text-stone-800">Your tip</label>
+                        <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Share a price, tip, or useful detail. You can add price details below if you have them.</p>
                       </div>
                       <textarea
                         id="community-note-body"
@@ -292,54 +292,56 @@ function NoteComposer({
                         placeholder="For example, which size or flavour you saw"
                         autoCapitalize="sentences"
                         aria-describedby="community-note-composer-description community-note-body-counter"
-                        className="min-h-32 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
+                        className="min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
                       />
-                      <p id="community-note-body-counter" className="text-right text-xs text-stone-400" aria-live="polite">{body.length}/500</p>
+                      <p id="community-note-body-counter" className="text-right text-xs font-semibold text-stone-400" aria-live="polite">{body.length}/500</p>
                     </section>
 
-                    <section id="community-note-evidence" className="space-y-4 border-t border-stone-100 pt-6" aria-labelledby="community-note-evidence-heading">
-                      <div>
-                        <h3 id="community-note-evidence-heading" className="dd-type-meta dd-type-meta-strong text-stone-700">Price details <span className="font-normal text-stone-400">(optional)</span></h3>
-                        <p className="mt-1 text-sm leading-5 text-stone-500">Add these details if you spotted a specific price.</p>
-                      </div>
+                    <fieldset id="community-note-evidence" className="mt-8 space-y-4 border-t border-stone-100 pt-6" aria-describedby="community-note-evidence-description">
+                      <legend id="community-note-evidence-heading" className="px-0 text-base font-bold leading-6 text-stone-800">
+                        Price details <span className="font-normal text-stone-400">(optional)</span>
+                      </legend>
+                      <p id="community-note-evidence-description" className="-mt-1 text-sm leading-5 text-stone-500">Add these if you spotted a specific price.</p>
                       <div className="space-y-4">
                         <div>
-                          <label htmlFor="community-note-store" className="dd-type-meta dd-type-meta-strong text-stone-600">Supermarket</label>
+                          <label htmlFor="community-note-store" className="text-sm font-bold text-stone-700">Supermarket</label>
                           <select id="community-note-store" value={storeId} onChange={(event) => setStoreId(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
                             <option value="">Choose a supermarket</option>
                             {STORE_OPTIONS.map((store) => <option key={store.id} value={store.id}>{store.label}</option>)}
                           </select>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
                           <div>
-                            <label htmlFor="community-note-price" className="dd-type-meta dd-type-meta-strong text-stone-600">Price</label>
+                            <label htmlFor="community-note-price" className="text-sm font-bold text-stone-700">Price</label>
                             <div className="relative mt-2">
                               <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-500">$</span>
                               <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={`${FORM_CONTROL_CLASS} pl-9`} />
                             </div>
                           </div>
                           <div>
-                            <label htmlFor="community-note-date" className="dd-type-meta dd-type-meta-strong text-stone-600">Date spotted</label>
+                            <label htmlFor="community-note-date" className="text-sm font-bold text-stone-700">Date spotted</label>
                             <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`} />
                           </div>
                         </div>
 
                         <div>
-                          <label htmlFor="community-note-region" className="dd-type-meta dd-type-meta-strong text-stone-600">Area</label>
+                          <label htmlFor="community-note-region" className="text-sm font-bold text-stone-700">Area</label>
                           <select id="community-note-region" value={regionCode} onChange={(event) => setRegionCode(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
                             <option value="">Prefer not to say</option>
                             {REGION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                           </select>
                         </div>
                       </div>
-                    </section>
+                    </fieldset>
 
-                    {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
-                    <p className="text-xs leading-4 text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
+                    <div className="mt-6 space-y-3">
+                      {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
+                      <p className="text-xs leading-4 text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
+                    </div>
                   </div>
                   <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
-                    <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-12 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                    <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
                       {submitting ? "Sharing…" : "Share tip"}
                     </button>
                   </div>
