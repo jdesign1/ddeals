@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Bell, ChevronDown, X } from "lucide-react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
+
+const DRAWER_TRANSITION_MS = 320;
 
 function alertFreshnessLabel(createdAt: string): string | null {
   const ageHours = Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 3_600_000);
@@ -19,6 +22,7 @@ function alertFreshnessLabel(createdAt: string): string | null {
 }
 
 export default function AppDrawer() {
+  const router = useRouter();
   const { isOpen, closeDrawer } = useNavigationDrawer();
   const { user, profile, loading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadCount, unreadAlerts } = useNotifications();
@@ -26,6 +30,23 @@ export default function AppDrawer() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
+  const settingsNavigationTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (settingsNavigationTimerRef.current !== null) window.clearTimeout(settingsNavigationTimerRef.current);
+  }, []);
+
+  const navigateToSettings = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (settingsNavigationTimerRef.current !== null) return;
+    closeDrawer();
+    const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : DRAWER_TRANSITION_MS;
+    settingsNavigationTimerRef.current = window.setTimeout(() => {
+      settingsNavigationTimerRef.current = null;
+      router.push("/settings");
+    }, delay);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -87,7 +108,7 @@ export default function AppDrawer() {
           ) : user ? (
             <Link
               href="/settings"
-              onClick={closeDrawer}
+              onClick={navigateToSettings}
               aria-label="Open profile settings"
               className="flex min-h-[76px] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
@@ -194,7 +215,7 @@ export default function AppDrawer() {
               Subscribe
             </Link>
           )}
-          <Link href="/settings" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
+          <Link href="/settings" onClick={navigateToSettings} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
             <span className="material-symbols-outlined text-[24px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
               settings
             </span>
