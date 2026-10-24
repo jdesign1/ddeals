@@ -16,7 +16,6 @@ import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
-import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import {
   formatSubscriptionDate,
   getSubscriptionRenewalLabel,
@@ -103,7 +102,6 @@ function useSettingsDialogA11y(open: boolean, close: () => void, dialogId: strin
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { completeSettingsNavigation } = useNavigationDrawer();
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
   const { user, session, profile, loading: authLoading, signOut, updateProfileName, openAuthSheet } = useAuth();
@@ -126,7 +124,6 @@ export default function SettingsPage() {
     restore,
   } = useSubscriptions();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-  const [isEntryTransitionComplete, setIsEntryTransitionComplete] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNameSheetOpen, setIsNameSheetOpen] = useState(false);
@@ -163,13 +160,6 @@ export default function SettingsPage() {
   };
 
   usePageHeader("Settings", onBack);
-
-  const handleEntryTransitionComplete = () => {
-    if (!isNavigatingBack) {
-      completeSettingsNavigation();
-      setIsEntryTransitionComplete(true);
-    }
-  };
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -294,17 +284,9 @@ export default function SettingsPage() {
 
   return (
     <>
-      <motion.div
-        aria-hidden="true"
-        initial={{ opacity: 1 }}
-        animate={{ opacity: isEntryTransitionComplete || prefersReducedMotion ? 0 : 1 }}
-        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.14, ease: "easeOut" }}
-        className="pointer-events-none fixed inset-0 z-[46] bg-stone-100"
-      />
       <motion.main
         initial={prefersReducedMotion ? false : { x: "100%" }}
         animate={isNavigatingBack ? { opacity: 0, x: "100%" } : { opacity: 1, x: 0 }}
-        onAnimationComplete={handleEntryTransitionComplete}
         transition={prefersReducedMotion ? { duration: 0 } : { duration: SETTINGS_TRANSITION_MS / 1000, ease: [0.32, 0.72, 0, 1] }}
         className="relative z-[47] min-h-full w-full flex flex-col gap-4 bg-stone-100 px-4 py-4 pb-10"
       >

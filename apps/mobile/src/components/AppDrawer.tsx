@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -18,6 +19,9 @@ function alertFreshnessLabel(createdAt: string): string | null {
   if (ageHours < 48) return "verified yesterday";
   return null;
 }
+
+const SETTINGS_TRANSITION_MS = 320;
+const SETTINGS_COVER_FADE_MS = 140;
 
 export default function AppDrawer() {
   const router = useRouter();
@@ -33,10 +37,13 @@ export default function AppDrawer() {
   const { unreadCount, unreadAlerts } = useNotifications();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSettingsCoverReleasing, setIsSettingsCoverReleasing] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
   const settingsNavigationStartedRef = useRef(false);
   const settingsNavigationFrameRef = useRef<number | null>(null);
+  const settingsNavigationSecondFrameRef = useRef<number | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     settingsNavigationStartedRef.current = false;
@@ -46,31 +53,53 @@ export default function AppDrawer() {
     if (settingsNavigationFrameRef.current !== null) {
       window.cancelAnimationFrame(settingsNavigationFrameRef.current);
     }
+    if (settingsNavigationSecondFrameRef.current !== null) {
+      window.cancelAnimationFrame(settingsNavigationSecondFrameRef.current);
+    }
   }, []);
 
   // Keep the previous page covered if the route bundle takes a moment to
-  // mount. The settings page clears this once its own slide-in is complete;
-  // this timeout is only a safety net for a failed or interrupted navigation.
+  // mount. The shell owns the release timing so the route's own animation
+  // cannot reveal Home early; the fallback is only for failed navigation.
   useEffect(() => {
-    if (!isTransitioningToSettings) return;
-    const fallbackTimer = window.setTimeout(completeSettingsNavigation, 1600);
-    return () => window.clearTimeout(fallbackTimer);
-  }, [completeSettingsNavigation, isTransitioningToSettings]);
+    if (!isTransitioningToSettings) {
+      return;
+    }
+
+    if (pathname !== "/settings") {
+      const fallbackTimer = window.setTimeout(completeSettingsNavigation, 1600);
+      return () => window.clearTimeout(fallbackTimer);
+    }
+
+    const releaseTimer = window.setTimeout(
+      () => setIsSettingsCoverReleasing(true),
+      prefersReducedMotion ? 0 : SETTINGS_TRANSITION_MS + 32,
+    );
+    return () => window.clearTimeout(releaseTimer);
+  }, [completeSettingsNavigation, isTransitioningToSettings, pathname, prefersReducedMotion]);
+
+  const handleSettingsCoverAnimationComplete = () => {
+    if (isSettingsCoverReleasing) completeSettingsNavigation();
+  };
 
   const navigateToSettings = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     if (settingsNavigationStartedRef.current) return;
     settingsNavigationStartedRef.current = true;
+    setIsSettingsCoverReleasing(false);
     beginSettingsNavigation();
     closeDrawer();
-    // Give the opaque handoff cover one paint frame before App Router swaps
-    // the shared scroll surface from Home to Settings. Without this yield,
-    // iOS WebView can paint the old Home surface between the drawer closing
-    // and the new route mounting.
+    // Give the opaque handoff cover a guaranteed paint before App Router swaps
+    // the shared scroll surface from Home to Settings. A single rAF still
+    // runs before that frame is painted; the second frame is the boundary
+    // that prevents iOS WebView from showing the old Home surface.
     settingsNavigationFrameRef.current = window.requestAnimationFrame(() => {
       settingsNavigationFrameRef.current = null;
-      router.push("/settings");
+      settingsNavigationSecondFrameRef.current = window.requestAnimationFrame(() => {
+        settingsNavigationSecondFrameRef.current = null;
+        router.push("/settings");
+      });
     });
   };
 
@@ -99,12 +128,19 @@ export default function AppDrawer() {
 
   return (
     <>
-      {isTransitioningToSettings && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-[78] mx-auto w-full max-w-[480px] bg-stone-100"
-        />
-      )}
+      <AnimatePresence>
+        {isTransitioningToSettings && (
+          <motion.div
+            key="settings-route-cover"
+            aria-hidden="true"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: isSettingsCoverReleasing ? 0 : 1 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: SETTINGS_COVER_FADE_MS / 1000, ease: "easeOut" }}
+            onAnimationComplete={handleSettingsCoverAnimationComplete}
+            className="pointer-events-none fixed inset-0 z-[78] mx-auto w-full max-w-[480px] bg-stone-100"
+          />
+        )}
+      </AnimatePresence>
       <button
         type="button"
         aria-label="Close menu"
