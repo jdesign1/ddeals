@@ -283,9 +283,9 @@ export default function SettingsPage() {
 
   return (
     <motion.main
-      initial={prefersReducedMotion ? false : { y: 10 }}
+      initial={prefersReducedMotion ? false : { opacity: 0.9, y: 10 }}
       animate={isNavigatingBack ? { opacity: 0, y: 6 } : { opacity: 1, y: 0 }}
-      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
       className="min-h-full w-full flex flex-col gap-4 bg-stone-100 px-4 py-4 pb-10"
     >
       <h1 className="sr-only">Settings</h1>
