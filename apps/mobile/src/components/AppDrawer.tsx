@@ -85,7 +85,12 @@ export default function AppDrawer() {
           {loading ? (
             <div className="h-[76px] animate-pulse rounded-2xl bg-stone-100" aria-label="Loading account" />
           ) : user ? (
-            <div className="flex min-h-[76px] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3">
+            <Link
+              href="/settings"
+              onClick={closeDrawer}
+              aria-label="Open profile settings"
+              className="flex min-h-[76px] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+            >
               <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-fair-600 text-lg font-bold text-white">
                 {avatarInitial}
               </span>
@@ -98,7 +103,7 @@ export default function AppDrawer() {
                 </span>
                 <span className="block dd-type-meta text-stone-500">Deal detective</span>
               </span>
-            </div>
+            </Link>
           ) : (
             <button
               type="button"
