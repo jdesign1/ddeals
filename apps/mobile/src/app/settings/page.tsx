@@ -18,9 +18,7 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import {
   formatSubscriptionDate,
-  getSubscriptionPlanLabel,
   getSubscriptionRenewalLabel,
-  getSubscriptionStatusLabel,
 } from "@/lib/subscription-display";
 
 const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
@@ -28,8 +26,11 @@ const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 const CARD_LAYOUT_OPTIONS = [
   { value: "grid" as const, label: "Grid", detail: "Two across" },
   { value: "single" as const, label: "Big cards", detail: "One across" },
-  { value: "compact" as const, label: "Compact", detail: "Shorter height to browse more at once" },
+  { value: "compact" as const, label: "Compact", detail: "Less height" },
 ];
+
+const SETTINGS_SECONDARY_BUTTON_CLASS = "inline-flex min-h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 text-sm font-bold text-ink-800 transition-colors hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-60";
+const SETTINGS_ALERT_BUTTON_CLASS = "inline-flex min-h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-full border border-alert-200 bg-white px-4 text-sm font-bold text-alert-600 transition-colors hover:bg-alert-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-alert-200 disabled:cursor-not-allowed disabled:opacity-60";
 
 function SettingsSection({
   id,
@@ -288,7 +289,7 @@ export default function SettingsPage() {
     >
       <h1 className="sr-only">Settings</h1>
       {!authLoading && (
-        <section className="relative overflow-hidden rounded-[2rem] bg-ink-950 px-5 pb-5 pt-6 text-white shadow-lg" aria-labelledby="settings-profile-title">
+        <section className="relative overflow-hidden rounded-3xl bg-ink-950 px-5 pb-5 pt-6 text-white shadow-lg" aria-labelledby="settings-profile-title">
           <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-fair-600/20 blur-2xl" aria-hidden="true" />
           <div className="relative flex flex-col items-center text-center">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-200/40 shadow-lg">
@@ -362,10 +363,10 @@ export default function SettingsPage() {
                     window.requestAnimationFrame(() => document.getElementById(`settings-card-layout-${nextOption.value}`)?.focus());
                   }}
                   onClick={() => setCardLayout(option.value)}
-                  className={`flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
+                  className={`relative flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-[background-color,border-color,box-shadow,transform] duration-300 ease-out motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${
                     isSelected
-                      ? "border-ink-700 bg-ink-50 text-ink-900"
-                      : "border-stone-200 bg-white text-stone-600 hover:bg-stone-100"
+                      ? "scale-[1.01] border-fair-400 bg-fair-50 text-ink-900 ring-2 ring-fair-200 shadow-sm"
+                      : "scale-100 border-stone-200 bg-white text-stone-600 hover:border-ink-300 hover:bg-stone-50"
                   }`}
                 >
                   <span className="dd-type-control">{option.label}</span>
@@ -427,7 +428,7 @@ export default function SettingsPage() {
             type="button"
             disabled={authLoading || isSavingNotifications}
             onClick={() => void (notificationPermissionDenied ? handleOpenNotificationSettings() : handleEnableNotifications())}
-            className="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3.5 text-left dd-type-control text-ink-700 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`${SETTINGS_SECONDARY_BUTTON_CLASS} text-left text-ink-700`}
           >
             <span>{notificationPermissionDenied ? "Open iPhone Settings" : "Enable notifications"}</span>
             <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
@@ -523,8 +524,6 @@ export default function SettingsPage() {
               {!subscriptionLoading && isPremium && currentSubscription ? (
                 <>
                   <div className="mt-3 space-y-1 dd-type-meta text-stone-600">
-                    <p>{getSubscriptionPlanLabel(currentSubscription.product_id)}</p>
-                    <p className="dd-type-meta-strong text-ink-700">{getSubscriptionStatusLabel(currentSubscription.status)}</p>
                     {formatSubscriptionDate(currentSubscription.expires_at) && (
                       <p>Access until {formatSubscriptionDate(currentSubscription.expires_at)}</p>
                     )}
@@ -534,9 +533,9 @@ export default function SettingsPage() {
                     href={APPLE_SUBSCRIPTIONS_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="dd-btn dd-btn-outline mt-4 w-full cursor-pointer"
+                    className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-4`}
                   >
-                    <span>Manage or cancel in Apple</span>
+                    <span>Manage in Apple</span>
                     <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
                   </a>
                   <p className="mt-2 dd-type-meta text-stone-500">Cancellation takes effect at the end of your current billing period.</p>
@@ -547,7 +546,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={openSubscriptionPage}
-                    className="dd-btn dd-btn-outline mt-3 w-full cursor-pointer"
+                    className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-3`}
                   >
                     See subscription options
                   </button>
@@ -558,7 +557,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={() => void restore()}
                         disabled={restoring}
-                        className="dd-btn dd-btn-outline mt-2 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                        className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-2`}
                         aria-busy={restoring}
                       >
                         {restoring ? "Checking Apple purchases…" : "Check Apple purchases"}
@@ -584,7 +583,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => setIsLogoutSheetOpen(true)}
-              className="dd-btn dd-btn-outline-alert mt-1 w-full cursor-pointer"
+              className={`${SETTINGS_ALERT_BUTTON_CLASS} mt-1`}
             >
               Log out
             </button>
@@ -613,7 +612,7 @@ export default function SettingsPage() {
                 setAccountDeleted(false);
                 setIsDeleteSheetOpen(true);
               }}
-              className="dd-btn dd-btn-outline-alert mt-4 w-full cursor-pointer"
+              className={`${SETTINGS_ALERT_BUTTON_CLASS} mt-4`}
             >
               Delete account
             </button>

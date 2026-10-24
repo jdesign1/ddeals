@@ -77,7 +77,7 @@ export default function IdentityLinkingPanel() {
   }
 
   return (
-    <section className="mt-5 border-t border-stone-100 pt-4" aria-labelledby="settings-sign-in-methods-title">
+    <section className="mt-3 border-t border-stone-100 pt-4" aria-labelledby="settings-sign-in-methods-title">
       <div className="mb-3">
         <h3 id="settings-sign-in-methods-title" className="text-[15px] font-semibold leading-5 text-stone-900">
           Sign-in methods
