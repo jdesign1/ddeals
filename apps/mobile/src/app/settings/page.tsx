@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, LayoutGrid, Moon, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
+import { Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -27,21 +27,19 @@ const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 
 const CARD_LAYOUT_OPTIONS = [
   { value: "grid" as const, label: "Grid", detail: "Two across" },
-  { value: "single" as const, label: "Single", detail: "Larger cards" },
-  { value: "compact" as const, label: "Compact", detail: "Short cards" },
+  { value: "single" as const, label: "Big cards", detail: "One across" },
+  { value: "compact" as const, label: "Compact", detail: "Shorter height to browse more at once" },
 ];
 
 function SettingsSection({
   id,
   icon: Icon,
   title,
-  description,
   children,
 }: {
   id: string;
   icon: LucideIcon;
   title: string;
-  description: string;
   children: ReactNode;
 }) {
   return (
@@ -52,7 +50,6 @@ function SettingsSection({
         </span>
         <div className="min-w-0">
           <h2 id={id} className="dd-type-section text-stone-900">{title}</h2>
-          <p className="mt-0.5 dd-type-meta text-stone-500">{description}</p>
         </div>
       </div>
       <div className="mt-4 space-y-3">{children}</div>
@@ -333,20 +330,17 @@ export default function SettingsPage() {
         </section>
       )}
 
-      <SettingsSection id="settings-display-title" icon={Palette} title="Display" description="Choose how the app and deal cards look.">
+      <SettingsSection id="settings-display-title" icon={Palette} title="Display">
         <div className="rounded-2xl bg-stone-50 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <LayoutGrid className="h-4 w-4 text-stone-500" aria-hidden="true" />
-            <div>
-              <p className="dd-type-control text-stone-900">Card layout</p>
-              <p className="mt-1 dd-type-meta text-stone-500">
-                {cardLayout === "grid"
-                  ? "Grid layout — two cards per row"
-                  : cardLayout === "single"
-                    ? "Single layout — one card per row"
-                    : "Compact layout — shorter cards for faster browsing"}
-              </p>
-            </div>
+          <div className="mb-3">
+            <p className="dd-type-control text-stone-900">Card layout</p>
+            <p className="mt-1 dd-type-meta text-stone-500">
+              {cardLayout === "grid"
+                ? "Grid layout — two cards per row"
+                : cardLayout === "single"
+                  ? "Big cards layout — one card per row"
+                  : "Compact layout — shorter height to browse more at once"}
+            </p>
           </div>
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Card layout">
             {CARD_LAYOUT_OPTIONS.map((option) => {
@@ -384,12 +378,9 @@ export default function SettingsPage() {
 
         <div className="flex items-center justify-between gap-4 rounded-2xl bg-stone-50 p-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Moon className="h-4 w-4 text-stone-500" aria-hidden="true" />
-              <p className="dd-type-control text-stone-900">
+            <p className="dd-type-control text-stone-900">
               {isDarkMode ? "Dark mode" : "Light mode"}
-              </p>
-            </div>
+            </p>
             <p className="mt-1 dd-type-meta text-stone-500">
               {isDarkMode ? "A darker appearance for low light" : "A lighter appearance for daytime"}
             </p>
@@ -409,7 +400,7 @@ export default function SettingsPage() {
         </div>
       </SettingsSection>
 
-      <SettingsSection id="settings-notifications-title" icon={Bell} title="Notifications" description="Quiet updates for meaningful list price changes.">
+      <SettingsSection id="settings-notifications-title" icon={Bell} title="Notifications">
         <div className="flex items-start justify-between gap-4 rounded-2xl bg-stone-50 p-4">
           <div className="min-w-0">
             <p className="dd-type-control text-stone-900">Push notifications</p>
@@ -445,7 +436,7 @@ export default function SettingsPage() {
         {notificationError && <p role="status" className="mt-3 dd-type-secondary text-alert-700">{notificationError}</p>}
       </SettingsSection>
 
-      <SettingsSection id="settings-legal-title" icon={ShieldCheck} title="Legal" description="Learn how Dodgy Deal handles your information.">
+      <SettingsSection id="settings-legal-title" icon={ShieldCheck} title="Legal">
         <Link
           href="/privacy"
           className="flex items-center justify-between gap-4 rounded-2xl bg-stone-50 p-4 dd-type-control text-stone-800 transition-colors hover:bg-stone-100"
@@ -472,7 +463,7 @@ export default function SettingsPage() {
         </Link>
       </SettingsSection>
 
-      <SettingsSection id="settings-help-title" icon={CircleHelp} title="Help" description="Get help or let us know when something needs fixing.">
+      <SettingsSection id="settings-help-title" icon={CircleHelp} title="Help">
         <Link
           href="/support"
           onClick={captureSettingsScrollPosition}
@@ -511,9 +502,9 @@ export default function SettingsPage() {
       </SettingsSection>
 
       {!authLoading && user && (
-        <SettingsSection id="settings-account-title" icon={CreditCard} title="Account" description="Manage your subscription and sign-in.">
+        <SettingsSection id="settings-account-title" icon={CreditCard} title="Account">
           <div className="flex flex-col gap-3">
-            <div className="rounded-2xl bg-stone-50 p-4" aria-labelledby="settings-subscription-title">
+            <div className="border-b border-stone-100 pb-4" aria-labelledby="settings-subscription-title">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="dd-type-meta dd-type-meta-strong text-stone-500">Subscription</p>
@@ -543,7 +534,7 @@ export default function SettingsPage() {
                     href={APPLE_SUBSCRIPTIONS_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 flex items-center justify-between gap-3 border-t border-stone-200 pt-3 dd-type-control text-ink-800"
+                    className="dd-btn dd-btn-outline mt-4 w-full cursor-pointer"
                   >
                     <span>Manage or cancel in Apple</span>
                     <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -609,7 +600,6 @@ export default function SettingsPage() {
             </span>
             <div>
               <h2 id="settings-danger-zone-title" className="dd-type-section text-alert-700">Danger zone</h2>
-              <p className="mt-0.5 dd-type-meta text-stone-500">Permanently remove your account and personal data.</p>
             </div>
           </div>
           <div className="mt-4 rounded-2xl bg-alert-50/50 p-4">
