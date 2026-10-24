@@ -6,10 +6,11 @@
  * STORE_DISPLAY_FALLBACK/normalizeStoreKey which are real data-shape
  * helpers already ported there.
  *
- * apps/mobile's live catalogue has a 5th store (SuperValue, see
- * STORE_DISPLAY_FALLBACK in packages/shared/src/data.ts) that the
- * prototype's mock data never had. It is now represented by SuperValue's
- * published wordmark; unknown stores still use the generic two-letter badge.
+ * apps/mobile's live catalogue has additional stores (SuperValue and Chemist
+ * Warehouse, see STORE_DISPLAY_FALLBACK in packages/shared/src/data.ts) that
+ * the prototype's mock data never had. They are represented by their
+ * published retailer marks; unknown stores still use the generic two-letter
+ * badge.
  */
 export interface StoreLogoMeta {
   short: string;
@@ -89,6 +90,13 @@ const STORE_LOGOS: Record<string, StoreLogoMeta> = {
     short: "CW",
     bg: "bg-blue-700",
     text: "text-white",
+    // Current Chemist Warehouse NZ header mark, published by the retailer's
+    // site and shared across its NZ storefront.
+    logoSrc: "https://static.chemistwarehouse.com.au/app_themes/AMS-CWH/Images/CWH_logo_2.png",
+    logoBackground: "#f21010",
+    logoShape: "wordmark",
+    logoWidth: 250,
+    logoHeight: 132,
   },
 };
 

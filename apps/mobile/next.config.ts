@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       // Official Foodstuffs brand artwork used for the compact PAK'nSAVE and
       // New World retailer marks.
       { protocol: "https", hostname: "au-images.contentstack.com" },
+      { protocol: "https", hostname: "static.chemistwarehouse.com.au" },
       { protocol: "https", hostname: "placehold.co" },
     ],
     // Product photos are independent of the frequently changing price data
