@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import {
@@ -162,36 +162,51 @@ export default function MePage() {
   const { savedProductIds, loadingSavedItems } = useWatchlist();
   const [isSavingsOpen, setIsSavingsOpen] = useState(false);
   const [activeStatsTab, setActiveStatsTab] = useState<"watchlist" | "trends">("watchlist");
+  const deferredStatsTab = useDeferredValue(activeStatsTab);
   const [watchlistTopMode, setWatchlistTopMode] = useState<WatchlistTopMode>("most-often");
-  const watchlistStats = useMemo(() => buildWatchlistStats(products, savedProductIds, watchlistTopMode), [products, savedProductIds, watchlistTopMode]);
-  const watchlistProductCount = useMemo(() => products.filter((product) => savedProductIds.has(product.id)).length, [products, savedProductIds]);
-  const watchlistStatsLocked = !subscriptionLoading && !isPremium;
-  const currentStoreStats = useMemo(() => buildCurrentStoreStats(products), [products]);
-  const monthlyStats = useMemo(() => buildMonthlyStats(products), [products]);
-  const storeRankings = useMemo(() => buildStoreRankings(products), [products]);
-  const priceChangeStats = useMemo(
-    () => buildPriceChangeStats(products, STATS_STORES.map(({ key, label }) => ({ key, store: label }))),
-    [products]
+  const watchlistStats = useMemo(
+    () => (activeStatsTab === "watchlist" ? buildWatchlistStats(products, savedProductIds, watchlistTopMode) : null),
+    [activeStatsTab, products, savedProductIds, watchlistTopMode],
   );
-  const bestValueRanking = storeRankings.find((store) => store.realDeals > 0);
-  const mostPriceChangeStore = priceChangeStats.stores.find((store) => store.itemsTracked > 0);
-  const chronologicalMonthlySummaries = useMemo<MonthlySummary[]>(() => [...monthlyStats].reverse().map((month) => {
-    const real = month.stores.reduce((sum, store) => sum + store.real, 0);
-    const dodgy = month.stores.reduce((sum, store) => sum + store.dodgy, 0);
-    return { key: month.key, label: month.label, real, dodgy, total: real + dodgy };
-  }), [monthlyStats]);
-  const maxCurrentSpecials = useMemo(() => Math.max(1, ...currentStoreStats.map((store) => store.real + store.dodgy)), [currentStoreStats]);
-  const maxMonthlySpecials = useMemo(() => Math.max(1, ...chronologicalMonthlySummaries.map((month) => month.total)), [chronologicalMonthlySummaries]);
-  const maxAverageDiscount = useMemo(() => Math.max(1, ...storeRankings.map((store) => store.averageDiscount)), [storeRankings]);
-  const maxPriceChangeRate = useMemo(() => Math.max(1, ...priceChangeStats.stores.map((store) => store.changeRatePct)), [priceChangeStats.stores]);
-  const monthlySpotlight = useMemo(() => {
-    const spotlight = STATS_STORES.map(({ label }) => {
+  const watchlistStatsLocked = !subscriptionLoading && !isPremium;
+  const watchlistProductCount = useMemo(
+    () => (activeStatsTab === "watchlist" ? products.filter((product) => savedProductIds.has(product.id)).length : 0),
+    [activeStatsTab, products, savedProductIds],
+  );
+  const nzTrends = useMemo(() => {
+    if (activeStatsTab !== "trends" || deferredStatsTab !== "trends") return null;
+    const currentStoreStats = buildCurrentStoreStats(products);
+    const monthlyStats = buildMonthlyStats(products);
+    const storeRankings = buildStoreRankings(products);
+    const priceChangeStats = buildPriceChangeStats(products, STATS_STORES.map(({ key, label }) => ({ key, store: label })));
+    const chronologicalMonthlySummaries: MonthlySummary[] = [...monthlyStats].reverse().map((month) => {
+      const real = month.stores.reduce((sum, store) => sum + store.real, 0);
+      const dodgy = month.stores.reduce((sum, store) => sum + store.dodgy, 0);
+      return { key: month.key, label: month.label, real, dodgy, total: real + dodgy };
+    });
+    const monthlySpotlight = STATS_STORES.map(({ label }) => {
       const storeMonths = monthlyStats.flatMap((month) => month.stores.filter((store) => store.store === label));
       return { store: label, real: storeMonths.reduce((sum, month) => sum + month.real, 0), dodgy: storeMonths.reduce((sum, month) => sum + month.dodgy, 0) };
     }).sort((a, b) => b.real - a.real || b.dodgy - a.dodgy)[0];
-    return spotlight?.real ? spotlight : null;
-  }, [monthlyStats]);
-  const busiestMonth = useMemo(() => chronologicalMonthlySummaries.reduce<MonthlySummary | null>((busiest, month) => (!busiest || month.total > busiest.total ? month : busiest), null), [chronologicalMonthlySummaries]);
+    const busiestMonth = chronologicalMonthlySummaries.reduce<MonthlySummary | null>(
+      (busiest, month) => (!busiest || month.total > busiest.total ? month : busiest),
+      null,
+    );
+    return {
+      currentStoreStats,
+      maxCurrentSpecials: Math.max(1, ...currentStoreStats.map((store) => store.real + store.dodgy)),
+      chronologicalMonthlySummaries,
+      maxMonthlySpecials: Math.max(1, ...chronologicalMonthlySummaries.map((month) => month.total)),
+      storeRankings,
+      maxAverageDiscount: Math.max(1, ...storeRankings.map((store) => store.averageDiscount)),
+      priceChangeStats,
+      maxPriceChangeRate: Math.max(1, ...priceChangeStats.stores.map((store) => store.changeRatePct)),
+      monthlySpotlight: monthlySpotlight?.real ? monthlySpotlight : null,
+      busiestMonth,
+      bestValueRanking: storeRankings.find((store) => store.realDeals > 0),
+      mostPriceChangeStore: priceChangeStats.stores.find((store) => store.itemsTracked > 0),
+    };
+  }, [activeStatsTab, deferredStatsTab, products]);
   const openFilteredDeals = useCallback((storeKey: string, filter: Extract<DealFilter, "real" | "dodgy">) => {
     toggleStore("all");
     toggleStore(storeKey);

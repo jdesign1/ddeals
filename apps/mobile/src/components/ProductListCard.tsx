@@ -14,6 +14,7 @@ import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { useCardLayout } from "@/lib/card-layout-context";
+import { prepareDealNavigation } from "@/lib/deal-navigation";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
 /**
@@ -141,7 +142,11 @@ export default function ProductListCard({
 
   const goToDeal = () => {
     onNavigate?.();
-    router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+    router.push(prepareDealNavigation(router, product, deal.store));
+  };
+
+  const warmDealRoute = () => {
+    prepareDealNavigation(router, product, deal.store);
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -172,6 +177,8 @@ export default function ProductListCard({
   return (
     <div
       onClick={handleCardClick}
+      onPointerEnter={warmDealRoute}
+      onFocus={warmDealRoute}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

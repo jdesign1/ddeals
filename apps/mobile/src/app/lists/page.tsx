@@ -170,7 +170,15 @@ export default function ListsPage() {
     setProductMeta(data.productMeta);
     setItemCards(data.itemCards);
     setLowestPriceByProduct(data.lowestPriceByProduct);
+    setError(null);
   }, []);
+
+  const loadCachedData = useCallback(() => {
+    if (!user) return;
+    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id)
+      .then(applyData)
+      .catch((loadError) => setError(describeFetchError(loadError, "We couldn't load your Watchlist.")));
+  }, [applyData, user]);
 
   const reload = useCallback(async (showLoading = true) => {
     if (!user) return;
@@ -190,26 +198,33 @@ export default function ListsPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      setLoadingWatchlist(true);
-      setError(null);
-      loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
-        .then((data) => {
-          if (!cancelled) applyData(data);
-        })
-        .catch((loadError) => {
-          if (!cancelled) setError(describeFetchError(loadError, "We couldn't load your Watchlist."));
-        })
-        .finally(() => {
-          if (!cancelled) setLoadingWatchlist(false);
-        });
-    }, 0);
+    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id)
+      .then((data) => {
+        if (!cancelled) applyData(data);
+      })
+      .catch((loadError) => {
+        if (!cancelled) setError(describeFetchError(loadError, "We couldn't load your Watchlist."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingWatchlist(false);
+      });
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
   }, [applyData, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") loadCachedData();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", loadCachedData);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", loadCachedData);
+    };
+  }, [loadCachedData, user]);
 
   useEffect(() => {
     const handleMembershipChanged = () => void reload(false);

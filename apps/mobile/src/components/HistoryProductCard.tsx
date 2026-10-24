@@ -5,6 +5,7 @@ import type { CurrentDeal, ProductCard as ProductCardData } from "@dodgey-deals/
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
+import { prepareDealNavigation } from "@/lib/deal-navigation";
 
 interface HistoryProductCardProps {
   product: ProductCardData;
@@ -20,9 +21,8 @@ interface HistoryProductCardProps {
  */
 export default function HistoryProductCard({ product, deal, isLocked = false }: HistoryProductCardProps) {
   const router = useRouter();
-  const goToDeal = () => {
-    router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
-  };
+  const warmDealRoute = () => prepareDealNavigation(router, product, deal.store);
+  const goToDeal = () => router.push(prepareDealNavigation(router, product, deal.store));
 
   const cardContent = (
     <>
@@ -59,6 +59,8 @@ export default function HistoryProductCard({ product, deal, isLocked = false }: 
         <button
           type="button"
           onClick={goToDeal}
+          onPointerEnter={warmDealRoute}
+          onFocus={warmDealRoute}
           // A card tap remains available without claiming vertical swipes from
           // the page's scroll container.
           style={{ touchAction: "pan-y" }}

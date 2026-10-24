@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { useRef } from "react";
 import { useSearch } from "@/lib/search-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
+import { useRouter } from "next/navigation";
 
 type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
@@ -228,12 +230,22 @@ const CONTACT_ROUTES = ["/support", "/report-deal"];
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const prefetchedRoutesRef = useRef(new Set<string>());
   const { isActive: isSearchActive, closeSearch } = useSearch();
   const { hasUnreadWatchlistUpdates } = useNotifications();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest, requestOpen } = useNewSpecials();
 
   if (pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/subscribe" || CONTACT_ROUTES.includes(pathname)) return null;
+
+  const prefetchRoute = (href: string) => {
+    if (prefetchedRoutesRef.current.has(href)) return;
+    prefetchedRoutesRef.current.add(href);
+    void Promise.resolve(router.prefetch(href)).catch(() => {
+      prefetchedRoutesRef.current.delete(href);
+    });
+  };
 
   return (
     <>
@@ -267,11 +279,13 @@ export default function BottomNav() {
               }
               aria-current={isActive ? "page" : undefined}
               aria-label={hasUnreadUpdates || hasNewSpecials ? `${label}, new deal updates` : undefined}
+              onPointerEnter={() => prefetchRoute(href)}
+              onFocus={() => prefetchRoute(href)}
               onClick={() => {
                 if (isSearchActive) closeSearch();
                 if (hasNewSpecials) requestOpen();
               }}
-              className="flex min-w-0 flex-1 items-center justify-center py-1.5"
+              className="flex min-w-0 flex-1 items-center justify-center py-1.5 transition-transform duration-100 active:scale-[0.98]"
             >
               <span
                 className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${

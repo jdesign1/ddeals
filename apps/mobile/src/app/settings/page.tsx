@@ -22,6 +22,7 @@ import {
 } from "@/lib/subscription-display";
 
 const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
+const SETTINGS_TRANSITION_MS = 320;
 
 const CARD_LAYOUT_OPTIONS = [
   { value: "grid" as const, label: "Grid", detail: "Two across" },
@@ -123,6 +124,7 @@ export default function SettingsPage() {
     restore,
   } = useSubscriptions();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [isEntryTransitionComplete, setIsEntryTransitionComplete] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNameSheetOpen, setIsNameSheetOpen] = useState(false);
@@ -155,10 +157,14 @@ export default function SettingsPage() {
     if (backNavigationStartedRef.current) return;
     backNavigationStartedRef.current = true;
     setIsNavigatingBack(true);
-    window.setTimeout(() => router.back(), prefersReducedMotion ? 0 : 220);
+    window.setTimeout(() => router.back(), prefersReducedMotion ? 0 : SETTINGS_TRANSITION_MS);
   };
 
   usePageHeader("Settings", onBack);
+
+  const handleEntryTransitionComplete = () => {
+    if (!isNavigatingBack) setIsEntryTransitionComplete(true);
+  };
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -282,12 +288,21 @@ export default function SettingsPage() {
                 : "Only meaningful price changes will send an update.";
 
   return (
-    <motion.main
-      initial={prefersReducedMotion ? false : { opacity: 0.9, y: 10 }}
-      animate={isNavigatingBack ? { opacity: 0, y: 6 } : { opacity: 1, y: 0 }}
-      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-      className="min-h-full w-full flex flex-col gap-4 bg-stone-100 px-4 py-4 pb-10"
-    >
+    <>
+      <motion.div
+        aria-hidden="true"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: isEntryTransitionComplete || prefersReducedMotion ? 0 : 1 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.14, ease: "easeOut" }}
+        className="pointer-events-none fixed inset-0 z-[46] bg-stone-100"
+      />
+      <motion.main
+        initial={prefersReducedMotion ? false : { x: "100%" }}
+        animate={isNavigatingBack ? { opacity: 0, x: "100%" } : { opacity: 1, x: 0 }}
+        onAnimationComplete={handleEntryTransitionComplete}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: SETTINGS_TRANSITION_MS / 1000, ease: [0.32, 0.72, 0, 1] }}
+        className="relative z-[47] min-h-full w-full flex flex-col gap-4 bg-stone-100 px-4 py-4 pb-10"
+      >
       <h1 className="sr-only">Settings</h1>
       {!authLoading && (
         <section className="relative overflow-hidden rounded-3xl border border-ink-900 bg-ink-950 px-5 pb-5 pt-6 text-white" aria-labelledby="settings-profile-title">
@@ -877,6 +892,7 @@ export default function SettingsPage() {
           )}
         </AnimatePresence>
       </BottomSheetPortal>
-    </motion.main>
+      </motion.main>
+    </>
   );
 }

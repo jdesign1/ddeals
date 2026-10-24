@@ -53,6 +53,7 @@ import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
+import { getPrimedDealProduct } from "@/lib/deal-navigation";
 import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
 import CommunityPriceNotesSection from "@/components/CommunityPriceNotesSection";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
@@ -220,13 +221,16 @@ const STORE_TEXT_COLOR: Record<string, string> = {
 export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
   const { user } = useAuth();
   const { products: catalogueProducts, returnToSearch, resumeAfterDealBack } = useSearch();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
+  const primedProduct = getPrimedDealProduct(productId, dealStore);
 
-  const [products, setProducts] = useState<ProductCard[] | null>(null);
+  const [products, setProducts] = useState<ProductCard[] | null>(() => (primedProduct ? [primedProduct] : null));
+  const [hasLoadedStandaloneCatalogue, setHasLoadedStandaloneCatalogue] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isEvidenceSheetOpen, setIsEvidenceSheetOpen] = useState(false);
   // Same plain-counter retry pattern as search-context.tsx/specials/page.tsx
@@ -259,7 +263,10 @@ export default function DealAssessmentPage() {
     }
     loadLiveProducts(supabaseConfig)
       .then((rows) => {
-        if (!cancelled) setProducts(rows);
+        if (!cancelled) {
+          setProducts(rows);
+          setHasLoadedStandaloneCatalogue(true);
+        }
       })
       .catch((err) => {
         if (!cancelled) setLoadError(describeFetchError(err, "Failed to load deal data"));
@@ -277,7 +284,8 @@ export default function DealAssessmentPage() {
     setLoadError(null);
   }), []);
 
-  const effectiveProducts = products ?? (catalogueProducts.length > 0 ? catalogueProducts : null);
+  const effectiveProducts = catalogueProducts.length > 0 ? catalogueProducts : products;
+  const isCatalogueReady = catalogueProducts.length > 0 || hasLoadedStandaloneCatalogue;
   const product = useMemo(() => effectiveProducts?.find((p) => p.id === productId) ?? null, [effectiveProducts, productId]);
   // The deal route fetches its own validated snapshot, but the tapped card's
   // product is already in the global catalogue. Use that name immediately so
@@ -356,14 +364,43 @@ export default function DealAssessmentPage() {
   const [priceHistoryResults, setPriceHistoryResults] = useState<
     Record<string, { points: PriceHistoryPoint[]; error: string | null }>
   >({});
+  const [isPriceHistoryNearViewport, setIsPriceHistoryNearViewport] = useState(false);
+  const priceHistorySectionRef = useRef<HTMLDivElement>(null);
   const priceHistoryResult = priceHistoryKey ? priceHistoryResults[priceHistoryKey] : undefined;
   const priceHistoryLoading = priceHistoryKey != null && priceHistoryResult == null;
   const priceHistoryPoints = useMemo(() => priceHistoryResult?.points ?? [], [priceHistoryResult]);
 
   const historyDealsToLoad = useMemo(
-    () => (selectedHistoryStore === ALL_STORES_VALUE ? historyStoreDeals : historyDeal ? [historyDeal] : []),
-    [historyDeal, historyStoreDeals, selectedHistoryStore]
+    () => {
+      if (selectedHistoryStore !== ALL_STORES_VALUE) return historyDeal ? [historyDeal] : [];
+      // Keep the first assessment request focused on the supermarket the user
+      // opened. The remaining retailers are fetched when this card is near the
+      // viewport, preserving the default All-supermarkets view without making
+      // off-screen history compete with the first paint.
+      return isPriceHistoryNearViewport ? historyStoreDeals : historyDeal ? [historyDeal] : [];
+    },
+    [historyDeal, historyStoreDeals, isPriceHistoryNearViewport, selectedHistoryStore]
   );
+
+  useEffect(() => {
+    const section = priceHistorySectionRef.current;
+    if (!section) return;
+    if (typeof IntersectionObserver === "undefined") {
+      const fallbackFrame = window.requestAnimationFrame(() => setIsPriceHistoryNearViewport(true));
+      return () => window.cancelAnimationFrame(fallbackFrame);
+    }
+    const scrollRoot = section.closest(".mobile-scroll-surface");
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setIsPriceHistoryNearViewport(true);
+        observer.disconnect();
+      },
+      { root: scrollRoot, rootMargin: "240px 0px" },
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
 
   // The catalogue carries summary history statistics only. The detail page
   // fetches the small, exact product/store transition series on demand,
@@ -412,11 +449,12 @@ export default function DealAssessmentPage() {
     [historyStoreDeals, priceHistoryResults]
   );
   const isAllHistorySelected = selectedHistoryStore === ALL_STORES_VALUE;
+  const allHistoryResultsReady = historyStoreDeals.every((candidate) => {
+    const key = `${candidate.sourceProductId}::${candidate.sourceStoreId}`;
+    return Boolean(priceHistoryResults[key]);
+  });
   const priceHistoryLoadingForSelection = isAllHistorySelected
-    ? historyDealsToLoad.some((candidate) => {
-        if (!candidate.sourceProductId || !candidate.sourceStoreId) return false;
-        return !priceHistoryResults[`${candidate.sourceProductId}::${candidate.sourceStoreId}`];
-      })
+    ? !isPriceHistoryNearViewport || !allHistoryResultsReady
     : priceHistoryLoading;
   const allHistoryResults = historyStoreDeals.map((candidate) =>
     priceHistoryResults[`${candidate.sourceProductId}::${candidate.sourceStoreId}`]
@@ -545,16 +583,7 @@ export default function DealAssessmentPage() {
   const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("price-tips");
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-  const [isEntryAnimationReady, setIsEntryAnimationReady] = useState(false);
   const backNavigationStartedRef = useRef(false);
-
-  // Hold the incoming slide until this route's data is ready, so the page
-  // appears as one complete surface rather than revealing half-loaded cards.
-  useEffect(() => {
-    if (isEntryAnimationReady || (effectiveProducts === null && !loadError)) return;
-    const timer = window.setTimeout(() => setIsEntryAnimationReady(true), 0);
-    return () => window.clearTimeout(timer);
-  }, [isEntryAnimationReady, effectiveProducts, loadError]);
 
   useEffect(() => {
     if (!showProductImage) return;
@@ -669,6 +698,10 @@ export default function DealAssessmentPage() {
     return <PageLoader loading />;
   }
 
+  if ((!product || !deal || !activeDeal) && !isCatalogueReady && !loadError) {
+    return <PageLoader loading />;
+  }
+
   if (!product || !deal || !activeDeal) {
     return (
       <>
@@ -738,8 +771,8 @@ export default function DealAssessmentPage() {
     <>
       <motion.div
         initial={{ x: "100%" }}
-        animate={{ x: isNavigatingBack || !isEntryAnimationReady ? "100%" : 0 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        animate={{ x: isNavigatingBack || effectiveProducts === null ? "100%" : 0 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         className={`deal-assessment-page min-h-full w-full ${isMultiStoreDeal ? "page-paper-surface" : verdictBgClass}`}
       >
       {/* No search bar on this page (2026-08-17, per Jay's ask, same day
@@ -1277,7 +1310,7 @@ export default function DealAssessmentPage() {
       <div className="space-y-3">
         {/* Keep the detailed history views together, with the practical
             recommendation and supporting price tips in the card below. */}
-        <div className="space-y-4">
+        <div ref={priceHistorySectionRef} className="space-y-4">
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
             <div>
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>

@@ -11,6 +11,7 @@ import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
+import { prepareDealNavigation } from "@/lib/deal-navigation";
 
 /**
  * Compact product row for a list's own item list on `apps/mobile/src/app/
@@ -254,7 +255,11 @@ export default function ListItemProductCard({
   const goToDeal = () => {
     onBeforeNavigate?.();
     onDealAssessmentOpen?.();
-    router.push(`/deal/${encodeURIComponent(displayedProduct.id)}/${encodeURIComponent(displayedDeal.store)}`);
+    router.push(prepareDealNavigation(router, displayedProduct, displayedDeal.store));
+  };
+
+  const warmDealRoute = () => {
+    if (!isLocked && !isNotOnSpecial) prepareDealNavigation(router, displayedProduct, displayedDeal.store);
   };
 
   // Tap/Enter/Space activation on the row itself -- replaces the old direct
@@ -329,6 +334,8 @@ export default function ListItemProductCard({
         <button
           type="button"
           onClick={handleActivate}
+          onPointerEnter={warmDealRoute}
+          onFocus={warmDealRoute}
           aria-label={isNotOnSpecial ? `${displayedProduct.name}: not currently on special` : `Open ${displayedProduct.name} deal at ${displayedDeal.store}`}
           className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
         />

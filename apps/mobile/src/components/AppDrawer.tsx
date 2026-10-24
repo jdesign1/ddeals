@@ -3,15 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, X } from "lucide-react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
-
-const DRAWER_TRANSITION_MS = 320;
 
 function alertFreshnessLabel(createdAt: string): string | null {
   const ageHours = Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 3_600_000);
@@ -23,6 +21,7 @@ function alertFreshnessLabel(createdAt: string): string | null {
 
 export default function AppDrawer() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isOpen, closeDrawer } = useNavigationDrawer();
   const { user, profile, loading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadCount, unreadAlerts } = useNotifications();
@@ -30,22 +29,19 @@ export default function AppDrawer() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
-  const settingsNavigationTimerRef = useRef<number | null>(null);
+  const settingsNavigationStartedRef = useRef(false);
 
-  useEffect(() => () => {
-    if (settingsNavigationTimerRef.current !== null) window.clearTimeout(settingsNavigationTimerRef.current);
-  }, []);
+  useEffect(() => {
+    settingsNavigationStartedRef.current = false;
+  }, [pathname]);
 
   const navigateToSettings = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
-    if (settingsNavigationTimerRef.current !== null) return;
+    if (settingsNavigationStartedRef.current) return;
+    settingsNavigationStartedRef.current = true;
     closeDrawer();
-    const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : DRAWER_TRANSITION_MS;
-    settingsNavigationTimerRef.current = window.setTimeout(() => {
-      settingsNavigationTimerRef.current = null;
-      router.push("/settings");
-    }, delay);
+    router.push("/settings");
   };
 
   useEffect(() => {

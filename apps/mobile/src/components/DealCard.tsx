@@ -8,6 +8,7 @@ import PriceChangeBadge from "@/components/PriceChangeBadge";
 import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
+import { prepareDealNavigation } from "@/lib/deal-navigation";
 
 /**
  * One (product, store) deal card. Extracted from specials/page.tsx
@@ -38,11 +39,16 @@ export default function DealCard({
   const showWasPrice = deal.originalPrice > deal.price;
   const specialPriceRange = getSpecialPriceRange(product);
 
-  const goToDeal = () => router.push(`/deal/${encodeURIComponent(product.id)}/${encodeURIComponent(deal.store)}`);
+  const warmDealRoute = () => {
+    prepareDealNavigation(router, product, deal.store);
+  };
+  const goToDeal = () => router.push(prepareDealNavigation(router, product, deal.store));
 
   return (
     <article
       onClick={goToDeal}
+      onPointerEnter={warmDealRoute}
+      onFocus={warmDealRoute}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
