@@ -86,11 +86,11 @@ export default function SubscribePage() {
       <section className="relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-fair-100 bg-white px-5 pb-6 pt-4 shadow-sm" aria-labelledby="subscribe-page-title">
         <div className="relative flex justify-center">
           <MascotImage
-            src="/subscribe-mascot-deal-detective.webp"
-            darkSrc="/subscribe-mascot-deal-detective.webp"
-            alt="Dodgy Deal mascot investigating watchlist prices, deal history, and alerts"
-            width={640}
-            height={530}
+            src="/subscribe-mascot-plus-shield.webp"
+            darkSrc="/subscribe-mascot-plus-shield.webp"
+            alt="Dodgy Deal mascot investigating a Plus shield"
+            width={768}
+            height={768}
             sizes="208px"
             unoptimized
             className="mascot-wave h-auto w-full max-w-[13rem]"
