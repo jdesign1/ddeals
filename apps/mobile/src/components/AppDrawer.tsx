@@ -36,10 +36,17 @@ export default function AppDrawer() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
   const settingsNavigationStartedRef = useRef(false);
+  const settingsNavigationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     settingsNavigationStartedRef.current = false;
   }, [pathname]);
+
+  useEffect(() => () => {
+    if (settingsNavigationFrameRef.current !== null) {
+      window.cancelAnimationFrame(settingsNavigationFrameRef.current);
+    }
+  }, []);
 
   // Keep the previous page covered if the route bundle takes a moment to
   // mount. The settings page clears this once its own slide-in is complete;
@@ -57,7 +64,14 @@ export default function AppDrawer() {
     settingsNavigationStartedRef.current = true;
     beginSettingsNavigation();
     closeDrawer();
-    router.push("/settings");
+    // Give the opaque handoff cover one paint frame before App Router swaps
+    // the shared scroll surface from Home to Settings. Without this yield,
+    // iOS WebView can paint the old Home surface between the drawer closing
+    // and the new route mounting.
+    settingsNavigationFrameRef.current = window.requestAnimationFrame(() => {
+      settingsNavigationFrameRef.current = null;
+      router.push("/settings");
+    });
   };
 
   useEffect(() => {
