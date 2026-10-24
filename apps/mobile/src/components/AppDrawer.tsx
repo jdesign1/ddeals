@@ -22,7 +22,13 @@ function alertFreshnessLabel(createdAt: string): string | null {
 export default function AppDrawer() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isOpen, closeDrawer } = useNavigationDrawer();
+  const {
+    isOpen,
+    isTransitioningToSettings,
+    beginSettingsNavigation,
+    completeSettingsNavigation,
+    closeDrawer,
+  } = useNavigationDrawer();
   const { user, profile, loading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadCount, unreadAlerts } = useNotifications();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
@@ -35,11 +41,21 @@ export default function AppDrawer() {
     settingsNavigationStartedRef.current = false;
   }, [pathname]);
 
+  // Keep the previous page covered if the route bundle takes a moment to
+  // mount. The settings page clears this once its own slide-in is complete;
+  // this timeout is only a safety net for a failed or interrupted navigation.
+  useEffect(() => {
+    if (!isTransitioningToSettings) return;
+    const fallbackTimer = window.setTimeout(completeSettingsNavigation, 1600);
+    return () => window.clearTimeout(fallbackTimer);
+  }, [completeSettingsNavigation, isTransitioningToSettings]);
+
   const navigateToSettings = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     if (settingsNavigationStartedRef.current) return;
     settingsNavigationStartedRef.current = true;
+    beginSettingsNavigation();
     closeDrawer();
     router.push("/settings");
   };
@@ -69,6 +85,12 @@ export default function AppDrawer() {
 
   return (
     <>
+      {isTransitioningToSettings && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[78] mx-auto w-full max-w-[480px] bg-stone-100"
+        />
+      )}
       <button
         type="button"
         aria-label="Close menu"

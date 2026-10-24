@@ -5,9 +5,12 @@ import { usePathname } from "next/navigation";
 
 type NavigationDrawerContextValue = {
   isOpen: boolean;
+  isTransitioningToSettings: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
   toggleDrawer: () => void;
+  beginSettingsNavigation: () => void;
+  completeSettingsNavigation: () => void;
 };
 
 const NavigationDrawerContext = createContext<NavigationDrawerContextValue | null>(null);
@@ -15,6 +18,7 @@ const NavigationDrawerContext = createContext<NavigationDrawerContextValue | nul
 export function NavigationDrawerProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [isTransitioningToSettings, setIsTransitioningToSettings] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
 
   if (pathname !== lastPathname) {
@@ -25,10 +29,20 @@ export function NavigationDrawerProvider({ children }: { children: ReactNode }) 
   const openDrawer = useCallback(() => setIsOpen(true), []);
   const closeDrawer = useCallback(() => setIsOpen(false), []);
   const toggleDrawer = useCallback(() => setIsOpen((open) => !open), []);
+  const beginSettingsNavigation = useCallback(() => setIsTransitioningToSettings(true), []);
+  const completeSettingsNavigation = useCallback(() => setIsTransitioningToSettings(false), []);
 
   const value = useMemo(
-    () => ({ isOpen, openDrawer, closeDrawer, toggleDrawer }),
-    [closeDrawer, isOpen, openDrawer, toggleDrawer]
+    () => ({
+      isOpen,
+      isTransitioningToSettings,
+      openDrawer,
+      closeDrawer,
+      toggleDrawer,
+      beginSettingsNavigation,
+      completeSettingsNavigation,
+    }),
+    [beginSettingsNavigation, closeDrawer, completeSettingsNavigation, isOpen, isTransitioningToSettings, openDrawer, toggleDrawer]
   );
 
   return <NavigationDrawerContext.Provider value={value}>{children}</NavigationDrawerContext.Provider>;

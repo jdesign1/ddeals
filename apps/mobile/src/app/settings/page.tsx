@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
+import { Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, LoaderCircle, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -16,6 +16,7 @@ import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
+import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import {
   formatSubscriptionDate,
   getSubscriptionRenewalLabel,
@@ -102,6 +103,7 @@ function useSettingsDialogA11y(open: boolean, close: () => void, dialogId: strin
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { completeSettingsNavigation } = useNavigationDrawer();
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
   const { user, session, profile, loading: authLoading, signOut, updateProfileName, openAuthSheet } = useAuth();
@@ -163,7 +165,10 @@ export default function SettingsPage() {
   usePageHeader("Settings", onBack);
 
   const handleEntryTransitionComplete = () => {
-    if (!isNavigatingBack) setIsEntryTransitionComplete(true);
+    if (!isNavigatingBack) {
+      completeSettingsNavigation();
+      setIsEntryTransitionComplete(true);
+    }
   };
 
   async function handleLogout() {
@@ -521,8 +526,8 @@ export default function SettingsPage() {
       {!authLoading && user && (
         <SettingsSection id="settings-account-title" icon={CreditCard} title="Account">
           <div className="flex flex-col gap-3">
-            <div className="rounded-2xl bg-stone-50 p-4" aria-labelledby="settings-subscription-title">
-              <div className="flex items-start justify-between gap-3">
+            <div className="flex h-[22rem] flex-col overflow-hidden rounded-2xl bg-stone-50 p-4" aria-labelledby="settings-subscription-title" aria-busy={subscriptionLoading}>
+              <div className="flex shrink-0 items-start justify-between gap-3">
                 <div>
                   <p className="dd-type-meta dd-type-meta-strong text-stone-500">Subscription</p>
                   <p id="settings-subscription-title" className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">
@@ -537,51 +542,58 @@ export default function SettingsPage() {
                   <span className="shrink-0 rounded-full bg-fair-100 px-2.5 py-1 dd-type-badge text-fair-800">Active</span>
                 )}
               </div>
-              {!subscriptionLoading && isPremium && currentSubscription ? (
-                <>
-                  <div className="mt-3 space-y-1 dd-type-meta text-stone-600">
-                    {formatSubscriptionDate(currentSubscription.expires_at) && (
-                      <p>Access until {formatSubscriptionDate(currentSubscription.expires_at)}</p>
-                    )}
-                    <p>{getSubscriptionRenewalLabel(currentSubscription.product_id)}.</p>
+              <div className="min-h-0 flex-1">
+                {subscriptionLoading ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center" role="status" aria-live="polite">
+                    <LoaderCircle className="h-5 w-5 animate-spin text-stone-500" aria-hidden="true" />
+                    <span className="dd-type-meta text-stone-500">Checking Apple subscription…</span>
                   </div>
-                  <a
-                    href={APPLE_SUBSCRIPTIONS_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-4`}
-                  >
-                    <span>Manage in Apple</span>
-                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  </a>
-                  <p className="mt-2 dd-type-meta text-stone-500">Cancellation takes effect at the end of your current billing period.</p>
-                </>
-              ) : !subscriptionLoading ? (
-                <>
-                  <p className="mt-2 dd-type-secondary text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
-                  <button
-                    type="button"
-                    onClick={openSubscriptionPage}
-                    className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-3`}
-                  >
-                    See subscription options
-                  </button>
-                  {isNativeAvailable && (
-                    <div className="mt-3 border-t border-stone-200 pt-3">
-                      <p className="dd-type-meta text-stone-500">Already subscribed through Apple but not seeing access? We normally check automatically.</p>
-                      <button
-                        type="button"
-                        onClick={() => void restore()}
-                        disabled={restoring}
-                        className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-2`}
-                        aria-busy={restoring}
-                      >
-                        {restoring ? "Checking Apple purchases…" : "Check Apple purchases"}
-                      </button>
+                ) : isPremium && currentSubscription ? (
+                  <>
+                    <div className="mt-3 space-y-1 dd-type-meta text-stone-600">
+                      {formatSubscriptionDate(currentSubscription.expires_at) && (
+                        <p>Access until {formatSubscriptionDate(currentSubscription.expires_at)}</p>
+                      )}
+                      <p>{getSubscriptionRenewalLabel(currentSubscription.product_id)}.</p>
                     </div>
-                  )}
-                </>
-              ) : null}
+                    <a
+                      href={APPLE_SUBSCRIPTIONS_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-4`}
+                    >
+                      <span>Manage in Apple</span>
+                      <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    </a>
+                    <p className="mt-2 dd-type-meta text-stone-500">Cancellation takes effect at the end of your current billing period.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 dd-type-secondary text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
+                    <button
+                      type="button"
+                      onClick={openSubscriptionPage}
+                      className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-3`}
+                    >
+                      See subscription options
+                    </button>
+                    {isNativeAvailable && (
+                      <div className="mt-3 border-t border-stone-200 pt-3">
+                        <p className="dd-type-meta text-stone-500">Already subscribed through Apple but not seeing access? We normally check automatically.</p>
+                        <button
+                          type="button"
+                          onClick={() => void restore()}
+                          disabled={restoring}
+                          className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-2`}
+                          aria-busy={restoring}
+                        >
+                          {restoring ? "Checking Apple purchases…" : "Check Apple purchases"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
             {user.created_at && (
               <div>

@@ -61,6 +61,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<AppleSubscriptionProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [nativeEntitlementsSyncedKey, setNativeEntitlementsSyncedKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
@@ -76,6 +77,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const configuredProductIdsKey = configuredProductIds.join(",");
   const isPremium = hasEntitlement(entitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess);
   const currentSubscription = chooseCurrentSubscription(entitlements, SUBSCRIPTION_ENTITLEMENT_KEYS.premiumAccess);
+  const nativeEntitlementsSessionKey = nativeAvailable && user && session
+    ? `${user.id}:${session.expires_at ?? ""}`
+    : null;
+  const nativeEntitlementsLoading = nativeEntitlementsSessionKey !== null && nativeEntitlementsSyncedKey !== nativeEntitlementsSessionKey;
 
   const refresh = useCallback(async () => {
     const requestId = refreshRequestRef.current + 1;
@@ -128,9 +133,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   useEffect(() => {
-    if (!nativeAvailable || !user || !session) return;
+    if (!nativeAvailable || !user || !session || !nativeEntitlementsSessionKey) return;
     let cancelled = false;
     let transactionHandle: { remove: () => Promise<void> } | undefined;
+    const syncKey = nativeEntitlementsSessionKey;
 
     void DodgySubscriptions.addListener("transactionUpdated", ({ transaction }) => {
       void verifyAppleSubscriptionTransaction(transaction, session.access_token, user.id)
@@ -152,12 +158,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       })
       .catch((syncError) => {
         if (!cancelled) setError(subscriptionErrorMessage(syncError));
+      })
+      .finally(() => {
+        if (!cancelled) setNativeEntitlementsSyncedKey(syncKey);
       });
     return () => {
       cancelled = true;
       void transactionHandle?.remove();
     };
-  }, [nativeAvailable, refresh, session, user]);
+  }, [nativeAvailable, nativeEntitlementsSessionKey, refresh, session, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -282,7 +291,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SubscriptionContextValue>(() => ({
     entitlements,
     isPremium,
-    loading,
+    loading: loading || nativeEntitlementsLoading,
     error,
     products,
     productsLoading,
@@ -297,7 +306,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     refresh,
     purchase,
     restore,
-  }), [busyProductId, currentSubscription, entitlements, error, isPremium, loading, nativeAvailable, products, productsLoading, purchase, refresh, restore, restoring, router]);
+  }), [busyProductId, currentSubscription, entitlements, error, isPremium, loading, nativeAvailable, nativeEntitlementsLoading, products, productsLoading, purchase, refresh, restore, restoring, router]);
 
   return (
     <SubscriptionContext.Provider value={value}>
