@@ -44,7 +44,7 @@ function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm" aria-labelledby={id}>
+    <section className="rounded-3xl border border-stone-200/80 bg-white p-4" aria-labelledby={id}>
       <div className="flex items-center gap-3 px-1">
         <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
           <Icon className="h-5 w-5" aria-hidden="true" />
@@ -289,7 +289,7 @@ export default function SettingsPage() {
     >
       <h1 className="sr-only">Settings</h1>
       {!authLoading && (
-        <section className="relative overflow-hidden rounded-3xl bg-ink-950 px-5 pb-5 pt-6 text-white shadow-lg" aria-labelledby="settings-profile-title">
+        <section className="relative overflow-hidden rounded-3xl border border-ink-900 bg-ink-950 px-5 pb-5 pt-6 text-white" aria-labelledby="settings-profile-title">
           <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-fair-600/20 blur-2xl" aria-hidden="true" />
           <div className="relative flex flex-col items-center text-center">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-200/40 shadow-lg">
@@ -340,7 +340,7 @@ export default function SettingsPage() {
                 ? "Grid layout — two cards per row"
                 : cardLayout === "single"
                   ? "Big cards layout — one card per row"
-                  : "Compact layout — shorter height to browse more at once"}
+                  : "See more items at once"}
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Card layout">
@@ -505,7 +505,7 @@ export default function SettingsPage() {
       {!authLoading && user && (
         <SettingsSection id="settings-account-title" icon={CreditCard} title="Account">
           <div className="flex flex-col gap-3">
-            <div className="border-b border-stone-100 pb-4" aria-labelledby="settings-subscription-title">
+            <div className="rounded-2xl bg-stone-50 p-4" aria-labelledby="settings-subscription-title">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="dd-type-meta dd-type-meta-strong text-stone-500">Subscription</p>
@@ -592,7 +592,7 @@ export default function SettingsPage() {
       )}
 
       {!authLoading && user && (
-        <section className="rounded-3xl border border-alert-100 bg-white p-4 shadow-sm" aria-labelledby="settings-danger-zone-title">
+        <section className="rounded-3xl border border-alert-100 bg-white p-4" aria-labelledby="settings-danger-zone-title">
           <div className="flex items-center gap-3 px-1">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-alert-50 text-alert-700 ring-1 ring-alert-100">
               <Trash2 className="h-5 w-5" aria-hidden="true" />
