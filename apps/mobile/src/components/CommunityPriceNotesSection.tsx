@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -43,6 +43,8 @@ const REGION_OPTIONS = [
 ] as const;
 
 const REGION_LABELS = new Map<string, string>(REGION_OPTIONS.map(([value, label]) => [value, label]));
+
+const FORM_CONTROL_CLASS = "min-h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-base text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10";
 
 function formatObservedDate(value: string): string {
   const date = new Date(`${value}T00:00:00`);
@@ -117,7 +119,6 @@ function NoteComposer({
   const [observedOn, setObservedOn] = useState("");
   const [regionCode, setRegionCode] = useState("");
   const [body, setBody] = useState("");
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -133,7 +134,6 @@ function NoteComposer({
     setObservedOn("");
     setRegionCode("");
     setBody("");
-    setEvidenceOpen(false);
     setSubmitting(false);
     setError(null);
     setSubmitted(false);
@@ -250,19 +250,17 @@ function NoteComposer({
               ref={dialogRef}
               className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl shadow-2xl outline-none"
             >
-              <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between gap-4 border-b border-stone-100 px-5 py-4">
-                <div className="min-w-0">
-                  <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Share a shopper tip</h2>
-                </div>
+              <div className="dd-bottom-sheet-titlebar relative flex flex-shrink-0 items-center justify-center border-b border-stone-100 px-5 py-3">
                 <button
                   type="button"
                   onClick={closeComposerSheet}
                   disabled={submitting}
                   aria-label="Close share a shopper tip"
-                  className="dd-bottom-sheet-close cursor-pointer text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="dd-bottom-sheet-close absolute left-4 top-1/2 -translate-y-1/2 cursor-pointer text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
+                <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Share a shopper tip</h2>
               </div>
 
               {submitted ? (
@@ -279,10 +277,12 @@ function NoteComposer({
                 </div>
               ) : (
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
-                    <div className="space-y-2">
-                      <label htmlFor="community-note-body" className="dd-type-meta dd-type-meta-strong text-stone-700">Your tip</label>
-                      <p id="community-note-composer-description" className="text-sm leading-5 text-stone-500">Help other shoppers with a price, tip, or useful detail. Price details are optional.</p>
+                  <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-5 pb-5 pt-6">
+                    <section className="space-y-3" aria-labelledby="community-note-tip-heading">
+                      <div>
+                        <h3 id="community-note-tip-heading" className="dd-type-meta dd-type-meta-strong text-stone-700">Your tip</h3>
+                        <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Help other shoppers with a price, tip, or useful detail. Price details are optional.</p>
+                      </div>
                       <textarea
                         id="community-note-body"
                         maxLength={500}
@@ -292,87 +292,48 @@ function NoteComposer({
                         placeholder="For example, which size or flavour you saw"
                         autoCapitalize="sentences"
                         aria-describedby="community-note-composer-description community-note-body-counter"
-                        className="mt-1 w-full resize-none rounded-xl border border-stone-300 bg-white px-3 py-3 text-base leading-5 text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-900 focus:outline-none"
+                        className="min-h-32 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
                       />
                       <p id="community-note-body-counter" className="text-right text-xs text-stone-400" aria-live="polite">{body.length}/500</p>
-                    </div>
+                    </section>
 
-                    <div className="rounded-xl border border-stone-200 bg-stone-50">
-                      <button
-                        type="button"
-                        aria-expanded={evidenceOpen}
-                        aria-controls="community-note-evidence"
-                        onClick={() => setEvidenceOpen((open) => !open)}
-                        className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 px-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-600"
-                      >
-                        <span>
-                          <span className="block text-sm font-extrabold text-stone-800">Add price details</span>
-                          <span className="mt-0.5 block text-xs font-semibold text-stone-500">Optional — add these details if you spotted a specific price</span>
-                        </span>
-                        <ChevronDown className={`h-5 w-5 flex-shrink-0 text-stone-500 transition-transform ${evidenceOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-                      </button>
+                    <section id="community-note-evidence" className="space-y-4 border-t border-stone-100 pt-6" aria-labelledby="community-note-evidence-heading">
+                      <div>
+                        <h3 id="community-note-evidence-heading" className="dd-type-meta dd-type-meta-strong text-stone-700">Price details <span className="font-normal text-stone-400">(optional)</span></h3>
+                        <p className="mt-1 text-sm leading-5 text-stone-500">Add these details if you spotted a specific price.</p>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label htmlFor="community-note-store" className="dd-type-meta dd-type-meta-strong text-stone-600">Supermarket</label>
+                          <select id="community-note-store" value={storeId} onChange={(event) => setStoreId(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
+                            <option value="">Choose a supermarket</option>
+                            {STORE_OPTIONS.map((store) => <option key={store.id} value={store.id}>{store.label}</option>)}
+                          </select>
+                        </div>
 
-                      {evidenceOpen && (
-                        <div id="community-note-evidence" className="space-y-4 border-t border-stone-200 px-4 pb-4 pt-4">
+                        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
                           <div>
-                            <label htmlFor="community-note-store" className="dd-type-meta dd-type-meta-strong text-stone-600">Supermarket <span className="font-normal text-stone-400">(optional)</span></label>
-                            <select
-                              id="community-note-store"
-                              value={storeId}
-                              onChange={(event) => setStoreId(event.target.value)}
-                              className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                            >
-                              <option value="">Choose a supermarket</option>
-                              {STORE_OPTIONS.map((store) => <option key={store.id} value={store.id}>{store.label}</option>)}
-                            </select>
-                          </div>
-
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div>
-                              <label htmlFor="community-note-price" className="dd-type-meta dd-type-meta-strong text-stone-600">Price <span className="font-normal text-stone-400">(optional)</span></label>
-                              <div className="relative mt-1">
-                                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-500">$</span>
-                                <input
-                                  id="community-note-price"
-                                  type="number"
-                                  min="0.01"
-                                  max="100000"
-                                  step="0.01"
-                                  inputMode="decimal"
-                                  value={price}
-                                  onChange={(event) => setPrice(event.target.value)}
-                                  className="min-h-11 w-full rounded-xl border border-stone-300 bg-white pl-7 pr-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label htmlFor="community-note-date" className="dd-type-meta dd-type-meta-strong text-stone-600">Date spotted <span className="font-normal text-stone-400">(optional)</span></label>
-                              <input
-                                id="community-note-date"
-                                type="date"
-                                max={nzToday()}
-                                value={observedOn}
-                                onChange={(event) => setObservedOn(event.target.value)}
-                                className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                              />
+                            <label htmlFor="community-note-price" className="dd-type-meta dd-type-meta-strong text-stone-600">Price</label>
+                            <div className="relative mt-2">
+                              <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-500">$</span>
+                              <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={`${FORM_CONTROL_CLASS} pl-9`} />
                             </div>
                           </div>
-
                           <div>
-                            <label htmlFor="community-note-region" className="dd-type-meta dd-type-meta-strong text-stone-600">Area <span className="font-normal text-stone-400">(optional)</span></label>
-                            <select
-                              id="community-note-region"
-                              value={regionCode}
-                              onChange={(event) => setRegionCode(event.target.value)}
-                              className="mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-base text-stone-800 shadow-sm focus:border-stone-900 focus:outline-none"
-                            >
-                              <option value="">Prefer not to say</option>
-                              {REGION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                            </select>
+                            <label htmlFor="community-note-date" className="dd-type-meta dd-type-meta-strong text-stone-600">Date spotted</label>
+                            <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`} />
                           </div>
                         </div>
-                      )}
-                    </div>
+
+                        <div>
+                          <label htmlFor="community-note-region" className="dd-type-meta dd-type-meta-strong text-stone-600">Area</label>
+                          <select id="community-note-region" value={regionCode} onChange={(event) => setRegionCode(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
+                            <option value="">Prefer not to say</option>
+                            {REGION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </section>
 
                     {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
                     <p className="text-xs leading-4 text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
