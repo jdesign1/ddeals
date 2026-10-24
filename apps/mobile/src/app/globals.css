@@ -26,10 +26,10 @@
 :where(
   button[aria-label^="Close"],
   button[aria-label="Back"],
-  button[aria-label="Account menu"],
+  button[aria-label^="Account"],
   button[aria-label^="Clear"],
-  button[aria-label^="Confirm "],
-  button[aria-label="Cancel remove"]
+  button[aria-label^="Confirm"],
+  button[aria-label^="Cancel"]
 ) {
   min-width: 44px;
   min-height: 44px;
