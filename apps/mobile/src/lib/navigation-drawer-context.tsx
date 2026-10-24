@@ -23,7 +23,13 @@ export function NavigationDrawerProvider({ children }: { children: ReactNode }) 
 
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
-    setIsOpen(false);
+    // Keep the profile drawer mounted across the Settings route handoff. The
+    // route can paint behind it first, then AppDrawer closes it after the new
+    // page has had a frame to render. Other route changes retain the normal
+    // immediate close behavior.
+    if (!(pathname === "/settings" && isTransitioningToSettings)) {
+      setIsOpen(false);
+    }
   }
 
   const openDrawer = useCallback(() => setIsOpen(true), []);
