@@ -7,6 +7,7 @@ export interface AppleSubscriptionProduct {
   displayName: string;
   description: string;
   displayPrice: string;
+  currencyCode?: string;
   type: string;
 }
 export interface AppleSubscriptionTransaction {

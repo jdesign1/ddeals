@@ -7,11 +7,19 @@ import {
 } from "@dodgey-deals/shared";
 import {
   chooseCurrentSubscription,
+  formatAppleSubscriptionPrice,
   formatSubscriptionDate,
   getSubscriptionPlanLabel,
   getSubscriptionRenewalLabel,
   getSubscriptionStatusLabel,
 } from "./subscription-display.ts";
+
+test("subscription prices show the configured NZ amounts for foreign storefront metadata", () => {
+  assert.equal(formatAppleSubscriptionPrice({ id: SUBSCRIPTION_PRODUCT_IDS.monthly, displayPrice: "$0.99", currencyCode: "USD" }), "NZ$1.99");
+  assert.equal(formatAppleSubscriptionPrice({ id: SUBSCRIPTION_PRODUCT_IDS.annual, displayPrice: "$9.99", currencyCode: "USD" }), "NZ$19.99");
+  assert.equal(formatAppleSubscriptionPrice({ id: SUBSCRIPTION_PRODUCT_IDS.monthly, displayPrice: "$1.99", currencyCode: "NZD" }), "NZ$1.99");
+  assert.equal(formatAppleSubscriptionPrice({ id: "other.product", displayPrice: "$4.99", currencyCode: "USD" }), "$4.99");
+});
 
 function entitlement(overrides: Partial<SubscriptionEntitlementRecord> = {}): SubscriptionEntitlementRecord {
   return {

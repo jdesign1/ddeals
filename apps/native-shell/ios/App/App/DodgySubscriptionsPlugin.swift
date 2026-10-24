@@ -48,6 +48,7 @@ public class DodgySubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
                         "displayName": product.displayName,
                         "description": product.description,
                         "displayPrice": product.displayPrice,
+                        "currencyCode": product.priceFormatStyle.currencyCode,
                         "type": String(describing: product.type)
                     ]
                 }

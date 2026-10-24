@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import {
+  formatAppleSubscriptionPrice,
   formatSubscriptionDate,
   getSubscriptionPlanLabel,
   getSubscriptionRenewalLabel,
@@ -203,6 +204,7 @@ export default function SubscribePage() {
                       {products.map((product) => {
                         const isAnnual = product.id === SUBSCRIPTION_PRODUCT_IDS.annual;
                         const isSelected = selectedProduct?.id === product.id;
+                        const displayPrice = formatAppleSubscriptionPrice(product);
                         return (
                           <label
                             key={product.id}
@@ -215,7 +217,7 @@ export default function SubscribePage() {
                               checked={isSelected}
                               onChange={() => setSelectedProductId(product.id)}
                               disabled={busyProductId !== null}
-                              aria-label={["Select the", isAnnual ? "annual" : "monthly", "plan for", product.displayPrice].join(" ")}
+                              aria-label={["Select the", isAnnual ? "annual" : "monthly", "plan for", displayPrice].join(" ")}
                               className="peer sr-only"
                             />
                             <span
@@ -236,7 +238,7 @@ export default function SubscribePage() {
                               </span>
                               <span>
                                 <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
-                                <span className="mt-2 block text-xl leading-7 font-extrabold tracking-[-0.03em] text-ink-950">{product.displayPrice}</span>
+                                <span className="mt-2 block text-xl leading-7 font-extrabold tracking-[-0.03em] text-ink-950">{displayPrice}</span>
                                 <span className="mt-1.5 block max-w-[9rem] dd-type-meta text-stone-600">
                                   {isAnnual
                                     ? "Save with one annual payment. Renews yearly until cancelled."

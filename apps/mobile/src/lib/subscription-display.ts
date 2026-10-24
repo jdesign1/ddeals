@@ -1,7 +1,29 @@
 import type { SubscriptionEntitlementRecord } from "@dodgey-deals/shared";
 import { isEntitlementUsable, SUBSCRIPTION_PRODUCT_IDS } from "@dodgey-deals/shared";
+import type { AppleSubscriptionProduct } from "@/lib/native-apple-subscriptions";
 
 export type SubscriptionPlanPeriod = "monthly" | "annual" | "unknown";
+
+const NZ_SUBSCRIPTION_DISPLAY_PRICES: Record<string, string> = {
+  [SUBSCRIPTION_PRODUCT_IDS.monthly]: "NZ$1.99",
+  [SUBSCRIPTION_PRODUCT_IDS.annual]: "NZ$19.99",
+};
+
+/**
+ * StoreKit supplies the amount and currency for the user's App Store storefront.
+ * These plans are sold only in New Zealand, so use the configured NZ price when
+ * an older/foreign storefront value reaches the UI. Once StoreKit reports NZD,
+ * its live amount remains authoritative; unknown products always pass through.
+ */
+export function formatAppleSubscriptionPrice(
+  product: Pick<AppleSubscriptionProduct, "id" | "displayPrice" | "currencyCode">
+): string {
+  const configuredNzPrice = NZ_SUBSCRIPTION_DISPLAY_PRICES[product.id];
+  if (configuredNzPrice && product.currencyCode !== "NZD") return configuredNzPrice;
+  if (product.currencyCode !== "NZD") return product.displayPrice;
+  if (product.displayPrice.includes("NZ$") || product.displayPrice.includes("NZD")) return product.displayPrice;
+  return product.displayPrice.replace("$", "NZ$");
+}
 
 export function getSubscriptionPlanPeriod(productId: string | null | undefined): SubscriptionPlanPeriod {
   if (productId === SUBSCRIPTION_PRODUCT_IDS.monthly) return "monthly";
