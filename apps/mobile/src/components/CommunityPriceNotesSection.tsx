@@ -428,7 +428,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
       >
         <div>
           <h2 id="community-price-notes-heading" className="dd-type-section text-stone-900">Help other shoppers</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">Seen this cheaper somewhere, or noticed something useful? Share a quick tip with the community. Price details are optional.</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">Seen this cheaper somewhere, or noticed something useful? Share a quick tip with the community.</p>
         </div>
 
         {isLoadingCurrentProduct && (
@@ -445,7 +445,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         )}
 
         {!isLoadingCurrentProduct && !error && notes.length === 0 && (
-          <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4">
+          <div className="rounded-xl border border-stone-300 bg-stone-50 p-4">
             <p className="text-sm font-semibold leading-5 text-stone-700">No community tips yet.</p>
             <p className="mt-1 text-sm leading-5 text-stone-500">Know something useful about this item? Be the first to share it.</p>
           </div>
@@ -471,9 +471,8 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         )}
 
         {!isLoadingCurrentProduct && !error && submissionEnabled && (
-          <div className="flex flex-col items-stretch gap-3 border-t border-stone-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-5 text-stone-500">Share a price, a tip, or something useful you&rsquo;ve noticed.</p>
-            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-secondary min-h-11 w-full flex-shrink-0 cursor-pointer px-3 text-sm sm:w-auto">Share a tip</button>
+          <div className="flex justify-end border-t border-stone-100 pt-4">
+            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline min-h-11 w-full flex-shrink-0 cursor-pointer text-sm sm:w-auto">Share a tip</button>
           </div>
         )}
       </section>
