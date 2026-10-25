@@ -518,7 +518,7 @@ export default function SettingsPage() {
       {!authLoading && user && (
         <SettingsSection id="settings-account-title" icon={CreditCard} title="Account">
           <div className="flex flex-col gap-3">
-            <div className="flex h-[22rem] flex-col overflow-hidden rounded-2xl bg-stone-50 p-4" aria-labelledby="settings-subscription-title" aria-busy={subscriptionLoading}>
+            <div className={`flex flex-col overflow-hidden rounded-2xl bg-stone-50 p-4 ${subscriptionLoading ? "h-[22rem]" : ""}`} aria-labelledby="settings-subscription-title" aria-busy={subscriptionLoading}>
               <div className="flex shrink-0 items-start justify-between gap-3">
                 <div>
                   <p className="dd-type-meta dd-type-meta-strong text-stone-500">Subscription</p>
@@ -534,7 +534,7 @@ export default function SettingsPage() {
                   <span className="shrink-0 rounded-full bg-fair-100 px-2.5 py-1 dd-type-badge text-fair-800">Active</span>
                 )}
               </div>
-              <div className="min-h-0 flex-1">
+              <div className={subscriptionLoading ? "min-h-0 flex-1" : ""}>
                 {subscriptionLoading ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 text-center" role="status" aria-live="polite">
                     <LoaderCircle className="h-5 w-5 animate-spin text-stone-500" aria-hidden="true" />
