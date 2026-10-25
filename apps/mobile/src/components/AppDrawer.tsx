@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -40,6 +41,7 @@ export default function AppDrawer() {
   const settingsNavigationStartedRef = useRef(false);
   const settingsNavigationFrameRef = useRef<number | null>(null);
   const settingsNavigationSecondFrameRef = useRef<number | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     settingsNavigationStartedRef.current = false;
@@ -54,34 +56,17 @@ export default function AppDrawer() {
     }
   }, []);
 
-  // Keep the drawer open until Settings has painted. The new page can then
-  // fade in as the drawer slides away, instead of exposing a blank handoff
-  // cover while App Router swaps the shared scroll surface.
+  // Keep Home covered while App Router swaps the shared scroll surface. The
+  // Settings page releases this guard after its own entry animation; the
+  // fallback prevents a failed route from leaving the drawer stuck open.
   useEffect(() => {
     if (!isTransitioningToSettings) {
       return;
     }
 
-    if (pathname !== "/settings") {
-      const fallbackTimer = window.setTimeout(() => {
-        closeDrawer();
-        completeSettingsNavigation();
-      }, SETTINGS_ROUTE_FALLBACK_MS);
-      return () => window.clearTimeout(fallbackTimer);
-    }
-
-    let secondFrame: number | null = null;
-    const firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(() => {
-        closeDrawer();
-        completeSettingsNavigation();
-      });
-    });
-    return () => {
-      window.cancelAnimationFrame(firstFrame);
-      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
-    };
-  }, [closeDrawer, completeSettingsNavigation, isTransitioningToSettings, pathname]);
+    const fallbackTimer = window.setTimeout(completeSettingsNavigation, SETTINGS_ROUTE_FALLBACK_MS);
+    return () => window.clearTimeout(fallbackTimer);
+  }, [completeSettingsNavigation, isTransitioningToSettings, pathname]);
 
   const navigateToSettings = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -126,6 +111,19 @@ export default function AppDrawer() {
 
   return (
     <>
+      <AnimatePresence initial={false}>
+        {isTransitioningToSettings && (
+          <motion.div
+            key="settings-route-cover"
+            aria-hidden="true"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }}
+            className="pointer-events-none fixed inset-0 z-[78] mx-auto w-full max-w-[480px] bg-stone-100"
+          />
+        )}
+      </AnimatePresence>
       <button
         type="button"
         aria-label="Close menu"

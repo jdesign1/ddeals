@@ -36,7 +36,10 @@ export function NavigationDrawerProvider({ children }: { children: ReactNode }) 
   const closeDrawer = useCallback(() => setIsOpen(false), []);
   const toggleDrawer = useCallback(() => setIsOpen((open) => !open), []);
   const beginSettingsNavigation = useCallback(() => setIsTransitioningToSettings(true), []);
-  const completeSettingsNavigation = useCallback(() => setIsTransitioningToSettings(false), []);
+  const completeSettingsNavigation = useCallback(() => {
+    setIsTransitioningToSettings(false);
+    setIsOpen(false);
+  }, []);
 
   const value = useMemo(
     () => ({

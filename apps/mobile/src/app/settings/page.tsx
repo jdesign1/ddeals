@@ -16,6 +16,7 @@ import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
+import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import {
   formatSubscriptionDate,
   getSubscriptionRenewalLabel,
@@ -102,6 +103,7 @@ function useSettingsDialogA11y(open: boolean, close: () => void, dialogId: strin
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { isTransitioningToSettings, completeSettingsNavigation } = useNavigationDrawer();
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
   const { user, session, profile, loading: authLoading, signOut, updateProfileName, openAuthSheet } = useAuth();
@@ -140,6 +142,10 @@ export default function SettingsPage() {
   const backNavigationStartedRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
 
+  useEffect(() => {
+    if (isTransitioningToSettings && prefersReducedMotion) completeSettingsNavigation();
+  }, [completeSettingsNavigation, isTransitioningToSettings, prefersReducedMotion]);
+
   useSettingsDialogA11y(isDeleteSheetOpen, () => {
     if (!isDeletingAccount && !accountDeleted) setIsDeleteSheetOpen(false);
   }, "settings-delete-account-dialog", "settings-delete-account-close");
@@ -160,6 +166,10 @@ export default function SettingsPage() {
   };
 
   usePageHeader("Settings", onBack);
+
+  const handleEntryTransitionComplete = () => {
+    if (!isNavigatingBack && isTransitioningToSettings) completeSettingsNavigation();
+  };
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -287,6 +297,7 @@ export default function SettingsPage() {
       <motion.main
         initial={prefersReducedMotion ? false : { opacity: 0, x: "4%" }}
         animate={isNavigatingBack ? { opacity: 0, x: "100%" } : { opacity: 1, x: 0 }}
+        onAnimationComplete={handleEntryTransitionComplete}
         transition={prefersReducedMotion ? { duration: 0 } : { duration: SETTINGS_TRANSITION_MS / 1000, ease: "easeOut" }}
         className="relative z-[47] min-h-full w-full flex flex-col gap-4 bg-stone-100 px-4 py-4 pb-10"
       >
