@@ -1324,6 +1324,9 @@ html[data-theme="dark"] .theme-loader-surface {
   color: var(--dd-btn-outline-border);
   border: 2px solid var(--dd-btn-outline-border);
 }
+.dd-btn-outline-thin {
+  border-width: 1px;
+}
 .dd-btn-outline:hover:not(:disabled) {
   background: oklch(16% 0.01 90 / 0.06);
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { CalendarDays, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -122,7 +122,6 @@ function NoteComposer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [submissionStatus, setSubmissionStatus] = useState<"pending" | "approved">("pending");
 
   useEffect(() => {
     submittingRef.current = submitting;
@@ -137,7 +136,6 @@ function NoteComposer({
     setSubmitting(false);
     setError(null);
     setSubmitted(false);
-    setSubmissionStatus("pending");
     hasUnsavedInputRef.current = false;
   }, []);
 
@@ -214,7 +212,6 @@ function NoteComposer({
         session.access_token,
       );
       hasUnsavedInputRef.current = false;
-      setSubmissionStatus(submissionResult.status);
       setSubmitted(true);
       onSubmitted(submissionResult.status);
     } catch (submissionError) {
@@ -264,20 +261,20 @@ function NoteComposer({
               </div>
 
               {submitted ? (
-                <div ref={successRef} tabIndex={-1} className="flex flex-1 flex-col justify-center gap-5 overflow-y-auto px-5 py-8 outline-none" role="status">
+                <div ref={successRef} tabIndex={-1} className="flex min-w-0 flex-1 flex-col justify-center gap-5 overflow-x-hidden overflow-y-auto px-5 py-8 outline-none" role="status">
                   <div>
                     <p className="text-lg font-extrabold text-stone-900">
-                      {submissionStatus === "approved" ? "Thanks — your tip is live for other shoppers." : "Thanks — your tip is queued for review."}
+                      Thanks — your tip will appear shortly.
                     </p>
                     <p className="mt-2 text-sm leading-5 text-stone-600">
-                      {submissionStatus === "approved" ? "It passed our quick safety check and is now shared with the community." : "We'll check it before it appears for other shoppers."}
+                      Your tips will help other shoppers, and confirm price accuracy.
                     </p>
                   </div>
                   <button type="button" onClick={closeComposerSheet} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">Done</button>
                 </div>
               ) : (
-                <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
+                <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
+                  <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pb-6 pt-6">
                     <section className="space-y-3" aria-labelledby="community-note-tip-heading">
                       <div>
                         <label id="community-note-tip-heading" htmlFor="community-note-body" className="text-base font-bold leading-6 text-stone-800">Your tip</label>
@@ -302,7 +299,7 @@ function NoteComposer({
                         Price details <span className="font-normal text-stone-400">(optional)</span>
                       </legend>
                       <p id="community-note-evidence-description" className="-mt-1 text-sm leading-5 text-stone-500">Add these if you spotted a specific price.</p>
-                      <div className="space-y-4">
+                      <div className="min-w-0 space-y-4">
                         <div>
                           <label htmlFor="community-note-store" className="text-sm font-bold text-stone-700">Supermarket</label>
                           <select id="community-note-store" value={storeId} onChange={(event) => setStoreId(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
@@ -311,17 +308,20 @@ function NoteComposer({
                           </select>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
-                          <div>
+                        <div className="grid min-w-0 grid-cols-1 gap-4 min-[400px]:grid-cols-2">
+                          <div className="min-w-0">
                             <label htmlFor="community-note-price" className="text-sm font-bold text-stone-700">Price</label>
-                            <div className="relative mt-2">
+                            <div className="relative mt-2 min-w-0">
                               <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-500">$</span>
-                              <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={`${FORM_CONTROL_CLASS} pl-9`} />
+                              <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={`${FORM_CONTROL_CLASS} min-w-0 pl-9`} />
                             </div>
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <label htmlFor="community-note-date" className="text-sm font-bold text-stone-700">Date spotted</label>
-                            <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`} />
+                            <div className="relative mt-2 min-w-0">
+                              <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} className={`${FORM_CONTROL_CLASS} min-w-0 appearance-none pr-12`} />
+                              <CalendarDays className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" aria-hidden="true" />
+                            </div>
                           </div>
                         </div>
 
@@ -472,7 +472,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
 
         {!isLoadingCurrentProduct && !error && submissionEnabled && (
           <div className="flex justify-end border-t border-stone-100 pt-4">
-            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline min-h-11 w-full flex-shrink-0 cursor-pointer text-sm sm:w-auto">Share a tip</button>
+            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline dd-btn-outline-thin min-h-11 w-full flex-shrink-0 cursor-pointer text-sm sm:w-auto">Share a tip</button>
           </div>
         )}
       </section>
