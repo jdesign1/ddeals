@@ -304,7 +304,6 @@ export default function SettingsPage() {
       <h1 className="sr-only">Settings</h1>
       {!authLoading && (
         <section className="relative overflow-hidden rounded-3xl border border-ink-900 bg-ink-950 px-5 pb-5 pt-6 text-white" aria-labelledby="settings-profile-title">
-          <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-fair-600/20 blur-2xl" aria-hidden="true" />
           <div className="relative flex flex-col items-center text-center">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-200/40 shadow-lg">
               <span className="font-display text-4xl font-extrabold" aria-hidden="true">
@@ -622,22 +621,20 @@ export default function SettingsPage() {
               <h2 id="settings-danger-zone-title" className="dd-type-section text-alert-700">Danger zone</h2>
             </div>
           </div>
-          <div className="mt-4 rounded-2xl bg-alert-50/50 p-4">
-            <p className="dd-type-secondary text-stone-600">
-              This permanently deletes your profile, saved lists, and browsing history. You can&apos;t undo this.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setAccountDeleteError(null);
-                setAccountDeleted(false);
-                setIsDeleteSheetOpen(true);
-              }}
-              className={`${SETTINGS_ALERT_BUTTON_CLASS} mt-4`}
-            >
-              Delete account
-            </button>
-          </div>
+          <p className="mt-4 dd-type-secondary text-stone-600">
+            This permanently deletes your profile, saved lists, and browsing history. You can&apos;t undo this.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setAccountDeleteError(null);
+              setAccountDeleted(false);
+              setIsDeleteSheetOpen(true);
+            }}
+            className={`${SETTINGS_ALERT_BUTTON_CLASS} mt-4`}
+          >
+            Delete account
+          </button>
         </section>
       )}
 
