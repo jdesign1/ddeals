@@ -257,13 +257,13 @@ function NoteComposer({
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pb-6 pt-6">
                     <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-xs" aria-labelledby="community-note-tip-heading">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
                           <MessageCircle className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
-                          <h3 id="community-note-tip-heading" className="text-base font-bold leading-6 text-stone-900">Your tip</h3>
-                          <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Share a price, tip, or useful detail. You can add price details below if you have them.</p>
+                          <h3 id="community-note-tip-heading" className="dd-type-section text-stone-900">Your tip</h3>
+                          <p id="community-note-composer-description" className="mt-1 dd-type-secondary text-stone-500">Share a price tip for other deal detectives, together we can find the best transparent prices</p>
                         </div>
                       </div>
                       <label htmlFor="community-note-body" className="sr-only">Your tip</label>
@@ -278,23 +278,23 @@ function NoteComposer({
                         aria-describedby="community-note-composer-description community-note-body-counter"
                         className="mt-4 min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
                       />
-                      <p id="community-note-body-counter" className="mt-2 text-right text-xs font-semibold text-stone-400" aria-live="polite">{body.length}/500</p>
+                      <p id="community-note-body-counter" className="mt-2 text-right dd-type-meta dd-type-meta-strong text-stone-400" aria-live="polite">{body.length}/500</p>
                     </section>
 
                     <fieldset id="community-note-evidence" className="mt-4 rounded-3xl border border-stone-200/80 bg-white p-4 shadow-xs" aria-describedby="community-note-evidence-description">
                       <legend className="sr-only">Price details (optional)</legend>
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
                           <Tag className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
-                          <h3 id="community-note-evidence-heading" className="text-base font-bold leading-6 text-stone-900">Price details <span className="font-normal text-stone-400">(optional)</span></h3>
-                          <p id="community-note-evidence-description" className="mt-1 text-sm leading-5 text-stone-500">Add these if you spotted a specific price.</p>
+                          <h3 id="community-note-evidence-heading" className="dd-type-section text-stone-900">Price details <span className="font-normal text-stone-400">(optional)</span></h3>
+                          <p id="community-note-evidence-description" className="mt-1 dd-type-secondary text-stone-500">Add these if you spotted a specific price.</p>
                         </div>
                       </div>
                       <div className="mt-4 min-w-0 space-y-4">
                         <div>
-                          <label htmlFor="community-note-store" className="text-sm font-bold text-stone-700">Supermarket</label>
+                          <label htmlFor="community-note-store" className="dd-type-control text-stone-700">Supermarket</label>
                           <select id="community-note-store" value={storeId} onChange={(event) => setStoreId(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
                             <option value="">Choose a supermarket</option>
                             {STORE_OPTIONS.map((store) => <option key={store.id} value={store.id}>{store.label}</option>)}
@@ -303,14 +303,14 @@ function NoteComposer({
 
                         <div className="grid min-w-0 grid-cols-1 gap-4 min-[400px]:grid-cols-2">
                           <div className="min-w-0">
-                            <label htmlFor="community-note-price" className="text-sm font-bold text-stone-700">Price</label>
+                            <label htmlFor="community-note-price" className="dd-type-control text-stone-700">Price</label>
                             <div className="relative mt-2 min-w-0">
                               <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-500">$</span>
                               <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={`${FORM_CONTROL_CLASS} min-w-0 pl-9`} />
                             </div>
                           </div>
                           <div className="min-w-0">
-                            <label htmlFor="community-note-date" className="text-sm font-bold text-stone-700">Date spotted</label>
+                            <label htmlFor="community-note-date" className="dd-type-control text-stone-700">Date spotted</label>
                             <div className="relative mt-2 min-w-0">
                               <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} className={`${FORM_CONTROL_CLASS} min-w-0 appearance-none pr-12`} />
                               <CalendarDays className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" aria-hidden="true" />
@@ -319,7 +319,7 @@ function NoteComposer({
                         </div>
 
                         <div>
-                          <label htmlFor="community-note-region" className="text-sm font-bold text-stone-700">Area</label>
+                          <label htmlFor="community-note-region" className="dd-type-control text-stone-700">Area</label>
                           <select id="community-note-region" value={regionCode} onChange={(event) => setRegionCode(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
                             <option value="">Prefer not to say</option>
                             {REGION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -330,7 +330,7 @@ function NoteComposer({
 
                     <div className="mt-6 space-y-3">
                       {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
-                      <p className="text-xs leading-4 text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
+                      <p className="dd-type-secondary text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
                     </div>
                   </div>
                   <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
