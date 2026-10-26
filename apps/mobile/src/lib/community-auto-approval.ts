@@ -3,6 +3,26 @@ export type CommunityAutoApprovalMode = "off" | "shadow" | "active";
 export const COMMUNITY_AUTO_APPROVAL_RULES_VERSION = "rules_v1";
 export const COMMUNITY_AUTO_APPROVAL_MIN_ACCOUNT_AGE_DAYS = 7;
 
+export interface CommunityAutoApprovalInput {
+  mode: CommunityAutoApprovalMode;
+  decision: "allow" | "review" | "block";
+  trustedAccount: boolean;
+  hasCompletePriceEvidence: boolean;
+}
+
+export function hasCompletePriceEvidence(
+  sourceStoreId: string | null | undefined,
+  price: number | null | undefined,
+  observedOn: string | null | undefined,
+): boolean {
+  return Boolean(
+    sourceStoreId?.trim()
+    && Number.isFinite(price)
+    && (price ?? 0) > 0
+    && observedOn?.trim(),
+  );
+}
+
 export function parseCommunityAutoApprovalMode(value: string | undefined): CommunityAutoApprovalMode {
   const normalized = value?.trim().toLowerCase();
   if (normalized === "off" || normalized === "active") return normalized;
@@ -21,9 +41,10 @@ export function isAccountOldEnoughForCommunityAutoApproval(
 }
 
 export function shouldAutoApproveCommunityNote(
-  mode: CommunityAutoApprovalMode,
-  decision: "allow" | "review" | "block",
-  trustedAccount: boolean,
+  input: CommunityAutoApprovalInput,
 ): boolean {
-  return mode === "active" && decision === "allow" && trustedAccount;
+  return input.mode === "active"
+    && input.decision === "allow"
+    && input.trustedAccount
+    && input.hasCompletePriceEvidence;
 }

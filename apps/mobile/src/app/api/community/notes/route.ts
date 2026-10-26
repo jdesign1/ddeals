@@ -2,6 +2,7 @@ import { createSupabaseClient, type User } from "@dodgey-deals/shared";
 import { getAuthenticatedAccount, isUuid, requireAccountsAdmin } from "@/lib/accounts-server";
 import {
   COMMUNITY_AUTO_APPROVAL_RULES_VERSION,
+  hasCompletePriceEvidence,
   isAccountOldEnoughForCommunityAutoApproval,
   parseCommunityAutoApprovalMode,
   shouldAutoApproveCommunityNote,
@@ -263,8 +264,8 @@ export async function POST(request: Request) {
     if (rawBody.length > MAX_NOTE_BODY_LENGTH) return jsonError("Shorten your note to 500 characters or fewer.", 400);
     return jsonError(BLOCKED_NOTE_MESSAGE, 422);
   }
-  const hasCompletePriceEvidence = sourceStoreId !== null && price !== null && observedOn !== null;
-  if (!body && !hasCompletePriceEvidence) {
+  const hasCompletePriceEvidenceValue = hasCompletePriceEvidence(sourceStoreId, price, observedOn);
+  if (!body && !hasCompletePriceEvidenceValue) {
     return jsonError("Add a short tip, or add the supermarket, price and date so there’s something useful to share.", 400);
   }
 
@@ -276,7 +277,12 @@ export async function POST(request: Request) {
     const trustedAccount = AUTO_APPROVAL_MODE === "active"
       ? await isTrustedCommunityContributor(accounts, account)
       : false;
-    const autoApprove = shouldAutoApproveCommunityNote(AUTO_APPROVAL_MODE, contentModeration.decision, trustedAccount);
+    const autoApprove = shouldAutoApproveCommunityNote({
+      mode: AUTO_APPROVAL_MODE,
+      decision: contentModeration.decision,
+      trustedAccount,
+      hasCompletePriceEvidence: hasCompletePriceEvidenceValue,
+    });
     if (!supabaseConfig.url || !supabaseConfig.anonKey) throw new Error("Catalogue is not configured");
     const catalogue = createSupabaseClient(supabaseConfig.url, supabaseConfig.anonKey);
     const { data: product, error: productError } = await catalogue

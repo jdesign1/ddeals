@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  hasCompletePriceEvidence,
   isAccountOldEnoughForCommunityAutoApproval,
   parseCommunityAutoApprovalMode,
   shouldAutoApproveCommunityNote,
@@ -14,11 +15,26 @@ test("auto approval defaults to shadow mode", () => {
 });
 
 test("only trusted clean notes can be auto approved", () => {
-  assert.equal(shouldAutoApproveCommunityNote("active", "allow", true), true);
-  assert.equal(shouldAutoApproveCommunityNote("active", "allow", false), false);
-  assert.equal(shouldAutoApproveCommunityNote("shadow", "allow", true), false);
-  assert.equal(shouldAutoApproveCommunityNote("active", "review", true), false);
-  assert.equal(shouldAutoApproveCommunityNote("active", "block", true), false);
+  const completePriceTip = {
+    mode: "active" as const,
+    decision: "allow" as const,
+    trustedAccount: true,
+    hasCompletePriceEvidence: true,
+  };
+  assert.equal(shouldAutoApproveCommunityNote(completePriceTip), true);
+  assert.equal(shouldAutoApproveCommunityNote({ ...completePriceTip, trustedAccount: false }), false);
+  assert.equal(shouldAutoApproveCommunityNote({ ...completePriceTip, mode: "shadow" }), false);
+  assert.equal(shouldAutoApproveCommunityNote({ ...completePriceTip, decision: "review" }), false);
+  assert.equal(shouldAutoApproveCommunityNote({ ...completePriceTip, decision: "block" }), false);
+  assert.equal(shouldAutoApproveCommunityNote({ ...completePriceTip, hasCompletePriceEvidence: false }), false);
+});
+
+test("complete price evidence requires a supermarket, positive price, and date", () => {
+  assert.equal(hasCompletePriceEvidence("newworld", 4.99, "2026-10-24"), true);
+  assert.equal(hasCompletePriceEvidence(null, 4.99, "2026-10-24"), false);
+  assert.equal(hasCompletePriceEvidence("newworld", null, "2026-10-24"), false);
+  assert.equal(hasCompletePriceEvidence("newworld", 0, "2026-10-24"), false);
+  assert.equal(hasCompletePriceEvidence("newworld", 4.99, null), false);
 });
 
 test("trust ramp requires a seven-day-old account", () => {
