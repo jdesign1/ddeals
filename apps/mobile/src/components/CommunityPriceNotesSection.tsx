@@ -189,6 +189,7 @@ function NoteComposer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const removeTriggerRef = useRef<HTMLButtonElement>(null);
   const removeConfirmRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -204,6 +205,7 @@ function NoteComposer({
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bodyError, setBodyError] = useState<string | null>(null);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -225,6 +227,7 @@ function NoteComposer({
     setSubmitting(false);
     setRemoving(false);
     setError(null);
+    setBodyError(null);
     setRemoveConfirmOpen(false);
     setRemoveError(null);
     setSubmitted(false);
@@ -303,6 +306,10 @@ function NoteComposer({
   }, [error]);
 
   useEffect(() => {
+    if (bodyError) bodyRef.current?.focus();
+  }, [bodyError]);
+
+  useEffect(() => {
     if (removeError) removeErrorRef.current?.focus();
   }, [removeError]);
 
@@ -326,11 +333,12 @@ function NoteComposer({
       setError("Please log in again before sharing a note.");
       return;
     }
-    const hasCompletePriceEvidence = Boolean(storeId && price && observedOn);
-    if (!body.trim() && !hasCompletePriceEvidence) {
-      setError("Add a short tip, or add the supermarket, price and date so there’s something useful to share.");
+    if (!body.trim()) {
+      setError(null);
+      setBodyError("Add a short tip about this item for others to see.");
       return;
     }
+    setBodyError(null);
     setError(null);
     setSubmitting(true);
     try {
@@ -453,16 +461,22 @@ function NoteComposer({
                       </div>
                       <label htmlFor="community-note-body" className="sr-only">Your tip</label>
                       <textarea
+                        ref={bodyRef}
                         id="community-note-body"
                         maxLength={500}
                         rows={4}
                         value={body}
-                        onChange={(event) => setBody(event.target.value)}
+                        onChange={(event) => {
+                          setBody(event.target.value);
+                          if (bodyError) setBodyError(null);
+                        }}
                         placeholder="For example, which size or flavour you saw"
                         autoCapitalize="sentences"
-                        aria-describedby="community-note-composer-description community-note-body-counter"
-                        className="mt-4 min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
+                        aria-invalid={bodyError ? "true" : undefined}
+                        aria-describedby={`community-note-composer-description community-note-body-counter${bodyError ? " community-note-body-error" : ""}`}
+                        className={`mt-4 min-h-36 w-full resize-none rounded-2xl border bg-white px-4 py-3 text-base leading-5 text-stone-800 transition-colors placeholder:text-stone-400 focus:outline-none ${bodyError ? "border-alert-400 focus:border-alert-600 focus:ring-2 focus:ring-alert-600/10" : "border-stone-200 focus:border-ink-600 focus:ring-2 focus:ring-ink-600/10"}`}
                       />
+                      {bodyError && <p id="community-note-body-error" className="mt-2 text-sm font-semibold leading-5 text-alert-600" role="alert">{bodyError}</p>}
                       <p id="community-note-body-counter" className="mt-2 text-right dd-type-meta dd-type-meta-strong text-stone-400" aria-live="polite">{body.length}/500</p>
                     </section>
 
@@ -491,13 +505,14 @@ function NoteComposer({
                             <label htmlFor="community-note-price" className="dd-type-control text-stone-700">Price</label>
                             <div className="relative mt-2 min-w-0">
                               <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-500">$</span>
-                              <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={`${FORM_CONTROL_CLASS} min-w-0 pl-9`} />
+                              <input id="community-note-price" type="number" min="0.01" max="100000" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Add a price" className={`${FORM_CONTROL_CLASS} min-w-0 pl-9`} />
                             </div>
                           </div>
                           <div className="min-w-0">
                             <label htmlFor="community-note-date" className="dd-type-control text-stone-700">Date spotted</label>
                             <div className="relative mt-2 min-w-0">
-                              <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} className={`${FORM_CONTROL_CLASS} min-w-0 appearance-none pr-12`} />
+                              <input id="community-note-date" type="date" max={nzToday()} value={observedOn} onChange={(event) => setObservedOn(event.target.value)} placeholder="Pick a date" aria-label="Date spotted" className={`${FORM_CONTROL_CLASS} min-w-0 appearance-none pr-12`} />
+                              {!observedOn && <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base text-stone-400" aria-hidden="true">Pick a date</span>}
                               <CalendarDays className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" aria-hidden="true" />
                             </div>
                           </div>
@@ -515,7 +530,7 @@ function NoteComposer({
 
                     <div className="mt-6 space-y-3">
                       {error && <p id="community-note-form-error" ref={errorRef} tabIndex={-1} className="text-sm font-semibold leading-5 text-alert-600 outline-none" role="alert">{error}</p>}
-                      <p className="dd-type-secondary text-stone-500">Tips are checked for safety. Please keep it about the item — no links, contact details, or abusive language.</p>
+                      <p className="dd-type-secondary text-stone-500">Tips are moderated, Please keep it about the deals, no links contact details, or abuse.</p>
                     </div>
                   </div>
                   <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
@@ -740,7 +755,7 @@ export default function CommunityPriceNotesSection({
 
             {!error && submissionEnabled && (
               <div className="flex justify-end border-t border-stone-100 pt-4">
-                <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline dd-btn-outline-thin min-h-11 w-full flex-shrink-0 cursor-pointer text-sm sm:w-auto">Share a tip</button>
+                <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline dd-btn-outline-thin min-h-11 w-full flex-shrink-0 cursor-pointer sm:w-auto">Share a tip</button>
               </div>
             )}
           </motion.div>
