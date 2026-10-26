@@ -102,6 +102,117 @@ function useSettingsDialogA11y(open: boolean, close: () => void, dialogId: strin
   }, [dialogId, initialFocusId, open]);
 }
 
+function formatMemberSince(value: string | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleDateString("en-NZ", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function ProfileDetailsSheet({
+  isOpen,
+  profileName,
+  profileInitial,
+  accountIdentifier,
+  isPremium,
+  subscriptionLoading,
+  createdAt,
+  prefersReducedMotion,
+  onClose,
+  onEdit,
+}: {
+  isOpen: boolean;
+  profileName: string;
+  profileInitial: string;
+  accountIdentifier: string;
+  isPremium: boolean;
+  subscriptionLoading: boolean;
+  createdAt?: string;
+  prefersReducedMotion: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <BottomSheetPortal open={isOpen}>
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close profile details"
+              className="dd-bottom-sheet-backdrop fixed inset-0 mx-auto w-full max-w-[480px] bg-stone-950/75"
+              onClick={onClose}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={prefersReducedMotion ? { duration: 0 } : undefined}
+            />
+            <motion.section
+              id="settings-profile-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-profile-sheet-title"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl"
+              style={{ backgroundColor: "var(--color-ink-950)" }}
+              initial={prefersReducedMotion ? false : { y: "100%" }}
+              animate={{ y: 0 }}
+              exit={prefersReducedMotion ? undefined : { y: "100%" }}
+              transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }}
+            >
+              <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-white/10 px-5 py-4" style={{ backgroundColor: "var(--color-ink-950)" }}>
+                <h2 id="settings-profile-sheet-title" className="dd-type-sheet-title text-white">Your profile</h2>
+                <button
+                  type="button"
+                  id="settings-profile-close"
+                  onClick={onClose}
+                  aria-label="Close"
+                  className="dd-bottom-sheet-close text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-fair-300"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-300/30 shadow-lg">
+                    <span className="font-display text-4xl font-extrabold" aria-hidden="true">{profileInitial}</span>
+                  </div>
+                  <div className="mt-4 flex max-w-full items-center justify-center gap-2">
+                    <h3 className="max-w-[75%] truncate dd-type-section text-white">{profileName}</h3>
+                    {!subscriptionLoading && isPremium && <span className="shrink-0 rounded-full bg-fair-400 px-2.5 py-1 dd-type-badge text-ink-950">Plus</span>}
+                  </div>
+                  <p className="mt-1 max-w-full truncate dd-type-secondary text-white/65">{accountIdentifier}</p>
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 py-4">
+                  <div className="px-4 text-center">
+                    <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Member since</p>
+                    <p className="mt-1 dd-type-control text-white">{formatMemberSince(createdAt)}</p>
+                  </div>
+                  <div className="px-4 text-center">
+                    <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Plan</p>
+                    <p className="mt-1 dd-type-control text-white">
+                      {subscriptionLoading ? "Checking…" : isPremium ? "Dodgy Deal Plus" : "Free account"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <CommunityProfileSummary variant="dark" />
+                </div>
+
+                <button type="button" onClick={onEdit} className="dd-btn dd-btn-primary mt-5 min-h-14 w-full cursor-pointer">
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  Edit profile
+                </button>
+              </div>
+            </motion.section>
+          </>
+        )}
+      </AnimatePresence>
+    </BottomSheetPortal>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const { isTransitioningToSettings, completeSettingsNavigation } = useNavigationDrawer();
@@ -129,6 +240,7 @@ export default function SettingsPage() {
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isProfileSheetOpen, setIsProfileSheetOpen] = useState(false);
   const [isNameSheetOpen, setIsNameSheetOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
@@ -141,6 +253,7 @@ export default function SettingsPage() {
   const [appleSignInUsed, setAppleSignInUsed] = useState(false);
   const [isFinishingDeletion, setIsFinishingDeletion] = useState(false);
   const backNavigationStartedRef = useRef(false);
+  const profileEditTimeoutRef = useRef<number | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -151,7 +264,12 @@ export default function SettingsPage() {
     if (!isDeletingAccount && !accountDeleted) setIsDeleteSheetOpen(false);
   }, "settings-delete-account-dialog", "settings-delete-account-close");
   useSettingsDialogA11y(isLogoutSheetOpen, () => setIsLogoutSheetOpen(false), "settings-logout-dialog", "settings-logout-close");
+  useSettingsDialogA11y(isProfileSheetOpen, () => setIsProfileSheetOpen(false), "settings-profile-dialog", "settings-profile-close");
   useSettingsDialogA11y(isNameSheetOpen, () => setIsNameSheetOpen(false), "settings-edit-name-dialog", "settings-name-input");
+
+  useEffect(() => () => {
+    if (profileEditTimeoutRef.current !== null) window.clearTimeout(profileEditTimeoutRef.current);
+  }, []);
 
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
   const profileInitial = profileName.trim().charAt(0).toUpperCase() || "D";
@@ -226,6 +344,15 @@ export default function SettingsPage() {
     setNameDraft(profile?.full_name?.trim() || "");
     setNameError(null);
     setIsNameSheetOpen(true);
+  }
+
+  function openNameSheetFromProfile() {
+    setIsProfileSheetOpen(false);
+    if (profileEditTimeoutRef.current !== null) window.clearTimeout(profileEditTimeoutRef.current);
+    profileEditTimeoutRef.current = window.setTimeout(() => {
+      profileEditTimeoutRef.current = null;
+      openNameSheet();
+    }, prefersReducedMotion ? 0 : SETTINGS_TRANSITION_MS);
   }
 
   async function handleSaveName() {
@@ -325,11 +452,12 @@ export default function SettingsPage() {
             {user ? (
               <button
                 type="button"
-                onClick={openNameSheet}
+                onClick={() => setIsProfileSheetOpen(true)}
+                aria-label="See more profile details"
                 className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 dd-type-control text-white transition-colors hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-fair-300"
               >
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                Edit profile
+                <span>See more</span>
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
             ) : (
               <button
@@ -588,19 +716,6 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
-            <CommunityProfileSummary />
-            {user.created_at && (
-              <div>
-                <p className="dd-type-meta dd-type-meta-strong text-stone-500">Member since</p>
-                <p className="mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900">
-                  {new Date(user.created_at).toLocaleDateString("en-NZ", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            )}
             <IdentityLinkingPanel />
             <button
               type="button"
@@ -639,6 +754,19 @@ export default function SettingsPage() {
           </button>
         </section>
       )}
+
+      <ProfileDetailsSheet
+        isOpen={isProfileSheetOpen}
+        profileName={profileName}
+        profileInitial={profileInitial}
+        accountIdentifier={accountIdentifier}
+        isPremium={isPremium}
+        subscriptionLoading={subscriptionLoading}
+        createdAt={user?.created_at}
+        prefersReducedMotion={Boolean(prefersReducedMotion)}
+        onClose={() => setIsProfileSheetOpen(false)}
+        onEdit={openNameSheetFromProfile}
+      />
 
       <BottomSheetPortal open={isDeleteSheetOpen}>
         <AnimatePresence>

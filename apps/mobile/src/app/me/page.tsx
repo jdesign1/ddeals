@@ -15,7 +15,6 @@ import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import StickySubscriptionCta from "@/components/StickySubscriptionCta";
-import CommunityProfileSummary from "@/components/CommunityProfileSummary";
 import { useAuth } from "@/lib/auth-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
@@ -240,7 +239,6 @@ export default function MePage() {
         })}
       </div>
       {isAnonymousSession && <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3"><p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p><p className="dd-type-secondary text-amber-700">You&rsquo;re using a test account. These stats are real, but you can&rsquo;t sign in to this account on another device.</p></div>}
-      {!isAnonymousSession && <div className="mx-5"><CommunityProfileSummary /></div>}
       {activeStatsTab === "watchlist" ? (
         watchlistStats ? (
           <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems} productCount={watchlistProductCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionPage} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} />
