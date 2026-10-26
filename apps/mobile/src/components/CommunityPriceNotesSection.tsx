@@ -242,10 +242,22 @@ function NoteComposer({
               </div>
 
               {submitted ? (
-                <div ref={successRef} tabIndex={-1} className="flex min-w-0 flex-1 flex-col justify-center gap-5 overflow-x-hidden overflow-y-auto px-5 py-8 outline-none" role="status">
+                <div ref={successRef} tabIndex={-1} className="flex min-w-0 flex-1 flex-col items-center justify-center gap-5 overflow-x-hidden overflow-y-auto px-5 py-8 text-center outline-none" role="status">
+                  <motion.span
+                    key="community-note-success-check"
+                    initial={prefersReducedMotion ? false : { scale: 0 }}
+                    animate={{ scale: prefersReducedMotion ? 1 : [0, 1, 1.2, 1] }}
+                    transition={prefersReducedMotion
+                      ? { duration: 0 }
+                      : { duration: 0.62, times: [0, 0.52, 0.76, 1], ease: [0.22, 1, 0.36, 1] }}
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-fair-500 font-display text-4xl font-extrabold leading-none text-ink-900 shadow-sm"
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </motion.span>
                   <div>
                     <p className="text-lg font-extrabold text-stone-900">
-                      Thanks — your tip will appear shortly.
+                      Thanks your tip will appear shortly.
                     </p>
                     <p className="mt-2 text-sm leading-5 text-stone-600">
                       Your tips will help other shoppers, and confirm price accuracy.
