@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import { useAuth } from "@/lib/auth-context";
 import {
   blockCommunityNote,
@@ -23,57 +24,20 @@ const REPORT_OPTIONS: Array<{ value: CommunityNoteReportReason; label: string }>
   { value: "other", label: "Other" },
 ];
 
-const REGION_LABELS: Record<string, string> = {
-  northland: "Northland",
-  auckland: "Auckland",
-  waikato: "Waikato",
-  bay_of_plenty: "Bay of Plenty",
-  gisborne: "Gisborne",
-  hawkes_bay: "Hawke's Bay",
-  taranaki: "Taranaki",
-  manawatu_whanganui: "Manawatū-Whanganui",
-  wellington: "Wellington",
-  tasman: "Tasman",
-  nelson: "Nelson",
-  marlborough: "Marlborough",
-  west_coast: "West Coast",
-  canterbury: "Canterbury",
-  otago: "Otago",
-  southland: "Southland",
-};
-
 function formatObservedDate(value: string): string {
   const date = new Date(`${value}T00:00:00`);
   if (!Number.isFinite(date.getTime())) return value;
   return new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
-function formatRegion(value: string): string {
-  return REGION_LABELS[value] ?? value.replace(/_/g, " ");
-}
-
 function NoteDetail({ note }: { note: CommunityPriceNote }) {
   return (
     <article className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          {note.price !== null ? (
-            <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>
-          ) : (
-            <p className="font-display text-xl font-extrabold leading-7 text-stone-900">A shopper tip</p>
-          )}
-          {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
-        </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-500">Community tip</span>
-      </div>
-      {(note.observed_on || note.region_code) && (
-        <p className="mt-3 text-xs font-semibold text-stone-500">
-          {note.observed_on ? `Seen ${formatObservedDate(note.observed_on)}` : "Shared by a shopper"}
-          {note.region_code ? ` · ${formatRegion(note.region_code)}` : ""}
-        </p>
-      )}
+      <CommunityNoteAuthor note={note} />
+      {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
+      {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
+      {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
       {note.body && <p className="mt-3 text-sm leading-5 text-stone-700">{note.body}</p>}
-      <p className="mt-4 text-xs font-semibold text-stone-500">{note.author_display_name_snapshot}</p>
     </article>
   );
 }

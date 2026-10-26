@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { CalendarDays, MessageCircle, Tag, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
 import { useAuth } from "@/lib/auth-context";
@@ -42,8 +43,6 @@ const REGION_OPTIONS = [
   ["southland", "Southland"],
 ] as const;
 
-const REGION_LABELS = new Map<string, string>(REGION_OPTIONS.map(([value, label]) => [value, label]));
-
 const FORM_CONTROL_CLASS = "h-14 w-full rounded-2xl border border-stone-200 bg-white px-4 text-base text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10";
 
 function formatObservedDate(value: string): string {
@@ -63,32 +62,14 @@ function nzToday(): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function formatRegion(value: string): string {
-  return REGION_LABELS.get(value) ?? value.replace(/_/g, " ");
-}
-
 function NoteCard({ note }: { note: CommunityPriceNote }) {
   return (
     <article className="flex min-h-48 flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          {note.price !== null ? (
-            <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>
-          ) : (
-            <p className="font-display text-xl font-extrabold leading-7 text-stone-900">A shopper tip</p>
-          )}
-          {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
-        </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-500">Community tip</span>
-      </div>
-      {(note.observed_on || note.region_code) && (
-        <p className="mt-3 text-xs font-semibold text-stone-500">
-          {note.observed_on ? `Seen ${formatObservedDate(note.observed_on)}` : "Shared by a shopper"}
-          {note.region_code ? ` · ${formatRegion(note.region_code)}` : ""}
-        </p>
-      )}
+      <CommunityNoteAuthor note={note} />
+      {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
+      {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
+      {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
       {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">{note.body}</p>}
-      <p className="mt-auto pt-4 text-xs font-semibold text-stone-500">{note.author_display_name_snapshot}</p>
     </article>
   );
 }
@@ -395,7 +376,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
-    fetchCommunityPriceNotes(productId, 3, controller.signal, session?.access_token)
+    fetchCommunityPriceNotes(productId, 4, controller.signal, session?.access_token)
       .then((nextNotes) => {
         if (!cancelled) {
           setNotes(nextNotes.notes);
@@ -466,18 +447,11 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         {!isLoadingCurrentProduct && !error && notes.length > 0 && (
           <div>
             <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
-              {notes.map((note) => <NoteCard key={note.id} note={note} />)}
+              {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} />)}
             </InsightCarousel>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
-              <button
-                ref={seeAllNotesButtonRef}
-                type="button"
-                onClick={openNotesSheet}
-                className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900"
-              >
-                See all tips
-              </button>
+              {notes.length > 3 && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">See all tips</button>}
             </div>
           </div>
         )}
