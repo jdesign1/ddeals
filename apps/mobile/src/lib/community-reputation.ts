@@ -11,6 +11,36 @@ export interface CommunityReputation {
   contributorCount: number;
 }
 
+export const COMMUNITY_DETECTIVE_RANKS = [
+  { key: "rookie", label: "Rookie Deal Detective", minimumScore: 0 },
+  { key: "tip-scout", label: "Tip Scout", minimumScore: 1 },
+  { key: "deal-sleuth", label: "Deal Sleuth", minimumScore: 10 },
+  { key: "price-investigator", label: "Price Investigator", minimumScore: 25 },
+  { key: "savings-detective", label: "Savings Detective", minimumScore: 50 },
+  { key: "master-deal-detective", label: "Master Deal Detective", minimumScore: 100 },
+] as const;
+
+export interface CommunityDetectiveRank {
+  key: (typeof COMMUNITY_DETECTIVE_RANKS)[number]["key"];
+  label: (typeof COMMUNITY_DETECTIVE_RANKS)[number]["label"];
+  score: number;
+}
+
+/**
+ * Helpful votes are the quality signal; published tips add a smaller
+ * experience signal. Both values come from approved community tips.
+ */
+export function getCommunityDetectiveRank(tipsShared: number, helpfulReceived: number): CommunityDetectiveRank {
+  const normalizedTips = Math.max(0, Math.trunc(tipsShared));
+  const normalizedHelpful = Math.max(0, Math.trunc(helpfulReceived));
+  const score = normalizedHelpful * 3 + normalizedTips;
+  const rank = COMMUNITY_DETECTIVE_RANKS.reduce(
+    (current, candidate) => candidate.minimumScore <= score ? candidate : current,
+    COMMUNITY_DETECTIVE_RANKS[0],
+  );
+  return { key: rank.key, label: rank.label, score };
+}
+
 /**
  * Rank community contributors by helpful votes received. Published tip count
  * breaks ties so a contributor with the same helpful total but more useful

@@ -1,9 +1,10 @@
 "use client";
 
-import { LoaderCircle, ThumbsUp, Trophy } from "lucide-react";
+import { Lightbulb, LoaderCircle, Medal, ThumbsUp, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { fetchCommunityProfileSummary, type CommunityProfileSummary as CommunityProfileSummaryData } from "@/lib/community-notes-api";
+import { getCommunityDetectiveRank } from "@/lib/community-reputation";
 
 export type CommunityProfileSummaryVariant = "light" | "dark";
 
@@ -12,6 +13,7 @@ export default function CommunityProfileSummary({ variant = "light" }: { variant
   const [summary, setSummary] = useState<CommunityProfileSummaryData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isDark = variant === "dark";
+  const detectiveRank = summary ? getCommunityDetectiveRank(summary.tips_shared, summary.helpful_received) : null;
   const requestKey = user && !isAnonymousSession && session?.access_token
     ? user.id
     : null;
@@ -47,10 +49,18 @@ export default function CommunityProfileSummary({ variant = "light" }: { variant
           <Trophy className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className={isDark ? "dd-type-meta dd-type-meta-strong text-white/65" : "dd-type-meta dd-type-meta-strong text-stone-500"}>Community contributor</p>
           <p className={isDark ? "mt-0.5 dd-type-secondary dd-type-secondary-strong text-white" : "mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900"}>Your shopper tips</p>
-          <p className={isDark ? "mt-1 dd-type-meta text-white/65" : "mt-1 dd-type-meta text-stone-500"}>Helpful votes on published tips contribute to this community ranking.</p>
+          <p className={isDark ? "mt-1 dd-type-meta text-white/65" : "mt-1 dd-type-meta text-stone-500"}>Helpful votes on published tips contribute to your Deal Detective rank.</p>
         </div>
+      </div>
+
+      <div className="mt-3 min-h-7">
+        {!loading && !error && detectiveRank && (
+          <span className={isDark ? "inline-flex items-center gap-1.5 rounded-full border border-fair-300/30 bg-fair-300/10 px-3 py-1.5 dd-type-meta dd-type-meta-strong text-fair-200" : "inline-flex items-center gap-1.5 rounded-full border border-fair-200 bg-fair-50 px-3 py-1.5 dd-type-meta dd-type-meta-strong text-fair-800"}>
+            <Medal className="h-4 w-4" aria-hidden="true" />
+            <span>Deal Detective rank: {detectiveRank.label}</span>
+          </span>
+        )}
       </div>
 
       <div className="mt-4 min-h-[4.5rem]">
@@ -64,7 +74,10 @@ export default function CommunityProfileSummary({ variant = "light" }: { variant
         ) : (
           <div className={isDark ? "grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3" : "grid grid-cols-3 divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3"}>
             <div className="px-3 text-center">
-              <p className={isDark ? "font-display text-xl font-extrabold tabular-nums text-white" : "font-display text-xl font-extrabold tabular-nums text-stone-900"}>{summary?.tips_shared ?? 0}</p>
+              <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
+                <Lightbulb className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
+                {summary?.tips_shared ?? 0}
+              </p>
               <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Tips shared</p>
             </div>
             <div className="px-3 text-center">

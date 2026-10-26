@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCommunityReputation } from "./community-reputation.ts";
+import { buildCommunityReputation, getCommunityDetectiveRank } from "./community-reputation.ts";
+
+test("detective ranks use helpful votes as the primary signal with tips as experience", () => {
+  assert.deepEqual(getCommunityDetectiveRank(0, 0), { key: "rookie", label: "Rookie Deal Detective", score: 0 });
+  assert.deepEqual(getCommunityDetectiveRank(9, 0), { key: "tip-scout", label: "Tip Scout", score: 9 });
+  assert.deepEqual(getCommunityDetectiveRank(10, 0), { key: "deal-sleuth", label: "Deal Sleuth", score: 10 });
+  assert.deepEqual(getCommunityDetectiveRank(4, 7), { key: "price-investigator", label: "Price Investigator", score: 25 });
+  assert.deepEqual(getCommunityDetectiveRank(5, 15), { key: "savings-detective", label: "Savings Detective", score: 50 });
+  assert.deepEqual(getCommunityDetectiveRank(10, 30), { key: "master-deal-detective", label: "Master Deal Detective", score: 100 });
+});
 
 test("community reputation ranks helpful contributors with a deterministic tie-break", () => {
   assert.deepEqual(
