@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { getSpecialPriceRange, type ProductCard, type CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
@@ -42,6 +43,24 @@ export default function DealCard({
   const warmDealRoute = () => {
     prepareDealNavigation(router, product, deal.store);
   };
+
+  useEffect(() => {
+    if (imageLoading !== "eager") return;
+
+    const warm = () => prepareDealNavigation(router, product, deal.store);
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(warm, { timeout: 500 });
+      return () => idleWindow.cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = globalThis.setTimeout(warm, 0);
+    return () => globalThis.clearTimeout(timeoutId);
+  }, [deal.store, imageLoading, product, router]);
+
   const goToDeal = () => router.push(prepareDealNavigation(router, product, deal.store));
 
   return (

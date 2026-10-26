@@ -52,7 +52,7 @@ export function getPrimedDealProduct(productId: string, store: string): ProductC
   return primed.product;
 }
 
-/** Starts the route bundle fetch on hover/focus and primes the first paint. */
+/** Starts the route bundle fetch and primes the first paint for a deal handoff. */
 export function prepareDealNavigation(
   router: RouterWithPrefetch,
   product: ProductCard,
@@ -61,7 +61,6 @@ export function prepareDealNavigation(
   const href = dealHref(product.id, store);
   primeDealProduct(product, store);
   if (!prefetchedDealRoutes.has(href)) {
-    prefetchedDealRoutes.delete(href);
     prefetchedDealRoutes.set(href, Date.now());
     while (prefetchedDealRoutes.size > 32) {
       const oldestHref = prefetchedDealRoutes.keys().next().value;
@@ -70,6 +69,8 @@ export function prepareDealNavigation(
     }
     void Promise.resolve(router.prefetch(href)).catch(() => {
       // Navigation remains correct if route prefetching is unavailable or fails.
+      // Leave the route retryable if a later interaction needs it.
+      prefetchedDealRoutes.delete(href);
     });
   }
   return href;

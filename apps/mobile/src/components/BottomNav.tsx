@@ -280,6 +280,7 @@ export default function BottomNav() {
               aria-current={isActive ? "page" : undefined}
               aria-label={hasUnreadUpdates || hasNewSpecials ? `${label}, new deal updates` : undefined}
               onPointerEnter={() => prefetchRoute(href)}
+              onPointerDown={() => prefetchRoute(href)}
               onFocus={() => prefetchRoute(href)}
               onClick={() => {
                 if (isSearchActive) closeSearch();

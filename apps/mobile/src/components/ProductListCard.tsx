@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, type PointerEvent } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 import type {
   DealSnapshotKind,
   ProductCard as ProductCardData,
@@ -148,6 +148,23 @@ export default function ProductListCard({
   const warmDealRoute = () => {
     prepareDealNavigation(router, product, deal.store);
   };
+
+  useEffect(() => {
+    if (imageLoading !== "eager") return;
+
+    const warm = () => prepareDealNavigation(router, product, deal.store);
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(warm, { timeout: 500 });
+      return () => idleWindow.cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = globalThis.setTimeout(warm, 0);
+    return () => globalThis.clearTimeout(timeoutId);
+  }, [deal.store, imageLoading, product, router]);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     pointerStartRef.current = { x: event.clientX, y: event.clientY };
