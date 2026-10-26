@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import { useAuth } from "@/lib/auth-context";
 import {
   blockCommunityNote,
-  deleteCommunityPriceNote,
   fetchCommunityPriceNotes,
   reportCommunityPriceNote,
   type CommunityNoteReportReason,
@@ -34,7 +33,7 @@ function formatObservedDate(value: string): string {
 
 function NoteDetail({ note, onEdit, onHelpfulChanged }: {
   note: CommunityPriceNote;
-  onEdit: (note: CommunityPriceNote) => void;
+  onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
 }) {
   return (
@@ -44,7 +43,7 @@ function NoteDetail({ note, onEdit, onHelpfulChanged }: {
         trailingAction={note.is_own_note ? (
           <button
             type="button"
-            onClick={() => onEdit(note)}
+            onClick={(event) => onEdit(note, event.currentTarget)}
             aria-label="Edit your shopper tip"
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-white hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-300"
           >
@@ -54,7 +53,7 @@ function NoteDetail({ note, onEdit, onHelpfulChanged }: {
       />
       {note.status === "pending" && (
         <p className="mt-3 rounded-xl border border-fair-200 bg-fair-50 px-3 py-2 text-xs font-semibold leading-4 text-fair-900" role="status">
-          Pending review — only you can see this tip for now.
+          Pending - tip will update shortly.
         </p>
       )}
       {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
@@ -78,7 +77,6 @@ export default function CommunityPriceNotesSheet({
   onBlocked,
   onHelpfulChanged,
   onEdit,
-  onNoteRemoved,
 }: {
   productId: string;
   isOpen: boolean;
@@ -87,8 +85,7 @@ export default function CommunityPriceNotesSheet({
   returnFocusRef: React.RefObject<HTMLButtonElement | null>;
   onBlocked: () => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
-  onEdit: (note: CommunityPriceNote) => void;
-  onNoteRemoved: (noteId: string) => void;
+  onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
 }) {
   const pathname = usePathname();
   const { session, user, isAnonymousSession, openAuthSheet } = useAuth();
@@ -98,7 +95,6 @@ export default function CommunityPriceNotesSheet({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const skipReturnFocusRef = useRef(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
-  const deleteConfirmRef = useRef<HTMLButtonElement>(null);
   const [notes, setNotes] = useState<CommunityPriceNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,16 +107,12 @@ export default function CommunityPriceNotesSheet({
   const [blockNoteId, setBlockNoteId] = useState<string | null>(null);
   const [blockState, setBlockState] = useState<"idle" | "sending">("idle");
   const [blockError, setBlockError] = useState<string | null>(null);
-  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
-  const [deleteState, setDeleteState] = useState<"idle" | "sending">("idle");
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [retryTick, setRetryTick] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [completedOpenSequence, setCompletedOpenSequence] = useState(-1);
   const showLoading = isOpen && (loading || completedOpenSequence !== openSequence);
   const reportStateRef = useRef(reportState);
   const blockStateRef = useRef(blockState);
-  const deleteStateRef = useRef(deleteState);
 
   useEffect(() => {
     reportStateRef.current = reportState;
@@ -131,18 +123,8 @@ export default function CommunityPriceNotesSheet({
   }, [blockState]);
 
   useEffect(() => {
-    deleteStateRef.current = deleteState;
-  }, [deleteState]);
-
-  useEffect(() => {
     if (statusMessage) statusRef.current?.focus();
   }, [statusMessage]);
-
-  useEffect(() => {
-    if (!deleteNoteId) return;
-    const frame = window.requestAnimationFrame(() => deleteConfirmRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [deleteNoteId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -158,9 +140,6 @@ export default function CommunityPriceNotesSheet({
       setBlockNoteId(null);
       setBlockState("idle");
       setBlockError(null);
-      setDeleteNoteId(null);
-      setDeleteState("idle");
-      setDeleteError(null);
       setStatusMessage(null);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -172,7 +151,7 @@ export default function CommunityPriceNotesSheet({
     const frame = window.requestAnimationFrame(() => firstControlRef.current?.focus());
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (reportStateRef.current !== "sending" && blockStateRef.current !== "sending" && deleteStateRef.current !== "sending") onClose();
+        if (reportStateRef.current !== "sending" && blockStateRef.current !== "sending") onClose();
         return;
       }
       if (event.key !== "Tab") return;
@@ -228,20 +207,18 @@ export default function CommunityPriceNotesSheet({
     return session.access_token;
   }
 
-  function startEdit(note: CommunityPriceNote) {
+  function startEdit(note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) {
     if (!note.is_own_note) return;
     skipReturnFocusRef.current = true;
-    onEdit(note);
+    onEdit(note, returnFocusRef.current ?? returnFocusTarget);
   }
 
   function toggleActionMenu(noteId: string) {
     setActionMenuNoteId((current) => current === noteId ? null : noteId);
     setReportNoteId(null);
     setBlockNoteId(null);
-    setDeleteNoteId(null);
     setReportError(null);
     setBlockError(null);
-    setDeleteError(null);
   }
 
   function openReport(noteId: string) {
@@ -253,8 +230,6 @@ export default function CommunityPriceNotesSheet({
     setReportState("idle");
     setReportError(null);
     setBlockNoteId(null);
-    setDeleteNoteId(null);
-    setDeleteError(null);
   }
 
   async function submitReport(event: React.FormEvent<HTMLFormElement>) {
@@ -279,17 +254,6 @@ export default function CommunityPriceNotesSheet({
     setReportNoteId(null);
     setBlockNoteId(noteId);
     setBlockError(null);
-    setDeleteNoteId(null);
-    setDeleteError(null);
-  }
-
-  function askToDelete(noteId: string) {
-    if (!requireAccount("Log in to remove your community tip. After signing in, return here and open Actions again.")) return;
-    setActionMenuNoteId(noteId);
-    setReportNoteId(null);
-    setBlockNoteId(null);
-    setDeleteNoteId(noteId);
-    setDeleteError(null);
   }
 
   async function confirmBlock() {
@@ -314,25 +278,6 @@ export default function CommunityPriceNotesSheet({
     }
   }
 
-  async function confirmDelete() {
-    if (!deleteNoteId) return;
-    const accessToken = requireAccount("Log in to remove your community tip. After signing in, return here and open Actions again.");
-    if (!accessToken) return;
-    setDeleteState("sending");
-    setDeleteError(null);
-    try {
-      await deleteCommunityPriceNote(deleteNoteId, accessToken);
-      setNotes((currentNotes) => currentNotes.filter((note) => note.id !== deleteNoteId));
-      setActionMenuNoteId(null);
-      setDeleteNoteId(null);
-      setStatusMessage("Your tip was removed.");
-      onNoteRemoved(deleteNoteId);
-    } catch (nextError) {
-      setDeleteError(nextError instanceof Error ? nextError.message : "We couldn't remove your tip right now.");
-    } finally {
-      setDeleteState("idle");
-    }
-  }
 
   function handleHelpfulChanged(noteId: string, helpful: boolean, helpfulCount: number) {
     setNotes((currentNotes) => currentNotes.map((note) => note.id === noteId
@@ -350,7 +295,7 @@ export default function CommunityPriceNotesSheet({
               initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={prefersReducedMotion ? undefined : { opacity: 0 }}
-              onClick={() => { if (reportStateRef.current !== "sending" && blockStateRef.current !== "sending" && deleteStateRef.current !== "sending") onClose(); }}
+              onClick={() => { if (reportStateRef.current !== "sending" && blockStateRef.current !== "sending") onClose(); }}
               className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
               aria-hidden="true"
             />
@@ -375,7 +320,7 @@ export default function CommunityPriceNotesSheet({
                   type="button"
                   ref={firstControlRef}
                   onClick={onClose}
-                  disabled={reportState === "sending" || blockState === "sending" || deleteState === "sending"}
+                  disabled={reportState === "sending" || blockState === "sending"}
                   aria-label="Close community tips"
                   className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                 >
@@ -462,31 +407,12 @@ export default function CommunityPriceNotesSheet({
                                 {blockError && <p className="text-sm font-semibold text-alert-600" role="alert">{blockError}</p>}
                               </div>
                             ) : note.is_own_note ? (
-                              deleteNoteId === note.id ? (
-                                <div className="space-y-3" role="alertdialog" aria-labelledby={`community-delete-title-${note.id}`} aria-describedby={`community-delete-description-${note.id}`}>
-                                  <p id={`community-delete-title-${note.id}`} className="text-sm font-bold leading-5 text-stone-900">Remove this tip?</p>
-                                  <p id={`community-delete-description-${note.id}`} className="text-sm leading-5 text-stone-700">This removes it from the community and can&rsquo;t be undone.</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button ref={deleteConfirmRef} type="button" onClick={confirmDelete} disabled={deleteState === "sending"} className="dd-btn dd-btn-outline-alert min-h-11 cursor-pointer disabled:opacity-60">
-                                      <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                                      {deleteState === "sending" ? "Removing…" : "Remove tip"}
-                                    </button>
-                                    <button type="button" onClick={() => setDeleteNoteId(null)} disabled={deleteState === "sending"} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">Cancel</button>
-                                  </div>
-                                  {deleteError && <p className="text-sm font-semibold text-alert-600" role="alert">{deleteError}</p>}
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap gap-2">
-                                  <button type="button" onClick={() => startEdit(note)} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">
-                                    <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                                    Edit tip
-                                  </button>
-                                  <button type="button" onClick={() => askToDelete(note.id)} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">
-                                    <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                                    Remove tip
-                                  </button>
-                                </div>
-                              )
+                              <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={(event) => startEdit(note, event.currentTarget)} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">
+                                  <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                                  Edit tip
+                                </button>
+                              </div>
                             ) : (
                               <div className="flex flex-wrap gap-2">
                                 <button type="button" onClick={() => openReport(note.id)} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">Report this note</button>

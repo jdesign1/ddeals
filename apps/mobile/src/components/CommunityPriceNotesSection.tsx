@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, X } from "lucide-react";
+import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, Trash2, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { useAuth } from "@/lib/auth-context";
 import {
   fetchCommunityPriceNotes,
   submitCommunityPriceNote,
   updateCommunityPriceNote,
+  deleteCommunityPriceNote,
   type CommunityPriceNote,
 } from "@/lib/community-notes-api";
 
@@ -66,17 +68,18 @@ function nzToday(): string {
 
 function NoteCard({ note, onEdit, onHelpfulChanged }: {
   note: CommunityPriceNote;
-  onEdit: (note: CommunityPriceNote) => void;
+  onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
 }) {
   return (
     <article className="flex flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor
         note={note}
+        showStoreBadge={false}
         trailingAction={note.is_own_note ? (
           <button
             type="button"
-            onClick={() => onEdit(note)}
+            onClick={(event) => onEdit(note, event.currentTarget)}
             aria-label="Edit your shopper tip"
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-white hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-300"
           >
@@ -86,10 +89,15 @@ function NoteCard({ note, onEdit, onHelpfulChanged }: {
       />
       {note.status === "pending" && (
         <p className="mt-3 rounded-xl border border-fair-200 bg-fair-50 px-3 py-2 text-xs font-semibold leading-4 text-fair-900" role="status">
-          Pending review — only you can see this tip for now.
+          Pending - tip will update shortly.
         </p>
       )}
-      {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
+      {(note.price !== null || note.store_name) && (
+        <div className="mt-4 flex items-center gap-3">
+          {note.price !== null && <p className="font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
+          {note.store_name && <StoreLogoBadge store={note.store_name} variant="card" />}
+        </div>
+      )}
       {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
       {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">&ldquo;{note.body}&rdquo;</p>}
       {!note.is_own_note && note.status === "approved" && (
@@ -107,6 +115,7 @@ function NoteComposer({
   editingNote,
   onClose,
   onComplete,
+  onRemoved,
   returnFocusRef,
 }: {
   productId: string;
@@ -114,6 +123,7 @@ function NoteComposer({
   editingNote: CommunityPriceNote | null;
   onClose: () => void;
   onComplete: (status: "pending" | "approved") => void;
+  onRemoved: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
   const { session } = useAuth();
@@ -121,21 +131,32 @@ function NoteComposer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const removeTriggerRef = useRef<HTMLButtonElement>(null);
+  const removeConfirmRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const submittingRef = useRef(false);
+  const removingRef = useRef(false);
   const hasUnsavedInputRef = useRef(false);
+  const removeErrorRef = useRef<HTMLParagraphElement>(null);
   const [storeId, setStoreId] = useState(editingNote?.source_store_id ?? "");
   const [price, setPrice] = useState(editingNote?.price === null || editingNote?.price === undefined ? "" : editingNote.price.toFixed(2));
   const [observedOn, setObservedOn] = useState(editingNote?.observed_on ?? "");
   const [regionCode, setRegionCode] = useState(editingNote?.region_code ?? "");
   const [body, setBody] = useState(editingNote?.body ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     submittingRef.current = submitting;
   }, [submitting]);
+
+  useEffect(() => {
+    removingRef.current = removing;
+  }, [removing]);
 
   const resetForm = useCallback(() => {
     setStoreId("");
@@ -144,17 +165,30 @@ function NoteComposer({
     setRegionCode("");
     setBody("");
     setSubmitting(false);
+    setRemoving(false);
     setError(null);
+    setRemoveConfirmOpen(false);
+    setRemoveError(null);
     setSubmitted(false);
     hasUnsavedInputRef.current = false;
   }, []);
 
+  const cancelRemoveConfirmation = useCallback(() => {
+    setRemoveConfirmOpen(false);
+    setRemoveError(null);
+    window.requestAnimationFrame(() => removeTriggerRef.current?.focus());
+  }, []);
+
   const closeComposerSheet = useCallback(() => {
-    if (submittingRef.current) return;
+    if (removeConfirmOpen) {
+      cancelRemoveConfirmation();
+      return;
+    }
+    if (submittingRef.current || removingRef.current) return;
     if (hasUnsavedInputRef.current && !window.confirm("Discard this tip?")) return;
     resetForm();
     onClose();
-  }, [onClose, resetForm]);
+  }, [cancelRemoveConfirmation, onClose, removeConfirmOpen, resetForm]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -162,6 +196,11 @@ function NoteComposer({
     const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (removeConfirmOpen) {
+          event.preventDefault();
+          cancelRemoveConfirmation();
+          return;
+        }
         closeComposerSheet();
         return;
       }
@@ -189,7 +228,13 @@ function NoteComposer({
       document.removeEventListener("keydown", handleKeyDown);
       if (previousFocusRef.current && document.contains(previousFocusRef.current)) previousFocusRef.current.focus();
     };
-  }, [closeComposerSheet, isOpen, returnFocusRef]);
+  }, [cancelRemoveConfirmation, closeComposerSheet, isOpen, removeConfirmOpen, returnFocusRef]);
+
+  useEffect(() => {
+    if (!removeConfirmOpen) return;
+    const frame = window.requestAnimationFrame(() => removeConfirmRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [removeConfirmOpen]);
 
   useEffect(() => {
     if (isOpen && submitted) successRef.current?.focus();
@@ -200,8 +245,22 @@ function NoteComposer({
   }, [error]);
 
   useEffect(() => {
-    hasUnsavedInputRef.current = !submitted && Boolean(body.trim() || storeId || price || observedOn || regionCode);
-  }, [body, observedOn, price, regionCode, storeId, submitted]);
+    if (removeError) removeErrorRef.current?.focus();
+  }, [removeError]);
+
+  useEffect(() => {
+    const initialStoreId = editingNote?.source_store_id ?? "";
+    const initialPrice = editingNote?.price === null || editingNote?.price === undefined ? "" : editingNote.price.toFixed(2);
+    const initialObservedOn = editingNote?.observed_on ?? "";
+    const initialRegionCode = editingNote?.region_code ?? "";
+    const initialBody = editingNote?.body ?? "";
+    const hasChanged = storeId !== initialStoreId
+      || price !== initialPrice
+      || observedOn !== initialObservedOn
+      || regionCode !== initialRegionCode
+      || body !== initialBody;
+    hasUnsavedInputRef.current = !submitted && hasChanged;
+  }, [body, editingNote, observedOn, price, regionCode, storeId, submitted]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -228,6 +287,24 @@ function NoteComposer({
       setError(submissionError instanceof Error ? submissionError.message : "We couldn't send your note right now.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const removeTip = async () => {
+    if (!editingNote) return;
+    if (!session?.access_token) {
+      setRemoveError("Please log in again before removing your tip.");
+      return;
+    }
+    setRemoveError(null);
+    setRemoving(true);
+    try {
+      await deleteCommunityPriceNote(editingNote.id, session.access_token);
+      onRemoved();
+    } catch (removalError) {
+      setRemoveError(removalError instanceof Error ? removalError.message : "We couldn't remove your tip right now.");
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -261,7 +338,7 @@ function NoteComposer({
                 <button
                   type="button"
                   onClick={closeComposerSheet}
-                  disabled={submitting}
+                  disabled={submitting || removing}
                   aria-label={editingNote ? "Close edit shopper tip" : "Close share a shopper tip"}
                   className="dd-bottom-sheet-close absolute left-4 top-1/2 -translate-y-1/2 cursor-pointer text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -375,9 +452,34 @@ function NoteComposer({
                     </div>
                   </div>
                   <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
-                    <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-                      {submitting ? (editingNote ? "Updating…" : "Sharing…") : (editingNote ? "Update tip" : "Share tip")}
-                    </button>
+                    {editingNote && removeConfirmOpen ? (
+                      <div className="space-y-3" role="alertdialog" aria-labelledby="community-note-remove-title" aria-describedby="community-note-remove-description">
+                        <div>
+                          <p id="community-note-remove-title" className="text-sm font-bold leading-5 text-stone-900">Remove this tip?</p>
+                          <p id="community-note-remove-description" className="mt-1 text-sm leading-5 text-stone-700">This removes it from the community and can&rsquo;t be undone.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button ref={removeConfirmRef} type="button" onClick={removeTip} disabled={removing} className="dd-btn dd-btn-outline-alert min-h-11 cursor-pointer disabled:opacity-60">
+                            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                            {removing ? "Removing…" : "Remove tip"}
+                          </button>
+                          <button type="button" onClick={cancelRemoveConfirmation} disabled={removing} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">Cancel</button>
+                        </div>
+                        {removeError && <p ref={removeErrorRef} tabIndex={-1} className="text-sm font-semibold text-alert-600 outline-none" role="alert">{removeError}</p>}
+                      </div>
+                    ) : (
+                      <>
+                        <button type="submit" disabled={submitting || removing} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                          {submitting ? (editingNote ? "Updating…" : "Sharing…") : (editingNote ? "Update tip" : "Share tip")}
+                        </button>
+                        {editingNote && (
+                          <button ref={removeTriggerRef} type="button" onClick={() => { setRemoveConfirmOpen(true); setRemoveError(null); }} disabled={submitting || removing} className="dd-btn dd-btn-outline-alert mt-3 min-h-11 w-full cursor-pointer disabled:opacity-60">
+                            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Remove tip
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </form>
               )}
@@ -404,6 +506,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [notesSheetOpenSequence, setNotesSheetOpenSequence] = useState(0);
   const seeAllNotesButtonRef = useRef<HTMLButtonElement>(null);
+  const composerReturnFocusRef = useRef<HTMLButtonElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
   const closeComposer = useCallback(() => {
     setComposerOpen(false);
@@ -451,12 +554,14 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
       openAuthSheet("Log in to share a community tip. After signing in, return here and tap Share a tip again.", pathname);
       return;
     }
+    composerReturnFocusRef.current = addNoteButtonRef.current;
     setEditingNote(null);
     setComposerOpen(true);
   };
 
-  const openEditComposer = useCallback((note: CommunityPriceNote) => {
+  const openEditComposer = useCallback((note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => {
     if (!note.is_own_note) return;
+    composerReturnFocusRef.current = returnFocusTarget ?? addNoteButtonRef.current;
     setNotesSheetOpen(false);
     setEditingNote(note);
     setComposerOpen(true);
@@ -464,7 +569,6 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
 
   const isCurrentProductLoaded = loadedProductId === productId;
   const isLoadingCurrentProduct = !isCurrentProductLoaded;
-  const hasOwnVisibleNote = notes.some((note) => note.is_own_note);
   const handleHelpfulChanged = useCallback((noteId: string, helpful: boolean, helpfulCount: number) => {
     setNotes((currentNotes) => currentNotes.map((note) => note.id === noteId
       ? { ...note, viewer_has_helpful_vote: helpful, helpful_count: helpfulCount }
@@ -518,7 +622,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
                 </InsightCarousel>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
-                  {(notes.length > 3 || hasOwnVisibleNote) && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">{hasOwnVisibleNote ? "Manage tips" : "See all tips"}</button>}
+                  {notes.length > 3 && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">See all tips</button>}
                 </div>
               </div>
             )}
@@ -538,7 +642,11 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         editingNote={editingNote}
         onClose={closeComposer}
         onComplete={() => reloadNotes()}
-        returnFocusRef={addNoteButtonRef}
+        onRemoved={() => {
+          closeComposer();
+          reloadNotes();
+        }}
+        returnFocusRef={composerReturnFocusRef}
       />
       <CommunityPriceNotesSheet
         productId={productId}
@@ -549,10 +657,6 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         onBlocked={reloadNotes}
         onHelpfulChanged={handleHelpfulChanged}
         onEdit={openEditComposer}
-        onNoteRemoved={(noteId) => {
-          setNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
-          reloadNotes();
-        }}
       />
     </>
   );
