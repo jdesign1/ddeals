@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, LoaderCircle, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, LoaderCircle, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -111,8 +111,100 @@ function formatMemberSince(value: string | undefined): string {
   return date.toLocaleDateString("en-NZ", { year: "numeric", month: "long", day: "numeric" });
 }
 
+function ProfileEditForm({
+  draft,
+  isSaving,
+  error,
+  onChange,
+  onSave,
+}: {
+  draft: AccountProfileUpdate;
+  isSaving: boolean;
+  error: string | null;
+  onChange: (field: keyof AccountProfileUpdate, value: string) => void;
+  onSave: () => void;
+}) {
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave();
+      }}
+      className="min-h-0 flex-1 flex flex-col"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-6">
+        <p className="dd-type-secondary text-white/65">Visible to other shoppers when filled.</p>
+        <label className="mt-4 flex flex-col gap-1.5">
+          <span className="dd-type-meta dd-type-meta-strong text-white/65">Name</span>
+          <input
+            id="settings-profile-name-input"
+            type="text"
+            value={draft.full_name}
+            onChange={(event) => onChange("full_name", event.target.value)}
+            placeholder="Enter your name"
+            autoComplete="name"
+            disabled={isSaving}
+            className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-base text-white placeholder:text-white/40 focus:border-fair-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+        <label className="mt-3 flex flex-col gap-1.5">
+          <span className="dd-type-meta dd-type-meta-strong text-white/65">City</span>
+          <input
+            type="text"
+            value={draft.city}
+            onChange={(event) => onChange("city", event.target.value)}
+            placeholder="e.g. Auckland"
+            autoComplete="address-level2"
+            maxLength={60}
+            disabled={isSaving}
+            className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-base text-white placeholder:text-white/40 focus:border-fair-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+        <label className="mt-3 flex flex-col gap-1.5">
+          <span className="dd-type-meta dd-type-meta-strong text-white/65">Fave supermarket branch</span>
+          <input
+            type="text"
+            value={draft.favorite_store_branch}
+            onChange={(event) => onChange("favorite_store_branch", event.target.value)}
+            placeholder="e.g. Ponsonby"
+            maxLength={80}
+            disabled={isSaving}
+            className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-base text-white placeholder:text-white/40 focus:border-fair-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+        <label className="mt-3 flex flex-col gap-1.5">
+          <span className="dd-type-meta dd-type-meta-strong text-white/65">Quote</span>
+          <textarea
+            value={draft.profile_quote}
+            onChange={(event) => onChange("profile_quote", event.target.value)}
+            placeholder="Your best grocery wisdom…"
+            maxLength={160}
+            rows={3}
+            disabled={isSaving}
+            className="w-full resize-none rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-base text-white placeholder:text-white/40 focus:border-fair-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+      </div>
+      <div className="flex-shrink-0 border-t border-white/10 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        {error && <p className="mb-3 dd-type-secondary text-red-200" role="alert">{error}</p>}
+        <button
+          type="submit"
+          disabled={isSaving || !draft.full_name.trim()}
+          className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+        >
+          {isSaving ? "Saving…" : "Save changes"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ProfileDetailsSheet({
   isOpen,
+  isEditing,
+  editDraft,
+  isSavingProfile,
+  profileEditError,
   profileName,
   profileInitial,
   accountIdentifier,
@@ -125,8 +217,15 @@ function ProfileDetailsSheet({
   prefersReducedMotion,
   onClose,
   onEdit,
+  onBackToProfile,
+  onDraftChange,
+  onSaveProfile,
 }: {
   isOpen: boolean;
+  isEditing: boolean;
+  editDraft: AccountProfileUpdate;
+  isSavingProfile: boolean;
+  profileEditError: string | null;
   profileName: string;
   profileInitial: string;
   accountIdentifier: string;
@@ -139,6 +238,9 @@ function ProfileDetailsSheet({
   prefersReducedMotion: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onBackToProfile: () => void;
+  onDraftChange: (field: keyof AccountProfileUpdate, value: string) => void;
+  onSaveProfile: () => void;
 }) {
   return (
     <BottomSheetPortal open={isOpen}>
@@ -168,7 +270,20 @@ function ProfileDetailsSheet({
               transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }}
             >
               <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-white/10 px-5 py-4" style={{ backgroundColor: "var(--color-ink-950)" }}>
-                <h2 id="settings-profile-sheet-title" className="dd-type-sheet-title text-white">Your profile</h2>
+                <div className="flex min-w-0 items-center gap-3">
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={onBackToProfile}
+                      disabled={isSavingProfile}
+                      aria-label="Back to your profile"
+                      className="dd-bottom-sheet-close flex-shrink-0 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  )}
+                  <h2 id="settings-profile-sheet-title" className="dd-type-sheet-title text-white">{isEditing ? "Edit profile" : "Your profile"}</h2>
+                </div>
                 <button
                   type="button"
                   id="settings-profile-close"
@@ -179,42 +294,52 @@ function ProfileDetailsSheet({
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-300/30 shadow-lg">
-                    <span className="font-display text-4xl font-extrabold" aria-hidden="true">{profileInitial}</span>
+              {isEditing ? (
+                <ProfileEditForm
+                  draft={editDraft}
+                  isSaving={isSavingProfile}
+                  error={profileEditError}
+                  onChange={onDraftChange}
+                  onSave={onSaveProfile}
+                />
+              ) : (
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-300/30 shadow-lg">
+                      <span className="font-display text-4xl font-extrabold" aria-hidden="true">{profileInitial}</span>
+                    </div>
+                    <div className="mt-4 flex max-w-full items-center justify-center gap-2">
+                      <h3 className="max-w-[75%] truncate dd-type-section text-white">{profileName}</h3>
+                      {!subscriptionLoading && isPremium && <span className="shrink-0 rounded-full bg-fair-400 px-2.5 py-1 dd-type-badge text-ink-950">Plus</span>}
+                    </div>
+                    <p className="mt-1 max-w-full truncate dd-type-secondary text-white/65">{accountIdentifier}</p>
                   </div>
-                  <div className="mt-4 flex max-w-full items-center justify-center gap-2">
-                    <h3 className="max-w-[75%] truncate dd-type-section text-white">{profileName}</h3>
-                    {!subscriptionLoading && isPremium && <span className="shrink-0 rounded-full bg-fair-400 px-2.5 py-1 dd-type-badge text-ink-950">Plus</span>}
+
+                  <div className="mt-6 grid grid-cols-2 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 py-4">
+                    <div className="px-4 text-center">
+                      <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Member since</p>
+                      <p className="mt-1 dd-type-control text-white">{formatMemberSince(createdAt)}</p>
+                    </div>
+                    <div className="px-4 text-center">
+                      <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Plan</p>
+                      <p className="mt-1 dd-type-control text-white">
+                        {subscriptionLoading ? "Checking…" : isPremium ? "Dodgy Deal Plus" : "Free account"}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-1 max-w-full truncate dd-type-secondary text-white/65">{accountIdentifier}</p>
+
+                  <div className="mt-5">
+                    <CommunityProfileSummary variant="dark" />
+                  </div>
+
+                  <CommunityProfileDetails city={city} favoriteStoreBranch={favoriteStoreBranch} quote={quote} isDark />
+
+                  <button type="button" onClick={onEdit} className="dd-btn dd-btn-primary mt-5 min-h-14 w-full cursor-pointer">
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    Edit profile
+                  </button>
                 </div>
-
-                <div className="mt-6 grid grid-cols-2 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 py-4">
-                  <div className="px-4 text-center">
-                    <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Member since</p>
-                    <p className="mt-1 dd-type-control text-white">{formatMemberSince(createdAt)}</p>
-                  </div>
-                  <div className="px-4 text-center">
-                    <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Plan</p>
-                    <p className="mt-1 dd-type-control text-white">
-                      {subscriptionLoading ? "Checking…" : isPremium ? "Dodgy Deal Plus" : "Free account"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <CommunityProfileSummary variant="dark" />
-                </div>
-
-                <CommunityProfileDetails city={city} favoriteStoreBranch={favoriteStoreBranch} quote={quote} isDark />
-
-                <button type="button" onClick={onEdit} className="dd-btn dd-btn-primary mt-5 min-h-14 w-full cursor-pointer">
-                  <Pencil className="h-4 w-4" aria-hidden="true" />
-                  Edit profile
-                </button>
-              </div>
+              )}
             </motion.section>
           </>
         )}
@@ -251,7 +376,7 @@ export default function SettingsPage() {
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileSheetOpen, setIsProfileSheetOpen] = useState(false);
-  const [isProfileEditSheetOpen, setIsProfileEditSheetOpen] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileEditDraft, setProfileEditDraft] = useState<AccountProfileUpdate>({
     full_name: "",
     city: "",
@@ -268,7 +393,6 @@ export default function SettingsPage() {
   const [appleSignInUsed, setAppleSignInUsed] = useState(false);
   const [isFinishingDeletion, setIsFinishingDeletion] = useState(false);
   const backNavigationStartedRef = useRef(false);
-  const profileEditTimeoutRef = useRef<number | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -279,12 +403,15 @@ export default function SettingsPage() {
     if (!isDeletingAccount && !accountDeleted) setIsDeleteSheetOpen(false);
   }, "settings-delete-account-dialog", "settings-delete-account-close");
   useSettingsDialogA11y(isLogoutSheetOpen, () => setIsLogoutSheetOpen(false), "settings-logout-dialog", "settings-logout-close");
-  useSettingsDialogA11y(isProfileSheetOpen, () => setIsProfileSheetOpen(false), "settings-profile-dialog", "settings-profile-close");
-  useSettingsDialogA11y(isProfileEditSheetOpen, () => setIsProfileEditSheetOpen(false), "settings-edit-profile-dialog", "settings-profile-name-input");
-
-  useEffect(() => () => {
-    if (profileEditTimeoutRef.current !== null) window.clearTimeout(profileEditTimeoutRef.current);
-  }, []);
+  useSettingsDialogA11y(
+    isProfileSheetOpen,
+    () => {
+      if (isEditingProfile) setIsEditingProfile(false);
+      else setIsProfileSheetOpen(false);
+    },
+    "settings-profile-dialog",
+    isEditingProfile ? "settings-profile-name-input" : "settings-profile-close",
+  );
 
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
   const profileInitial = profileName.trim().charAt(0).toUpperCase() || "D";
@@ -363,16 +490,11 @@ export default function SettingsPage() {
       profile_quote: profile?.profile_quote?.trim() || "",
     });
     setProfileEditError(null);
-    setIsProfileEditSheetOpen(true);
+    setIsEditingProfile(true);
   }
 
   function openProfileEditSheetFromProfile() {
-    setIsProfileSheetOpen(false);
-    if (profileEditTimeoutRef.current !== null) window.clearTimeout(profileEditTimeoutRef.current);
-    profileEditTimeoutRef.current = window.setTimeout(() => {
-      profileEditTimeoutRef.current = null;
-      openProfileEditSheet();
-    }, prefersReducedMotion ? 0 : SETTINGS_TRANSITION_MS);
+    openProfileEditSheet();
   }
 
   async function handleSaveProfile() {
@@ -391,7 +513,7 @@ export default function SettingsPage() {
           : "We couldn't update your profile. Please try again.");
         return;
       }
-      setIsProfileEditSheetOpen(false);
+      setIsEditingProfile(false);
     } finally {
       setIsSavingProfile(false);
     }
@@ -779,6 +901,10 @@ export default function SettingsPage() {
 
       <ProfileDetailsSheet
         isOpen={isProfileSheetOpen}
+        isEditing={isEditingProfile}
+        editDraft={profileEditDraft}
+        isSavingProfile={isSavingProfile}
+        profileEditError={profileEditError}
         profileName={profileName}
         profileInitial={profileInitial}
         accountIdentifier={accountIdentifier}
@@ -789,8 +915,14 @@ export default function SettingsPage() {
         favoriteStoreBranch={profile?.favorite_store_branch}
         quote={profile?.profile_quote}
         prefersReducedMotion={Boolean(prefersReducedMotion)}
-        onClose={() => setIsProfileSheetOpen(false)}
+        onClose={() => {
+          setIsEditingProfile(false);
+          setIsProfileSheetOpen(false);
+        }}
         onEdit={openProfileEditSheetFromProfile}
+        onBackToProfile={() => setIsEditingProfile(false)}
+        onDraftChange={(field, value) => setProfileEditDraft((current) => ({ ...current, [field]: value }))}
+        onSaveProfile={() => void handleSaveProfile()}
       />
 
       <BottomSheetPortal open={isDeleteSheetOpen}>
@@ -979,115 +1111,6 @@ export default function SettingsPage() {
         </AnimatePresence>
       </BottomSheetPortal>
 
-      <BottomSheetPortal open={isProfileEditSheetOpen}>
-        <AnimatePresence>
-          {isProfileEditSheetOpen && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Close edit profile sheet"
-                className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
-                onClick={() => setIsProfileEditSheetOpen(false)}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              />
-              <motion.section
-                id="settings-edit-profile-dialog"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="settings-edit-profile-sheet-title"
-                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", stiffness: 380, damping: 32 }}
-              >
-                <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
-                  <h2 id="settings-edit-profile-sheet-title" className="dd-type-sheet-title text-stone-900">Edit your profile</h2>
-                  <button
-                    type="button"
-                    onClick={() => setIsProfileEditSheetOpen(false)}
-                    aria-label="Close"
-                    className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-                  >
-                    <X className="h-5 w-5" aria-hidden="true" />
-                  </button>
-                </div>
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleSaveProfile();
-                  }}
-                  className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-safe-sm"
-                >
-                  <p className="dd-type-secondary text-stone-600">These optional details appear on your public shopper profile. Leave anything blank to hide it.</p>
-                  <label className="mt-4 flex flex-col gap-1.5">
-                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">Name</span>
-                    <input
-                      id="settings-profile-name-input"
-                      type="text"
-                      value={profileEditDraft.full_name}
-                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, full_name: event.target.value }))}
-                      placeholder="Enter your name"
-                      autoComplete="name"
-                      autoFocus
-                      disabled={isSavingProfile}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
-                    />
-                  </label>
-                  <label className="mt-3 flex flex-col gap-1.5">
-                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">City <span className="font-normal text-stone-400">(optional)</span></span>
-                    <input
-                      type="text"
-                      value={profileEditDraft.city}
-                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, city: event.target.value }))}
-                      placeholder="e.g. Auckland"
-                      autoComplete="address-level2"
-                      maxLength={60}
-                      disabled={isSavingProfile}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
-                    />
-                  </label>
-                  <label className="mt-3 flex flex-col gap-1.5">
-                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">Fave supermarket branch <span className="font-normal text-stone-400">(optional)</span></span>
-                    <input
-                      type="text"
-                      value={profileEditDraft.favorite_store_branch}
-                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, favorite_store_branch: event.target.value }))}
-                      placeholder="e.g. Ponsonby"
-                      maxLength={80}
-                      disabled={isSavingProfile}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
-                    />
-                  </label>
-                  <label className="mt-3 flex flex-col gap-1.5">
-                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">Quote <span className="font-normal text-stone-400">(optional)</span></span>
-                    <textarea
-                      value={profileEditDraft.profile_quote}
-                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, profile_quote: event.target.value }))}
-                      placeholder="Your best grocery wisdom…"
-                      maxLength={160}
-                      rows={3}
-                      disabled={isSavingProfile}
-                      className="w-full resize-none rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
-                    />
-                    <span className="dd-type-meta text-stone-400">Keep it fun and skip contact details.</span>
-                  </label>
-                  {profileEditError && <p className="mt-3 dd-type-secondary text-alert-600">{profileEditError}</p>}
-                  <button
-                    type="submit"
-                    disabled={isSavingProfile || !profileEditDraft.full_name.trim()}
-                    className="dd-btn dd-btn-primary mt-5 w-full cursor-pointer"
-                  >
-                    {isSavingProfile ? "Saving…" : "Save profile"}
-                  </button>
-                </form>
-              </motion.section>
-            </>
-          )}
-        </AnimatePresence>
-      </BottomSheetPortal>
       </motion.main>
     </>
   );
