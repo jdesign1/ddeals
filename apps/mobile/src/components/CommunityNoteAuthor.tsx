@@ -1,4 +1,5 @@
 import type { CommunityPriceNote } from "@/lib/community-notes-api";
+import type { ReactNode } from "react";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 const REGION_LABELS: Record<string, string> = {
@@ -47,7 +48,7 @@ function authorInitial(value: string): string {
   return value.trim().charAt(0).toUpperCase() || "S";
 }
 
-export default function CommunityNoteAuthor({ note }: { note: CommunityPriceNote }) {
+export default function CommunityNoteAuthor({ note, trailingAction }: { note: CommunityPriceNote; trailingAction?: ReactNode }) {
   const displayName = note.author_display_name_snapshot.trim() || "Community shopper";
   const region = note.region_code ? formatRegion(note.region_code) : null;
   const relativeTime = formatRelativeTime(note.created_at);
@@ -67,6 +68,7 @@ export default function CommunityNoteAuthor({ note }: { note: CommunityPriceNote
         </div>
       </div>
       {note.store_name && <StoreLogoBadge store={note.store_name} variant="card" className="mt-1" />}
+      {trailingAction}
     </div>
   );
 }

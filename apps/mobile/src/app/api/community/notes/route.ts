@@ -9,6 +9,11 @@ import {
 } from "@/lib/community-auto-approval";
 import { moderateCommunityNoteBody } from "@/lib/community-content-moderation";
 import { supabaseConfig } from "@/lib/config";
+import {
+  BLOCKED_NOTE_MESSAGE,
+  MAX_REQUEST_BYTES,
+  parseCommunityNoteInput,
+} from "@/lib/community-note-input";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,44 +22,9 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 const PREVIEW_CACHE_HEADERS = { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" };
 const MAX_PREVIEW_NOTES = 3;
 const MAX_NOTES_REQUEST = 50;
-const MAX_NOTE_BODY_LENGTH = 500;
-const MAX_NOTE_AGE_DAYS = 365;
-const MAX_REQUEST_BYTES = 8192;
 const SUBMISSION_ENABLED = process.env.COMMUNITY_NOTES_SUBMISSION_ENABLED === "true";
 const AUTO_APPROVAL_MODE = parseCommunityAutoApprovalMode(process.env.COMMUNITY_NOTES_AUTO_APPROVAL_MODE);
 const AUTO_APPROVAL_PROVIDER = COMMUNITY_AUTO_APPROVAL_RULES_VERSION;
-
-const STORE_NAMES: Record<string, string> = {
-  newworld: "New World",
-  paknsave: "PAK'nSAVE",
-  woolworths: "Woolworths",
-  foursquare: "Four Square",
-  supervalue: "SuperValue",
-  chemistwarehouse: "Chemist Warehouse",
-};
-
-const REGION_CODES = new Set([
-  "northland",
-  "auckland",
-  "waikato",
-  "bay_of_plenty",
-  "gisborne",
-  "hawkes_bay",
-  "taranaki",
-  "manawatu_whanganui",
-  "wellington",
-  "tasman",
-  "nelson",
-  "marlborough",
-  "west_coast",
-  "canterbury",
-  "otago",
-  "southland",
-]);
-
-const CONTENT_RESTRICTIONS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
-
-const BLOCKED_NOTE_MESSAGE = "We couldn’t send this tip. It may contain language or information we can’t publish. Please remove links, contact details, or inappropriate language, then try again.";
 
 function parseLimit(value: string | null): number {
   const parsed = Number(value ?? MAX_PREVIEW_NOTES);
@@ -96,40 +66,6 @@ async function isTrustedCommunityContributor(
   }
 }
 
-function nzToday(): string {
-  const parts = new Intl.DateTimeFormat("en-NZ", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Pacific/Auckland",
-    year: "numeric",
-  }).formatToParts(new Date());
-  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
-function validDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-function parsePrice(value: unknown): number | null | undefined {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string" || !/^(?:0|[1-9]\d{0,5})(?:\.\d{1,2})?$/.test(value.trim())) return undefined;
-  const raw = Number(value);
-  if (!Number.isFinite(raw) || raw <= 0 || raw > 100000) return undefined;
-  if (Math.abs(raw * 100 - Math.round(raw * 100)) > 0.0001) return undefined;
-  return Math.round(raw * 100) / 100;
-}
-
-function parseBody(value: unknown): string | null | undefined {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.replace(/\s+/g, " ").trim();
-  if (trimmed.length > MAX_NOTE_BODY_LENGTH || CONTENT_RESTRICTIONS.test(trimmed)) return undefined;
-  return trimmed || null;
-}
-
 function jsonError(message: string, status: number, extraHeaders: Record<string, string> = {}) {
   return Response.json({ error: message }, { status, headers: { ...NO_STORE_HEADERS, ...extraHeaders } });
 }
@@ -160,7 +96,7 @@ export async function GET(request: Request) {
     const notesQuery = accounts
       .from("community_price_notes")
       .select(
-        "id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,helpful_count,published_at,created_at"
+        "id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,helpful_count,published_at,created_at,status"
       )
       .eq("product_id", productId)
       .eq("status", "approved")
@@ -171,14 +107,32 @@ export async function GET(request: Request) {
     const { data, error } = await notesQuery.limit(parseLimit(url.searchParams.get("limit")));
 
     if (error) throw error;
-    const visibleNotes = (data ?? []).filter((note) => !note.author_id || !blockedIds.includes(note.author_id));
+    const pendingOwnNotes = viewerId
+      ? await accounts
+        .from("community_price_notes")
+        .select(
+          "id,product_id,source_store_id,store_name,price,observed_on,region_code,body,author_id,author_display_name_snapshot,helpful_count,published_at,created_at,status"
+        )
+        .eq("product_id", productId)
+        .eq("author_id", viewerId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(MAX_NOTES_REQUEST)
+      : { data: [], error: null };
+    if (pendingOwnNotes.error) throw pendingOwnNotes.error;
+
+    const visibleApprovedNotes = (data ?? []).filter((note) => !note.author_id || !blockedIds.includes(note.author_id));
+    const visibleNotes = Array.from(new Map(
+      [...(pendingOwnNotes.data ?? []), ...visibleApprovedNotes].map((note) => [note.id, note]),
+    ).values());
     const viewerVotedNoteIds = new Set<string>();
-    if (viewerId && visibleNotes.length > 0) {
+    const approvedNoteIds = visibleNotes.filter((note) => note.status === "approved").map((note) => note.id);
+    if (viewerId && approvedNoteIds.length > 0) {
       const { data: votes, error: votesError } = await accounts
         .from("community_note_helpful_votes")
         .select("note_id")
         .eq("voter_id", viewerId)
-        .in("note_id", visibleNotes.map((note) => note.id));
+        .in("note_id", approvedNoteIds);
       if (votesError) throw votesError;
       for (const vote of votes ?? []) viewerVotedNoteIds.add(vote.note_id);
     }
@@ -235,48 +189,10 @@ export async function POST(request: Request) {
   }
 
   const productId = typeof payload.productId === "string" ? payload.productId.trim() : "";
-  const sourceStoreId = payload.sourceStoreId === null || payload.sourceStoreId === undefined || payload.sourceStoreId === ""
-    ? null
-    : typeof payload.sourceStoreId === "string"
-      ? payload.sourceStoreId.trim().toLowerCase()
-      : undefined;
-  const observedOn = payload.observedOn === null || payload.observedOn === undefined || payload.observedOn === ""
-    ? null
-    : typeof payload.observedOn === "string"
-      ? payload.observedOn.trim()
-      : undefined;
-  const regionCode = payload.regionCode === null || payload.regionCode === undefined || payload.regionCode === ""
-    ? null
-    : typeof payload.regionCode === "string"
-      ? payload.regionCode.trim().toLowerCase()
-      : undefined;
-  const body = parseBody(payload.body);
-  const price = parsePrice(payload.price);
-  const today = nzToday();
-
   if (!isUuid(productId)) return jsonError("That product could not be recognised.", 400);
-  if (sourceStoreId === undefined || (sourceStoreId !== null && !STORE_NAMES[sourceStoreId])) {
-    return jsonError("Choose a supermarket from the list.", 400);
-  }
-  if (price === undefined) return jsonError("Enter a valid price with up to two decimal places.", 400);
-  if (observedOn === undefined) return jsonError("Choose a valid date.", 400);
-  if (observedOn !== null) {
-    if (!validDate(observedOn)) return jsonError("Choose a valid date.", 400);
-    if (observedOn > today) return jsonError("The date cannot be in the future.", 400);
-    const oldestAllowed = new Date(`${today}T00:00:00Z`);
-    oldestAllowed.setUTCDate(oldestAllowed.getUTCDate() - MAX_NOTE_AGE_DAYS);
-    if (Date.parse(`${observedOn}T00:00:00Z`) < oldestAllowed.getTime()) {
-      return jsonError("Please choose a date within the last year.", 400);
-    }
-  }
-  if (regionCode !== null && (regionCode === undefined || !REGION_CODES.has(regionCode))) {
-    return jsonError("Choose a region from the list.", 400);
-  }
-  if (body === undefined) {
-    const rawBody = typeof payload.body === "string" ? payload.body.trim() : "";
-    if (rawBody.length > MAX_NOTE_BODY_LENGTH) return jsonError("Shorten your note to 500 characters or fewer.", 400);
-    return jsonError(BLOCKED_NOTE_MESSAGE, 422);
-  }
+  const parsedInput = parseCommunityNoteInput(payload);
+  if (!parsedInput.ok) return jsonError(parsedInput.message, parsedInput.status);
+  const { sourceStoreId, price, observedOn, regionCode, body } = parsedInput.value;
   const hasCompletePriceEvidenceValue = hasCompletePriceEvidence(sourceStoreId, price, observedOn);
   if (!body && !hasCompletePriceEvidenceValue) {
     return jsonError("Add a short tip, or add the supermarket, price and date so there’s something useful to share.", 400);

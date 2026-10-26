@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LoaderCircle, MessageCircle, Tag, X } from "lucide-react";
+import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   fetchCommunityPriceNotes,
   submitCommunityPriceNote,
+  updateCommunityPriceNote,
   type CommunityPriceNote,
 } from "@/lib/community-notes-api";
 
@@ -63,17 +64,35 @@ function nzToday(): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function NoteCard({ note, onHelpfulChanged }: {
+function NoteCard({ note, onEdit, onHelpfulChanged }: {
   note: CommunityPriceNote;
+  onEdit: (note: CommunityPriceNote) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
 }) {
   return (
     <article className="flex flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
-      <CommunityNoteAuthor note={note} />
+      <CommunityNoteAuthor
+        note={note}
+        trailingAction={note.is_own_note ? (
+          <button
+            type="button"
+            onClick={() => onEdit(note)}
+            aria-label="Edit your shopper tip"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-white hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-300"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : undefined}
+      />
+      {note.status === "pending" && (
+        <p className="mt-3 rounded-xl border border-fair-200 bg-fair-50 px-3 py-2 text-xs font-semibold leading-4 text-fair-900" role="status">
+          Pending review — only you can see this tip for now.
+        </p>
+      )}
       {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
       {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
       {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">&ldquo;{note.body}&rdquo;</p>}
-      {!note.is_own_note && (
+      {!note.is_own_note && note.status === "approved" && (
         <div className="mt-4 border-t border-stone-200 pt-3">
           <CommunityHelpfulButton note={note} onChanged={onHelpfulChanged} />
         </div>
@@ -85,14 +104,16 @@ function NoteCard({ note, onHelpfulChanged }: {
 function NoteComposer({
   productId,
   isOpen,
+  editingNote,
   onClose,
-  onSubmitted,
+  onComplete,
   returnFocusRef,
 }: {
   productId: string;
   isOpen: boolean;
+  editingNote: CommunityPriceNote | null;
   onClose: () => void;
-  onSubmitted: (status: "pending" | "approved") => void;
+  onComplete: (status: "pending" | "approved") => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
   const { session } = useAuth();
@@ -103,11 +124,11 @@ function NoteComposer({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const submittingRef = useRef(false);
   const hasUnsavedInputRef = useRef(false);
-  const [storeId, setStoreId] = useState("");
-  const [price, setPrice] = useState("");
-  const [observedOn, setObservedOn] = useState("");
-  const [regionCode, setRegionCode] = useState("");
-  const [body, setBody] = useState("");
+  const [storeId, setStoreId] = useState(editingNote?.source_store_id ?? "");
+  const [price, setPrice] = useState(editingNote?.price === null || editingNote?.price === undefined ? "" : editingNote.price.toFixed(2));
+  const [observedOn, setObservedOn] = useState(editingNote?.observed_on ?? "");
+  const [regionCode, setRegionCode] = useState(editingNote?.region_code ?? "");
+  const [body, setBody] = useState(editingNote?.body ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -137,7 +158,7 @@ function NoteComposer({
 
   useEffect(() => {
     if (!isOpen) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : returnFocusRef.current;
+    previousFocusRef.current = returnFocusRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -196,13 +217,13 @@ function NoteComposer({
     setError(null);
     setSubmitting(true);
     try {
-      const submissionResult = await submitCommunityPriceNote(
-        { productId, sourceStoreId: storeId || undefined, price: price || undefined, observedOn: observedOn || undefined, regionCode: regionCode || undefined, body },
-        session.access_token,
-      );
+      const noteInput = { sourceStoreId: storeId || undefined, price: price || undefined, observedOn: observedOn || undefined, regionCode: regionCode || undefined, body };
+      const submissionResult = editingNote
+        ? await updateCommunityPriceNote(editingNote.id, noteInput, session.access_token)
+        : await submitCommunityPriceNote({ productId, ...noteInput }, session.access_token);
       hasUnsavedInputRef.current = false;
       setSubmitted(true);
-      onSubmitted(submissionResult.status);
+      onComplete(submissionResult.status);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "We couldn't send your note right now.");
     } finally {
@@ -241,12 +262,12 @@ function NoteComposer({
                   type="button"
                   onClick={closeComposerSheet}
                   disabled={submitting}
-                  aria-label="Close share a shopper tip"
+                  aria-label={editingNote ? "Close edit shopper tip" : "Close share a shopper tip"}
                   className="dd-bottom-sheet-close absolute left-4 top-1/2 -translate-y-1/2 cursor-pointer text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
-                <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">Share a shopper tip</h2>
+                <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">{editingNote ? "Edit your shopper tip" : "Share a shopper tip"}</h2>
               </div>
 
               {submitted ? (
@@ -265,10 +286,10 @@ function NoteComposer({
                   </motion.span>
                   <div>
                     <p className="text-lg font-extrabold text-stone-900">
-                      Thanks your tip will appear shortly.
+                      {editingNote ? "Your tip was updated." : "Thanks — your tip will appear shortly."}
                     </p>
                     <p className="mt-2 text-sm leading-5 text-stone-600">
-                      Your tips will help other shoppers, and confirm price accuracy.
+                      {editingNote ? "It will return to the community after it passes review. Helpful votes were reset for this update." : "Your tips will help other shoppers, and confirm price accuracy."}
                     </p>
                   </div>
                   <button type="button" onClick={closeComposerSheet} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">Done</button>
@@ -282,8 +303,8 @@ function NoteComposer({
                           <MessageCircle className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
-                          <h3 id="community-note-tip-heading" className="dd-type-section text-stone-900">Your tip</h3>
-                          <p id="community-note-composer-description" className="mt-1 dd-type-secondary text-stone-500">Share a price tip for other deal detectives, together we can find the best transparent prices</p>
+                          <h3 id="community-note-tip-heading" className="dd-type-section text-stone-900">{editingNote ? "Update your tip" : "Your tip"}</h3>
+                          <p id="community-note-composer-description" className="mt-1 dd-type-secondary text-stone-500">{editingNote ? "Changes are checked before the updated tip is shown to other shoppers." : "Share a price tip for other deal detectives, together we can find the best transparent prices"}</p>
                         </div>
                       </div>
                       <label htmlFor="community-note-body" className="sr-only">Your tip</label>
@@ -355,7 +376,7 @@ function NoteComposer({
                   </div>
                   <div className="dd-sheet-cta-footer flex-shrink-0 border-t border-stone-100 bg-white/95 px-5 pt-3">
                     <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-                      {submitting ? "Sharing…" : "Share tip"}
+                      {submitting ? (editingNote ? "Updating…" : "Sharing…") : (editingNote ? "Update tip" : "Share tip")}
                     </button>
                   </div>
                 </form>
@@ -379,11 +400,15 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
   const [error, setError] = useState<string | null>(null);
   const [retryTick, setRetryTick] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<CommunityPriceNote | null>(null);
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [notesSheetOpenSequence, setNotesSheetOpenSequence] = useState(0);
   const seeAllNotesButtonRef = useRef<HTMLButtonElement>(null);
   const prefersReducedMotion = useReducedMotion();
-  const closeComposer = useCallback(() => setComposerOpen(false), []);
+  const closeComposer = useCallback(() => {
+    setComposerOpen(false);
+    setEditingNote(null);
+  }, []);
   const closeNotesSheet = useCallback(() => setNotesSheetOpen(false), []);
   const openNotesSheet = useCallback(() => {
     setNotesSheetOpenSequence((sequence) => sequence + 1);
@@ -426,11 +451,20 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
       openAuthSheet("Log in to share a community tip. After signing in, return here and tap Share a tip again.", pathname);
       return;
     }
+    setEditingNote(null);
     setComposerOpen(true);
   };
 
+  const openEditComposer = useCallback((note: CommunityPriceNote) => {
+    if (!note.is_own_note) return;
+    setNotesSheetOpen(false);
+    setEditingNote(note);
+    setComposerOpen(true);
+  }, []);
+
   const isCurrentProductLoaded = loadedProductId === productId;
   const isLoadingCurrentProduct = !isCurrentProductLoaded;
+  const hasOwnVisibleNote = notes.some((note) => note.is_own_note);
   const handleHelpfulChanged = useCallback((noteId: string, helpful: boolean, helpfulCount: number) => {
     setNotes((currentNotes) => currentNotes.map((note) => note.id === noteId
       ? { ...note, viewer_has_helpful_vote: helpful, helpful_count: helpfulCount }
@@ -480,11 +514,11 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
             {!error && notes.length > 0 && (
               <div>
                 <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
-                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} onHelpfulChanged={handleHelpfulChanged} />)}
+                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} onEdit={openEditComposer} onHelpfulChanged={handleHelpfulChanged} />)}
                 </InsightCarousel>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
-                  {notes.length > 3 && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">See all tips</button>}
+                  {(notes.length > 3 || hasOwnVisibleNote) && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">{hasOwnVisibleNote ? "Manage tips" : "See all tips"}</button>}
                 </div>
               </div>
             )}
@@ -498,10 +532,12 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         )}
       </section>
       <NoteComposer
+        key={editingNote?.id ?? "new-community-note"}
         productId={productId}
         isOpen={composerOpen}
+        editingNote={editingNote}
         onClose={closeComposer}
-        onSubmitted={(status) => { if (status === "approved") reloadNotes(); }}
+        onComplete={() => reloadNotes()}
         returnFocusRef={addNoteButtonRef}
       />
       <CommunityPriceNotesSheet
@@ -512,6 +548,11 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         returnFocusRef={seeAllNotesButtonRef}
         onBlocked={reloadNotes}
         onHelpfulChanged={handleHelpfulChanged}
+        onEdit={openEditComposer}
+        onNoteRemoved={(noteId) => {
+          setNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
+          reloadNotes();
+        }}
       />
     </>
   );

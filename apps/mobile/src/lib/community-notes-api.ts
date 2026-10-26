@@ -9,6 +9,7 @@ export interface CommunityPriceNote {
   body: string | null;
   author_display_name_snapshot: string;
   helpful_count: number;
+  status: "pending" | "approved";
   viewer_has_helpful_vote: boolean;
   is_own_note: boolean;
   published_at: string | null;
@@ -23,6 +24,14 @@ export interface CommunityPriceNotesResult {
 
 export interface SubmitCommunityPriceNoteInput {
   productId: string;
+  sourceStoreId?: string;
+  price?: string;
+  observedOn?: string;
+  regionCode?: string;
+  body: string;
+}
+
+export interface UpdateCommunityPriceNoteInput {
   sourceStoreId?: string;
   price?: string;
   observedOn?: string;
@@ -71,6 +80,7 @@ export async function fetchCommunityPriceNotes(
     notes: Array.isArray(payload?.notes)
       ? payload.notes.map((note) => ({
         ...note,
+        status: note.status === "pending" ? "pending" : "approved",
         helpful_count: Number.isFinite(note.helpful_count) ? note.helpful_count : 0,
         viewer_has_helpful_vote: note.viewer_has_helpful_vote === true,
         is_own_note: note.is_own_note === true,
@@ -121,6 +131,36 @@ export function reportCommunityPriceNote(input: CommunityNoteReportInput, access
 
 export function blockCommunityNote(noteId: string, accessToken: string): Promise<void> {
   return postCommunityAction("/api/community/notes/block", { noteId }, accessToken);
+}
+
+export async function updateCommunityPriceNote(
+  noteId: string,
+  input: UpdateCommunityPriceNoteInput,
+  accessToken: string,
+): Promise<{ status: "pending" }> {
+  const response = await fetch(`/api/community/notes/${encodeURIComponent(noteId)}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { status?: "pending"; error?: string }
+    | null;
+  if (!response.ok) throw new Error(payload?.error ?? "We couldn't update your tip right now. Please try again.");
+  if (payload?.status !== "pending") throw new Error("We couldn't confirm your tip was updated. Please try again.");
+  return { status: payload.status };
+}
+
+export async function deleteCommunityPriceNote(noteId: string, accessToken: string): Promise<void> {
+  const response = await fetch(`/api/community/notes/${encodeURIComponent(noteId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) throw new Error(payload?.error ?? "We couldn't remove your tip right now. Please try again.");
 }
 
 export async function setCommunityPriceNoteHelpful(
