@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, X } from "lucide-react";
+import { CalendarDays, MessageCircle, Tag, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -275,11 +275,17 @@ function NoteComposer({
               ) : (
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pb-6 pt-6">
-                    <section className="space-y-3" aria-labelledby="community-note-tip-heading">
-                      <div>
-                        <label id="community-note-tip-heading" htmlFor="community-note-body" className="text-base font-bold leading-6 text-stone-800">Your tip</label>
-                        <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Share a price, tip, or useful detail. You can add price details below if you have them.</p>
+                    <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-xs" aria-labelledby="community-note-tip-heading">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
+                          <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <h3 id="community-note-tip-heading" className="text-base font-bold leading-6 text-stone-900">Your tip</h3>
+                          <p id="community-note-composer-description" className="mt-1 text-sm leading-5 text-stone-500">Share a price, tip, or useful detail. You can add price details below if you have them.</p>
+                        </div>
                       </div>
+                      <label htmlFor="community-note-body" className="sr-only">Your tip</label>
                       <textarea
                         id="community-note-body"
                         maxLength={500}
@@ -289,17 +295,23 @@ function NoteComposer({
                         placeholder="For example, which size or flavour you saw"
                         autoCapitalize="sentences"
                         aria-describedby="community-note-composer-description community-note-body-counter"
-                        className="min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
+                        className="mt-4 min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
                       />
-                      <p id="community-note-body-counter" className="text-right text-xs font-semibold text-stone-400" aria-live="polite">{body.length}/500</p>
+                      <p id="community-note-body-counter" className="mt-2 text-right text-xs font-semibold text-stone-400" aria-live="polite">{body.length}/500</p>
                     </section>
 
-                    <fieldset id="community-note-evidence" className="mt-8 space-y-4 border-t border-stone-100 pt-6" aria-describedby="community-note-evidence-description">
-                      <legend id="community-note-evidence-heading" className="px-0 text-base font-bold leading-6 text-stone-800">
-                        Price details <span className="font-normal text-stone-400">(optional)</span>
-                      </legend>
-                      <p id="community-note-evidence-description" className="-mt-1 text-sm leading-5 text-stone-500">Add these if you spotted a specific price.</p>
-                      <div className="min-w-0 space-y-4">
+                    <fieldset id="community-note-evidence" className="mt-4 rounded-3xl border border-stone-200/80 bg-white p-4 shadow-xs" aria-describedby="community-note-evidence-description">
+                      <legend className="sr-only">Price details (optional)</legend>
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
+                          <Tag className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <h3 id="community-note-evidence-heading" className="text-base font-bold leading-6 text-stone-900">Price details <span className="font-normal text-stone-400">(optional)</span></h3>
+                          <p id="community-note-evidence-description" className="mt-1 text-sm leading-5 text-stone-500">Add these if you spotted a specific price.</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 min-w-0 space-y-4">
                         <div>
                           <label htmlFor="community-note-store" className="text-sm font-bold text-stone-700">Supermarket</label>
                           <select id="community-note-store" value={storeId} onChange={(event) => setStoreId(event.target.value)} className={`mt-2 ${FORM_CONTROL_CLASS}`}>
