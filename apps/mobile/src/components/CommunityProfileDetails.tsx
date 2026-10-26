@@ -22,7 +22,7 @@ export default function CommunityProfileDetails({
 
   return (
     <div className={isDark ? "mt-5 rounded-2xl border border-white/10 bg-white/10 p-4 text-white" : "mt-5 rounded-2xl bg-stone-50 p-4 text-stone-900"}>
-      <p className={isDark ? "dd-type-secondary dd-type-secondary-strong text-white" : "dd-type-secondary dd-type-secondary-strong text-stone-900"}>A little about them</p>
+      <p className={isDark ? "dd-type-secondary dd-type-secondary-strong text-white" : "dd-type-secondary dd-type-secondary-strong text-stone-900"}>Deal detective info</p>
       {details.length > 0 && (
         <dl className="mt-3 space-y-3">
           {details.map(({ label, value, Icon }) => (

@@ -34,7 +34,7 @@ export function CommunityProfileStats({
         )}
       </div>
 
-      <div className="mt-4 h-[4.5rem] overflow-hidden">
+      <div className="mt-4 h-[5.5rem] overflow-hidden">
         {loading ? (
           <div className={isDark ? "flex h-full items-center justify-center text-white/65" : "flex h-full items-center justify-center text-stone-500"} role="status" aria-label="Loading shopper stats" aria-live="polite">
             <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
