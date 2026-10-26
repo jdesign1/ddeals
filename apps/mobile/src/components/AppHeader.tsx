@@ -99,6 +99,10 @@ export default function AppHeader({
 
   const isContextHeader = Boolean(override) || CONTEXT_HEADER_ROUTES.includes(pathname) || pathname.startsWith("/deal/");
   const isWatchlist = pathname === "/lists";
+  // Settings animates above the previous route at z-[47]. Keep its global
+  // header above that page surface so the sticky navigation remains visible
+  // while the settings content scrolls underneath it.
+  const headerStackClass = pathname === "/settings" ? "z-[48]" : "z-[45]";
   const contextTitle = override?.title ?? ROUTE_TITLES[pathname] ?? "Dodgy Deal";
   const isHeaderHidden = pathname === "/" && isHiddenOnCheckDeals;
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
@@ -124,7 +128,7 @@ export default function AppHeader({
   return (
     <>
       <div
-        className={`app-header-shell ${sticky ? "sticky top-0" : ""} z-[45] w-full flex-shrink-0 ${collapseOnCheckDeals && pathname === "/" ? "check-deals-collapsible" : ""} ${collapseOnCheckDeals && isHeaderHidden ? "check-deals-header-collapsed" : ""} ${isHeaderHidden ? "is-hidden" : ""}`}
+        className={`app-header-shell ${sticky ? "sticky top-0" : ""} ${headerStackClass} w-full flex-shrink-0 ${collapseOnCheckDeals && pathname === "/" ? "check-deals-collapsible" : ""} ${collapseOnCheckDeals && isHeaderHidden ? "check-deals-header-collapsed" : ""} ${isHeaderHidden ? "is-hidden" : ""}`}
         aria-hidden={isHeaderHidden}
       >
         {isAnonymousSession && <div className="flex items-center justify-center bg-amber-400 px-4 py-1 text-center dd-type-meta dd-type-meta-strong text-amber-950">Test mode — anonymous test account, not linked to an email</div>}
