@@ -7,12 +7,16 @@ import { authRedirectUrl } from "./accounts-config";
 import { isNativeAppleSignInAvailable, linkWithNativeApple, signInWithNativeApple } from "./native-apple-auth";
 import { isNativeGoogleSignInAvailable, signInWithNativeGoogle } from "./native-google-auth";
 import { suppressNewSpecialsPopupUntilHomeExit } from "./new-specials";
+import { containsPublicProfileContactDetails, normalizePublicProfileDraft, PUBLIC_PROFILE_FIELD_LIMITS, PUBLIC_PROFILE_QUOTE_CONTACT_ERROR } from "./public-profile-fields";
 
 export interface AccountProfile {
   id: string;
   full_name: string;
   date_of_birth: string;
   zip_code: string | null;
+  city: string | null;
+  favorite_store_branch: string | null;
+  profile_quote: string | null;
   onboarding_complete: boolean;
   analytics_consent_at: string | null;
   created_at: string;
@@ -23,6 +27,13 @@ export interface AccountDetails {
   full_name: string;
   date_of_birth: string;
   zip_code: string;
+}
+
+export interface AccountProfileUpdate {
+  full_name: string;
+  city: string;
+  favorite_store_branch: string;
+  profile_quote: string;
 }
 
 type AuthProviderName = "google" | "apple";
@@ -59,6 +70,7 @@ interface AuthContextValue {
   linkAppleIdentity: () => Promise<{ error: string | null }>;
   completeProfile: (details: AccountDetails) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   updateProfileName: (name: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  updateProfile: (details: AccountProfileUpdate) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   refreshProfile: () => Promise<AccountProfile | null>;
   signOut: () => Promise<void>;
   isAnonymousSession: boolean;
@@ -358,6 +370,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await client
           .from("profiles")
           .update({ full_name: trimmedName })
+          .eq("id", user.id)
+          .select("*")
+          .single();
+        if (error) return { error: error.message, profile: null };
+        const nextProfile = data as AccountProfile;
+        setProfile(nextProfile);
+        return { error: null, profile: nextProfile };
+      },
+      updateProfile: async (details) => {
+        if (!client) return { error: configurationError(), profile: null };
+        if (!user) return { error: "Please sign in before updating your profile.", profile: null };
+        const trimmedName = details.full_name.trim();
+        if (!trimmedName) return { error: "Enter your name.", profile: null };
+        const profileQuote = normalizePublicProfileDraft(details.profile_quote, PUBLIC_PROFILE_FIELD_LIMITS.profile_quote);
+        if (containsPublicProfileContactDetails(profileQuote)) {
+          return { error: PUBLIC_PROFILE_QUOTE_CONTACT_ERROR, profile: null };
+        }
+
+        const { data, error } = await client
+          .from("profiles")
+          .update({
+            full_name: trimmedName,
+            city: normalizePublicProfileDraft(details.city, PUBLIC_PROFILE_FIELD_LIMITS.city) || null,
+            favorite_store_branch: normalizePublicProfileDraft(details.favorite_store_branch, PUBLIC_PROFILE_FIELD_LIMITS.favorite_store_branch) || null,
+            profile_quote: profileQuote || null,
+          })
           .eq("id", user.id)
           .select("*")
           .single();

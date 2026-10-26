@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityProfileDetails from "@/components/CommunityProfileDetails";
 import { CommunityProfileStats } from "@/components/CommunityProfileSummary";
 import { fetchCommunityPublicProfile, type CommunityProfileSummary } from "@/lib/community-notes-api";
 
@@ -122,7 +123,7 @@ export default function CommunityPublicProfileSheet({
               animate={{ y: 0, opacity: 1 }}
               exit={prefersReducedMotion ? undefined : { y: "100%", opacity: 0.5 }}
               transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", damping: 25, stiffness: 220 }}
-              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[71] mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl outline-none"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 z-[71] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl outline-none"
               style={{ backgroundColor: "var(--color-ink-950)" }}
             >
               <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
@@ -157,6 +158,15 @@ export default function CommunityPublicProfileSheet({
                   <p className="mt-1 dd-type-meta text-white/65">Published tips and helpful votes contribute to the Deal Detective rank.</p>
                   <CommunityProfileStats summary={visibleSummary} loading={loading} error={visibleError} isDark showCommunityRank={false} />
                 </div>
+
+                {visibleSummary && (
+                  <CommunityProfileDetails
+                    city={visibleSummary.city}
+                    favoriteStoreBranch={visibleSummary.favorite_store_branch}
+                    quote={visibleSummary.profile_quote}
+                    isDark
+                  />
+                )}
               </div>
             </motion.div>
           </>

@@ -25,25 +25,27 @@ export function CommunityProfileStats({
 
   return (
     <>
-      <div className="mt-3 min-h-7">
+      <div className="mt-3 h-7">
         {!loading && !error && detectiveRank && (
-          <span className={isDark ? "inline-flex items-center gap-1.5 rounded-full border border-fair-300/30 bg-fair-300/10 px-3 py-1.5 dd-type-meta dd-type-meta-strong text-fair-200" : "inline-flex items-center gap-1.5 rounded-full border border-fair-200 bg-fair-50 px-3 py-1.5 dd-type-meta dd-type-meta-strong text-fair-800"}>
+          <span className={isDark ? "inline-flex h-7 items-center gap-1.5 rounded-full border border-fair-300/30 bg-fair-300/10 px-3 dd-type-meta dd-type-meta-strong text-fair-200" : "inline-flex h-7 items-center gap-1.5 rounded-full border border-fair-200 bg-fair-50 px-3 dd-type-meta dd-type-meta-strong text-fair-800"}>
             <Medal className="h-4 w-4" aria-hidden="true" />
             <span>Deal Detective rank: {detectiveRank.label}</span>
           </span>
         )}
       </div>
 
-      <div className="mt-4 min-h-[4.5rem]">
+      <div className="mt-4 h-[4.5rem] overflow-hidden">
         {loading ? (
-          <div className={isDark ? "flex min-h-[4.5rem] items-center justify-center gap-2 text-white/65" : "flex min-h-[4.5rem] items-center justify-center gap-2 text-stone-500"} role="status" aria-live="polite">
+          <div className={isDark ? "flex h-full items-center justify-center text-white/65" : "flex h-full items-center justify-center text-stone-500"} role="status" aria-label="Loading shopper stats" aria-live="polite">
             <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-            <span className="dd-type-meta">Loading community totals…</span>
+            <span className="sr-only">Loading shopper stats</span>
           </div>
         ) : error ? (
-          <p className={isDark ? "dd-type-meta leading-5 text-red-200" : "dd-type-meta leading-5 text-alert-600"} role="alert">{error}</p>
+          <div className="flex h-full items-center overflow-y-auto">
+            <p className={isDark ? "dd-type-meta leading-5 text-red-200" : "dd-type-meta leading-5 text-alert-600"} role="alert">{error}</p>
+          </div>
         ) : (
-          <div className={isDark ? `grid ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
+          <div className={isDark ? `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
             <div className="px-3 text-center">
               <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
                 <Lightbulb className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />

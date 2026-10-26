@@ -1,5 +1,6 @@
 import { getAuthenticatedAccount, isUuid, requireAccountsAdmin } from "@/lib/accounts-server";
 import { buildCommunityReputation, type CommunityAuthorContribution } from "@/lib/community-reputation";
+import { cleanPublicProfileField, containsPublicProfileContactDetails, PUBLIC_PROFILE_FIELD_LIMITS } from "@/lib/public-profile-fields";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,31 @@ function getBearerToken(request: Request): string | null {
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status, headers: NO_STORE_HEADERS });
+}
+
+async function readPublicProfileFields(
+  accounts: ReturnType<typeof requireAccountsAdmin>,
+  authorId: string,
+) {
+  const { data, error } = await accounts
+    .from("profiles")
+    .select("city,favorite_store_branch,profile_quote")
+    .eq("id", authorId)
+    .maybeSingle();
+
+  // Keep the stats endpoint backwards-compatible while the accounts migration
+  // rolls out. The fields remain empty until the columns exist.
+  if (error && (error.code === "42703" || /column .* does not exist/i.test(error.message))) {
+    return { city: null, favorite_store_branch: null, profile_quote: null };
+  }
+  if (error) throw error;
+
+  const quote = cleanPublicProfileField(data?.profile_quote, PUBLIC_PROFILE_FIELD_LIMITS.profile_quote);
+  return {
+    city: cleanPublicProfileField(data?.city, PUBLIC_PROFILE_FIELD_LIMITS.city),
+    favorite_store_branch: cleanPublicProfileField(data?.favorite_store_branch, PUBLIC_PROFILE_FIELD_LIMITS.favorite_store_branch),
+    profile_quote: quote && !containsPublicProfileContactDetails(quote) ? quote : null,
+  };
 }
 
 export async function GET(request: Request) {
@@ -46,6 +72,8 @@ export async function GET(request: Request) {
       targetAuthorId = account.id;
     }
 
+    const publicProfileFields = await readPublicProfileFields(accounts, targetAuthorId);
+
     if (noteId) {
       const { data: authorNotes, error: authorNotesError } = await accounts
         .from("community_price_notes")
@@ -64,6 +92,7 @@ export async function GET(request: Request) {
           helpful_received: profile.helpfulReceived,
           rank: null,
           contributor_count: null,
+          ...publicProfileFields,
         },
       }, { headers: PUBLIC_PROFILE_HEADERS });
     }
@@ -109,6 +138,7 @@ export async function GET(request: Request) {
         helpful_received: profile.helpfulReceived,
         rank: profile.rank,
         contributor_count: profile.contributorCount,
+        ...publicProfileFields,
       },
     }, { headers: NO_STORE_HEADERS });
   } catch (error) {

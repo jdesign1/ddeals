@@ -57,6 +57,9 @@ export interface CommunityProfileSummary {
   helpful_received: number;
   rank: number | null;
   contributor_count: number | null;
+  city: string | null;
+  favorite_store_branch: string | null;
+  profile_quote: string | null;
 }
 
 export async function fetchCommunityPriceNotes(

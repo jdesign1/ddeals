@@ -8,10 +8,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useTheme } from "@/lib/theme-context";
 import { usePageHeader } from "@/lib/header-context";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, type AccountProfileUpdate } from "@/lib/auth-context";
+import { PUBLIC_PROFILE_QUOTE_CONTACT_ERROR } from "@/lib/public-profile-fields";
 import { getAccountDisplayName, getAccountEmailDisplay, getAccountSignInMethodDisplay } from "@/lib/account-display";
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityProfileDetails from "@/components/CommunityProfileDetails";
 import CommunityProfileSummary from "@/components/CommunityProfileSummary";
 import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
@@ -117,6 +119,9 @@ function ProfileDetailsSheet({
   isPremium,
   subscriptionLoading,
   createdAt,
+  city,
+  favoriteStoreBranch,
+  quote,
   prefersReducedMotion,
   onClose,
   onEdit,
@@ -128,6 +133,9 @@ function ProfileDetailsSheet({
   isPremium: boolean;
   subscriptionLoading: boolean;
   createdAt?: string;
+  city?: string | null;
+  favoriteStoreBranch?: string | null;
+  quote?: string | null;
   prefersReducedMotion: boolean;
   onClose: () => void;
   onEdit: () => void;
@@ -152,7 +160,7 @@ function ProfileDetailsSheet({
               role="dialog"
               aria-modal="true"
               aria-labelledby="settings-profile-sheet-title"
-              className="dd-bottom-sheet fixed inset-x-0 bottom-0 mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl"
               style={{ backgroundColor: "var(--color-ink-950)" }}
               initial={prefersReducedMotion ? false : { y: "100%" }}
               animate={{ y: 0 }}
@@ -200,6 +208,8 @@ function ProfileDetailsSheet({
                   <CommunityProfileSummary variant="dark" />
                 </div>
 
+                <CommunityProfileDetails city={city} favoriteStoreBranch={favoriteStoreBranch} quote={quote} isDark />
+
                 <button type="button" onClick={onEdit} className="dd-btn dd-btn-primary mt-5 min-h-14 w-full cursor-pointer">
                   <Pencil className="h-4 w-4" aria-hidden="true" />
                   Edit profile
@@ -218,7 +228,7 @@ export default function SettingsPage() {
   const { isTransitioningToSettings, completeSettingsNavigation } = useNavigationDrawer();
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
-  const { user, session, profile, loading: authLoading, signOut, updateProfileName, openAuthSheet } = useAuth();
+  const { user, session, profile, loading: authLoading, signOut, updateProfile, openAuthSheet } = useAuth();
   const {
     pushEnabled,
     pushReady,
@@ -241,11 +251,16 @@ export default function SettingsPage() {
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileSheetOpen, setIsProfileSheetOpen] = useState(false);
-  const [isNameSheetOpen, setIsNameSheetOpen] = useState(false);
-  const [nameDraft, setNameDraft] = useState("");
-  const [isSavingName, setIsSavingName] = useState(false);
+  const [isProfileEditSheetOpen, setIsProfileEditSheetOpen] = useState(false);
+  const [profileEditDraft, setProfileEditDraft] = useState<AccountProfileUpdate>({
+    full_name: "",
+    city: "",
+    favorite_store_branch: "",
+    profile_quote: "",
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
+  const [profileEditError, setProfileEditError] = useState<string | null>(null);
   const [isDeleteSheetOpen, setIsDeleteSheetOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [accountDeleteError, setAccountDeleteError] = useState<string | null>(null);
@@ -265,7 +280,7 @@ export default function SettingsPage() {
   }, "settings-delete-account-dialog", "settings-delete-account-close");
   useSettingsDialogA11y(isLogoutSheetOpen, () => setIsLogoutSheetOpen(false), "settings-logout-dialog", "settings-logout-close");
   useSettingsDialogA11y(isProfileSheetOpen, () => setIsProfileSheetOpen(false), "settings-profile-dialog", "settings-profile-close");
-  useSettingsDialogA11y(isNameSheetOpen, () => setIsNameSheetOpen(false), "settings-edit-name-dialog", "settings-name-input");
+  useSettingsDialogA11y(isProfileEditSheetOpen, () => setIsProfileEditSheetOpen(false), "settings-edit-profile-dialog", "settings-profile-name-input");
 
   useEffect(() => () => {
     if (profileEditTimeoutRef.current !== null) window.clearTimeout(profileEditTimeoutRef.current);
@@ -340,38 +355,45 @@ export default function SettingsPage() {
     }
   }
 
-  function openNameSheet() {
-    setNameDraft(profile?.full_name?.trim() || "");
-    setNameError(null);
-    setIsNameSheetOpen(true);
+  function openProfileEditSheet() {
+    setProfileEditDraft({
+      full_name: profile?.full_name?.trim() || "",
+      city: profile?.city?.trim() || "",
+      favorite_store_branch: profile?.favorite_store_branch?.trim() || "",
+      profile_quote: profile?.profile_quote?.trim() || "",
+    });
+    setProfileEditError(null);
+    setIsProfileEditSheetOpen(true);
   }
 
-  function openNameSheetFromProfile() {
+  function openProfileEditSheetFromProfile() {
     setIsProfileSheetOpen(false);
     if (profileEditTimeoutRef.current !== null) window.clearTimeout(profileEditTimeoutRef.current);
     profileEditTimeoutRef.current = window.setTimeout(() => {
       profileEditTimeoutRef.current = null;
-      openNameSheet();
+      openProfileEditSheet();
     }, prefersReducedMotion ? 0 : SETTINGS_TRANSITION_MS);
   }
 
-  async function handleSaveName() {
-    const trimmedName = nameDraft.trim();
+  async function handleSaveProfile() {
+    const trimmedName = profileEditDraft.full_name.trim();
     if (!trimmedName) {
-      setNameError("Enter your name.");
+      setProfileEditError("Enter your name.");
       return;
     }
-    setNameError(null);
-    setIsSavingName(true);
+    setProfileEditError(null);
+    setIsSavingProfile(true);
     try {
-      const result = await updateProfileName(trimmedName);
+      const result = await updateProfile({ ...profileEditDraft, full_name: trimmedName });
       if (result.error) {
-        setNameError("We couldn't update your name. Please try again.");
+        setProfileEditError(result.error === PUBLIC_PROFILE_QUOTE_CONTACT_ERROR
+          ? result.error
+          : "We couldn't update your profile. Please try again.");
         return;
       }
-      setIsNameSheetOpen(false);
+      setIsProfileEditSheetOpen(false);
     } finally {
-      setIsSavingName(false);
+      setIsSavingProfile(false);
     }
   }
 
@@ -763,9 +785,12 @@ export default function SettingsPage() {
         isPremium={isPremium}
         subscriptionLoading={subscriptionLoading}
         createdAt={user?.created_at}
+        city={profile?.city}
+        favoriteStoreBranch={profile?.favorite_store_branch}
+        quote={profile?.profile_quote}
         prefersReducedMotion={Boolean(prefersReducedMotion)}
         onClose={() => setIsProfileSheetOpen(false)}
-        onEdit={openNameSheetFromProfile}
+        onEdit={openProfileEditSheetFromProfile}
       />
 
       <BottomSheetPortal open={isDeleteSheetOpen}>
@@ -954,35 +979,35 @@ export default function SettingsPage() {
         </AnimatePresence>
       </BottomSheetPortal>
 
-      <BottomSheetPortal open={isNameSheetOpen}>
+      <BottomSheetPortal open={isProfileEditSheetOpen}>
         <AnimatePresence>
-          {isNameSheetOpen && (
+          {isProfileEditSheetOpen && (
             <>
               <motion.button
                 type="button"
-                aria-label="Close edit name sheet"
+                aria-label="Close edit profile sheet"
                 className="dd-bottom-sheet-backdrop fixed inset-0 z-50 mx-auto w-full max-w-[480px] bg-stone-900/40"
-                onClick={() => setIsNameSheetOpen(false)}
+                onClick={() => setIsProfileEditSheetOpen(false)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               />
               <motion.section
-                id="settings-edit-name-dialog"
+                id="settings-edit-profile-dialog"
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="settings-edit-name-sheet-title"
-                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex min-h-[45vh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
+                aria-labelledby="settings-edit-profile-sheet-title"
+                className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[51] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
               >
                 <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
-                  <h2 id="settings-edit-name-sheet-title" className="dd-type-sheet-title text-stone-900">Edit your name</h2>
+                  <h2 id="settings-edit-profile-sheet-title" className="dd-type-sheet-title text-stone-900">Edit your profile</h2>
                   <button
                     type="button"
-                    onClick={() => setIsNameSheetOpen(false)}
+                    onClick={() => setIsProfileEditSheetOpen(false)}
                     aria-label="Close"
                     className="dd-bottom-sheet-close text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
                   >
@@ -992,31 +1017,70 @@ export default function SettingsPage() {
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
-                    void handleSaveName();
+                    void handleSaveProfile();
                   }}
-                  className="flex flex-1 flex-col gap-3 px-5 py-4 pb-safe-sm"
+                  className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-safe-sm"
                 >
-                  <label className="flex flex-col gap-1.5">
+                  <p className="dd-type-secondary text-stone-600">These optional details appear on your public shopper profile. Leave anything blank to hide it.</p>
+                  <label className="mt-4 flex flex-col gap-1.5">
                     <span className="dd-type-meta dd-type-meta-strong text-stone-500">Name</span>
                     <input
-                      id="settings-name-input"
+                      id="settings-profile-name-input"
                       type="text"
-                      value={nameDraft}
-                      onChange={(event) => setNameDraft(event.target.value)}
+                      value={profileEditDraft.full_name}
+                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, full_name: event.target.value }))}
                       placeholder="Enter your name"
                       autoComplete="name"
                       autoFocus
-                      disabled={isSavingName}
+                      disabled={isSavingProfile}
                       className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                     />
                   </label>
-                  {nameError && <p className="dd-type-secondary text-alert-600">{nameError}</p>}
+                  <label className="mt-3 flex flex-col gap-1.5">
+                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">City <span className="font-normal text-stone-400">(optional)</span></span>
+                    <input
+                      type="text"
+                      value={profileEditDraft.city}
+                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, city: event.target.value }))}
+                      placeholder="e.g. Auckland"
+                      autoComplete="address-level2"
+                      maxLength={60}
+                      disabled={isSavingProfile}
+                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                    />
+                  </label>
+                  <label className="mt-3 flex flex-col gap-1.5">
+                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">Fave supermarket branch <span className="font-normal text-stone-400">(optional)</span></span>
+                    <input
+                      type="text"
+                      value={profileEditDraft.favorite_store_branch}
+                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, favorite_store_branch: event.target.value }))}
+                      placeholder="e.g. Ponsonby"
+                      maxLength={80}
+                      disabled={isSavingProfile}
+                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                    />
+                  </label>
+                  <label className="mt-3 flex flex-col gap-1.5">
+                    <span className="dd-type-meta dd-type-meta-strong text-stone-500">Quote <span className="font-normal text-stone-400">(optional)</span></span>
+                    <textarea
+                      value={profileEditDraft.profile_quote}
+                      onChange={(event) => setProfileEditDraft((current) => ({ ...current, profile_quote: event.target.value }))}
+                      placeholder="Your best grocery wisdom…"
+                      maxLength={160}
+                      rows={3}
+                      disabled={isSavingProfile}
+                      className="w-full resize-none rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                    />
+                    <span className="dd-type-meta text-stone-400">Keep it fun and skip contact details.</span>
+                  </label>
+                  {profileEditError && <p className="mt-3 dd-type-secondary text-alert-600">{profileEditError}</p>}
                   <button
                     type="submit"
-                    disabled={isSavingName || !nameDraft.trim()}
-                    className="dd-btn dd-btn-primary mt-auto w-full cursor-pointer"
+                    disabled={isSavingProfile || !profileEditDraft.full_name.trim()}
+                    className="dd-btn dd-btn-primary mt-5 w-full cursor-pointer"
                   >
-                    {isSavingName ? "Saving…" : "Save"}
+                    {isSavingProfile ? "Saving…" : "Save profile"}
                   </button>
                 </form>
               </motion.section>
