@@ -120,7 +120,6 @@ function TipProductContext({
   productUnit,
   currentStore,
   currentPrice,
-  priceLabel,
 }: {
   productName: string;
   productBrand?: string | null;
@@ -128,7 +127,6 @@ function TipProductContext({
   productUnit?: string | null;
   currentStore?: string | null;
   currentPrice?: number | null;
-  priceLabel: string;
 }) {
   const productMeta = [productBrand, productUnit].filter(Boolean).join(" · ");
 
@@ -141,20 +139,16 @@ function TipProductContext({
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm font-extrabold leading-4 text-stone-900">{productName}</p>
           {productMeta && <p className="mt-1 truncate dd-type-meta text-stone-500">{productMeta}</p>}
-          {currentStore && (
-            <div className="mt-1 flex min-w-0 items-center gap-1.5">
-              <StoreLogoBadge store={currentStore} variant="compact" decorative className="shadow-none" />
-              <span className="truncate dd-type-meta text-stone-500">{currentStore}</span>
+          {((currentPrice !== null && currentPrice !== undefined) || currentStore) && (
+            <div className="mt-1 flex min-w-0 items-center gap-2">
+              {currentPrice !== null && currentPrice !== undefined && (
+                <span className="font-display text-lg font-extrabold leading-5 text-stone-900">${currentPrice.toFixed(2)}</span>
+              )}
+              {currentStore && <StoreLogoBadge store={currentStore} variant="compact" className="shadow-none" />}
             </div>
           )}
         </div>
       </div>
-      {currentPrice !== null && currentPrice !== undefined && (
-        <div className="flex-shrink-0 text-right max-[399px]:basis-full max-[399px]:pl-[60px] max-[399px]:text-left">
-          <p className="dd-type-meta text-stone-500">{priceLabel}</p>
-          <p className="font-display text-lg font-extrabold leading-5 text-stone-900">${currentPrice.toFixed(2)}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -167,7 +161,6 @@ function NoteComposer({
   productUnit,
   currentStore,
   currentPrice,
-  priceLabel,
   isOpen,
   editingNote,
   onClose,
@@ -182,7 +175,6 @@ function NoteComposer({
   productUnit?: string | null;
   currentStore?: string | null;
   currentPrice?: number | null;
-  priceLabel?: string;
   isOpen: boolean;
   editingNote: CommunityPriceNote | null;
   onClose: () => void;
@@ -194,7 +186,6 @@ function NoteComposer({
   const prefersReducedMotion = useReducedMotion();
   const contextStore = editingNote?.store_name || currentStore;
   const contextPrice = editingNote?.price ?? currentPrice;
-  const contextPriceLabel = editingNote?.price !== null && editingNote?.price !== undefined ? "Tip price" : priceLabel ?? "Current price";
   const dialogRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -421,7 +412,6 @@ function NoteComposer({
                 productUnit={productUnit}
                 currentStore={contextStore}
                 currentPrice={contextPrice}
-                priceLabel={contextPriceLabel}
               />
 
               {submitted ? (
