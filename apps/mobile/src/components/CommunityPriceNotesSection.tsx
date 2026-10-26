@@ -373,6 +373,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [notesSheetOpenSequence, setNotesSheetOpenSequence] = useState(0);
   const seeAllNotesButtonRef = useRef<HTMLButtonElement>(null);
+  const prefersReducedMotion = useReducedMotion();
   const closeComposer = useCallback(() => setComposerOpen(false), []);
   const closeNotesSheet = useCallback(() => setNotesSheetOpen(false), []);
   const openNotesSheet = useCallback(() => {
@@ -441,36 +442,45 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
           </div>
         )}
 
-        {!isLoadingCurrentProduct && error && (
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4" role="alert">
-            <p className="text-sm font-semibold text-stone-700">Community tips aren&rsquo;t available right now.</p>
-            <button type="button" onClick={() => { setLoadedProductId(null); setRetryTick((tick) => tick + 1); }} className="mt-3 min-h-11 rounded-full border border-stone-400 px-4 py-2 text-sm font-bold text-stone-700 hover:bg-white">Try again</button>
-          </div>
-        )}
+        {!isLoadingCurrentProduct && (
+          <motion.div
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
+            className="space-y-4"
+          >
+            {error && (
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4" role="alert">
+                <p className="text-sm font-semibold text-stone-700">Community tips aren&rsquo;t available right now.</p>
+                <button type="button" onClick={() => { setLoadedProductId(null); setRetryTick((tick) => tick + 1); }} className="mt-3 min-h-11 rounded-full border border-stone-400 px-4 py-2 text-sm font-bold text-stone-700 hover:bg-white">Try again</button>
+              </div>
+            )}
 
-        {!isLoadingCurrentProduct && !error && notes.length === 0 && (
-          <div className="rounded-xl border border-stone-300 bg-stone-50 p-4">
-            <p className="text-sm font-semibold leading-5 text-stone-700">No community tips yet.</p>
-            <p className="mt-1 text-sm leading-5 text-stone-500">Know something useful about this item? Be the first to share it.</p>
-          </div>
-        )}
+            {!error && notes.length === 0 && (
+              <div className="rounded-xl border border-stone-300 bg-stone-50 p-4">
+                <p className="text-sm font-semibold leading-5 text-stone-700">No community tips yet.</p>
+                <p className="mt-1 text-sm leading-5 text-stone-500">Know something useful about this item? Be the first to share it.</p>
+              </div>
+            )}
 
-        {!isLoadingCurrentProduct && !error && notes.length > 0 && (
-          <div>
-            <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
-              {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} />)}
-            </InsightCarousel>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
-              {notes.length > 3 && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">See all tips</button>}
-            </div>
-          </div>
-        )}
+            {!error && notes.length > 0 && (
+              <div>
+                <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
+                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} />)}
+                </InsightCarousel>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
+                  {notes.length > 3 && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">See all tips</button>}
+                </div>
+              </div>
+            )}
 
-        {!isLoadingCurrentProduct && !error && submissionEnabled && (
-          <div className="flex justify-end border-t border-stone-100 pt-4">
-            <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline dd-btn-outline-thin min-h-11 w-full flex-shrink-0 cursor-pointer text-sm sm:w-auto">Share a tip</button>
-          </div>
+            {!error && submissionEnabled && (
+              <div className="flex justify-end border-t border-stone-100 pt-4">
+                <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline dd-btn-outline-thin min-h-11 w-full flex-shrink-0 cursor-pointer text-sm sm:w-auto">Share a tip</button>
+              </div>
+            )}
+          </motion.div>
         )}
       </section>
       <NoteComposer
