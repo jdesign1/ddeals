@@ -6,6 +6,7 @@ import {
   loadLiveProducts,
   refreshLiveProducts,
   describeFetchError,
+  readCatalogueCache,
   readCatalogueCacheMetadata,
   type ProductCard,
   type RefreshLiveProductsResult,
@@ -54,6 +55,8 @@ type NewSpecialsSearchMode = "auto" | "all" | "keys";
 interface SearchContextValue {
   products: ProductCard[];
   loadingProducts: boolean;
+  /** True after the authoritative catalogue request has settled. */
+  catalogueLiveLoaded: boolean;
   error: string | null;
   /** Supermarket preference shared by Check deals and full-screen search. */
   selectedStores: string[];
@@ -188,6 +191,7 @@ async function loadLiveProductsWithRetry(): Promise<ProductCard[]> {
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [catalogueLiveLoaded, setCatalogueLiveLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Shared while a search session is open so Check deals and the full-screen
   // search overlay agree on the supermarket and deal-tab scope. Closing Search
@@ -226,6 +230,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     const publication = await readCurrentCataloguePublication();
     setCataloguePublicationKey(publication.key);
     setCataloguePublicationComplete(publication.complete);
+    setCatalogueLiveLoaded(true);
     setError(null);
     publishCatalogueUpdate(result.products);
     return result;
@@ -249,20 +254,44 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!shouldLoadCatalogue) return;
     let cancelled = false;
+    let liveResultSucceeded = false;
+    let displayedCachedProducts = false;
+
+    // Let a valid local snapshot win the race to first paint. The normal
+    // loader still runs immediately and remains authoritative when it
+    // resolves; this only removes the IndexedDB/publication-marker wait from
+    // the warm-launch critical path. The cache reader applies the same
+    // version and retailer-freshness checks as loadLiveProducts().
+    void readCatalogueCache().then((cached) => {
+      if (cancelled || liveResultSucceeded || !cached?.length) return;
+      displayedCachedProducts = true;
+      setProducts(cached);
+      setError(null);
+      setLoadingProducts(false);
+    });
+
     loadLiveProductsWithRetry()
       .then(async (result) => {
-        const publication = await readCurrentCataloguePublication();
+        liveResultSucceeded = true;
         if (!cancelled) {
           setProducts(result);
+          setError(null);
+          setLoadingProducts(false);
+        }
+        const publication = await readCurrentCataloguePublication();
+        if (!cancelled) {
           setCataloguePublicationKey(publication.key);
           setCataloguePublicationComplete(publication.complete);
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(describeFetchError(err, "Failed to load specials"));
+        if (!cancelled && !displayedCachedProducts) setError(describeFetchError(err, "Failed to load specials"));
       })
       .finally(() => {
-        if (!cancelled) setLoadingProducts(false);
+        if (!cancelled) {
+          setCatalogueLiveLoaded(true);
+          setLoadingProducts(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -311,6 +340,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
             setProducts(result);
             setCataloguePublicationKey(publication.key);
             setCataloguePublicationComplete(publication.complete);
+            setCatalogueLiveLoaded(true);
             setError(null);
             publishCatalogueUpdate(result);
           }
@@ -357,6 +387,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     () => ({
       products,
       loadingProducts,
+      catalogueLiveLoaded,
       error,
       selectedStores,
       toggleStore,
@@ -382,6 +413,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       retry: () => {
         setError(null);
         setLoadingProducts(true);
+        setCatalogueLiveLoaded(false);
         setRetryTick((t) => t + 1);
       },
       refreshCatalogue,
@@ -450,7 +482,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
+    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already

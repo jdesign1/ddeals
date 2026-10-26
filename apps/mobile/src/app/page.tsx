@@ -214,6 +214,22 @@ function getSnapshotCategoryCounts(deals: FlatDeal[]): Map<string, number> {
 
 const TRENDING_PAGE_SIZE = 12;
 
+type IdleSchedulerWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
+function scheduleIdleWork(callback: () => void): () => void {
+  const idleWindow = window as IdleSchedulerWindow;
+  if (typeof idleWindow.requestIdleCallback === "function") {
+    const handle = idleWindow.requestIdleCallback(callback, { timeout: 1200 });
+    return () => idleWindow.cancelIdleCallback?.(handle);
+  }
+
+  const timeout = window.setTimeout(callback, 250);
+  return () => window.clearTimeout(timeout);
+}
+
 export default function HomePage() {
   // `products`/`loadingProducts`/`error` and the search bar's own
   // query/active state now come from the global `SearchProvider`
@@ -226,6 +242,7 @@ export default function HomePage() {
   const {
     products,
     loadingProducts,
+    catalogueLiveLoaded,
     error,
     retry: retryProducts,
     isActive: isSearchActive,
@@ -277,23 +294,27 @@ export default function HomePage() {
   }, [worthAnotherLookStorageKey]);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !catalogueLiveLoaded) return;
 
     let cancelled = false;
-    fetchDealCheckHistoryFromApi(accessToken, { scope: "history" })
-      .then(({ rows }) => {
-        if (!cancelled) setCheckedHistoryState({ accessToken, rows });
-      })
-      .catch(() => {
-        // This belt is an enhancement to the live catalogue. A history
-        // failure must not turn a healthy Check Deals page into an error state.
-        if (!cancelled) setCheckedHistoryState({ accessToken, rows: [] });
-      });
+    const cancelScheduledLoad = scheduleIdleWork(() => {
+      if (cancelled) return;
+      fetchDealCheckHistoryFromApi(accessToken, { scope: "history" })
+        .then(({ rows }) => {
+          if (!cancelled) setCheckedHistoryState({ accessToken, rows });
+        })
+        .catch(() => {
+          // This belt is an enhancement to the live catalogue. A history
+          // failure must not turn a healthy Check Deals page into an error state.
+          if (!cancelled) setCheckedHistoryState({ accessToken, rows: [] });
+        });
+    });
 
     return () => {
       cancelled = true;
+      cancelScheduledLoad();
     };
-  }, [accessToken]);
+  }, [accessToken, catalogueLiveLoaded]);
 
   const checkedHistory = useMemo(
     () => checkedHistoryState.accessToken === accessToken ? checkedHistoryState.rows : [],
@@ -359,6 +380,8 @@ export default function HomePage() {
     ? `Live data, updated ${updatedText === "now" ? "just now" : `${updatedText} ago`}`
     : "Live data";
   const newDealKeySet = useMemo(() => new Set(newDealKeys), [newDealKeys]);
+  const newDealsCount = digest?.total ?? 0;
+  const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const previouslyCheckedDeals = useMemo(
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
     [checkedHistory, products, selectedStores],
@@ -392,15 +415,13 @@ export default function HomePage() {
     [products, selectedStores]
   );
   const newTopSavingsDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "savings", newDealKeySet),
-    [newDealKeySet, products, selectedStores]
+    () => newForYouFilterActive ? buildSnapshotDeals(products, selectedStores, "savings", newDealKeySet) : [],
+    [newDealKeySet, newForYouFilterActive, products, selectedStores]
   );
   const newWorstDodgyDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "dodgy", newDealKeySet),
-    [newDealKeySet, products, selectedStores]
+    () => newForYouFilterActive ? buildSnapshotDeals(products, selectedStores, "dodgy", newDealKeySet) : [],
+    [newDealKeySet, newForYouFilterActive, products, selectedStores]
   );
-  const newDealsCount = digest?.total ?? 0;
-  const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const newDealsRealSearchOptions = useMemo(
     () => newForYouFilterActive && newDealKeys.length > 0
       ? { focus: false, dealKeys: newDealKeys, sortBy: "biggest-saver" as const }
