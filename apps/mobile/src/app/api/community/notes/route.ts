@@ -171,13 +171,26 @@ export async function GET(request: Request) {
     const { data, error } = await notesQuery.limit(parseLimit(url.searchParams.get("limit")));
 
     if (error) throw error;
-    const notes = (data ?? []).filter((note) => !note.author_id || !blockedIds.includes(note.author_id)).map((note) => {
+    const visibleNotes = (data ?? []).filter((note) => !note.author_id || !blockedIds.includes(note.author_id));
+    const viewerVotedNoteIds = new Set<string>();
+    if (viewerId && visibleNotes.length > 0) {
+      const { data: votes, error: votesError } = await accounts
+        .from("community_note_helpful_votes")
+        .select("note_id")
+        .eq("voter_id", viewerId)
+        .in("note_id", visibleNotes.map((note) => note.id));
+      if (votesError) throw votesError;
+      for (const vote of votes ?? []) viewerVotedNoteIds.add(vote.note_id);
+    }
+
+    const notes = visibleNotes.map((note) => {
       const { author_id, ...publicNote } = note;
-      void author_id;
       return {
         ...publicNote,
         price: note.price === null ? null : Number(note.price),
         helpful_count: Number(note.helpful_count),
+        viewer_has_helpful_vote: viewerVotedNoteIds.has(note.id),
+        is_own_note: Boolean(viewerId && author_id === viewerId),
       };
     });
     return Response.json({ available: true, notes, submissions_enabled: SUBMISSION_ENABLED }, { headers: token ? NO_STORE_HEADERS : PREVIEW_CACHE_HEADERS });

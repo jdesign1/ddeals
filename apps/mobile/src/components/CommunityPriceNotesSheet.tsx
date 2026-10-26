@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -30,13 +31,21 @@ function formatObservedDate(value: string): string {
   return new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
-function NoteDetail({ note }: { note: CommunityPriceNote }) {
+function NoteDetail({ note, onHelpfulChanged }: {
+  note: CommunityPriceNote;
+  onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
+}) {
   return (
     <article className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor note={note} />
       {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
       {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
       {note.body && <p className="mt-3 text-sm leading-5 text-stone-700">&ldquo;{note.body}&rdquo;</p>}
+      {!note.is_own_note && (
+        <div className="mt-4 border-t border-stone-200 pt-3">
+          <CommunityHelpfulButton note={note} onChanged={onHelpfulChanged} />
+        </div>
+      )}
     </article>
   );
 }
@@ -48,6 +57,7 @@ export default function CommunityPriceNotesSheet({
   onClose,
   returnFocusRef,
   onBlocked,
+  onHelpfulChanged,
 }: {
   productId: string;
   isOpen: boolean;
@@ -55,6 +65,7 @@ export default function CommunityPriceNotesSheet({
   onClose: () => void;
   returnFocusRef: React.RefObject<HTMLButtonElement | null>;
   onBlocked: () => void;
+  onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
 }) {
   const pathname = usePathname();
   const { session, user, isAnonymousSession, openAuthSheet } = useAuth();
@@ -229,6 +240,13 @@ export default function CommunityPriceNotesSheet({
     }
   }
 
+  function handleHelpfulChanged(noteId: string, helpful: boolean, helpfulCount: number) {
+    setNotes((currentNotes) => currentNotes.map((note) => note.id === noteId
+      ? { ...note, viewer_has_helpful_vote: helpful, helpful_count: helpfulCount }
+      : note));
+    onHelpfulChanged(noteId, helpful, helpfulCount);
+  }
+
   return (
     <BottomSheetPortal open={isOpen}>
       <AnimatePresence>
@@ -287,7 +305,7 @@ export default function CommunityPriceNotesSheet({
                   <div className="space-y-4">
                     {notes.map((note) => (
                       <div key={note.id}>
-                        <NoteDetail note={note} />
+                        <NoteDetail note={note} onHelpfulChanged={handleHelpfulChanged} />
                         <div className="mt-2 flex justify-end">
                           <button
                             type="button"

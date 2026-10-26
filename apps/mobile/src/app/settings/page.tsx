@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getAccountDisplayName, getAccountEmailDisplay, getAccountSignInMethodDisplay } from "@/lib/account-display";
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityProfileSummary from "@/components/CommunityProfileSummary";
 import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import { useNotifications } from "@/lib/notifications-context";
@@ -587,6 +588,7 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+            <CommunityProfileSummary />
             {user.created_at && (
               <div>
                 <p className="dd-type-meta dd-type-meta-strong text-stone-500">Member since</p>

@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { CalendarDays, LoaderCircle, MessageCircle, Tag, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -62,13 +63,21 @@ function nzToday(): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function NoteCard({ note }: { note: CommunityPriceNote }) {
+function NoteCard({ note, onHelpfulChanged }: {
+  note: CommunityPriceNote;
+  onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
+}) {
   return (
     <article className="flex flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor note={note} />
       {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
       {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
       {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">&ldquo;{note.body}&rdquo;</p>}
+      {!note.is_own_note && (
+        <div className="mt-4 border-t border-stone-200 pt-3">
+          <CommunityHelpfulButton note={note} onChanged={onHelpfulChanged} />
+        </div>
+      )}
     </article>
   );
 }
@@ -422,6 +431,11 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
 
   const isCurrentProductLoaded = loadedProductId === productId;
   const isLoadingCurrentProduct = !isCurrentProductLoaded;
+  const handleHelpfulChanged = useCallback((noteId: string, helpful: boolean, helpfulCount: number) => {
+    setNotes((currentNotes) => currentNotes.map((note) => note.id === noteId
+      ? { ...note, viewer_has_helpful_vote: helpful, helpful_count: helpfulCount }
+      : note));
+  }, []);
 
   if (isCurrentProductLoaded && available === false) return null;
 
@@ -466,7 +480,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
             {!error && notes.length > 0 && (
               <div>
                 <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
-                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} />)}
+                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} onHelpfulChanged={handleHelpfulChanged} />)}
                 </InsightCarousel>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
@@ -497,6 +511,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         onClose={closeNotesSheet}
         returnFocusRef={seeAllNotesButtonRef}
         onBlocked={reloadNotes}
+        onHelpfulChanged={handleHelpfulChanged}
       />
     </>
   );

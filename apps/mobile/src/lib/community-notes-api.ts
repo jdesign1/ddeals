@@ -9,6 +9,8 @@ export interface CommunityPriceNote {
   body: string | null;
   author_display_name_snapshot: string;
   helpful_count: number;
+  viewer_has_helpful_vote: boolean;
+  is_own_note: boolean;
   published_at: string | null;
   created_at: string;
 }
@@ -36,6 +38,18 @@ export interface CommunityNoteReportInput {
   details: string;
 }
 
+export interface CommunityHelpfulVoteResult {
+  helpful_count: number;
+  viewer_has_helpful_vote: boolean;
+}
+
+export interface CommunityProfileSummary {
+  tips_shared: number;
+  helpful_received: number;
+  rank: number | null;
+  contributor_count: number;
+}
+
 export async function fetchCommunityPriceNotes(
   productId: string,
   limit = 3,
@@ -54,7 +68,14 @@ export async function fetchCommunityPriceNotes(
   if (!response.ok) throw new Error(payload?.error ?? "Community tips are unavailable right now.");
   return {
     available: payload?.available !== false,
-    notes: Array.isArray(payload?.notes) ? payload.notes : [],
+    notes: Array.isArray(payload?.notes)
+      ? payload.notes.map((note) => ({
+        ...note,
+        helpful_count: Number.isFinite(note.helpful_count) ? note.helpful_count : 0,
+        viewer_has_helpful_vote: note.viewer_has_helpful_vote === true,
+        is_own_note: note.is_own_note === true,
+      }))
+      : [],
     submissionsEnabled: payload?.submissions_enabled === true,
   };
 }
@@ -100,4 +121,46 @@ export function reportCommunityPriceNote(input: CommunityNoteReportInput, access
 
 export function blockCommunityNote(noteId: string, accessToken: string): Promise<void> {
   return postCommunityAction("/api/community/notes/block", { noteId }, accessToken);
+}
+
+export async function setCommunityPriceNoteHelpful(
+  noteId: string,
+  helpful: boolean,
+  accessToken: string,
+): Promise<CommunityHelpfulVoteResult> {
+  const response = await fetch("/api/community/notes/helpful", {
+    method: helpful ? "POST" : "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ noteId }),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { helpful_count?: number; viewer_has_helpful_vote?: boolean; error?: string }
+    | null;
+  if (!response.ok) throw new Error(payload?.error ?? "We couldn't update that helpful vote right now.");
+  if (!Number.isFinite(payload?.helpful_count) || typeof payload?.viewer_has_helpful_vote !== "boolean") {
+    throw new Error("We couldn't confirm that helpful vote. Please try again.");
+  }
+  return {
+    helpful_count: Number(payload.helpful_count),
+    viewer_has_helpful_vote: payload.viewer_has_helpful_vote,
+  };
+}
+
+export async function fetchCommunityProfileSummary(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<CommunityProfileSummary> {
+  const response = await fetch("/api/community/profile", {
+    cache: "no-store",
+    signal,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { profile?: CommunityProfileSummary; error?: string }
+    | null;
+  if (!response.ok || !payload?.profile) throw new Error(payload?.error ?? "Community profile is unavailable right now.");
+  return payload.profile;
 }
