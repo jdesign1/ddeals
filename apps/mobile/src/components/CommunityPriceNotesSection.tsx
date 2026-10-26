@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, MessageCircle, Tag, X } from "lucide-react";
+import { CalendarDays, LoaderCircle, MessageCircle, Tag, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
@@ -64,7 +64,7 @@ function nzToday(): string {
 
 function NoteCard({ note }: { note: CommunityPriceNote }) {
   return (
-    <article className="flex min-h-48 flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
+    <article className="flex h-64 flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor note={note} />
       {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
       {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
@@ -425,8 +425,8 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         </div>
 
         {isLoadingCurrentProduct && (
-          <div className="space-y-3" role="status" aria-label="Loading community tips" aria-busy="true">
-            <div className="h-48 animate-pulse rounded-2xl bg-stone-100" />
+          <div className="flex h-64 items-center justify-center rounded-2xl border border-stone-200 bg-stone-50" role="status" aria-label="Loading community tips" aria-busy="true">
+            <LoaderCircle className="h-6 w-6 animate-spin text-stone-500 motion-reduce:animate-none" aria-hidden="true" />
           </div>
         )}
 
