@@ -1,10 +1,11 @@
-import { getAuthenticatedAccount, requireAccountsAdmin } from "@/lib/accounts-server";
+import { getAuthenticatedAccount, isUuid, requireAccountsAdmin } from "@/lib/accounts-server";
 import { buildCommunityReputation, type CommunityAuthorContribution } from "@/lib/community-reputation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+const PUBLIC_PROFILE_HEADERS = { "Cache-Control": "public, max-age=30, s-maxage=30, stale-while-revalidate=120" };
 const PAGE_SIZE = 1000;
 
 function getBearerToken(request: Request): string | null {
@@ -18,15 +19,55 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const noteId = url.searchParams.get("noteId")?.trim() ?? "";
   const token = getBearerToken(request);
-  if (!token) return errorResponse("Log in to view your community profile.", 401);
-
-  const account = await getAuthenticatedAccount(token);
-  if (!account) return errorResponse("Your sign-in has expired. Please log in again.", 401);
-  if (account.is_anonymous) return errorResponse("Log in with an account to view your community profile.", 403);
+  let targetAuthorId = "";
 
   try {
     const accounts = requireAccountsAdmin();
+    if (noteId) {
+      if (!isUuid(noteId)) return errorResponse("That community profile could not be found.", 404);
+      const { data: note, error: noteError } = await accounts
+        .from("community_price_notes")
+        .select("author_id")
+        .eq("id", noteId)
+        .eq("status", "approved")
+        .not("published_at", "is", null)
+        .maybeSingle();
+      if (noteError) throw noteError;
+      if (!note?.author_id) return errorResponse("That community profile could not be found.", 404);
+      targetAuthorId = note.author_id;
+    } else {
+      if (!token) return errorResponse("Log in to view your community profile.", 401);
+      const account = await getAuthenticatedAccount(token);
+      if (!account) return errorResponse("Your sign-in has expired. Please log in again.", 401);
+      if (account.is_anonymous) return errorResponse("Log in with an account to view your community profile.", 403);
+      targetAuthorId = account.id;
+    }
+
+    if (noteId) {
+      const { data: authorNotes, error: authorNotesError } = await accounts
+        .from("community_price_notes")
+        .select("helpful_count")
+        .eq("author_id", targetAuthorId)
+        .eq("status", "approved")
+        .not("published_at", "is", null);
+      if (authorNotesError) throw authorNotesError;
+      const profile = {
+        tipsShared: authorNotes?.length ?? 0,
+        helpfulReceived: (authorNotes ?? []).reduce((total, note) => total + Math.max(0, Number(note.helpful_count ?? 0)), 0),
+      };
+      return Response.json({
+        profile: {
+          tips_shared: profile.tipsShared,
+          helpful_received: profile.helpfulReceived,
+          rank: null,
+          contributor_count: null,
+        },
+      }, { headers: PUBLIC_PROFILE_HEADERS });
+    }
+
     const contributionsByAuthor = new Map<string, CommunityAuthorContribution>();
     let lastNoteId: string | null = null;
 
@@ -61,7 +102,7 @@ export async function GET(request: Request) {
       if (!lastNoteId) break;
     }
 
-    const profile = buildCommunityReputation(account.id, [...contributionsByAuthor.values()]);
+    const profile = buildCommunityReputation(targetAuthorId, [...contributionsByAuthor.values()]);
     return Response.json({
       profile: {
         tips_shared: profile.tipsShared,

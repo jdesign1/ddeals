@@ -48,17 +48,29 @@ function authorInitial(value: string): string {
   return value.trim().charAt(0).toUpperCase() || "S";
 }
 
-export default function CommunityNoteAuthor({ note, showStoreBadge = true, trailingAction }: { note: CommunityPriceNote; showStoreBadge?: boolean; trailingAction?: ReactNode }) {
+export default function CommunityNoteAuthor({ note, showStoreBadge = true, trailingAction, onProfileClick }: { note: CommunityPriceNote; showStoreBadge?: boolean; trailingAction?: ReactNode; onProfileClick?: (target: HTMLButtonElement) => void }) {
   const displayName = note.author_display_name_snapshot.trim() || "Community shopper";
   const region = note.region_code ? formatRegion(note.region_code) : null;
   const relativeTime = formatRelativeTime(note.created_at);
+  const avatar = (
+    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-fair-400 font-display text-lg font-extrabold text-ink-950 ring-2 ring-fair-100" aria-hidden="true">
+      {authorInitial(displayName)}
+    </span>
+  );
 
   return (
     <div className="flex min-w-0 items-start gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-fair-400 font-display text-lg font-extrabold text-ink-950 ring-2 ring-fair-100" aria-hidden="true">
-          {authorInitial(displayName)}
-        </span>
+        {onProfileClick ? (
+          <button
+            type="button"
+            onClick={(event) => onProfileClick(event.currentTarget)}
+            aria-label={`View ${displayName}'s profile`}
+            className="flex h-10 w-10 flex-shrink-0 cursor-pointer items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-300 focus-visible:ring-offset-2"
+          >
+            {avatar}
+          </button>
+        ) : avatar}
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-stone-900">{displayName}</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-stone-500">

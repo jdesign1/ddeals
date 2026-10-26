@@ -31,15 +31,17 @@ function formatObservedDate(value: string): string {
   return new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
-function NoteDetail({ note, onEdit, onHelpfulChanged }: {
+function NoteDetail({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
   note: CommunityPriceNote;
   onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
+  onOpenProfile: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
 }) {
   return (
     <article className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor
         note={note}
+        onProfileClick={note.status === "approved" ? (target) => onOpenProfile(note, target) : undefined}
         trailingAction={note.is_own_note ? (
           <button
             type="button"
@@ -77,6 +79,8 @@ export default function CommunityPriceNotesSheet({
   onBlocked,
   onHelpfulChanged,
   onEdit,
+  onOpenProfile,
+  onExitComplete,
 }: {
   productId: string;
   isOpen: boolean;
@@ -86,6 +90,8 @@ export default function CommunityPriceNotesSheet({
   onBlocked: () => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
   onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
+  onOpenProfile: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
+  onExitComplete?: () => void;
 }) {
   const pathname = usePathname();
   const { session, user, isAnonymousSession, openAuthSheet } = useAuth();
@@ -213,6 +219,12 @@ export default function CommunityPriceNotesSheet({
     onEdit(note, returnFocusRef.current ?? returnFocusTarget);
   }
 
+  function startProfile(note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) {
+    if (note.status !== "approved") return;
+    skipReturnFocusRef.current = true;
+    onOpenProfile(note, returnFocusRef.current ?? returnFocusTarget);
+  }
+
   function toggleActionMenu(noteId: string) {
     setActionMenuNoteId((current) => current === noteId ? null : noteId);
     setReportNoteId(null);
@@ -288,7 +300,7 @@ export default function CommunityPriceNotesSheet({
 
   return (
     <BottomSheetPortal open={isOpen}>
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={onExitComplete}>
         {isOpen && (
           <>
             <motion.div
@@ -344,7 +356,7 @@ export default function CommunityPriceNotesSheet({
                   <div className="space-y-4">
                     {notes.map((note) => (
                       <div key={note.id}>
-                        <NoteDetail note={note} onEdit={startEdit} onHelpfulChanged={handleHelpfulChanged} />
+                        <NoteDetail note={note} onEdit={startEdit} onHelpfulChanged={handleHelpfulChanged} onOpenProfile={startProfile} />
                         <div className="mt-2 flex justify-end">
                           <button
                             type="button"

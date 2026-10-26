@@ -56,7 +56,7 @@ export interface CommunityProfileSummary {
   tips_shared: number;
   helpful_received: number;
   rank: number | null;
-  contributor_count: number;
+  contributor_count: number | null;
 }
 
 export async function fetchCommunityPriceNotes(
@@ -202,5 +202,20 @@ export async function fetchCommunityProfileSummary(
     | { profile?: CommunityProfileSummary; error?: string }
     | null;
   if (!response.ok || !payload?.profile) throw new Error(payload?.error ?? "Community profile is unavailable right now.");
+  return payload.profile;
+}
+
+export async function fetchCommunityPublicProfile(
+  noteId: string,
+  signal?: AbortSignal,
+): Promise<CommunityProfileSummary> {
+  const response = await fetch(`/api/community/profile?noteId=${encodeURIComponent(noteId)}`, {
+    cache: "no-store",
+    signal,
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { profile?: CommunityProfileSummary; error?: string }
+    | null;
+  if (!response.ok || !payload?.profile) throw new Error(payload?.error ?? "This shopper profile is unavailable right now.");
   return payload.profile;
 }

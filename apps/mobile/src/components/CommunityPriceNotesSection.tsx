@@ -7,6 +7,7 @@ import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, Trash2, X } fro
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
+import CommunityPublicProfileSheet from "@/components/CommunityPublicProfileSheet";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -66,16 +67,18 @@ function nzToday(): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function NoteCard({ note, onEdit, onHelpfulChanged }: {
+function NoteCard({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
   note: CommunityPriceNote;
   onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
+  onOpenProfile: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
 }) {
   return (
     <article className="flex flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor
         note={note}
         showStoreBadge={false}
+        onProfileClick={note.status === "approved" ? (target) => onOpenProfile(note, target) : undefined}
         trailingAction={note.is_own_note ? (
           <button
             type="button"
@@ -507,12 +510,17 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
   const [notesSheetOpenSequence, setNotesSheetOpenSequence] = useState(0);
   const seeAllNotesButtonRef = useRef<HTMLButtonElement>(null);
   const composerReturnFocusRef = useRef<HTMLButtonElement | null>(null);
+  const profileReturnFocusRef = useRef<HTMLElement | null>(null);
+  const profileRequestKeyRef = useRef(0);
+  const pendingCommunityProfileRef = useRef<{ noteId: string; displayName: string; requestKey: string } | null>(null);
+  const [communityProfileTarget, setCommunityProfileTarget] = useState<{ noteId: string; displayName: string; requestKey: string } | null>(null);
   const prefersReducedMotion = useReducedMotion();
   const closeComposer = useCallback(() => {
     setComposerOpen(false);
     setEditingNote(null);
   }, []);
   const closeNotesSheet = useCallback(() => setNotesSheetOpen(false), []);
+  const closeCommunityProfile = useCallback(() => setCommunityProfileTarget(null), []);
   const openNotesSheet = useCallback(() => {
     setNotesSheetOpenSequence((sequence) => sequence + 1);
     setNotesSheetOpen(true);
@@ -567,6 +575,29 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
     setComposerOpen(true);
   }, []);
 
+  const openCommunityProfile = useCallback((note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => {
+    if (note.status !== "approved") return;
+    profileReturnFocusRef.current = returnFocusTarget ?? seeAllNotesButtonRef.current;
+    const target = {
+      noteId: note.id,
+      displayName: note.author_display_name_snapshot.trim() || "Community shopper",
+      requestKey: String(++profileRequestKeyRef.current),
+    };
+    if (notesSheetOpen) {
+      pendingCommunityProfileRef.current = target;
+      setNotesSheetOpen(false);
+      return;
+    }
+    setCommunityProfileTarget(target);
+  }, [notesSheetOpen]);
+
+  const handleNotesSheetExitComplete = useCallback(() => {
+    const target = pendingCommunityProfileRef.current;
+    if (!target) return;
+    pendingCommunityProfileRef.current = null;
+    setCommunityProfileTarget(target);
+  }, []);
+
   const isCurrentProductLoaded = loadedProductId === productId;
   const isLoadingCurrentProduct = !isCurrentProductLoaded;
   const handleHelpfulChanged = useCallback((noteId: string, helpful: boolean, helpfulCount: number) => {
@@ -618,7 +649,7 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
             {!error && notes.length > 0 && (
               <div>
                 <InsightCarousel ariaLabel="Community tip previews" slideWidthClassName="w-[92%]" trackPaddingClassName="px-1">
-                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} onEdit={openEditComposer} onHelpfulChanged={handleHelpfulChanged} />)}
+                  {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} onEdit={openEditComposer} onHelpfulChanged={handleHelpfulChanged} onOpenProfile={openCommunityProfile} />)}
                 </InsightCarousel>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
@@ -657,6 +688,16 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
         onBlocked={reloadNotes}
         onHelpfulChanged={handleHelpfulChanged}
         onEdit={openEditComposer}
+        onOpenProfile={openCommunityProfile}
+        onExitComplete={handleNotesSheetExitComplete}
+      />
+      <CommunityPublicProfileSheet
+        isOpen={Boolean(communityProfileTarget)}
+        noteId={communityProfileTarget?.noteId ?? null}
+        displayName={communityProfileTarget?.displayName ?? "Community shopper"}
+        requestKey={communityProfileTarget?.requestKey ?? null}
+        returnFocusRef={profileReturnFocusRef}
+        onClose={closeCommunityProfile}
       />
     </>
   );
