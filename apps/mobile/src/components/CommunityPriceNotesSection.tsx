@@ -49,7 +49,7 @@ const REGION_OPTIONS = [
   ["southland", "Southland"],
 ] as const;
 
-const FORM_CONTROL_CLASS = "h-14 w-full rounded-2xl border border-stone-200 bg-white px-4 text-base text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10";
+const FORM_CONTROL_CLASS = "h-14 w-full rounded-2xl border border-stone-200 bg-white px-4 text-base text-stone-800 transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10";
 
 function formatObservedDate(value: string): string {
   const date = new Date(`${value}T00:00:00`);
@@ -143,7 +143,7 @@ function TipProductContext({
           {productMeta && <p className="mt-1 truncate dd-type-meta text-stone-500">{productMeta}</p>}
           {currentStore && (
             <div className="mt-1 flex min-w-0 items-center gap-1.5">
-              <StoreLogoBadge store={currentStore} variant="compact" decorative />
+              <StoreLogoBadge store={currentStore} variant="compact" decorative className="shadow-none" />
               <span className="truncate dd-type-meta text-stone-500">{currentStore}</span>
             </div>
           )}
@@ -399,7 +399,7 @@ function NoteComposer({
               aria-describedby={submitted ? undefined : "community-note-composer-description"}
               tabIndex={-1}
               ref={dialogRef}
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl shadow-2xl outline-none"
+              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl border border-stone-200 outline-none"
             >
               <div className="dd-bottom-sheet-titlebar relative flex h-16 flex-shrink-0 items-center justify-center border-b border-stone-100 px-5">
                 <button
@@ -433,7 +433,7 @@ function NoteComposer({
                     transition={prefersReducedMotion
                       ? { duration: 0 }
                       : { duration: 0.62, times: [0, 0.52, 0.76, 1], ease: [0.22, 1, 0.36, 1] }}
-                    className="flex h-16 w-16 items-center justify-center rounded-full bg-fair-500 font-display text-4xl font-extrabold leading-none text-ink-900 shadow-sm"
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-fair-500 font-display text-4xl font-extrabold leading-none text-ink-900"
                     aria-hidden="true"
                   >
                     ✓
@@ -451,7 +451,7 @@ function NoteComposer({
               ) : (
                 <form onSubmit={submit} aria-describedby={error ? "community-note-form-error" : undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pb-6 pt-6">
-                    <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-xs" aria-labelledby="community-note-tip-heading">
+                    <section className="rounded-3xl border border-stone-200/80 bg-white p-4" aria-labelledby="community-note-tip-heading">
                       <div className="flex items-start gap-3">
                         <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
                           <MessageCircle className="h-5 w-5" aria-hidden="true" />
@@ -471,12 +471,12 @@ function NoteComposer({
                         placeholder="For example, which size or flavour you saw"
                         autoCapitalize="sentences"
                         aria-describedby="community-note-composer-description community-note-body-counter"
-                        className="mt-4 min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 shadow-sm transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
+                        className="mt-4 min-h-36 w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-5 text-stone-800 transition-colors placeholder:text-stone-400 focus:border-ink-600 focus:outline-none focus:ring-2 focus:ring-ink-600/10"
                       />
                       <p id="community-note-body-counter" className="mt-2 text-right dd-type-meta dd-type-meta-strong text-stone-400" aria-live="polite">{body.length}/500</p>
                     </section>
 
-                    <fieldset id="community-note-evidence" className="mt-4 rounded-3xl border border-stone-200/80 bg-white p-4 shadow-xs" aria-describedby="community-note-evidence-description">
+                    <fieldset id="community-note-evidence" className="mt-4 rounded-3xl border border-stone-200/80 bg-white p-4" aria-describedby="community-note-evidence-description">
                       <legend className="sr-only">Price details (optional)</legend>
                       <div className="flex items-start gap-3">
                         <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
