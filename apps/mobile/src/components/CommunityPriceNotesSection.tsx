@@ -64,12 +64,11 @@ function nzToday(): string {
 
 function NoteCard({ note }: { note: CommunityPriceNote }) {
   return (
-    <article className="flex h-64 flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
+    <article className="flex flex-col rounded-2xl border border-stone-200 bg-stone-50 p-4">
       <CommunityNoteAuthor note={note} />
       {note.price !== null && <p className="mt-4 font-display text-2xl font-extrabold leading-7 text-stone-900">${note.price.toFixed(2)}</p>}
-      {note.store_name && <p className="mt-1 text-sm font-bold text-stone-700">{note.store_name}</p>}
       {note.observed_on && <p className="mt-3 text-xs font-semibold text-stone-500">Seen {formatObservedDate(note.observed_on)}</p>}
-      {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">{note.body}</p>}
+      {note.body && <p className="mt-3 line-clamp-3 text-sm leading-5 text-stone-700">&ldquo;{note.body}&rdquo;</p>}
     </article>
   );
 }

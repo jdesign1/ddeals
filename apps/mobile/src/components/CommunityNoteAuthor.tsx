@@ -1,4 +1,5 @@
 import type { CommunityPriceNote } from "@/lib/community-notes-api";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 const REGION_LABELS: Record<string, string> = {
   northland: "Northland",
@@ -52,17 +53,20 @@ export default function CommunityNoteAuthor({ note }: { note: CommunityPriceNote
   const relativeTime = formatRelativeTime(note.created_at);
 
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-fair-400 font-display text-lg font-extrabold text-ink-950 ring-2 ring-fair-100" aria-hidden="true">
-        {authorInitial(displayName)}
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-stone-900">{displayName}</p>
-        <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-stone-500">
-          {region && <><span className="truncate">{region}</span><span aria-hidden="true">·</span></>}
-          {relativeTime && <time dateTime={note.created_at}>{relativeTime}</time>}
-        </p>
+    <div className="flex min-w-0 items-start gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-fair-400 font-display text-lg font-extrabold text-ink-950 ring-2 ring-fair-100" aria-hidden="true">
+          {authorInitial(displayName)}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-stone-900">{displayName}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-stone-500">
+            {region && <><span className="truncate">{region}</span><span aria-hidden="true">·</span></>}
+            {relativeTime && <time dateTime={note.created_at}>{relativeTime}</time>}
+          </p>
+        </div>
       </div>
+      {note.store_name && <StoreLogoBadge store={note.store_name} variant="card" className="mt-1" />}
     </div>
   );
 }
