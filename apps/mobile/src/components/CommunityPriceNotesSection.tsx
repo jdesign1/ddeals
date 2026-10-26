@@ -7,6 +7,7 @@ import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, Trash2, X } fro
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
+import ProductImage from "@/components/ProductImage";
 import CommunityPublicProfileSheet from "@/components/CommunityPublicProfileSheet";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -112,8 +113,61 @@ function NoteCard({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
   );
 }
 
+function TipProductContext({
+  productName,
+  productBrand,
+  productImage,
+  productUnit,
+  currentStore,
+  currentPrice,
+  priceLabel,
+}: {
+  productName: string;
+  productBrand?: string | null;
+  productImage?: string | null;
+  productUnit?: string | null;
+  currentStore?: string | null;
+  currentPrice?: number | null;
+  priceLabel: string;
+}) {
+  const productMeta = [productBrand, productUnit].filter(Boolean).join(" · ");
+
+  return (
+    <div role="group" aria-label="Item details" className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-stone-100 bg-stone-50 px-5 py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white">
+          <ProductImage src={productImage} alt="" width={48} height={48} className="h-full w-full object-contain" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-extrabold leading-4 text-stone-900">{productName}</p>
+          {productMeta && <p className="mt-1 truncate dd-type-meta text-stone-500">{productMeta}</p>}
+          {currentStore && (
+            <div className="mt-1 flex min-w-0 items-center gap-1.5">
+              <StoreLogoBadge store={currentStore} variant="compact" decorative />
+              <span className="truncate dd-type-meta text-stone-500">{currentStore}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {currentPrice !== null && currentPrice !== undefined && (
+        <div className="flex-shrink-0 text-right max-[399px]:basis-full max-[399px]:pl-[60px] max-[399px]:text-left">
+          <p className="dd-type-meta text-stone-500">{priceLabel}</p>
+          <p className="font-display text-lg font-extrabold leading-5 text-stone-900">${currentPrice.toFixed(2)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NoteComposer({
   productId,
+  productName,
+  productBrand,
+  productImage,
+  productUnit,
+  currentStore,
+  currentPrice,
+  priceLabel,
   isOpen,
   editingNote,
   onClose,
@@ -122,6 +176,13 @@ function NoteComposer({
   returnFocusRef,
 }: {
   productId: string;
+  productName: string;
+  productBrand?: string | null;
+  productImage?: string | null;
+  productUnit?: string | null;
+  currentStore?: string | null;
+  currentPrice?: number | null;
+  priceLabel?: string;
   isOpen: boolean;
   editingNote: CommunityPriceNote | null;
   onClose: () => void;
@@ -131,6 +192,9 @@ function NoteComposer({
 }) {
   const { session } = useAuth();
   const prefersReducedMotion = useReducedMotion();
+  const contextStore = editingNote?.store_name || currentStore;
+  const contextPrice = editingNote?.price ?? currentPrice;
+  const contextPriceLabel = editingNote?.price !== null && editingNote?.price !== undefined ? "Tip price" : priceLabel ?? "Current price";
   const dialogRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -350,6 +414,16 @@ function NoteComposer({
                 <h2 id="community-note-composer-title" className="dd-type-sheet-title text-stone-900">{editingNote ? "Edit your shopper tip" : "Share a shopper tip"}</h2>
               </div>
 
+              <TipProductContext
+                productName={productName}
+                productBrand={productBrand}
+                productImage={productImage}
+                productUnit={productUnit}
+                currentStore={contextStore}
+                currentPrice={contextPrice}
+                priceLabel={contextPriceLabel}
+              />
+
               {submitted ? (
                 <div ref={successRef} tabIndex={-1} className="flex min-w-0 flex-1 flex-col items-center justify-center gap-5 overflow-x-hidden overflow-y-auto px-5 py-8 text-center outline-none" role="status">
                   <motion.span
@@ -384,7 +458,7 @@ function NoteComposer({
                         </span>
                         <div className="min-w-0">
                           <h3 id="community-note-tip-heading" className="dd-type-section text-stone-900">{editingNote ? "Update your tip" : "Your tip"}</h3>
-                          <p id="community-note-composer-description" className="mt-1 dd-type-secondary text-stone-500">{editingNote ? "Changes are checked before the updated tip is shown to other shoppers." : "Share a price tip for other deal detectives, together we can find the best transparent prices"}</p>
+                          <p id="community-note-composer-description" className="mt-1 dd-type-secondary text-stone-500">{editingNote ? "Changes are checked before the updated tip is shown to other shoppers." : "Share a price tip for other deal detectives."}</p>
                         </div>
                       </div>
                       <label htmlFor="community-note-body" className="sr-only">Your tip</label>
@@ -494,7 +568,23 @@ function NoteComposer({
   );
 }
 
-export default function CommunityPriceNotesSection({ productId }: { productId: string }) {
+export default function CommunityPriceNotesSection({
+  productId,
+  productName,
+  productBrand,
+  productImage,
+  productUnit,
+  currentStore,
+  currentPrice,
+}: {
+  productId: string;
+  productName: string;
+  productBrand?: string | null;
+  productImage?: string | null;
+  productUnit?: string | null;
+  currentStore?: string | null;
+  currentPrice?: number | null;
+}) {
   const pathname = usePathname();
   const { user, session, isAnonymousSession, openAuthSheet } = useAuth();
   const addNoteButtonRef = useRef<HTMLButtonElement>(null);
@@ -669,6 +759,12 @@ export default function CommunityPriceNotesSection({ productId }: { productId: s
       <NoteComposer
         key={editingNote?.id ?? "new-community-note"}
         productId={productId}
+        productName={productName}
+        productBrand={productBrand}
+        productImage={productImage}
+        productUnit={productUnit}
+        currentStore={currentStore}
+        currentPrice={currentPrice}
         isOpen={composerOpen}
         editingNote={editingNote}
         onClose={closeComposer}
