@@ -262,7 +262,7 @@ function ProfileDetailsSheet({
               role="dialog"
               aria-modal="true"
               aria-labelledby="settings-profile-sheet-title"
-              className="dd-bottom-sheet fixed inset-x-0 bottom-0 mx-auto flex max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl"
+              className="dd-bottom-sheet fixed inset-x-0 bottom-0 mx-auto flex h-[92dvh] max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl text-white shadow-2xl"
               style={{ backgroundColor: "var(--color-ink-950)" }}
               initial={prefersReducedMotion ? false : { y: "100%" }}
               animate={{ y: 0 }}
@@ -317,11 +317,11 @@ function ProfileDetailsSheet({
 
                   <div className="mt-6 grid grid-cols-2 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 py-4">
                     <div className="px-4 text-center">
-                      <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Member since</p>
+                      <p className="dd-type-meta dd-type-meta-strong text-white/50">Member since</p>
                       <p className="mt-1 dd-type-control text-white">{formatMemberSince(createdAt)}</p>
                     </div>
                     <div className="px-4 text-center">
-                      <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.08em] text-white/50">Plan</p>
+                      <p className="dd-type-meta dd-type-meta-strong text-white/50">Plan</p>
                       <p className="mt-1 dd-type-control text-white">
                         {subscriptionLoading ? "Checking…" : isPremium ? "Dodgy Deal Plus" : "Free account"}
                       </p>

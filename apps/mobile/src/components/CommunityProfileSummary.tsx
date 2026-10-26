@@ -1,6 +1,7 @@
 "use client";
 
 import { Lightbulb, LoaderCircle, Medal, ThumbsUp, Trophy } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { fetchCommunityProfileSummary, type CommunityProfileSummary as CommunityProfileSummaryData } from "@/lib/community-notes-api";
@@ -22,6 +23,7 @@ export function CommunityProfileStats({
   showCommunityRank?: boolean;
 }) {
   const detectiveRank = summary ? getCommunityDetectiveRank(summary.tips_shared, summary.helpful_received) : null;
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <>
@@ -45,28 +47,35 @@ export function CommunityProfileStats({
             <p className={isDark ? "dd-type-meta leading-5 text-red-200" : "dd-type-meta leading-5 text-alert-600"} role="alert">{error}</p>
           </div>
         ) : (
-          <div className={isDark ? `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
-            <div className="px-3 text-center">
-              <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
-                <Lightbulb className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
-                {summary?.tips_shared ?? 0}
-              </p>
-              <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Tips shared</p>
-            </div>
-            <div className="px-3 text-center">
-              <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
-                <ThumbsUp className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
-                {summary?.helpful_received ?? 0}
-              </p>
-              <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Helpful votes</p>
-            </div>
-            {showCommunityRank && (
+          <motion.div
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
+            className="h-full"
+          >
+            <div className={isDark ? `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
               <div className="px-3 text-center">
-                <p className={isDark ? "font-display text-xl font-extrabold tabular-nums text-white" : "font-display text-xl font-extrabold tabular-nums text-stone-900"}>{summary?.rank ? `#${summary.rank}` : "—"}</p>
-                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Community rank</p>
+                <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
+                  <Lightbulb className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
+                  {summary?.tips_shared ?? 0}
+                </p>
+                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Tips shared</p>
               </div>
-            )}
-          </div>
+              <div className="px-3 text-center">
+                <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
+                  <ThumbsUp className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
+                  {summary?.helpful_received ?? 0}
+                </p>
+                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Helpful votes</p>
+              </div>
+              {showCommunityRank && (
+                <div className="px-3 text-center">
+                  <p className={isDark ? "font-display text-xl font-extrabold tabular-nums text-white" : "font-display text-xl font-extrabold tabular-nums text-stone-900"}>{summary?.rank ? `#${summary.rank}` : "—"}</p>
+                  <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Community rank</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </div>
     </>
@@ -114,7 +123,7 @@ export default function CommunityProfileSummary({ variant = "light" }: { variant
         </span>
         <div className="min-w-0">
           <p className={isDark ? "mt-0.5 dd-type-secondary dd-type-secondary-strong text-white" : "mt-0.5 dd-type-secondary dd-type-secondary-strong text-stone-900"}>Your shopper tips</p>
-          <p className={isDark ? "mt-1 dd-type-meta text-white/65" : "mt-1 dd-type-meta text-stone-500"}>Helpful votes on published tips contribute to your Deal Detective rank.</p>
+          <p className={isDark ? "mt-1 dd-type-meta text-white/65" : "mt-1 dd-type-meta text-stone-500"}>Leaving helpful tips on items contributes to your Deal Detective rank.</p>
         </div>
       </div>
 
