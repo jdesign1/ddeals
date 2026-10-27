@@ -213,7 +213,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const purchase = useCallback(async (productId: string): Promise<boolean> => {
     if (!user || !session) {
-      openAuthSheet("Create a free Dodgy Deal account before subscribing.");
+      openAuthSheet("Create account before subscribing.");
       return false;
     }
     if (!nativeAvailable) {

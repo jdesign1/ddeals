@@ -190,7 +190,7 @@ export default function SubscribePage() {
           {!user && (
             <button
               type="button"
-              onClick={() => openAuthSheet("Create a free account before subscribing.")}
+              onClick={() => openAuthSheet("Create account before subscribing.")}
               className="dd-btn dd-btn-primary w-full cursor-pointer"
             >
               Log in to subscribe

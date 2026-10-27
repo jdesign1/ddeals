@@ -250,14 +250,12 @@ export default function AppDrawer() {
             </span>
             How Dodgy Deal works
           </Link>
-          {user && (
             <button type="button" onClick={() => { closeDrawer(); requestOnboardingTour(); }} className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
               <span className="material-symbols-outlined text-[24px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
                 play_circle
               </span>
               How to use Dodgy Deal
             </button>
-          )}
           {!subscriptionLoading && !isPremium && (
             <Link href="/subscribe" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-fair-800 transition-colors hover:bg-fair-50">
               <span className="material-symbols-outlined text-[24px] leading-none" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
