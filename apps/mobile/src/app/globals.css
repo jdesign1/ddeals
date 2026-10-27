@@ -786,24 +786,6 @@ select {
   pointer-events: none;
 }
 
-/* Quick, periodic "blink" on the header logo mark: mostly still, with a
-   fast vertical squash near the 96% mark so it reads as a blink rather
-   than a constant pulse. Ported verbatim from Prototype/index.html. */
-@keyframes logoBlink {
-  0%,
-  92%,
-  100% {
-    transform: scaleY(1);
-  }
-  95% {
-    transform: scaleY(0.05);
-  }
-}
-.animate-logo-blink {
-  animation: logoBlink 3.5s ease-in-out infinite;
-  transform-origin: 50% 60%;
-}
-
 /* AppHeader's account-menu dropdown. Ported verbatim from
    Prototype/index.html's `tailwind.config` fadeIn keyframes/animation. */
 @keyframes fadeIn {
@@ -816,27 +798,6 @@ select {
 }
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
-}
-
-/* Legacy in-app loading mascot (components/LoadingMascot.tsx and
-   components/PageLoader.tsx): keep the established side-to-side look for
-   normal loading states. The new wink animation is reserved for startup. */
-@keyframes mascotTurn {
-  0%,
-  38% {
-    transform: scaleX(1);
-  }
-  50%,
-  88% {
-    transform: scaleX(-1);
-  }
-  100% {
-    transform: scaleX(1);
-  }
-}
-
-.animate-mascot-turn {
-  animation: mascotTurn 1.8s ease-in-out infinite;
 }
 
 /* Startup-only wink mark (components/WinkMascot.tsx). */
@@ -1065,46 +1026,6 @@ html[data-theme="dark"] .theme-loader-surface {
   }
 }
 
-@keyframes mascotBlink {
-  0%,
-  91%,
-  100% {
-    opacity: 1;
-    transform: scaleY(1);
-  }
-  94% {
-    opacity: 0.2;
-    transform: scaleY(0.12);
-  }
-  96% {
-    opacity: 1;
-    transform: scaleY(1);
-  }
-}
-.animate-mascot-blink {
-  animation: mascotBlink 7s ease-in-out infinite;
-  transform-origin: center;
-}
-
-/* The Deal Stats mascot is a larger illustration than the regular logo mark.
-   Keep its motion to a barely-there float so the calculating pose stays the
-   visual focus without looking like a loading state. */
-@keyframes dealStatsMascot {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-3px) rotate(-0.8deg);
-  }
-}
-
-.animate-deal-stats-mascot {
-  animation: dealStatsMascot 5s ease-in-out infinite;
-  transform-origin: 50% 94%;
-  will-change: transform;
-}
-
 /* The full-size mascot illustrations are already drawn in expressive poses.
    A tiny, slow sway makes them feel alive without distracting from the page. */
 @keyframes mascotWave {
@@ -1161,10 +1082,6 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-deal-stats-mascot {
-    animation: none;
-  }
-
   .mascot-wave {
     animation: none;
   }
@@ -1172,11 +1089,6 @@ html[data-theme="dark"] .theme-loader-surface {
   .dd-subscribe-content {
     animation: none;
   }
-}
-
-.animate-mascot-header-blink {
-  animation: mascotBlink 10s ease-in-out infinite;
-  transform-origin: center;
 }
 
 /* Brand Guide v1.0 ("06 — UI KIT") badge + button primitives (2026-08-13 UI

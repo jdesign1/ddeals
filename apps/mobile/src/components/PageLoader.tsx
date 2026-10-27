@@ -7,11 +7,10 @@ import { AnimatePresence, motion } from "motion/react";
 /**
  * Full-screen page-loading state (2026-08-10, per Jay's ask), first used by
  * `deal/[id]/[store]/page.tsx`. A solid white `fixed inset-0` cover with
- * just the mascot logo doing its turn-to-face-left/right loop
- * (`animate-mascot-turn`, the same animation `LoadingMascot` already uses
- * for e.g. the specials page's "Loading specials…" state) -- no label
- * text. Distinct from `LoadingMascot` (still used unchanged for that kind
- * of small inline loading state): this one is meant to cover the *entire*
+ * just the mascot logo using the app's gentle `mascot-wave` motion (the same
+ * animation used by `LoadingMascot` and the login/create-account sheet) -- no
+ * label text. Distinct from `LoadingMascot` (still used unchanged for that
+ * kind of small inline loading state): this one is meant to cover the *entire*
  * viewport, header/bottom-nav included, during a route transition, not
  * sit inline within a page's own content column.
  *
@@ -83,7 +82,7 @@ export default function PageLoader({ loading }: { loading: boolean }) {
             alt=""
             width={48}
             height={48}
-            className={`theme-logo h-12 w-12 animate-mascot-turn transition-opacity duration-300 ease-out ${
+            className={`theme-logo mascot-wave h-12 w-12 transition-opacity duration-300 ease-out ${
               logoVisible ? "opacity-100" : "opacity-0"
             }`}
           />

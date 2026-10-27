@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 
 /**
  * Shared loading-state indicator (2026-08-09, per Jay's ask): the mascot
- * mark (the same logo used in AppHeader/Home's tagline row) turns to face
- * left/right in a loop while loading, then fades out once loading finishes
- * rather than the indicator just vanishing.
+ * mark (the same logo used in AppHeader/Home's tagline row) gently sways
+ * while loading, then fades out once loading finishes rather than the
+ * indicator just vanishing.
  *
  * Callers render this unconditionally and toggle the `loading` prop --
  * NOT wrapped in `{loading && <LoadingMascot .../>}`. Wrapping it in a
@@ -61,7 +61,7 @@ export default function LoadingMascot({
         alt=""
         width={48}
         height={48}
-        className="theme-logo h-12 w-12 flex-shrink-0 animate-mascot-turn"
+        className="theme-logo mascot-wave h-12 w-12 flex-shrink-0"
       />
     </div>
   );

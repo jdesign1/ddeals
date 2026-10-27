@@ -161,7 +161,7 @@ export default function AppHeader({
                 )}
               </button>
               <label data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors focus-within:border-stone-900">
-                <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mr-3 h-8 w-8 flex-shrink-0 animate-mascot-header-blink" />
+                <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mascot-wave mr-3 h-8 w-8 flex-shrink-0" />
                 <input
                   id="global-search-input"
                   type="search"
