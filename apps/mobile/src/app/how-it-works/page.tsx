@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CircleHelp, Info, ListPlus, ScanSearch, Search, ShieldCheck, type LucideIcon } from "lucide-react";
 import { usePageHeader } from "@/lib/header-context";
 
 /**
@@ -54,7 +53,7 @@ import { usePageHeader } from "@/lib/header-context";
  * It duplicated this page's own `usePageHeader("How Dodgy Deal works", ...)`
  * title one line down the screen, so it came out; the explanatory content
  * remains below the hero image and now follows the Settings page's cleaner
- * bordered sections and icon-header pattern.
+ * bordered sections and inset-row pattern.
  */
 export default function HowItWorksPage() {
   const router = useRouter();
@@ -96,29 +95,26 @@ export default function HowItWorksPage() {
           />
         </div>
 
-        <InfoSection id="how-it-works-intro-title" icon={CircleHelp} title="Empowering shoppers">
+        <InfoSection id="how-it-works-intro-title" title="Empowering shoppers">
           <p className="dd-type-body text-stone-600">
             Supermarket specials aren&rsquo;t always what they seem. We track real price history across NZ supermarkets
             to help you spot genuine bargains and avoid fake sales.
           </p>
         </InfoSection>
 
-        <InfoSection id="how-it-works-ratings-title" icon={ShieldCheck} title="Our deal rating system">
+        <InfoSection id="how-it-works-ratings-title" title="Our deal rating system">
           <ul className="overflow-hidden rounded-2xl border border-stone-200/80">
             <RatingCard
-              icon={AlertTriangle}
               tag="Dodgy Deal"
               tagClassName="dd-badge-alert"
               description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
             />
             <RatingCard
-              icon={Info}
               tag="Fair Price"
               tagClassName="dd-badge-dodgy"
               description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
             />
             <RatingCard
-              icon={ShieldCheck}
               tag="Real Saver"
               tagClassName="dd-badge-fair"
               description="A deep, authentic discount well below the recent average price. A genuinely outstanding deal."
@@ -126,16 +122,16 @@ export default function HowItWorksPage() {
           </ul>
         </InfoSection>
 
-        <InfoSection id="how-it-works-steps-title" icon={ScanSearch} title="How to use Dodgy Deal">
+        <InfoSection id="how-it-works-steps-title" title="How to use Dodgy Deal">
           <ol className="overflow-hidden rounded-2xl border border-stone-200/80">
-            <Step number={1} icon={Search} title="Search grocery products">
+            <Step number={1} title="Search grocery products">
               Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
               across different NZ supermarkets.
             </Step>
-            <Step number={2} icon={ListPlus} title="Add items to your list">
+            <Step number={2} title="Add items to your list">
               Save products you buy regularly to your own list, so you can check back on them any time.
             </Step>
-            <Step number={3} icon={ScanSearch} title="Check any deal">
+            <Step number={3} title="Check any deal">
               Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Price, or Real Saver &mdash; based on its
               actual recent price history.
             </Step>
@@ -151,21 +147,16 @@ export default function HowItWorksPage() {
 }
 
 function RatingCard({
-  icon: Icon,
   tag,
   tagClassName,
   description,
 }: {
-  icon: LucideIcon;
   tag: string;
   tagClassName: string;
   description: string;
 }) {
   return (
     <li className="flex items-start gap-3 border-b border-stone-100 bg-stone-50 p-4 last:border-b-0">
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-stone-700 ring-1 ring-stone-200">
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      </span>
       <div className="min-w-0 space-y-2">
         <span className={`dd-badge ${tagClassName}`}>{tag}</span>
         <p className="dd-type-secondary text-stone-600">{description}</p>
@@ -176,49 +167,39 @@ function RatingCard({
 
 function InfoSection({
   id,
-  icon: Icon,
   title,
   children,
 }: {
   id: string;
-  icon: LucideIcon;
   title: string;
   children: ReactNode;
 }) {
   return (
     <section className="rounded-3xl border border-stone-200/80 bg-white p-4" aria-labelledby={id}>
-      <div className="flex items-center gap-3 px-1">
-        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
-          <Icon className="h-5 w-5" aria-hidden="true" />
-        </span>
+      <div className="px-1">
         <h2 id={id} className="dd-type-section text-stone-900">{title}</h2>
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
 
 function Step({
   number,
-  icon: Icon,
   title,
   children,
 }: {
   number: number;
-  icon: LucideIcon;
   title: string;
   children: ReactNode;
 }) {
   return (
     <li className="flex items-start gap-3 border-b border-stone-100 bg-stone-50 p-4 last:border-b-0">
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-fair-50 text-fair-700 ring-1 ring-fair-100">
-        <Icon className="h-5 w-5" aria-hidden="true" />
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-fair-50 dd-type-control text-fair-700 ring-1 ring-fair-100">
+        {number}
       </span>
       <div className="min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="dd-type-meta dd-type-meta-strong text-stone-500">0{number}</span>
-          <h3 className="dd-type-control text-stone-900">{title}</h3>
-        </div>
+        <h3 className="dd-type-control text-stone-900">{title}</h3>
         <p className="mt-1 dd-type-secondary text-stone-600">{children}</p>
       </div>
     </li>
