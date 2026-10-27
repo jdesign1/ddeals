@@ -177,7 +177,6 @@ export default function SubscribePage() {
         <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-5" aria-labelledby="subscription-options-title">
           <div className="text-center">
             <h2 id="subscription-options-title" className="dd-type-section text-stone-900">Choose your plan</h2>
-            <p className="mt-1 dd-type-secondary text-stone-600">Choose the plan that suits you.</p>
           </div>
 
           <aside className="rounded-2xl border border-fair-200 bg-fair-50 px-4 py-3.5 text-left" aria-label="Introductory offer terms">
