@@ -17,6 +17,7 @@ import CommunityProfileDetails from "@/components/CommunityProfileDetails";
 import CommunityProfileSummary from "@/components/CommunityProfileSummary";
 import MascotImage from "@/components/MascotImage";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
+import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -373,6 +374,8 @@ export default function SettingsPage() {
     isNativeAvailable,
     restoring,
     restore,
+    clearError: clearSubscriptionError,
+    errorSource: subscriptionErrorSource,
   } = useSubscriptions();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
@@ -420,6 +423,10 @@ export default function SettingsPage() {
   const accountEmail = getAccountEmailDisplay(user?.email);
   const accountSignInMethod = getAccountSignInMethodDisplay(user);
   const accountIdentifier = accountEmail === "-" ? accountSignInMethod : accountEmail;
+  const hasSubscriptionRecoveryError = Boolean(subscriptionError && isSubscriptionAccountRecoveryError(subscriptionError));
+  const subscriptionRecoveryKind = subscriptionError?.toLowerCase().includes("linked to another")
+    ? "linked-to-other-account" as const
+    : "not-linked" as const;
 
   const onBack = () => {
     if (backNavigationStartedRef.current) return;
@@ -838,14 +845,9 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="mt-2 dd-type-secondary text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
-                    {subscriptionError && (
+                    {subscriptionError && !hasSubscriptionRecoveryError && (
                       <div role="alert" className="mt-3 rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-meta text-alert-900">
                         <p>{subscriptionError}</p>
-                        {isSubscriptionAccountRecoveryError(subscriptionError) && (
-                          <p className="mt-2 border-t border-alert-100 pt-2">
-                            Sign in with the original Dodgy Deal account, or <Link href="/support" className="font-bold underline underline-offset-2">contact support for recovery help</Link>.
-                          </p>
-                        )}
                       </div>
                     )}
                     <button
@@ -1149,6 +1151,12 @@ export default function SettingsPage() {
           )}
         </AnimatePresence>
       </BottomSheetPortal>
+
+      <SubscriptionRecoverySheet
+        open={hasSubscriptionRecoveryError && subscriptionErrorSource === "restore"}
+        kind={subscriptionRecoveryKind}
+        onClose={clearSubscriptionError}
+      />
 
       </motion.main>
     </>

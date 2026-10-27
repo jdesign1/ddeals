@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { SUBSCRIPTION_PRODUCT_IDS } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
+import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
 import { useAuth } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useSubscriptions } from "@/lib/subscription-context";
@@ -66,6 +67,8 @@ export default function SubscribePage() {
     isNativeAvailable,
     currentSubscription,
     purchase,
+    clearError,
+    errorSource,
   } = useSubscriptions();
   const [selectedProductId, setSelectedProductId] = useState<string>(SUBSCRIPTION_PRODUCT_IDS.monthly);
 
@@ -78,6 +81,11 @@ export default function SubscribePage() {
   const accessUntil = formatSubscriptionDate(currentSubscription?.expires_at);
   const showPurchaseOptions = Boolean(user && !isPremium && isNativeAvailable);
   const purchaseOptionsLoading = subscriptionLoading || productsLoading;
+  const hasAccountRecoveryError = Boolean(error && isSubscriptionAccountRecoveryError(error));
+  const showAccountRecoverySheet = hasAccountRecoveryError && (errorSource === "purchase" || errorSource === "restore");
+  const recoveryKind = error?.toLowerCase().includes("linked to another")
+    ? "linked-to-other-account" as const
+    : "not-linked" as const;
   const selectedProduct = products.find((product) => product.id === selectedProductId)
     ?? products.find((product) => product.id === SUBSCRIPTION_PRODUCT_IDS.monthly)
     ?? products[0]
@@ -194,14 +202,9 @@ export default function SubscribePage() {
             </p>
           )}
 
-          {error && (
+          {error && !hasAccountRecoveryError && (
             <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 dd-type-secondary text-red-800">
               <p>{error}</p>
-              {isSubscriptionAccountRecoveryError(error) && (
-                <p className="mt-3 border-t border-red-200 pt-3 text-red-900">
-                  If you paid using a different Dodgy Deal account, sign in with that account and try again. If you still cannot access your subscription, <Link href="/support" className="font-bold underline underline-offset-2">contact support for recovery help</Link>.
-                </p>
-              )}
             </div>
           )}
 
@@ -301,6 +304,12 @@ export default function SubscribePage() {
           )}
         </section>
       )}
+
+      <SubscriptionRecoverySheet
+        open={showAccountRecoverySheet}
+        kind={recoveryKind}
+        onClose={clearError}
+      />
     </main>
   );
 }

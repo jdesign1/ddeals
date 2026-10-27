@@ -37,11 +37,15 @@ interface SubscriptionContextValue {
   restoring: boolean;
   isNativeAvailable: boolean;
   currentSubscription: SubscriptionEntitlementRecord | null;
+  clearError: () => void;
+  errorSource: SubscriptionErrorSource | null;
   openSubscriptionPage: () => void;
   refresh: () => Promise<SubscriptionEntitlementRecord[] | null>;
   purchase: (productId: string) => Promise<boolean>;
   restore: () => Promise<boolean>;
 }
+
+type SubscriptionErrorSource = "purchase" | "restore" | "product_loading" | "entitlement_sync";
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 
@@ -63,10 +67,22 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [nativeEntitlementsSyncedKey, setNativeEntitlementsSyncedKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorSource, setErrorSource] = useState<SubscriptionErrorSource | null>(null);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
   const purchaseInFlightRef = useRef(false);
   const refreshRequestRef = useRef(0);
+  const clearError = useCallback(() => {
+    setError(null);
+    setErrorSource(null);
+  }, []);
+  const setSubscriptionError = useCallback((message: string, source: SubscriptionErrorSource) => {
+    setError(message);
+    setErrorSource(source);
+  }, []);
+  const setMappedSubscriptionError = useCallback((nextError: unknown, source: SubscriptionErrorSource) => {
+    setSubscriptionError(subscriptionErrorMessage(nextError), source);
+  }, [setSubscriptionError]);
 
   const nativeAvailable = isNativeAppleSubscriptionsAvailable();
   const nativeAppleApp = isNativeAppleSubscriptionsPlatform();
@@ -99,10 +115,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const nextEntitlements = await fetchUserEntitlements(client);
       if (requestId !== refreshRequestRef.current) return null;
       setEntitlements(nextEntitlements);
-      setError(null);
+      clearError();
       return nextEntitlements;
     } catch (refreshError) {
-      if (requestId === refreshRequestRef.current) setError(subscriptionErrorMessage(refreshError));
+      if (requestId === refreshRequestRef.current) setMappedSubscriptionError(refreshError, "entitlement_sync");
       // Preserve the distinction between "no entitlement" and "could not
       // read entitlements" so the success screen does not redirect on a
       // temporary network or backend failure.
@@ -110,7 +126,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     } finally {
       if (requestId === refreshRequestRef.current) setLoading(false);
     }
-  }, [client, user]);
+  }, [clearError, client, setMappedSubscriptionError, user]);
 
   const refreshUntilPremium = useCallback(async (): Promise<boolean> => {
     let nextEntitlements = await refresh();
@@ -144,7 +160,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           if (!cancelled) void refresh();
         })
         .catch((syncError) => {
-          if (!cancelled) setError(subscriptionErrorMessage(syncError));
+          if (!cancelled) setMappedSubscriptionError(syncError, "entitlement_sync");
         });
     }).then((handle) => {
       if (cancelled) void handle.remove();
@@ -157,7 +173,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         return undefined;
       })
       .catch((syncError) => {
-        if (!cancelled) setError(subscriptionErrorMessage(syncError));
+        if (!cancelled) setMappedSubscriptionError(syncError, "entitlement_sync");
       })
       .finally(() => {
         if (!cancelled) setNativeEntitlementsSyncedKey(syncKey);
@@ -166,7 +182,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       void transactionHandle?.remove();
     };
-  }, [nativeAvailable, nativeEntitlementsSessionKey, refresh, session, user]);
+  }, [nativeAvailable, nativeEntitlementsSessionKey, refresh, session, setMappedSubscriptionError, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,14 +202,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       .catch((loadError) => {
         if (!cancelled) {
           setProductsLoading(false);
-          setError(subscriptionErrorMessage(loadError));
+          setMappedSubscriptionError(loadError, "product_loading");
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [configuredProductIdsKey, nativeAvailable]);
+  }, [configuredProductIdsKey, nativeAvailable, setMappedSubscriptionError]);
 
   const purchase = useCallback(async (productId: string): Promise<boolean> => {
     if (!user || !session) {
@@ -201,14 +217,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       return false;
     }
     if (!nativeAvailable) {
-      setError(unavailableMessage);
+      setSubscriptionError(unavailableMessage, "purchase");
       return false;
     }
     if (purchaseInFlightRef.current) return false;
 
     purchaseInFlightRef.current = true;
     setBusyProductId(productId);
-    setError(null);
+    clearError();
     try {
       await purchaseAppleSubscription(productId, user.id, session.access_token);
       if (!await refreshUntilPremium()) {
@@ -237,16 +253,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
       }
       if (/USER_CANCELLED|cancelled/i.test(String(purchaseError))) {
-        setError(null);
+        clearError();
         return false;
       }
-      setError(subscriptionErrorMessage(purchaseError));
+      setMappedSubscriptionError(purchaseError, "purchase");
       return false;
     } finally {
       purchaseInFlightRef.current = false;
       setBusyProductId(null);
     }
-  }, [nativeAvailable, openAuthSheet, refreshUntilPremium, router, session, unavailableMessage, user]);
+  }, [clearError, nativeAvailable, openAuthSheet, refreshUntilPremium, router, session, setMappedSubscriptionError, setSubscriptionError, unavailableMessage, user]);
 
   const restore = useCallback(async (): Promise<boolean> => {
     if (!user || !session) {
@@ -254,14 +270,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       return false;
     }
     if (!nativeAvailable) {
-      setError(unavailableMessage);
+      setSubscriptionError(unavailableMessage, "restore");
       return false;
     }
     if (purchaseInFlightRef.current || restoring) return false;
 
     purchaseInFlightRef.current = true;
     setRestoring(true);
-    setError(null);
+    clearError();
     try {
       const transactionCount = await restoreAppleSubscriptions(session.access_token, user.id);
       if (transactionCount === 0) throw new Error("No active Apple subscription was found.");
@@ -280,13 +296,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           // Keep the original restore error for the user-facing message.
         }
       }
-      setError(subscriptionErrorMessage(restoreError));
+      setMappedSubscriptionError(restoreError, "restore");
       return false;
     } finally {
       purchaseInFlightRef.current = false;
       setRestoring(false);
     }
-  }, [nativeAvailable, openAuthSheet, refreshUntilPremium, restoring, router, session, unavailableMessage, user]);
+  }, [clearError, nativeAvailable, openAuthSheet, refreshUntilPremium, restoring, router, session, setMappedSubscriptionError, setSubscriptionError, unavailableMessage, user]);
 
   const value = useMemo<SubscriptionContextValue>(() => ({
     entitlements,
@@ -299,14 +315,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     restoring,
     isNativeAvailable: nativeAvailable,
     currentSubscription,
+    clearError,
+    errorSource,
     openSubscriptionPage: () => {
-      setError(null);
+      clearError();
       router.push("/subscribe");
     },
     refresh,
     purchase,
     restore,
-  }), [busyProductId, currentSubscription, entitlements, error, isPremium, loading, nativeAvailable, nativeEntitlementsLoading, products, productsLoading, purchase, refresh, restore, restoring, router]);
+  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loading, nativeAvailable, nativeEntitlementsLoading, products, productsLoading, purchase, refresh, restore, restoring, router]);
 
   return (
     <SubscriptionContext.Provider value={value}>
