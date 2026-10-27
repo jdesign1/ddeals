@@ -73,14 +73,14 @@ export default function SubscribePage() {
   } = useSubscriptions();
   const [selectedProductId, setSelectedProductId] = useState<string>(SUBSCRIPTION_PRODUCT_IDS.monthly);
 
-  usePageHeader("Subscribe", () => router.back());
+  usePageHeader("Dodgy Deal Plus", () => router.back());
 
   if (authLoading) {
     return <main className="flex min-h-full items-center justify-center px-5 py-10" aria-busy="true" />;
   }
 
   const accessUntil = formatSubscriptionDate(currentSubscription?.expires_at);
-  const showPurchaseOptions = Boolean(user && !isPremium && isNativeAvailable);
+  const showApplePlanOptions = Boolean(!isPremium && isNativeAvailable);
   const purchaseOptionsLoading = subscriptionLoading || productsLoading;
   const hasAccountRecoveryError = Boolean(error && isSubscriptionAccountRecoveryError(error));
   const showAccountRecoverySheet = hasAccountRecoveryError && (errorSource === "purchase" || errorSource === "restore");
@@ -181,13 +181,14 @@ export default function SubscribePage() {
           </div>
 
           <aside className="rounded-2xl border border-fair-200 bg-fair-50 px-4 py-3.5 text-left" aria-label="Introductory offer terms">
-            <p className="dd-type-control text-ink-950">One month free for eligible new subscribers.</p>
+            <p className="dd-type-control text-ink-950">Get a month free!</p>
             <p className="mt-1 dd-type-meta text-stone-700">
-              The free month starts when you subscribe. Payment begins automatically after the introductory period unless you cancel before it ends.
+              Your free month begins when you subscribe. Payments start after the free month ends.
             </p>
+            <p className="mt-1 dd-type-meta text-stone-600">For eligible new subscribers.</p>
           </aside>
 
-          {!user && (
+          {!user && !isNativeAvailable && (
             <button
               type="button"
               onClick={() => openAuthSheet("Create account before subscribing.")}
@@ -209,7 +210,7 @@ export default function SubscribePage() {
             </div>
           )}
 
-          {showPurchaseOptions && (
+          {showApplePlanOptions && (
             <div className="relative min-h-[24rem]" aria-live="polite">
               {purchaseOptionsLoading ? (
                 <div
@@ -287,12 +288,12 @@ export default function SubscribePage() {
                       onClick={() => void purchase(selectedProduct.id)}
                       disabled={busyProductId !== null}
                       aria-busy={busyProductId === selectedProduct.id}
-                      aria-label={busyProductId === selectedProduct.id ? "Processing subscription" : "Subscribe now"}
+                      aria-label={busyProductId === selectedProduct.id ? "Processing subscription" : user ? "Subscribe now" : "Create account to subscribe"}
                       className="dd-btn dd-btn-primary my-2 w-full cursor-pointer"
                     >
                       {busyProductId === selectedProduct.id ? (
                         <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
-                      ) : "Subscribe now"}
+                      ) : user ? "Subscribe now" : "Create account to subscribe"}
                     </button>
                   )}
                   <p className="dd-type-meta text-center text-stone-500">
