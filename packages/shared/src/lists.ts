@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "./supabase.ts";
 import {
   fetchByIds,
-  displayStoreName,
+  STORE_DISPLAY_FALLBACK,
   titleCase,
   productTitleCase,
   FALLBACK_PRODUCT_IMAGE,
@@ -442,7 +442,7 @@ export function computeListSummaryFromLookups(items: ListItemRow[], lookups: Lis
       return sum + (priceAtStore.get(`${pid}:${storeId}`) ?? 0) * qty;
     }, 0);
     if (!bestPriceStore || storeTotal < bestPriceStore.total) {
-      bestPriceStore = { store: displayStoreName(null, storeId), total: storeTotal };
+      bestPriceStore = { store: STORE_DISPLAY_FALLBACK[storeId] || titleCase(storeId), total: storeTotal };
     }
   }
 
@@ -500,7 +500,7 @@ function buildListCurrentDeal(
   return {
     sourceProductId: displayedPrice.product_id,
     sourceStoreId: displayedPrice.store_id,
-    store: displayStoreName(null, displayedPrice.store_id),
+    store: STORE_DISPLAY_FALLBACK[displayedPrice.store_id] || titleCase(displayedPrice.store_id),
     price: displayedPrice.price,
     originalPrice,
     discountPercentage,
@@ -734,7 +734,7 @@ async function loadListsPageDataUncached(
     if (lowestPrice) {
       lowestPriceByProduct.set(productId, {
         price: lowestPrice.price,
-        store: displayStoreName(null, lowestPrice.store_id),
+        store: STORE_DISPLAY_FALLBACK[lowestPrice.store_id] || titleCase(lowestPrice.store_id),
       });
     }
     const card = buildListItemProductCard(productId, productMeta.get(productId), lookups);

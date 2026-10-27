@@ -856,7 +856,7 @@ function currentDealFromRow(row: DodgyDealsRow): CurrentDeal {
   return {
     sourceProductId: row.product_id,
     sourceStoreId: row.store_id,
-    store: displayStoreName(row.store_name, row.store_id),
+    store: row.store_name || STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
     price: row.sale_price,
     originalPrice: row.normal_price ?? row.was_price ?? row.sale_price,
     discountPercentage: Math.max(0, Math.round(row.saving_pct ?? 0)),
@@ -1973,7 +1973,7 @@ export async function fetchNonSpecialProductCards(
           {
             sourceProductId: row.product_id,
             sourceStoreId: row.store_id,
-            store: displayStoreName(null, row.store_id),
+            store: STORE_DISPLAY_FALLBACK[row.store_id] || titleCase(row.store_id),
             price: row.price,
             originalPrice: row.price,
             discountPercentage: 0,
@@ -2013,37 +2013,6 @@ export const canonicalStoreKey = (storeName: string | null | undefined): string 
   const normalized = normalizeStoreKey(storeName);
   return Object.keys(STORE_DISPLAY_FALLBACK).find((knownStore) => normalized.includes(knownStore)) ?? normalized;
 };
-
-/**
- * The Foodstuffs scraper currently represents one fixed Pak'nSave branch.
- * Keep the branch visible in the app so a retailer page opened with a
- * different supermarket selection cannot be mistaken for the scraped price.
- * Preserve an already branch-qualified source name if one is supplied.
- */
-export const displayStoreName = (
-  storeName: string | null | undefined,
-  storeId?: string | null,
-): string => {
-  const sourceName = String(storeName || "").trim();
-  const sourceKey = normalizeStoreKey(storeId || sourceName);
-  if (
-    sourceKey.includes("paknsave")
-    && (!sourceName || normalizeStoreKey(sourceName) === "paknsave")
-  ) {
-    return "PAK'nSAVE — Sylvia Park";
-  }
-  return sourceName || STORE_DISPLAY_FALLBACK[sourceKey] || titleCase(storeId || "");
-};
-
-/**
- * PAK'nSAVE product URLs do not currently encode the branch used by the
- * scraper. Use a neutral CTA label so users are prompted to confirm the
- * configured Sylvia Park branch before relying on the retailer page price.
- */
-export const retailerLinkLabel = (store: string): string =>
-  canonicalStoreKey(store) === "paknsave"
-    ? `Check at ${displayStoreName(store)}`
-    : `View at ${displayStoreName(store)}`;
 
 export const storeMatchesFilter = (storeName: string, filter: string): boolean =>
   filter === "all" || normalizeStoreKey(storeName).includes(filter);

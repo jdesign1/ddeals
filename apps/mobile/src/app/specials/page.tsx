@@ -5,7 +5,7 @@ import { ScanBarcode } from "lucide-react";
 import {
   storeMatchesFilter,
   deriveAvailableStoreKeys,
-  displayStoreName,
+  STORE_DISPLAY_FALLBACK,
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
@@ -166,5 +166,5 @@ export default function SpecialsPage() {
 }
 
 function displayNameForKey(key: string): string {
-  return displayStoreName(null, key);
+  return STORE_DISPLAY_FALLBACK[key] || key;
 }

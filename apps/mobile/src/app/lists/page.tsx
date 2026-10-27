@@ -15,7 +15,7 @@ import {
   matchesAnySelectedStore,
   productMatchesSynonymRule,
   removeItemFromList,
-  displayStoreName,
+  STORE_DISPLAY_FALLBACK,
   type ListItemLowestPrice,
   type ListItemProductMeta,
   type ListItemRow,
@@ -375,7 +375,7 @@ export default function ListsPage() {
     for (const item of watchlistItems) {
       for (const deal of itemCards.get(item.productId)?.currentDeals ?? []) {
         const key = canonicalStoreKey(deal.store);
-        if (key && !labels.has(key)) labels.set(key, displayStoreName(deal.store, key));
+        if (key && !labels.has(key)) labels.set(key, STORE_DISPLAY_FALLBACK[key] ?? deal.store);
       }
     }
     return [...labels.entries()].sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB));
