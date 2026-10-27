@@ -171,6 +171,13 @@ export default function SubscribePage() {
             <p className="mt-1 dd-type-secondary text-stone-600">Choose the plan that suits you.</p>
           </div>
 
+          <aside className="rounded-2xl border border-fair-200 bg-fair-50 px-4 py-3.5 text-left" aria-label="Introductory offer terms">
+            <p className="dd-type-control text-ink-950">One month free for eligible new subscribers.</p>
+            <p className="mt-1 dd-type-meta text-stone-700">
+              The free month starts when you subscribe. Payment begins automatically after the introductory period unless you cancel before it ends.
+            </p>
+          </aside>
+
           {!user && (
             <button
               type="button"
@@ -247,8 +254,8 @@ export default function SubscribePage() {
                                 <span className="mt-2 block text-xl leading-7 font-extrabold tracking-[-0.03em] text-ink-950">{displayPrice}</span>
                                 <span className="mt-1.5 block max-w-[9rem] dd-type-meta text-stone-600">
                                   {isAnnual
-                                    ? "Save with one annual payment. Renews yearly until cancelled."
-                                    : "Pay monthly. Renews each month until cancelled."}
+                                    ? "Renews yearly. Eligible new subscribers get 13 months of access before the first annual renewal, including the free month."
+                                    : "Renews monthly at the displayed price after the free month."}
                                 </span>
                               </span>
                             </span>
@@ -271,6 +278,9 @@ export default function SubscribePage() {
                       ) : "Subscribe now"}
                     </button>
                   )}
+                  <p className="dd-type-meta text-center text-stone-500">
+                    Your selected plan renews automatically: monthly for the monthly plan or yearly for the annual plan. Apple will show your eligibility and the final price before you confirm.
+                  </p>
                 </>
               ) : (
                 <p role="alert" className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
