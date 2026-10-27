@@ -32,6 +32,7 @@ import {
   findDealForStore,
   canonicalStoreKey,
   normalizeStoreKey,
+  retailerLinkLabel,
   logDealCheck,
   describeFetchError,
 } from "@dodgey-deals/shared";
@@ -979,7 +980,7 @@ export default function DealAssessmentPage() {
             rel="noopener noreferrer"
             className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
           >
-            View at {selectedDeal.store}
+            {retailerLinkLabel(selectedDeal.store)}
             <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
           </a>
         )}
@@ -1069,7 +1070,7 @@ export default function DealAssessmentPage() {
               rel="noopener noreferrer"
               className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
             >
-              View at {lowestCurrentPriceItem.store}
+              {retailerLinkLabel(lowestCurrentPriceItem.store)}
               <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
             </a>
           )}
@@ -1292,7 +1293,7 @@ export default function DealAssessmentPage() {
                                 <span aria-hidden="true">
                                   <StoreLogoBadge store={altStore} variant="card" />
                                 </span>
-                                Go to {altStore}
+                                {retailerLinkLabel(altStore)}
                                 <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
                               </a>
                             </div>

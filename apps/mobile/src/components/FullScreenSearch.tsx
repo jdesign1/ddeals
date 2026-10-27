@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import type { ProductCard as ProductCardData, CurrentDeal } from "@dodgey-deals/shared";
 import {
-  STORE_DISPLAY_FALLBACK,
+  displayStoreName,
   matchesAnySelectedStore,
   deriveAvailableStoreKeys,
   groupCategory,
@@ -81,7 +81,7 @@ import { getNewSpecialDealKey } from "@/lib/new-specials";
  *    "Anchor Protein" and keeps mobile/browser search behavior in one place.
  *  - No branch personalisation (`usePersonalised`/`selectedBranches`) --
  *    same simplification page.tsx's own doc comment already established;
- *    store labels come from `STORE_DISPLAY_FALLBACK` directly.
+ *    store labels come from the shared branch-aware display helper.
  *  - Store filter pills are derived from the live `products` prop via
  *    `deriveAvailableStoreKeys` (only shows stores that actually have
  *    current specials, including SuperValue if it ever does) rather than
@@ -702,7 +702,7 @@ export default function FullScreenSearch() {
     setResultsSortBy(getDefaultDealSort(dealFilter));
   };
 
-  const getStoreDisplayName = (key: string) => STORE_DISPLAY_FALLBACK[key] || key;
+  const getStoreDisplayName = (key: string) => displayStoreName(null, key);
 
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
@@ -717,7 +717,7 @@ export default function FullScreenSearch() {
       <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
         <SupermarketPicker
           selectedStoreIds={selectedStores}
-          stores={availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key }))}
+          stores={availableStoreKeys.map((key) => ({ id: key, label: displayStoreName(null, key) }))}
           onToggleStore={handleStoreToggle}
         />
         <FilterTrigger

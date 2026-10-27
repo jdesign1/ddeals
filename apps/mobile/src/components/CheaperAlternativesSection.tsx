@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { CheaperAlternative } from "@dodgey-deals/shared";
-import { getStoreProductUrl, findDealForStore } from "@dodgey-deals/shared";
+import { getStoreProductUrl, findDealForStore, retailerLinkLabel } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import InsightCarousel from "@/components/InsightCarousel";
 import ProductImage from "@/components/ProductImage";
@@ -103,7 +103,7 @@ export default function CheaperAlternativesSection({
                           <span aria-hidden="true">
                             <StoreLogoBadge store={store} variant="card" />
                           </span>
-                          Go to {store}
+                          {retailerLinkLabel(store)}
                           <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
                         </a>
                       </div>

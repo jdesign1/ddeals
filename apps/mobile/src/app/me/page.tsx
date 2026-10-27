@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import {
   buildPriceChangeStats,
   matchesAnySelectedStore,
+  displayStoreName,
   STORE_DISPLAY_FALLBACK,
   type CurrentDeal,
   type ProductCard,
@@ -23,9 +24,9 @@ import { useSubscriptions } from "@/lib/subscription-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 import { buildWatchlistStats, type WatchlistStats, type WatchlistTopMode } from "@/lib/watchlist-stats";
 
-const STATS_STORES = Object.entries(STORE_DISPLAY_FALLBACK)
-  .filter(([key]) => key !== "supervalue")
-  .map(([key, label]) => ({ key, label }));
+const STATS_STORES = Object.keys(STORE_DISPLAY_FALLBACK)
+  .filter((key) => key !== "supervalue")
+  .map((key) => ({ key, label: displayStoreName(null, key) }));
 
 const MONTH_COUNT = 3;
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;

@@ -7,7 +7,7 @@ import type {
   ProductCard as ProductCardData,
   CurrentDeal,
 } from "@dodgey-deals/shared";
-import { STORE_DISPLAY_FALLBACK, getSpecialPriceRange, normalizeStoreKey } from "@dodgey-deals/shared";
+import { displayStoreName, getSpecialPriceRange } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
@@ -118,7 +118,7 @@ export default function ProductListCard({
     dataOnboarding === "top-savings-deal-card" ||
     dataOnboarding === "dodgy-deal-card";
   const showPriceChangeBadge = !isSnapshotLayout && !hideCardBadges && (isDodgy || isRealSaver || isFairDeal);
-  const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
+  const storeLabel = displayStoreName(deal.store, deal.sourceStoreId);
   // Unit pricing remains available for deal assessment and data analysis, but
   // browse cards stay focused on the product's actual shelf price.
   const specialPriceRange = isSnapshotLayout ? null : getSpecialPriceRange(product);

@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import {
   matchesAnySelectedStore,
   deriveAvailableStoreKeys,
-  STORE_DISPLAY_FALLBACK,
+  displayStoreName,
   groupCategory,
   compareDealSnapshotEntries,
   isEligibleForDealSnapshot,
@@ -583,7 +583,7 @@ export default function HomePage() {
                 )}
               <div className="min-w-[8.75rem] shrink-0">
                 <SupermarketPicker
-                  stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
+                  stores={availableStoreKeys.map((id) => ({ id, label: displayStoreName(null, id) }))}
                   selectedStoreIds={selectedStores}
                   onToggleStore={toggleStore}
                 />

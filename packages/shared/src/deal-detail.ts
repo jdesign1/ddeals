@@ -37,11 +37,11 @@
  */
 
 import type { ProductCard, CurrentDeal, PriceHistoryPoint } from "./data.ts";
-import { canonicalStoreKey, matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
+import { canonicalStoreKey, displayStoreName, matchesAnySelectedStore, normalizeStoreKey, STORE_DISPLAY_FALLBACK } from "./data.ts";
 import { SPECIALS_VERIFICATION_TTL_MS } from "./specials-freshness.ts";
 
 /** Real 5-store list for this app's live catalogue (see file header note). */
-export const DEAL_DETAIL_STORES_LIST: string[] = Object.values(STORE_DISPLAY_FALLBACK);
+export const DEAL_DETAIL_STORES_LIST: string[] = Object.keys(STORE_DISPLAY_FALLBACK).map((storeId) => displayStoreName(null, storeId));
 
 /**
  * Real store names carry branch suffixes/casing that vary ("Woolworths NZ",

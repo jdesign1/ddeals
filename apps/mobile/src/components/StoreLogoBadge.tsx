@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared";
+import { displayStoreName } from "@dodgey-deals/shared";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 
 export type StoreLogoBadgeVariant = "selector" | "compact" | "card" | "ranking";
@@ -25,7 +25,7 @@ interface StoreLogoBadgeProps {
  */
 export default function StoreLogoBadge({ store, variant = "card", className = "", decorative = false }: StoreLogoBadgeProps) {
   const meta = getStoreLogoMeta(store);
-  const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(store)] || store;
+  const storeLabel = displayStoreName(store);
   const sizeClass = SIZE_CLASS[variant];
 
   if (!meta.logoSrc || !meta.logoBackground) {

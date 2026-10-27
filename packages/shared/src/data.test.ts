@@ -12,8 +12,10 @@ import {
   buildProductCardsFromSpecials,
   buildMatchIndex,
   canonicalStoreKey,
+  displayStoreName,
   isLikelySameProduct,
   normalizeStoreKey,
+  retailerLinkLabel,
   splitUnsafeMatchGroups,
   storeMatchesFilter,
   matchesAnySelectedStore,
@@ -114,6 +116,15 @@ test("canonicalStoreKey treats retailer aliases as one store without broad subst
   assert.equal(canonicalStoreKey("Woolworths"), "woolworths");
   assert.equal(canonicalStoreKey("Pak'nSave"), "paknsave");
   assert.equal(canonicalStoreKey("Example Store"), "examplestore");
+});
+
+test("displayStoreName identifies the configured Pak'nSave branch without rewriting explicit branches", () => {
+  assert.equal(displayStoreName("Pak'nSave", "paknsave"), "PAK'nSAVE — Sylvia Park");
+  assert.equal(displayStoreName(null, "paknsave"), "PAK'nSAVE — Sylvia Park");
+  assert.equal(displayStoreName("PAK'nSAVE Royal Oak", "paknsave"), "PAK'nSAVE Royal Oak");
+  assert.equal(displayStoreName("Woolworths", "woolworths"), "Woolworths");
+  assert.equal(retailerLinkLabel("PAK'nSAVE — Sylvia Park"), "Check at PAK'nSAVE — Sylvia Park");
+  assert.equal(retailerLinkLabel("Woolworths"), "View at Woolworths");
 });
 
 test("storeMatchesFilter: 'all' matches everything, otherwise substring match on normalized key", () => {
