@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "motion/react";
 import {
   BarChart3,
   BellRing,
@@ -209,11 +210,24 @@ export default function SubscribePage() {
           )}
 
           {showPurchaseOptions && (
-            <div className="flex flex-col gap-6">
+            <div className="relative min-h-[24rem]" aria-live="polite">
               {purchaseOptionsLoading ? (
-                <p className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600" aria-busy="true">Loading subscription options…</p>
+                <div
+                  className="flex min-h-[24rem] items-center justify-center rounded-2xl bg-stone-50"
+                  role="status"
+                  aria-busy="true"
+                  aria-label="Loading subscription options"
+                >
+                  <LoaderCircle className="h-6 w-6 animate-spin text-stone-500 motion-reduce:animate-none" aria-hidden="true" />
+                  <span className="sr-only">Loading subscription options…</span>
+                </div>
               ) : products.length > 0 ? (
-                <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.24, ease: "easeOut" }}
+                  className="flex flex-col gap-6"
+                >
                   <fieldset>
                     <legend className="sr-only">Choose a subscription plan</legend>
                     <div className={products.length > 1 ? "grid grid-cols-2 gap-3" : "grid gap-3"}>
@@ -284,11 +298,13 @@ export default function SubscribePage() {
                   <p className="dd-type-meta text-center text-stone-500">
                     Your selected plan renews automatically: monthly for the monthly plan or yearly for the annual plan. Apple will show your eligibility and the final price before you confirm.
                   </p>
-                </>
+                </motion.div>
               ) : (
-                <p role="alert" className="rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
-                  {error ?? "Subscription options are temporarily unavailable. Please try again later."}
-                </p>
+                <div className="flex min-h-[24rem] items-center">
+                  <p role="alert" className="w-full rounded-xl bg-stone-50 px-4 py-3 dd-type-secondary text-stone-600">
+                    {error ?? "Subscription options are temporarily unavailable. Please try again later."}
+                  </p>
+                </div>
               )}
             </div>
           )}
