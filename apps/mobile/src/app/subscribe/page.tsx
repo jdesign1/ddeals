@@ -102,22 +102,22 @@ export default function SubscribePage() {
             alt="Dodgy Deal mascot investigating a Plus shield"
             width={768}
             height={768}
-            sizes="208px"
+            sizes="144px"
             unoptimized
-            className="mascot-wave h-auto w-full max-w-[13rem]"
+            className="mascot-wave h-auto w-full max-w-[9rem]"
           />
         </div>
         <div className="relative text-center">
-          <p className="dd-type-section text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
-          <h1 id="subscribe-page-title" className="dd-type-page-title dd-type-page-title-compact mx-auto mt-3 max-w-[18rem] text-stone-900">
+          <p className="font-display text-[1.375rem] font-extrabold leading-7 tracking-[-0.015em] text-ink-950">Dodgy Deal <span className="text-fair-800">Plus</span></p>
+          <h1 id="subscribe-page-title" className="mx-auto mt-3 max-w-[18rem] font-display text-xl font-extrabold leading-7 tracking-[-0.015em] text-stone-900">
             {isPremium ? "Your subscription is active" : "Make more confident deal decisions."}
           </h1>
-          <p className="mx-auto mt-2 max-w-[20rem] dd-type-body text-stone-600">
+          <p className="mx-auto mt-2 max-w-[20rem] text-stone-600">
             {isPremium
-              ? "Your subscription keeps your watchlist unlimited and your price alerts active."
+              ? <span className="dd-type-body">Your subscription keeps your watchlist unlimited and your price alerts active.</span>
               : <>
-                <span className="block">More savings. Less guesswork.</span>
-                <span className="mt-1 block">Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights.</span>
+                <span className="block dd-type-body">More savings. Less guesswork.</span>
+                <span className="mt-1 block dd-type-body">Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights.</span>
               </>}
           </p>
         </div>
@@ -210,7 +210,7 @@ export default function SubscribePage() {
           )}
 
           {showApplePlanOptions && (
-            <div className="relative min-h-[24rem]" aria-live="polite">
+            <div className="relative" aria-live="polite">
               {purchaseOptionsLoading ? (
                 <div
                   className="flex min-h-[24rem] items-center justify-center rounded-2xl bg-stone-50"
