@@ -94,7 +94,7 @@ export default function SubscribePage() {
 
   return (
     <main className="dd-subscribe-content flex flex-col gap-4 bg-fair-50/70 px-5 py-5 pb-safe-sm">
-      <section className="relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-fair-100 bg-white px-5 pb-6 pt-4 shadow-sm" aria-labelledby="subscribe-page-title">
+      <section className="relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-fair-100 bg-white px-5 pb-6 pt-4" aria-labelledby="subscribe-page-title">
         <div className="relative flex justify-center">
           <MascotImage
             src="/subscribe-mascot-plus-shield.webp"
@@ -148,7 +148,7 @@ export default function SubscribePage() {
       </section>
 
       {isPremium && currentSubscription ? (
-        <section className="flex flex-col gap-4 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm" aria-labelledby="current-subscription-title">
+        <section className="flex flex-col gap-4 rounded-2xl border border-ink-200 bg-white p-5" aria-labelledby="current-subscription-title">
           <div>
             <p className="dd-type-meta dd-type-meta-strong text-stone-500">Current plan</p>
             <h2 id="current-subscription-title" className="mt-1 dd-type-section text-stone-900">
@@ -174,7 +174,7 @@ export default function SubscribePage() {
           </p>
         </section>
       ) : (
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm" aria-labelledby="subscription-options-title">
+        <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-5" aria-labelledby="subscription-options-title">
           <div className="text-center">
             <h2 id="subscription-options-title" className="dd-type-section text-stone-900">Choose your plan</h2>
             <p className="mt-1 dd-type-secondary text-stone-600">Choose the plan that suits you.</p>
@@ -253,8 +253,8 @@ export default function SubscribePage() {
                             />
                             <span
                               className={[
-                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-[background-color,border-color,box-shadow,transform] duration-300 ease-out motion-reduce:transition-none peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
-                                isSelected ? "scale-[1.01] border-fair-400 bg-fair-50 ring-2 ring-fair-200 shadow-sm" : "scale-100 border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
+                                "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-[background-color,border-color,transform] duration-300 ease-out motion-reduce:transition-none peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
+                                isSelected ? "scale-100 border-fair-500 bg-fair-50" : "scale-100 border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
                                 busyProductId !== null ? "cursor-wait opacity-60" : "",
                               ].join(" ")}
                             >
