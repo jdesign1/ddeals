@@ -124,14 +124,14 @@ export default function HowItWorksPage() {
 
         <InfoSection id="how-it-works-steps-title" title="How to use Dodgy Deal">
           <ol className="overflow-hidden rounded-2xl border border-stone-200/80">
-            <Step number={1} title="Search grocery products">
+            <Step title="Search grocery products">
               Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
               across different NZ supermarkets.
             </Step>
-            <Step number={2} title="Add items to your list">
+            <Step title="Add items to your list">
               Save products you buy regularly to your own list, so you can check back on them any time.
             </Step>
-            <Step number={3} title="Check any deal">
+            <Step title="Check any deal">
               Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Price, or Real Saver &mdash; based on its
               actual recent price history.
             </Step>
@@ -185,23 +185,16 @@ function InfoSection({
 }
 
 function Step({
-  number,
   title,
   children,
 }: {
-  number: number;
   title: string;
   children: ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 border-b border-stone-100 bg-stone-50 p-4 last:border-b-0">
-      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-fair-50 dd-type-control text-fair-700 ring-1 ring-fair-100">
-        {number}
-      </span>
-      <div className="min-w-0">
-        <h3 className="dd-type-control text-stone-900">{title}</h3>
-        <p className="mt-1 dd-type-secondary text-stone-600">{children}</p>
-      </div>
+    <li className="border-b border-stone-100 bg-stone-50 p-4 last:border-b-0">
+      <h3 className="dd-type-control text-stone-900">{title}</h3>
+      <p className="mt-1 dd-type-secondary text-stone-600">{children}</p>
     </li>
   );
 }
