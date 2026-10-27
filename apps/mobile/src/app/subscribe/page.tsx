@@ -185,7 +185,6 @@ export default function SubscribePage() {
             <p className="mt-1 dd-type-meta text-stone-700">
               Your free month begins when you subscribe. Payments start after the free month ends.
             </p>
-            <p className="mt-1 dd-type-meta text-stone-600">For eligible new subscribers.</p>
           </aside>
 
           {!user && !isNativeAvailable && (
@@ -230,16 +229,16 @@ export default function SubscribePage() {
                   className="flex flex-col gap-6"
                 >
                   <fieldset>
-                    <legend className="sr-only">Choose a subscription plan</legend>
+                    <legend className="sr-only">{user ? "Choose a subscription plan" : "Subscription plan options"}</legend>
                     <div className={products.length > 1 ? "grid grid-cols-2 gap-3" : "grid gap-3"}>
                       {products.map((product) => {
                         const isAnnual = product.id === SUBSCRIPTION_PRODUCT_IDS.annual;
-                        const isSelected = selectedProduct?.id === product.id;
+                        const isSelected = Boolean(user && selectedProduct?.id === product.id);
                         const displayPrice = formatAppleSubscriptionPrice(product);
                         return (
                           <label
                             key={product.id}
-                            className="cursor-pointer"
+                            className={user ? "cursor-pointer" : "cursor-default"}
                           >
                             <input
                               type="radio"
@@ -247,14 +246,17 @@ export default function SubscribePage() {
                               value={product.id}
                               checked={isSelected}
                               onChange={() => setSelectedProductId(product.id)}
-                              disabled={busyProductId !== null}
-                              aria-label={["Select the", isAnnual ? "annual" : "monthly", "plan for", displayPrice].join(" ")}
+                              disabled={!user || busyProductId !== null}
+                              aria-label={user
+                                ? ["Select the", isAnnual ? "annual" : "monthly", "plan for", displayPrice].join(" ")
+                                : [isAnnual ? "Annual" : "Monthly", "plan", displayPrice].join(" ")}
                               className="peer sr-only"
                             />
                             <span
                               className={[
                                 "relative flex h-full min-h-[9.25rem] flex-col items-start justify-between rounded-2xl border px-3 py-3.5 text-left transition-[background-color,border-color,transform] duration-300 ease-out motion-reduce:transition-none peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink-700",
-                                isSelected ? "scale-100 border-fair-500 bg-fair-50" : "scale-100 border-stone-200 bg-white hover:border-ink-300 hover:bg-stone-50",
+                                isSelected ? "scale-100 border-fair-500 bg-fair-50" : "scale-100 border-stone-200 bg-white",
+                                user ? "hover:border-ink-300 hover:bg-stone-50" : "",
                                 busyProductId !== null ? "cursor-wait opacity-60" : "",
                               ].join(" ")}
                             >
@@ -272,8 +274,8 @@ export default function SubscribePage() {
                                 <span className="mt-2 block text-xl leading-7 font-extrabold tracking-[-0.03em] text-ink-950">{displayPrice}</span>
                                 <span className="mt-1.5 block max-w-[9rem] dd-type-meta text-stone-600">
                                   {isAnnual
-                                    ? "Renews yearly. Eligible new subscribers get 13 months of access before the first annual renewal, including the free month."
-                                    : "Renews monthly at the displayed price after the free month."}
+                                    ? "Renews yearly, plus one month free"
+                                    : "Renews monthly, first month free"}
                                 </span>
                               </span>
                             </span>
@@ -296,9 +298,6 @@ export default function SubscribePage() {
                       ) : user ? "Subscribe now" : "Create account to subscribe"}
                     </button>
                   )}
-                  <p className="dd-type-meta text-center text-stone-500">
-                    Your selected plan renews automatically: monthly for the monthly plan or yearly for the annual plan. Apple will show your eligibility and the final price before you confirm.
-                  </p>
                 </motion.div>
               ) : (
                 <div className="flex min-h-[24rem] items-center">
