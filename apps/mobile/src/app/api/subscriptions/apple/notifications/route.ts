@@ -1,6 +1,7 @@
 import {
   AppleSubscriptionConfigurationError,
   createAppleSignedDataVerifier,
+  entitlementExpiryForAppleState,
   entitlementStatusForTransaction,
   getAppleSubscriptionConfig,
   getEntitlementKeys,
@@ -9,6 +10,7 @@ import {
   recordAppleEvent,
   requireAccountsAdmin,
   safeNotificationPayload,
+  safeRenewalPayload,
   safeTransactionPayload,
   upsertAppleEntitlements,
 } from "@/lib/apple-subscription-server";
@@ -36,6 +38,10 @@ export async function POST(request: Request) {
     const transactionJws = notification.data?.signedTransactionInfo;
     const transaction = transactionJws && isValidJws(transactionJws)
       ? await verifier.verifyAndDecodeTransaction(transactionJws)
+      : null;
+    const renewalInfoJws = notification.data?.signedRenewalInfo;
+    const renewalInfo = renewalInfoJws && isValidJws(renewalInfoJws)
+      ? await verifier.verifyAndDecodeRenewalInfo(renewalInfoJws)
       : null;
     const notificationPayload = safeNotificationPayload(notification);
 
@@ -70,13 +76,58 @@ export async function POST(request: Request) {
     }
 
     const status = entitlementStatusForTransaction(transaction, notificationType, subtype);
-    await upsertAppleEntitlements({ accounts, accountId, transaction, entitlementKeys, status });
+    if (status === "grace_period" && !renewalInfo) {
+      throw new Error("Apple grace-period notification is missing valid signed renewal information");
+    }
+    const accessExpiresAt = entitlementExpiryForAppleState(transaction, status, renewalInfo);
+    const { data: accountResult, error: accountLookupError } = await accounts.auth.admin.getUserById(accountId);
+    if (accountLookupError) {
+      const accountWasDeleted = accountLookupError.status === 404 || accountLookupError.code === "user_not_found";
+      if (accountWasDeleted) {
+        await recordAppleEvent({
+          accounts,
+          eventId: `notification:${eventId}`,
+          eventType: notificationType || "UNKNOWN",
+          transaction,
+          payload: {
+            ...notificationPayload,
+            transaction: safeTransactionPayload(transaction),
+            renewal: safeRenewalPayload(renewalInfo),
+          },
+          processedAt: new Date().toISOString(),
+          processingError: "The linked Dodgy Deal account no longer exists; no entitlement was changed.",
+        });
+        return Response.json({ ok: true }, { headers: NO_STORE_HEADERS });
+      }
+      throw new Error(`Could not verify the linked Dodgy Deal account: ${accountLookupError.message}`);
+    }
+    if (!accountResult.user) {
+      await recordAppleEvent({
+        accounts,
+        eventId: `notification:${eventId}`,
+        eventType: notificationType || "UNKNOWN",
+        transaction,
+        payload: {
+          ...notificationPayload,
+          transaction: safeTransactionPayload(transaction),
+          renewal: safeRenewalPayload(renewalInfo),
+        },
+        processedAt: new Date().toISOString(),
+        processingError: "The linked Dodgy Deal account no longer exists; no entitlement was changed.",
+      });
+      return Response.json({ ok: true }, { headers: NO_STORE_HEADERS });
+    }
+    await upsertAppleEntitlements({ accounts, accountId, transaction, entitlementKeys, status, accessExpiresAt });
     await recordAppleEvent({
       accounts,
       eventId: `notification:${eventId}`,
       eventType: notificationType || "UNKNOWN",
       transaction,
-      payload: { ...notificationPayload, transaction: safeTransactionPayload(transaction) },
+      payload: {
+        ...notificationPayload,
+        transaction: safeTransactionPayload(transaction),
+        renewal: safeRenewalPayload(renewalInfo),
+      },
       processedAt: new Date().toISOString(),
     });
 

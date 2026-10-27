@@ -6,6 +6,10 @@
     {
       "path": "/api/notifications/process",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/subscriptions/apple/reconcile",
+      "schedule": "30 1 * * *"
     }
   ]
 }

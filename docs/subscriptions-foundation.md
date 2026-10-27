@@ -20,8 +20,12 @@ The shared package now exposes:
 - `fetchUserEntitlements(...)`: reads the signed-in user's rows from Accounts
   Supabase; RLS remains the authority for account ownership.
 - `FREE_WATCHLIST_LIMIT`: five saved products for free accounts.
-- `FREE_CHECK_HISTORY_LIMIT`: ten recent All Checks entries for free accounts.
-- `FREE_DEAL_STATS_CHECK_LIMIT`: thirty recent checks used for free Deal Stats.
+- `FREE_CHECK_HISTORY_LIMIT`: an internal recent-history fetch ceiling used to
+  build the free All Checks preview; the user-facing free experience shows two
+  readable entries.
+- `FREE_DEAL_STATS_CHECK_LIMIT`: an internal recent-check ceiling retained for
+  server-side stats requests; the personalised Watchlist stats view is
+  subscription-only, with NZ Trends remaining free.
 - `PREMIUM_CHECK_HISTORY_LIMIT`: the server-side extended-history ceiling.
 
 Example future keys are `advanced_history`, `deal_alerts`, and
@@ -67,6 +71,12 @@ The first Apple plumbing is now in place for the agreed product direction:
 - `/api/subscriptions/apple/notifications` verifies App Store Server
   Notifications V2 and applies renewals, billing retry, grace period, expiry,
   refunds, and revocations.
+- Grace-period notifications verify Apple's signed renewal information and use
+  `gracePeriodExpiresDate` as the effective access expiry, rather than ending
+  access at the normal transaction period boundary.
+- The entitlement upsert also preserves an unexpired grace-period state when a
+  later device transaction arrives without renewal information, so device
+  reconciliation cannot prematurely remove valid access.
 - Apple signed timestamps prevent an older notification from overwriting a
   newer transaction state.
 - The app uses the proposed monthly product `nz.dodgydeals.plus.monthly` and
@@ -87,6 +97,30 @@ The endpoints intentionally return configuration-unavailable responses until
 those values are present. The remaining launch work is App Store Connect and
 Vercel configuration, followed by Sandbox/TestFlight purchase, restore,
 renewal, expiry, and downgrade testing.
+
+## Subscription safety and operations
+
+The paid flow includes the following safeguards:
+
+- The push notification worker re-checks the current `premium_access`
+  entitlement immediately before delivery. A saved push preference alone is
+  never sufficient to send a paid price alert. A short-lived database claim
+  also prevents overlapping notification runs from sending the same event
+  twice.
+- If an Apple purchase is linked to another Dodgy Deal account, the app tells
+  the shopper to sign in with the original account and provides a support
+  recovery path. Accounts are not automatically merged without verifying
+  ownership.
+- Account deletion warns that Apple subscriptions are managed separately and
+  must be cancelled in Apple to prevent future charges. Apple notifications
+  for an account that has since been deleted are recorded and acknowledged
+  without recreating the account or retrying indefinitely.
+- `/api/subscriptions/apple/reconcile` runs daily after the notification
+  worker. It marks entitlements whose verified expiry has passed as expired,
+  records recent Apple notification health, and writes a server-only
+  reconciliation event for monitoring. This is stale-state cleanup and health
+  monitoring; the next production-hardening step is using Apple's App Store
+  Server API and notification history to repair missed webhook state.
 
 ## Deployment configuration status
 

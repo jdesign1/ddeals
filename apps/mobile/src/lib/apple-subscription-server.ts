@@ -2,15 +2,20 @@ import {
   Environment,
   NotificationTypeV2,
   SignedDataVerifier,
+  type JWSRenewalInfoDecodedPayload,
   type JWSTransactionDecodedPayload,
   type ResponseBodyV2DecodedPayload,
 } from "@apple/app-store-server-library";
-import { createSupabaseClient, type SupabaseClient } from "@dodgey-deals/shared";
-import { accountsConfig } from "@/lib/accounts-config";
+import type { SupabaseClient } from "@dodgey-deals/shared";
+import { requireAccountsAdmin as requireAccountsAdminBase } from "@/lib/accounts-server";
+import { entitlementExpiryForAppleState, type AppleEntitlementStatus } from "@/lib/apple-entitlement-expiry";
+
+export { entitlementExpiryForAppleState } from "@/lib/apple-entitlement-expiry";
+export type { AppleEntitlementStatus } from "@/lib/apple-entitlement-expiry";
+
+export { getAuthenticatedAccountId, isUuid } from "@/lib/accounts-server";
 
 export const APPLE_PROVIDER = "apple_app_store";
-
-export type AppleEntitlementStatus = "active" | "grace_period" | "billing_retry" | "expired" | "revoked";
 
 export interface AppleSubscriptionConfig {
   bundleId: string;
@@ -24,6 +29,14 @@ export class AppleSubscriptionConfigurationError extends Error {
     super(message);
     this.name = "AppleSubscriptionConfigurationError";
   }
+}
+
+/** Keeps the Apple routes' established configuration error contract intact. */
+export function requireAccountsAdmin(): SupabaseClient {
+  if (!process.env.ACCOUNTS_SUPABASE_SERVICE_ROLE_KEY) {
+    throw new AppleSubscriptionConfigurationError("ACCOUNTS_SUPABASE_SERVICE_ROLE_KEY is not configured");
+  }
+  return requireAccountsAdminBase();
 }
 
 function requiredEnvironment(name: string): string {
@@ -111,10 +124,6 @@ export function isValidJws(value: unknown): value is string {
   return typeof value === "string" && value.length <= 128_000 && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
-export function isUuid(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 export function entitlementStatusForTransaction(
   transaction: Pick<JWSTransactionDecodedPayload, "expiresDate" | "revocationDate">,
   notificationType?: string,
@@ -149,6 +158,26 @@ export function transactionExpiry(transaction: Pick<JWSTransactionDecodedPayload
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+/**
+ * Apple gives billing grace periods in signed renewal information rather than
+ * the transaction's normal period expiry. Use that later date for access so a
+ * valid grace period is not cut off when the original billing period ends.
+ */
+export function safeRenewalPayload(
+  renewalInfo: Pick<JWSRenewalInfoDecodedPayload, "originalTransactionId" | "productId" | "signedDate" | "gracePeriodExpiresDate" | "isInBillingRetryPeriod" | "autoRenewStatus" | "expirationIntent"> | null,
+): Record<string, unknown> | null {
+  if (!renewalInfo) return null;
+  return {
+    originalTransactionId: renewalInfo.originalTransactionId ?? null,
+    productId: renewalInfo.productId ?? null,
+    signedDate: renewalInfo.signedDate ?? null,
+    gracePeriodExpiresDate: renewalInfo.gracePeriodExpiresDate ?? null,
+    isInBillingRetryPeriod: renewalInfo.isInBillingRetryPeriod ?? null,
+    autoRenewStatus: renewalInfo.autoRenewStatus ?? null,
+    expirationIntent: renewalInfo.expirationIntent ?? null,
+  };
+}
+
 export function safeTransactionPayload(transaction: JWSTransactionDecodedPayload): Record<string, unknown> {
   return {
     transactionId: transaction.transactionId ?? null,
@@ -175,28 +204,16 @@ export function safeNotificationPayload(notification: ResponseBodyV2DecodedPaylo
   };
 }
 
-export async function getAuthenticatedAccountId(accessToken: string): Promise<string | null> {
-  if (!accountsConfig.anonKey) return null;
-  const verifier = createSupabaseClient(accountsConfig.url, accountsConfig.anonKey);
-  const { data, error } = await verifier.auth.getUser(accessToken);
-  return error || !data.user ? null : data.user.id;
-}
-
-export function requireAccountsAdmin(): SupabaseClient {
-  const serviceKey = process.env.ACCOUNTS_SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new AppleSubscriptionConfigurationError("ACCOUNTS_SUPABASE_SERVICE_ROLE_KEY is not configured");
-  return createSupabaseClient(accountsConfig.url, serviceKey);
-}
-
 export async function upsertAppleEntitlements(params: {
   accounts: SupabaseClient;
   accountId: string;
   transaction: JWSTransactionDecodedPayload;
   entitlementKeys: readonly string[];
   status: AppleEntitlementStatus;
+  accessExpiresAt?: string | null;
 }): Promise<void> {
   const signedAt = transactionSignedAt(params.transaction);
-  const expiresAt = transactionExpiry(params.transaction);
+  const expiresAt = params.accessExpiresAt ?? transactionExpiry(params.transaction);
   const providerTransactionId = params.transaction.transactionId ?? null;
   const originalTransactionId = params.transaction.originalTransactionId ?? null;
   if (!providerTransactionId || !originalTransactionId || !params.transaction.productId) {

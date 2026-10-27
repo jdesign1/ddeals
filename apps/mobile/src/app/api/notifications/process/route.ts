@@ -7,10 +7,12 @@ import {
 import { accountsConfig } from "@/lib/accounts-config";
 import { supabaseConfig } from "@/lib/config";
 import { isApnsConfigured, sendApnsAlert } from "@/lib/apns";
+import { getCurrentPremiumAccountIds, type PremiumEntitlementForNotifications } from "@/lib/notification-entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+const PUSH_CLAIM_LEASE_MS = 15 * 60 * 1000;
 
 interface ListRow {
   id: string;
@@ -58,6 +60,8 @@ interface PreferenceRow {
   push_enabled_at: string | null;
 }
 
+type EntitlementRow = PremiumEntitlementForNotifications;
+
 interface DeviceRow {
   user_id: string;
   token: string;
@@ -80,6 +84,7 @@ interface AlertEventRow {
   created_at: string;
   viewed_at: string | null;
   push_sent_at: string | null;
+  push_claimed_at: string | null;
 }
 
 function chunks<T>(values: T[], size: number): T[][] {
@@ -215,7 +220,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
 
   const now = Date.now();
   const nextStates: AlertStateRow[] = [];
-  const newEvents: Omit<AlertEventRow, "id" | "created_at" | "viewed_at" | "push_sent_at">[] = [];
+  const newEvents: Omit<AlertEventRow, "id" | "created_at" | "viewed_at" | "push_sent_at" | "push_claimed_at">[] = [];
   for (const price of priceRows) {
     const linkedSpecial = specialByPriceKey.get(priceKey(price.product_id, price.store_id));
     const observationIsFresh = isWatchlistObservationFresh(price.updated_at, now);
@@ -298,6 +303,8 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
   }
 
   let delivered = 0;
+  let premiumUsers = 0;
+  let filteredFreeUsers = 0;
   if (isApnsConfigured()) {
     const preferences = await fetchPages<PreferenceRow>((from, to) =>
       accounts
@@ -306,7 +313,23 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
         .eq("push_enabled", true)
         .range(from, to)
     );
-    const userIds = preferences.map((preference) => preference.user_id);
+    const preferenceUserIds = [...new Set(preferences.map((preference) => preference.user_id))];
+    const entitlementRows: EntitlementRow[] = [];
+    for (const userIdChunk of chunks(preferenceUserIds, 100)) {
+      if (!userIdChunk.length) continue;
+      const { data, error } = await accounts
+        .from("subscription_entitlements")
+        .select("account_id,entitlement_key,status,expires_at")
+        .eq("entitlement_key", "premium_access")
+        .in("account_id", userIdChunk);
+      if (error) throw new Error(`Could not read notification entitlements: ${error.message}`);
+      entitlementRows.push(...((data ?? []) as EntitlementRow[]));
+    }
+    const premiumUserIds = getCurrentPremiumAccountIds(entitlementRows, new Date(now));
+    const eligiblePreferences = preferences.filter((preference) => premiumUserIds.has(preference.user_id));
+    const userIds = [...new Set(eligiblePreferences.map((preference) => preference.user_id))];
+    premiumUsers = userIds.length;
+    filteredFreeUsers = preferenceUserIds.length - premiumUsers;
 
     if (userIds.length) {
       const devices: DeviceRow[] = [];
@@ -319,7 +342,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
           fetchPages<AlertEventRow>((from, to) =>
             accounts
               .from("list_price_alert_events")
-              .select("id,user_id,list_id,list_item_id,product_id,product_name,store_id,store_name,event_type,price,previous_price,verdict,event_key,created_at,viewed_at,push_sent_at")
+              .select("id,user_id,list_id,list_item_id,product_id,product_name,store_id,store_name,event_type,price,previous_price,verdict,event_key,created_at,viewed_at,push_sent_at,push_claimed_at")
               .in("user_id", userIdChunk)
               .is("push_sent_at", null)
               .is("viewed_at", null)
@@ -337,12 +360,15 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
         devicesByUser.set(device.user_id, group);
       }
 
-      const preferenceByUser = new Map(preferences.map((preference) => [preference.user_id, preference]));
+      const preferenceByUser = new Map(eligiblePreferences.map((preference) => [preference.user_id, preference]));
       const listsByUserAndId = new Map(lists.map((list) => [`${list.user_id}:${list.id}`, list]));
       const pendingGroups = new Map<string, AlertEventRow[]>();
+      const claimBefore = new Date(now - PUSH_CLAIM_LEASE_MS).getTime();
       for (const event of pendingEvents) {
         const preference = preferenceByUser.get(event.user_id);
         if (!preference?.push_enabled_at || Date.parse(event.created_at) < Date.parse(preference.push_enabled_at)) continue;
+        const claimedAt = event.push_claimed_at ? Date.parse(event.push_claimed_at) : NaN;
+        if (Number.isFinite(claimedAt) && claimedAt >= claimBefore) continue;
         const key = `${event.user_id}:${event.list_id}`;
         const group = pendingGroups.get(key) ?? [];
         group.push(event);
@@ -354,7 +380,20 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
         const list = listsByUserAndId.get(`${userId}:${listId}`);
         const devices = devicesByUser.get(userId) ?? [];
         if (!list || !devices.length || !events.length) continue;
-        const copy = buildAlertCopy(events, list);
+        const claimAt = new Date(now).toISOString();
+        const claimBeforeIso = new Date(now - PUSH_CLAIM_LEASE_MS).toISOString();
+        const { data: claimedRows, error: claimError } = await accounts
+          .from("list_price_alert_events")
+          .update({ push_claimed_at: claimAt })
+          .in("id", events.map((event) => event.id))
+          .is("push_sent_at", null)
+          .or(`push_claimed_at.is.null,push_claimed_at.lt.${claimBeforeIso}`)
+          .select("id");
+        if (claimError) throw new Error(`Could not claim pending push events: ${claimError.message}`);
+        const claimedIds = new Set((claimedRows ?? []).map((row) => String(row.id)));
+        const claimedEvents = events.filter((event) => claimedIds.has(event.id));
+        if (!claimedEvents.length) continue;
+        const copy = buildAlertCopy(claimedEvents, list);
         const payload = {
           // The system alert is audible when the app is backgrounded; the
           // bottom-nav/item badges remain the in-app signal when it is open.
@@ -376,13 +415,22 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
           }
         }
         if (deliveredToDevice) {
-          const eventIds = events.map((event) => event.id);
+          const eventIds = claimedEvents.map((event) => event.id);
           const { error } = await accounts
             .from("list_price_alert_events")
-            .update({ push_sent_at: new Date().toISOString() })
-            .in("id", eventIds);
+            .update({ push_sent_at: claimAt, push_claimed_at: null })
+            .in("id", eventIds)
+            .eq("push_claimed_at", claimAt);
           if (error) throw new Error(`Push was delivered but its status could not be saved: ${error.message}`);
           delivered += 1;
+        } else {
+          const { error } = await accounts
+            .from("list_price_alert_events")
+            .update({ push_claimed_at: null })
+            .in("id", claimedEvents.map((event) => event.id))
+            .eq("push_claimed_at", claimAt)
+            .is("push_sent_at", null);
+          if (error) throw new Error(`Push failed and its claim could not be released: ${error.message}`);
         }
       }
     }
@@ -393,6 +441,8 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
     items: listItems.length,
     created,
     delivered,
+    premiumUsers,
+    filteredFreeUsers,
     apnsConfigured: isApnsConfigured(),
   };
 }

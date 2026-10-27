@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { subscriptionErrorMessage } from "./subscription-errors.ts";
+import { isSubscriptionAccountRecoveryError, subscriptionErrorMessage } from "./subscription-errors.ts";
+
+test("identifies subscription errors that need account recovery help", () => {
+  assert.equal(isSubscriptionAccountRecoveryError("This Apple subscription is linked to another Dodgy Deal account."), true);
+  assert.equal(isSubscriptionAccountRecoveryError("We couldn't find an active Apple subscription for this Apple account."), false);
+});
 
 test("explains when an Apple subscription belongs to another Dodgy Deal account", () => {
   assert.match(

@@ -32,11 +32,30 @@ Free users should continue to receive meaningful cost-saving help:
 - See the current normal-price comparison
 - See the full price history and 90-day graph
 - See the buy-now, wait, or watch guidance
-- Save up to **5 products** to the Watchlist
+- Keep **5 recently saved products unlocked** in the Watchlist
+- Keep any additional saved products safely stored as locked items until subscribing
 - See current price and deal status for saved products
-- See a summary of Deal Stats based on the **30 most recent checks**
-- Review the **10 most recent All Checks** entries
+- Open Deal Stats and see a preview of the personalised Watchlist insights, with the full view reserved for subscribers
+- Review the **2 most recent All Checks** entries in full; older entries appear as a locked preview
+- View the free **NZ Trends** section of Deal Stats
 - No automatic price-drop alerts
+
+### Final free limits
+
+These are the user-facing limits for a free signed-in account. They are
+deliberately based on what the user can read and use in the app, rather than
+on internal API fetch sizes.
+
+| Area | Free experience | Paid experience |
+| --- | --- | --- |
+| Watchlist | Five most recently saved products are unlocked. Extra saved products remain stored but locked. | All saved products are unlocked. |
+| All Checks | Two most recent checks are readable. Older checks show a locked preview and subscription prompt. | Full check history, search and date filters. |
+| Deal Stats | Personalised Watchlist stats show a locked preview. NZ Trends remains available. | Full personalised Watchlist stats and insights. |
+
+The free deal assessment remains complete, including the verdict, evidence,
+supermarket comparison, 90-day graph and price-timing guidance. These limits
+restrict convenience and personal history, not the core information needed to
+make a single shopping decision.
 
 ## Paid access
 
@@ -61,11 +80,11 @@ If the trial ends without a paid subscription:
 
 - Existing Watchlist items and lists remain saved
 - Automatic alerts stop
-- Saved items remain readable
-- The user can keep up to five Watchlist items
-- Deal Stats falls back to the 30-check summary
-- All Checks falls back to the 10 most recent entries
-- New items cannot be added while over the five-item free limit
+- The five most recently saved Watchlist items remain unlocked
+- Additional saved items remain stored but locked; no user data is deleted
+- Personalised Deal Stats returns to its locked preview, while NZ Trends remains free
+- All Checks returns to the two-entry readable preview
+- Free users may still save additional items, but those items remain locked until subscribing
 - The app clearly explains what subscribing restores
 
 The product should remain useful for people who cannot afford a subscription.
@@ -147,8 +166,9 @@ The app foundation is now prepared for the first Apple subscription group:
 - The app keeps deal browsing and the complete assessment experience free.
 - Watchlist access is capped at five saved products for free accounts, while
   proactive price alerts are reserved for subscribers.
-- Free users receive a server-capped recent view of Deal Stats and All Checks;
-  subscribers receive the extended history and insight views.
+- Free users receive a small readable All Checks preview and a locked preview
+  of personalised Deal Stats; subscribers receive the full history and insight
+  views.
 
 Before TestFlight purchase testing, create the App Store Connect products and
 configure the server-only Apple verification variables and App Store Server

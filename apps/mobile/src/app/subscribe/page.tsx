@@ -26,6 +26,7 @@ import {
   getSubscriptionRenewalLabel,
   getSubscriptionStatusLabel,
 } from "@/lib/subscription-display";
+import { isSubscriptionAccountRecoveryError } from "@/lib/subscription-errors";
 
 const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 
@@ -187,9 +188,14 @@ export default function SubscribePage() {
           )}
 
           {error && (
-            <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 dd-type-secondary text-red-800">
-              {error}
-            </p>
+            <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 dd-type-secondary text-red-800">
+              <p>{error}</p>
+              {isSubscriptionAccountRecoveryError(error) && (
+                <p className="mt-3 border-t border-red-200 pt-3 text-red-900">
+                  If you paid using a different Dodgy Deal account, sign in with that account and try again. If you still cannot access your subscription, <Link href="/support" className="font-bold underline underline-offset-2">contact support for recovery help</Link>.
+                </p>
+              )}
+            </div>
           )}
 
           {showPurchaseOptions && (

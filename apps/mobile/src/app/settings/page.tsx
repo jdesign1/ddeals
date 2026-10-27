@@ -24,6 +24,7 @@ import {
   formatSubscriptionDate,
   getSubscriptionRenewalLabel,
 } from "@/lib/subscription-display";
+import { isSubscriptionAccountRecoveryError } from "@/lib/subscription-errors";
 
 const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 const SETTINGS_TRANSITION_MS = 320;
@@ -367,6 +368,7 @@ export default function SettingsPage() {
     isPremium,
     loading: subscriptionLoading,
     currentSubscription,
+    error: subscriptionError,
     openSubscriptionPage,
     isNativeAvailable,
     restoring,
@@ -455,7 +457,8 @@ export default function SettingsPage() {
     try {
       const response = await fetch("/api/account", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ acknowledgeAppleSubscription: true }),
         cache: "no-store",
       });
       const result = await response.json().catch(() => null) as { ok?: boolean; error?: string; appleSignInUsed?: boolean } | null;
@@ -835,6 +838,16 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="mt-2 dd-type-secondary text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
+                    {subscriptionError && (
+                      <div role="alert" className="mt-3 rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-meta text-alert-900">
+                        <p>{subscriptionError}</p>
+                        {isSubscriptionAccountRecoveryError(subscriptionError) && (
+                          <p className="mt-2 border-t border-alert-100 pt-2">
+                            Sign in with the original Dodgy Deal account, or <Link href="/support" className="font-bold underline underline-offset-2">contact support for recovery help</Link>.
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={openSubscriptionPage}
@@ -987,6 +1000,17 @@ export default function SettingsPage() {
                       <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
                         Your Dodgy Deal account and saved data have been deleted.
                       </p>
+                      <p className="rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-secondary text-alert-900">
+                        Deleting your Dodgy Deal account does not cancel an Apple subscription. If you had Dodgy Deal Plus, manage or cancel it in Apple to prevent future charges.
+                      </p>
+                      <a
+                        href={APPLE_SUBSCRIPTIONS_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="dd-btn dd-btn-outline w-full cursor-pointer text-center"
+                      >
+                        Manage Apple subscriptions
+                      </a>
                       {appleSignInUsed && (
                         <p className="dd-type-secondary text-stone-600">
                           To also remove Sign in with Apple access, open iPhone Settings, tap your name, then Sign in with Apple. Select Dodgy Deal and tap Delete.
@@ -1006,6 +1030,21 @@ export default function SettingsPage() {
                       <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
                         Your profile, saved lists, and browsing history will be permanently deleted. This can&apos;t be undone.
                       </p>
+                      <div className="rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-secondary text-alert-900">
+                        <p>
+                          If you have Dodgy Deal Plus, deleting your account will not cancel your Apple subscription. Cancel it in Apple first, or it may continue to renew.
+                        </p>
+                        {isPremium && (
+                          <a
+                            href={APPLE_SUBSCRIPTIONS_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex font-bold underline underline-offset-2"
+                          >
+                            Manage or cancel in Apple
+                          </a>
+                        )}
+                      </div>
                       {accountDeleteError && (
                         <p role="alert" className="dd-type-secondary text-alert-700">{accountDeleteError}</p>
                       )}

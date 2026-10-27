@@ -1,3 +1,7 @@
+export function isSubscriptionAccountRecoveryError(message: string | null | undefined): boolean {
+  return Boolean(message && /not linked to a Dodgy Deal account|linked to another Dodgy Deal account/i.test(message));
+}
+
 export function subscriptionErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const code = typeof error === "object" && error !== null && "code" in error
