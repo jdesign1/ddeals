@@ -15,6 +15,7 @@ import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { prepareDealNavigation } from "@/lib/deal-navigation";
+import { useDealNavigationActivation } from "@/lib/deal-navigation-feedback-context";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 
 /**
@@ -126,6 +127,7 @@ export default function ProductListCard({
   const useGridCard = isSnapshotLayout || isGridLayout;
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
+  const { beginNavigation, isNavigating } = useDealNavigationActivation();
   // `product.brand` already arrives Title Cased from `packages/shared/src/
   // data.ts` (`titleCase(meta.brand)`) -- this card used to re-render it in
   // ALL CAPS on top of that via the `uppercase` CSS class below. Per Jay's
@@ -141,6 +143,7 @@ export default function ProductListCard({
     : product.brand;
 
   const goToDeal = () => {
+    if (!beginNavigation()) return;
     onNavigate?.();
     router.push(prepareDealNavigation(router, product, deal.store));
   };
@@ -226,7 +229,7 @@ export default function ProductListCard({
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
       }}
-      className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border ${showsNewBadge ? "border-black" : "border-stone-200/80"} bg-white ${
+      className={`dd-product-card group relative cursor-pointer overflow-hidden rounded-2xl border transition-[transform,opacity] duration-150 ease-out active:scale-[0.985] active:opacity-95 ${showsNewBadge ? "border-black" : "border-stone-200/80"} bg-white ${
         isCompactCardLayout
           ? "dd-compact-product-card flex min-h-28 items-stretch gap-3 p-2"
           : isSnapshotLayout
@@ -234,7 +237,8 @@ export default function ProductListCard({
             : isGridLayout
             ? "flex flex-col"
             : "flex"
-      }`}
+      } ${isNavigating ? "scale-[0.985] opacity-70" : ""}`}
+      aria-busy={isNavigating}
     >
       <AddToListButton
         productId={product.id}

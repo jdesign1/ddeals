@@ -10,6 +10,7 @@ import ResponsivePriceRange from "@/components/ResponsivePriceRange";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { hasMixedStoreVerdicts } from "@/lib/product-card-badges";
 import { prepareDealNavigation } from "@/lib/deal-navigation";
+import { useDealNavigationActivation } from "@/lib/deal-navigation-feedback-context";
 
 /**
  * One (product, store) deal card. Extracted from specials/page.tsx
@@ -39,6 +40,7 @@ export default function DealCard({
   const showPriceChangeBadge = !hideCardBadges && (isTrueSpecial || isDodgy || isFairDeal);
   const showWasPrice = deal.originalPrice > deal.price;
   const specialPriceRange = getSpecialPriceRange(product);
+  const { beginNavigation, isNavigating } = useDealNavigationActivation();
 
   const warmDealRoute = () => {
     prepareDealNavigation(router, product, deal.store);
@@ -61,7 +63,10 @@ export default function DealCard({
     return () => globalThis.clearTimeout(timeoutId);
   }, [deal.store, imageLoading, product, router]);
 
-  const goToDeal = () => router.push(prepareDealNavigation(router, product, deal.store));
+  const goToDeal = () => {
+    if (!beginNavigation()) return;
+    router.push(prepareDealNavigation(router, product, deal.store));
+  };
 
   return (
     <article
@@ -80,7 +85,8 @@ export default function DealCard({
       // tapping the card still navigates normally.
       style={{ touchAction: "pan-y" }}
       // Product item cards use a subtle outline rather than elevation.
-      className="dd-product-card flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-transform duration-150 ease-out active:scale-[0.985] active:opacity-95"
+      aria-busy={isNavigating}
+      className={`dd-product-card flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-[transform,opacity] duration-150 ease-out active:scale-[0.985] active:opacity-95 ${isNavigating ? "scale-[0.985] opacity-70" : ""}`}
     >
       <div className="product-image-frame relative aspect-square w-full overflow-hidden bg-stone-100">
         <ProductImage

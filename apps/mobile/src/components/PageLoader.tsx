@@ -45,13 +45,13 @@ import { AnimatePresence, motion } from "motion/react";
  * expose) and fades out along with the rest of this component as it
  * unmounts, per Jay's specific ask ("fade in and fade out the logo").
  */
-export default function PageLoader({ loading }: { loading: boolean }) {
-  const [logoVisible, setLogoVisible] = useState(false);
+export default function PageLoader({ loading, immediate = false }: { loading: boolean; immediate?: boolean }) {
+  const [logoVisible, setLogoVisible] = useState(immediate && loading);
 
   useEffect(() => {
     if (!loading) {
-      setLogoVisible(false);
-      return;
+      const resetFrame = requestAnimationFrame(() => setLogoVisible(false));
+      return () => cancelAnimationFrame(resetFrame);
     }
     // Double rAF: lets the browser paint the logo at opacity-0 first, then
     // flips it to opacity-100 on the next frame so the CSS transition
@@ -83,7 +83,7 @@ export default function PageLoader({ loading }: { loading: boolean }) {
             width={48}
             height={48}
             className={`theme-logo mascot-wave h-12 w-12 transition-opacity duration-300 ease-out ${
-              logoVisible ? "opacity-100" : "opacity-0"
+            immediate || logoVisible ? "opacity-100" : "opacity-0"
             }`}
           />
         </motion.div>

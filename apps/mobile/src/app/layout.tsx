@@ -17,6 +17,7 @@ import { SubscriptionProvider } from "@/lib/subscription-context";
 import { WatchlistProvider } from "@/lib/watchlist-context";
 import { NavigationDrawerProvider } from "@/lib/navigation-drawer-context";
 import { NewSpecialsProvider } from "@/lib/new-specials-context";
+import { DealNavigationFeedbackProvider } from "@/lib/deal-navigation-feedback-context";
 import "./globals.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
@@ -94,6 +95,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 HeaderOverrideProvider already uses for AppHeader's title
                 override. */}
               <CardLayoutProvider>
+                <DealNavigationFeedbackProvider>
                 <SearchProvider>
                   <NewSpecialsProvider>
                   <NavigationDrawerProvider>
@@ -170,6 +172,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   </NavigationDrawerProvider>
                   </NewSpecialsProvider>
                 </SearchProvider>
+                </DealNavigationFeedbackProvider>
               </CardLayoutProvider>
             </HeaderOverrideProvider>
           </ThemeProvider>

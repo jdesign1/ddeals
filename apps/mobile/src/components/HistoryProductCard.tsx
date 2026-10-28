@@ -6,6 +6,7 @@ import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { prepareDealNavigation } from "@/lib/deal-navigation";
+import { useDealNavigationActivation } from "@/lib/deal-navigation-feedback-context";
 
 interface HistoryProductCardProps {
   product: ProductCardData;
@@ -21,8 +22,12 @@ interface HistoryProductCardProps {
  */
 export default function HistoryProductCard({ product, deal, isLocked = false }: HistoryProductCardProps) {
   const router = useRouter();
+  const { beginNavigation, isNavigating } = useDealNavigationActivation();
   const warmDealRoute = () => prepareDealNavigation(router, product, deal.store);
-  const goToDeal = () => router.push(prepareDealNavigation(router, product, deal.store));
+  const goToDeal = () => {
+    if (!beginNavigation()) return;
+    router.push(prepareDealNavigation(router, product, deal.store));
+  };
 
   const cardContent = (
     <>
@@ -64,7 +69,8 @@ export default function HistoryProductCard({ product, deal, isLocked = false }: 
           // A card tap remains available without claiming vertical swipes from
           // the page's scroll container.
           style={{ touchAction: "pan-y" }}
-          className="flex min-w-0 flex-1 cursor-pointer items-stretch gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset active:scale-[0.985]"
+          aria-busy={isNavigating}
+          className={`flex min-w-0 flex-1 cursor-pointer items-stretch gap-3 text-left outline-none transition-[transform,opacity] duration-150 focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset active:scale-[0.985] active:opacity-95 ${isNavigating ? "scale-[0.985] opacity-70" : ""}`}
         >
           {cardContent}
         </button>

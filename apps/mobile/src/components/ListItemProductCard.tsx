@@ -12,6 +12,7 @@ import ProductImage from "@/components/ProductImage";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { prepareDealNavigation } from "@/lib/deal-navigation";
+import { useDealNavigationActivation } from "@/lib/deal-navigation-feedback-context";
 
 /**
  * Compact product row for a list's own item list on `apps/mobile/src/app/
@@ -201,6 +202,7 @@ export default function ListItemProductCard({
   cheaperOptionsError = null,
 }: ListItemProductCardProps) {
   const router = useRouter();
+  const { beginNavigation, isNavigating } = useDealNavigationActivation();
   const selectedAlternativeDeal = selectedCheaperAlternative
     ? findDealForStore(selectedCheaperAlternative.product.currentDeals, selectedCheaperAlternative.store)
     : undefined;
@@ -253,6 +255,7 @@ export default function ListItemProductCard({
         : "border-stone-200/80";
 
   const goToDeal = () => {
+    if (!beginNavigation()) return;
     onBeforeNavigate?.();
     onDealAssessmentOpen?.();
     router.push(prepareDealNavigation(router, displayedProduct, displayedDeal.store));
@@ -313,8 +316,10 @@ export default function ListItemProductCard({
       className={[
         "dd-compact-product-card group relative flex min-h-[76px] flex-col",
         isMergedCheaperOptionsCard ? `overflow-hidden rounded-xl border ${verdictBorderClass}` : "",
+        isNavigating ? "scale-[0.985] opacity-70 transition-[transform,opacity] duration-150" : "",
       ].join(" ")}
       ref={cardRef}
+      aria-busy={isNavigating}
       style={{
         cursor: isLocked || confirmingRemove ? "default" : "pointer",
         touchAction: isCheaperOptionsExpanded ? "auto" : "pan-y",
