@@ -1059,6 +1059,26 @@ html[data-theme="dark"] .theme-loader-surface {
   animation: dd-subscribe-content-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Page transitions use the established side-to-side mascot turn. Keep this
+   separate from `mascot-wave`, which is the calmer inline loading motion. */
+@keyframes mascotTurn {
+  0%,
+  38% {
+    transform: scaleX(1);
+  }
+  50%,
+  88% {
+    transform: scaleX(-1);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.animate-mascot-turn {
+  animation: mascotTurn 1.8s ease-in-out infinite;
+}
+
 .mascot-wave {
   animation: mascotWave 3.2s ease-in-out infinite;
   transform-origin: 50% 92%;
@@ -1070,6 +1090,10 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-mascot-turn {
+    animation: none;
+  }
+
   .mascot-wave {
     animation: none;
   }
