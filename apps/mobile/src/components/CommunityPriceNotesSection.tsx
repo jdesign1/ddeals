@@ -755,7 +755,7 @@ export default function CommunityPriceNotesSection({
 
             {!error && submissionEnabled && (
               <div className="flex justify-end border-t border-stone-100 pt-4">
-                <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="dd-btn dd-btn-outline dd-btn-outline-thin min-h-11 w-full flex-shrink-0 cursor-pointer sm:w-auto">Share a tip</button>
+                <button ref={addNoteButtonRef} type="button" onClick={openComposer} className="flex min-h-11 w-full flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold transition-colors hover:bg-stone-50 sm:w-auto">Share a tip</button>
               </div>
             )}
           </motion.div>
