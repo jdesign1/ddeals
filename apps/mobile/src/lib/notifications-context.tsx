@@ -5,9 +5,11 @@ import { AppLauncher } from "@capacitor/app-launcher";
 import { Capacitor, type PermissionState } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { fetchItemsForLists, fetchUserLists } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { useSubscriptions } from "@/lib/subscription-context";
+import { getUnlockedWatchlistProductIdsFromRows } from "@/lib/watchlist-upgrade";
 
 export interface UnreadListAlert {
   id: string;
@@ -98,20 +100,45 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   const refreshNotifications = useCallback(async () => {
-    if (!client || !user || subscriptionLoading || !isPremium) {
+    if (!client || !user || subscriptionLoading) {
       setPushEnabledState(false);
       setUnreadAlerts([]);
       return;
     }
 
-    const preferenceResult = await client
-      .from("notification_preferences")
-      .select("push_enabled")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    let unlockedWatchlistProductIds: ReadonlySet<string> | null = null;
+    let watchlistIds: ReadonlySet<string> | null = null;
+    if (!isPremium) {
+      try {
+        const lists = await fetchUserLists(client);
+        const currentWatchlistIds = lists
+          .filter((list) => list.name.trim().toLowerCase() === "watchlist")
+          .map((list) => list.id);
+        watchlistIds = new Set(currentWatchlistIds);
+        const items = await fetchItemsForLists(client, currentWatchlistIds);
+        unlockedWatchlistProductIds = getUnlockedWatchlistProductIdsFromRows(items, false);
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[notifications] Could not load free Watchlist entitlement", error);
+        }
+        setPushEnabledState(false);
+        setUnreadAlerts([]);
+        return;
+      }
+    }
 
-    if (preferenceResult.error && process.env.NODE_ENV !== "production") {
-      console.warn("[notifications] Could not load preference", preferenceResult.error.message);
+    let pushEnabled = false;
+    if (isPremium) {
+      const preferenceResult = await client
+        .from("notification_preferences")
+        .select("push_enabled")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (preferenceResult.error && process.env.NODE_ENV !== "production") {
+        console.warn("[notifications] Could not load preference", preferenceResult.error.message);
+      }
+      pushEnabled = Boolean(preferenceResult.data?.push_enabled);
     }
     const nextUnreadAlerts: UnreadListAlert[] = [];
     for (let offset = 0; ; offset += 500) {
@@ -132,8 +159,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (page.length < 500) break;
     }
 
-    setPushEnabledState(Boolean(preferenceResult.data?.push_enabled));
-    setUnreadAlerts(nextUnreadAlerts);
+    setPushEnabledState(pushEnabled);
+    setUnreadAlerts(nextUnreadAlerts.filter((alert) => (
+      isPremium
+      || (watchlistIds?.has(alert.list_id) && unlockedWatchlistProductIds?.has(alert.product_id))
+    )));
   }, [client, isPremium, subscriptionLoading, user]);
 
   const refreshPushPermission = useCallback(async (): Promise<PermissionState | null> => {
