@@ -773,7 +773,6 @@ export default function HomePage() {
       </div>
       <DismissWorthAnotherLookSheet
         open={isWorthAnotherLookSheetOpen}
-        itemCount={visiblePreviouslyCheckedDeals.length}
         onClose={() => setIsWorthAnotherLookSheetOpen(false)}
         onRemove={dismissWorthAnotherLook}
       />

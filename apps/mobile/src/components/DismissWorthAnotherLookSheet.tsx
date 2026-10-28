@@ -6,12 +6,10 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 
 export default function DismissWorthAnotherLookSheet({
   open,
-  itemCount,
   onClose,
   onRemove,
 }: {
   open: boolean;
-  itemCount: number;
   onClose: () => void;
   onRemove: () => void;
 }) {
@@ -57,13 +55,10 @@ export default function DismissWorthAnotherLookSheet({
 
               <div className="flex flex-1 flex-col gap-3 px-5 py-5 pb-safe-sm">
                 <p id="dismiss-worth-another-look-description" className="dd-type-body text-stone-600">
-                  Are you sure you want to remove {itemCount === 1 ? "the item" : "items"} you may have missed?
-                </p>
-                <p className="dd-type-secondary text-stone-500">
-                  This only removes these reminders from this belt. Your full All Checks history stays intact.
+                  Are you sure you want to remove these items you might have missed? This only hides this section.
                 </p>
                 <div className="mt-auto flex flex-col gap-3 pt-4">
-                  <button type="button" onClick={onClose} className="dd-btn dd-btn-outline-muted w-full cursor-pointer">
+                  <button type="button" onClick={onClose} className="dd-btn dd-btn-success w-full cursor-pointer">
                     Not now
                   </button>
                   <button type="button" onClick={onRemove} className="dd-btn dd-btn-outline-alert w-full cursor-pointer">
