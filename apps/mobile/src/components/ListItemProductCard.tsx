@@ -31,10 +31,9 @@ import { useDealNavigationActivation } from "@/lib/deal-navigation-feedback-cont
  *    else. `ProductListCard`'s top-right corner is already spoken for by
  *    that button; bolting a second, different-purpose icon into the same
  *    corner on top of it would have been the actual retrofit risk.
- *  - This card needs a `quantity` chip (`list_items.quantity` -- Jay's
- *    "×N" convention the old plain-text row already showed) --
- *    `ProductListCard` has no concept of "how many of this you have," since
- *    every other context it's used in is browsing, not an owned list.
+ *  - This card retains the saved quantity in its props for list-data
+ *    compatibility, but deliberately does not display a quantity badge in
+ *    the Watchlist UI because a combined "×N" can be ambiguous to shoppers.
  *  - Sits nested one level deeper (inside a `ListCard`, itself inside the
  *    page's own list-of-lists column), so it uses smaller image/type scale
  *    than `ProductListCard`'s own full-size card -- not just a restyle,
@@ -138,8 +137,8 @@ export interface ListItemProductCardProps {
   deal: CurrentDeal;
   /** Other supermarkets with a verified active special for this product. */
   otherSpecialStores?: string[];
-  /** `list_items.quantity` -- only rendered as a "×N" chip when > 1, same
-   * threshold the plain-text row this replaces already used. */
+  /** `list_items.quantity`, retained for list-data compatibility but not
+   * displayed in the Watchlist card UI. */
   quantity: number;
   onRemove: () => void;
   /** Full accessible label for the remove button, e.g. `Remove ${name} from
@@ -185,7 +184,6 @@ export default function ListItemProductCard({
   product,
   deal,
   otherSpecialStores = [],
-  quantity,
   onRemove,
   removeLabel,
   onBeforeNavigate,
@@ -466,7 +464,6 @@ export default function ListItemProductCard({
                 ))}
               </span>
             )}
-            {quantity > 1 && <span className="dd-badge dd-badge-compact dd-badge-neutral">×{quantity}</span>}
           </div>
         </div>
       )}
