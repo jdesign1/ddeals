@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, Info, X } from "lucide-react";
 import ButtonSpinner from "@/components/ButtonSpinner";
 import {
   canonicalStoreKey,
@@ -293,7 +293,7 @@ export default function ListsPage() {
     [isPremium, subscriptionLoading, watchlistItems],
   );
 
-  const newPriceItemCount = useMemo(
+  const newUpdateItemCount = useMemo(
     () => watchlistItems.reduce(
       (count, item) => lockedWatchlistProductIds.has(item.productId)
         ? count
@@ -547,7 +547,7 @@ export default function ListsPage() {
         ) : (
           <WatchlistSummaryCard
             itemCount={watchlistItems.length}
-            newPriceItemCount={newPriceItemCount}
+            newUpdateItemCount={newUpdateItemCount}
             onSpecialCount={onSpecialCount}
             dealTypeCounts={dealTypeCounts}
             selectedDealType={selectedDealType}
@@ -850,20 +850,20 @@ function WatchlistItemsSkeleton() {
 
 function WatchlistSummaryCard({
   itemCount,
-  newPriceItemCount,
+  newUpdateItemCount,
   onSpecialCount,
   dealTypeCounts,
   selectedDealType,
   onDealTypeChange,
 }: {
   itemCount: number;
-  newPriceItemCount: number;
+  newUpdateItemCount: number;
   onSpecialCount: number;
   dealTypeCounts: WatchlistDealTypeCounts;
   selectedDealType: WatchlistDealTypeFilter;
   onDealTypeChange: (value: WatchlistDealTypeFilter) => void;
 }) {
-  const hasNewPrices = newPriceItemCount > 0;
+  const hasNewUpdates = newUpdateItemCount > 0;
   const isEmpty = itemCount === 0;
 
   return (
@@ -903,10 +903,10 @@ function WatchlistSummaryCard({
                 })}
               </div>
             </div>
-            {hasNewPrices && (
+            {hasNewUpdates && (
               <div className="flex items-center gap-2 border-t border-stone-100 px-4 py-3 text-[13px] font-extrabold text-stone-900" aria-live="polite">
-                <span className="h-2.5 w-2.5 rounded-full bg-fair-600" aria-hidden="true" />
-                {newPriceItemCount} {newPriceItemCount === 1 ? "item" : "items"} with new prices
+                <Info className="h-4 w-4 shrink-0 text-alert-700" aria-hidden="true" />
+                {newUpdateItemCount} {newUpdateItemCount === 1 ? "item" : "items"} with new Watchlist updates
               </div>
             )}
           </div>
