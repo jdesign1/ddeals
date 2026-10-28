@@ -593,7 +593,7 @@ export default function SettingsPage() {
               </span>
             </div>
             <div className="mt-4 flex w-full items-center justify-center gap-2">
-              <h2 id="settings-profile-title" className="max-w-[75%] truncate dd-type-section text-white">
+              <h2 id="settings-profile-title" className="min-w-0 flex-1 truncate dd-type-section text-white">
                 {user ? profileName : "Your Dodgy Deal profile"}
               </h2>
               {user && !subscriptionLoading && isPremium && (
