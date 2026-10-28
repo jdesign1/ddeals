@@ -740,7 +740,7 @@ export default function SettingsPage() {
             {!isSavingNotifications && <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />}
           </button>
         )}
-        {notificationError && <p role="status" className="mt-3 dd-type-secondary text-alert-700">{notificationError}</p>}
+        {notificationError && isPremium && <p role="status" className="mt-3 dd-type-secondary text-alert-700">{notificationError}</p>}
       </SettingsSection>
 
       <SettingsSection id="settings-legal-title" icon={ShieldCheck} title="Legal">
@@ -855,11 +855,6 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="mt-2 dd-type-secondary text-stone-600">Save up to 5 Watchlist items with a free account. Subscribe to unlock unlimited items and price alerts.</p>
-                    {subscriptionError && !hasSubscriptionRecoveryError && (
-                      <div role="alert" className="mt-3 rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-meta text-alert-900">
-                        <p>{subscriptionError}</p>
-                      </div>
-                    )}
                     <button
                       type="button"
                       onClick={openSubscriptionPage}
