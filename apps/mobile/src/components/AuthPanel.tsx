@@ -50,11 +50,13 @@ function validateProfile(details: AccountDetails): string | null {
 export default function AuthPanel({
   onSuccess,
   onOpenLegal,
+  onOtpView,
   mode,
 }: {
   prompt?: string;
   onSuccess: () => void;
   onOpenLegal: (path: "/privacy" | "/terms") => void;
+  onOtpView: (otpInput: HTMLInputElement | null) => void;
   mode: AuthMode;
 }) {
   const {
@@ -98,6 +100,23 @@ export default function AuthPanel({
     const timer = window.setInterval(() => setResendCooldown((current) => Math.max(0, current - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [resendCooldown]);
+
+  // The OTP field is focused as soon as this view appears, which can make
+  // iOS scroll the sheet farther than necessary while the keyboard opens.
+  // Re-apply the small sheet-owned offset once after layout and once after
+  // the keyboard/focus transition has settled.
+  useEffect(() => {
+    if (view !== "otp") return;
+    const scrollOtpView = () => onOtpView(otpRef.current);
+    const frame = window.requestAnimationFrame(scrollOtpView);
+    const settleTimer = window.setTimeout(scrollOtpView, 250);
+    window.visualViewport?.addEventListener("resize", scrollOtpView);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
+      window.visualViewport?.removeEventListener("resize", scrollOtpView);
+    };
+  }, [onOtpView, view]);
 
   useEffect(() => {
     if (!profileIncomplete || !user) return;

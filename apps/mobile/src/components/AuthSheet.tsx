@@ -106,6 +106,7 @@ const TABS: { id: "signin" | "signup"; label: string }[] = [
   { id: "signin", label: "Log in" },
   { id: "signup", label: "Create account" },
 ];
+const OTP_ENTRY_SCROLL_OFFSET = 32;
 
 export default function AuthSheet({
   isOpen,
@@ -132,6 +133,34 @@ export default function AuthSheet({
     onClose();
     if (destination && destination !== pathname) router.push(destination);
   }, [authSheetReturnPath, onClose, pathname, router]);
+
+  // iOS may scroll the focused OTP field farther than needed while the
+  // keyboard is animating in. Keep the form just slightly offset so the
+  // mascot remains visible without taking the code field below the keyboard.
+  const scrollOtpViewIntoPosition = useCallback((otpInput: HTMLInputElement | null) => {
+    const scrollContainer = formScrollRef.current;
+    if (!scrollContainer || !otpInput) return;
+    const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const inputRect = otpInput.getBoundingClientRect();
+    const currentScrollTop = scrollContainer.scrollTop;
+    const inputTopInContent = inputRect.top - containerRect.top + currentScrollTop;
+    const inputBottomInContent = inputRect.bottom - containerRect.top + currentScrollTop;
+    const inputTopInset = 12;
+    const inputBottomInset = 16;
+    const viewport = window.visualViewport;
+    const viewportBottom = viewport && viewport.height > 0
+      ? viewport.offsetTop + viewport.height
+      : containerRect.bottom;
+    const visibleBottomInContainer = Math.max(0, Math.min(containerRect.bottom, viewportBottom) - containerRect.top);
+    const minimumScrollTop = Math.max(0, inputBottomInContent - (visibleBottomInContainer - inputBottomInset));
+    const maximumScrollTopForInput = Math.max(0, inputTopInContent - inputTopInset);
+    const preferredScrollTop = Math.min(OTP_ENTRY_SCROLL_OFFSET, maximumScrollTopForInput);
+    scrollContainer.scrollTop = Math.min(
+      maxScrollTop,
+      Math.max(minimumScrollTop, preferredScrollTop),
+    );
+  }, []);
 
   // Native/provider flows can complete in AuthProvider and close the sheet
   // without going through AuthPanel's explicit onSuccess callback. Preserve
@@ -375,6 +404,7 @@ export default function AuthSheet({
                 prompt={prompt}
                 onSuccess={handleAuthSuccess}
                 onOpenLegal={openLegal}
+                onOtpView={scrollOtpViewIntoPosition}
                 mode={mode}
               />
             </div>
