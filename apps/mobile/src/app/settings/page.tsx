@@ -110,7 +110,7 @@ function formatMemberSince(value: string | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "—";
-  return date.toLocaleDateString("en-NZ", { year: "numeric", month: "long", day: "numeric" });
+  return date.toLocaleDateString("en-NZ", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function ProfileEditForm({
@@ -310,8 +310,8 @@ function ProfileDetailsSheet({
                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-300/30 shadow-lg">
                       <span className="font-display text-4xl font-extrabold" aria-hidden="true">{profileInitial}</span>
                     </div>
-                    <div className="mt-4 flex max-w-full items-center justify-center gap-2">
-                      <h3 className="max-w-[75%] truncate dd-type-section text-white">{profileName}</h3>
+                    <div className="mt-4 inline-flex max-w-full items-center justify-center gap-2">
+                      <h3 className="min-w-0 max-w-full truncate dd-type-section text-white">{profileName}</h3>
                       {!subscriptionLoading && isPremium && <span className="shrink-0 rounded-full bg-fair-400 px-2.5 py-1 dd-type-badge text-ink-950">Plus</span>}
                     </div>
                     <p className="mt-1 max-w-full truncate dd-type-secondary text-white/65">{accountIdentifier}</p>
@@ -592,8 +592,8 @@ export default function SettingsPage() {
                 {user ? profileInitial : "D"}
               </span>
             </div>
-            <div className="mt-4 flex w-full items-center justify-center gap-2">
-              <h2 id="settings-profile-title" className="min-w-0 flex-1 truncate dd-type-section text-white">
+            <div className="mt-4 inline-flex max-w-full items-center justify-center gap-2">
+              <h2 id="settings-profile-title" className="min-w-0 max-w-full truncate dd-type-section text-white">
                 {user ? profileName : "Your Dodgy Deal profile"}
               </h2>
               {user && !subscriptionLoading && isPremium && (
