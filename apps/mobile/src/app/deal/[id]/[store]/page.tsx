@@ -31,6 +31,7 @@ import {
   findCheaperAlternatives,
   findDealForStore,
   canonicalStoreKey,
+  getTrustedDealLocation,
   normalizeStoreKey,
   logDealCheck,
   describeFetchError,
@@ -766,6 +767,24 @@ export default function DealAssessmentPage() {
       ? `The lowest special price across supermarkets is $${lowestSpecialStoreItem.price.toFixed(2)} at ${joinStoreNames(lowestSpecialStoreNames)}.`
       : null;
   const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
+  const selectedDealCents = Math.round(selectedDeal.price * 100);
+  const cheaperRealSaverDeals = product.currentDeals
+    .filter((candidate) => candidate !== selectedDeal)
+    .filter((candidate) => Math.round(candidate.price * 100) < selectedDealCents)
+    .filter((candidate) => getAssessmentVerdict(candidate) === "Real Saver")
+    .filter((candidate, index, deals) =>
+      deals.findIndex((other) => canonicalStoreKey(other.store) === canonicalStoreKey(candidate.store)) === index
+    );
+  const cheaperRealSaverDeal = cheaperRealSaverDeals.length === 1 ? cheaperRealSaverDeals[0] : null;
+  const selectedDealIsUniqueLowestRealSaver =
+    verdict === "Real Saver"
+    && rankingList.length > 1
+    && storesMatch(rankingList[0].store, selectedDeal.store)
+    && Math.round(rankingList[0].price * 100) === selectedDealCents
+    && Math.round(rankingList[1].price * 100) > selectedDealCents;
+  const locationDeal = cheaperRealSaverDeal || (selectedDealIsUniqueLowestRealSaver ? selectedDeal : null);
+  const locationLabel = locationDeal ? getTrustedDealLocation(locationDeal) : null;
+  const locationDealUrl = locationDeal?.productUrl ?? null;
 
   return (
     <>
@@ -1043,6 +1062,18 @@ export default function DealAssessmentPage() {
               <p className={`mt-0.5 text-sm font-bold ${STORE_TEXT_COLOR[getStoreLogoMeta(selectedDeal.store).bg] || "text-stone-600"}`}>
                 at {selectedDeal.store}
               </p>
+              {locationLabel && locationDealUrl && (
+                <a
+                  href={locationDealUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 inline-flex items-center gap-1 text-sm font-bold text-stone-700 underline decoration-stone-400 underline-offset-2"
+                  aria-label={`${cheaperRealSaverDeal ? "Cheaper at" : "Store location"} ${locationLabel}`}
+                >
+                  {cheaperRealSaverDeal ? `Cheaper at ${locationLabel}` : locationLabel}
+                  <ExternalLink className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
+                </a>
+              )}
             </div>
           </div>
 

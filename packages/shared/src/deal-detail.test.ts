@@ -10,6 +10,7 @@ import {
   getCurrentPriceRange,
   getSpecialPriceRange,
   getStoreProductUrl,
+  getTrustedDealLocation,
   MIN_90D_SAMPLES_FOR_INSIGHTS,
 } from "./deal-detail.ts";
 import type { CurrentDeal, ProductCard } from "./data.ts";
@@ -99,6 +100,22 @@ test("getStoreProductUrl: uses Woolworths NZ's live product search route", () =>
   assert.equal(
     getStoreProductUrl("Woolworths NZ", "Macro Organic Soy Milk Light 1l"),
     "https://www.woolworths.co.nz/shop/searchproducts?search=Macro%20Organic%20Soy%20Milk%20Light%201l"
+  );
+});
+
+test("getTrustedDealLocation: exposes only the configured visitable Pak'nSave branch", () => {
+  assert.equal(
+    getTrustedDealLocation(fakeDeal({ sourceStoreId: "paknsave", store: "PAK'nSAVE", productUrl: "https://example.com/pns" })),
+    "Sylvia Park"
+  );
+  assert.equal(getTrustedDealLocation(fakeDeal({ sourceStoreId: "paknsave", store: "PAK'nSAVE" })), null);
+  assert.equal(
+    getTrustedDealLocation(fakeDeal({ sourceStoreId: "paknsave", store: "PAK'nSAVE Royal Oak", productUrl: "https://example.com/pns" })),
+    null
+  );
+  assert.equal(
+    getTrustedDealLocation(fakeDeal({ sourceStoreId: "woolworths", store: "Woolworths", productUrl: "https://example.com/ww" })),
+    null
   );
 });
 

@@ -258,6 +258,22 @@ export function getAssessmentVerdict(deal: CurrentDeal): AssessmentVerdict {
   return "Limited history";
 }
 
+/**
+ * Returns a trusted, visitable branch label for a deal when the scraper's
+ * source is known to represent one configured physical store. This is kept
+ * out of generic retailer labels: branch context belongs only on a deal
+ * assessment where the exact product URL is also available.
+ */
+export function getTrustedDealLocation(deal: CurrentDeal): string | null {
+  if (!deal.productUrl) return null;
+  const sourceStore = canonicalStoreKey(deal.sourceStoreId || deal.store);
+  if (sourceStore !== "paknsave") return null;
+  // A branch-qualified source name is already authoritative; do not replace
+  // it or guess another location from a generic store id.
+  if (normalizeStoreKey(deal.store) !== "paknsave") return null;
+  return "Sylvia Park";
+}
+
 export function getStoreProductUrl(store: string, productName: string): string {
   const encoded = encodeURIComponent(productName);
   const norm = normalizeStoreKey(store);
