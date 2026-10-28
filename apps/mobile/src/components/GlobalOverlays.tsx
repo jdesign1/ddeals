@@ -43,6 +43,7 @@ const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
 });
 
 const ONBOARDING_TOUR_SEEN_PREFIX = "dd-onboarding-tour-seen:";
+const ANONYMOUS_ONBOARDING_TOUR_ID = "anonymous";
 
 function hasSeenOnboardingTour(userId: string): boolean {
   try {
@@ -98,19 +99,23 @@ export default function GlobalOverlays() {
     }
   }, [dismissOnboardingTour, onboardingTourRequest, user]);
 
+  // A newly completed account can briefly publish the "new" request before
+  // the auth listener has populated `user`. Wait for that user before opening
+  // first-run onboarding, otherwise the dismissal could be recorded against
+  // the anonymous device key instead of the new account. Explicit replay is
+  // still available to logged-out visitors.
+  const canOpenRequestedTour =
+    onboardingTourRequest === "replay" || (onboardingTourRequest === "new" && !!user);
   const isOnboardingTourOpen =
     isPreviewTourOpen ||
-    (!!user &&
-      !!onboardingTourRequest &&
-      (onboardingTourRequest === "replay" || !hasSeenOnboardingTour(user.id)));
+    (canOpenRequestedTour &&
+      (onboardingTourRequest === "replay" || !hasSeenOnboardingTour(user?.id ?? ANONYMOUS_ONBOARDING_TOUR_ID)));
 
   const closeOnboardingTour = () => {
-    if (user) {
-      try {
-        window.localStorage.setItem(`${ONBOARDING_TOUR_SEEN_PREFIX}${user.id}`, "1");
-      } catch {
-        // Keep the dismissal effective in memory when local storage is unavailable.
-      }
+    try {
+      window.localStorage.setItem(`${ONBOARDING_TOUR_SEEN_PREFIX}${user?.id ?? ANONYMOUS_ONBOARDING_TOUR_ID}`, "1");
+    } catch {
+      // Keep the dismissal effective in memory when local storage is unavailable.
     }
     setIsPreviewTourOpen(false);
     dismissOnboardingTour();
