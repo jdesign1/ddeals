@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, LoaderCircle, Pencil, Palette, ShieldCheck, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, CircleHelp, CreditCard, ExternalLink, LoaderCircle, Pencil, Palette, ShieldCheck, Tags, Trash2, UserRound, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -27,6 +27,8 @@ import {
   getSubscriptionRenewalLabel,
 } from "@/lib/subscription-display";
 import { isSubscriptionAccountRecoveryError } from "@/lib/subscription-errors";
+import { normalizeCategoryInterests } from "@/lib/category-interests";
+import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 
 const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 const SETTINGS_TRANSITION_MS = 320;
@@ -358,7 +360,16 @@ export default function SettingsPage() {
   const { isTransitioningToSettings, completeSettingsNavigation } = useNavigationDrawer();
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
-  const { user, session, profile, loading: authLoading, signOut, updateProfile, openAuthSheet } = useAuth();
+  const {
+    user,
+    session,
+    profile,
+    loading: authLoading,
+    signOut,
+    updateProfile,
+    updateCategoryInterests,
+    openAuthSheet,
+  } = useAuth();
   const {
     pushEnabled,
     pushReady,
@@ -392,6 +403,9 @@ export default function SettingsPage() {
     profile_quote: "",
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isCategoryInterestsSheetOpen, setIsCategoryInterestsSheetOpen] = useState(false);
+  const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
+  const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
   const [profileEditError, setProfileEditError] = useState<string | null>(null);
   const [isDeleteSheetOpen, setIsDeleteSheetOpen] = useState(false);
@@ -426,6 +440,7 @@ export default function SettingsPage() {
   const accountEmail = getAccountEmailDisplay(user?.email);
   const accountSignInMethod = getAccountSignInMethodDisplay(user);
   const accountIdentifier = accountEmail === "-" ? accountSignInMethod : accountEmail;
+  const preferredCategories = normalizeCategoryInterests(profile?.preferred_categories);
   const hasSubscriptionRecoveryError = Boolean(subscriptionError && isSubscriptionAccountRecoveryError(subscriptionError));
   const subscriptionRecoveryKind = subscriptionError?.toLowerCase().includes("linked to another")
     ? "linked-to-other-account" as const
@@ -529,6 +544,21 @@ export default function SettingsPage() {
       setIsEditingProfile(false);
     } finally {
       setIsSavingProfile(false);
+    }
+  }
+
+  async function handleSaveCategoryInterests(categories: string[]) {
+    setCategoryInterestsError(null);
+    setIsSavingCategoryInterests(true);
+    try {
+      const result = await updateCategoryInterests(categories);
+      if (result.error) {
+        setCategoryInterestsError("We couldn't save your deal interests. Please try again.");
+        return;
+      }
+      setIsCategoryInterestsSheetOpen(false);
+    } finally {
+      setIsSavingCategoryInterests(false);
     }
   }
 
@@ -699,6 +729,52 @@ export default function SettingsPage() {
           </button>
         </div>
       </SettingsSection>
+
+      {!authLoading && (
+        <SettingsSection id="settings-deal-interests-title" icon={Tags} title="Deal interests">
+          {user ? (
+            <div className="rounded-2xl bg-stone-50 p-4">
+              <p className="dd-type-control text-stone-900">New specials for you</p>
+              <p className="mt-1 dd-type-meta leading-5 text-stone-500">
+                {preferredCategories.length > 0
+                  ? "We’ll bring new specials in these categories to the top of Check Deals."
+                  : "Choose up to three categories to see relevant new specials first."}
+              </p>
+              {preferredCategories.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2" aria-label="Selected deal interests">
+                  {preferredCategories.map((category) => (
+                    <span key={category} className="rounded-full border border-fair-200 bg-fair-50 px-3 py-1.5 dd-type-meta dd-type-meta-strong text-ink-800">
+                      {category}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryInterestsError(null);
+                  setIsCategoryInterestsSheetOpen(true);
+                }}
+                className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-4`}
+              >
+                {preferredCategories.length > 0 ? "Edit interests" : "Choose categories"}
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-stone-50 p-4">
+              <p className="dd-type-control text-stone-900">New specials for you</p>
+              <p className="mt-1 dd-type-meta leading-5 text-stone-500">Sign in to save up to three categories across your devices.</p>
+              <button
+                type="button"
+                onClick={() => openAuthSheet("Sign in to choose the deal categories you care about.")}
+                className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-4`}
+              >
+                Sign in to choose categories
+              </button>
+            </div>
+          )}
+        </SettingsSection>
+      )}
 
       <SettingsSection id="settings-notifications-title" icon={Bell} title="Notifications">
         <div className="flex items-start justify-between gap-4 rounded-2xl bg-stone-50 p-4">
@@ -944,6 +1020,18 @@ export default function SettingsPage() {
         onBackToProfile={() => setIsEditingProfile(false)}
         onDraftChange={(field, value) => setProfileEditDraft((current) => ({ ...current, [field]: value }))}
         onSaveProfile={() => void handleSaveProfile()}
+      />
+
+      <CategoryInterestsSheet
+        open={isCategoryInterestsSheetOpen}
+        mode="settings"
+        initialCategories={preferredCategories}
+        isSaving={isSavingCategoryInterests}
+        error={categoryInterestsError}
+        onSave={(categories) => void handleSaveCategoryInterests(categories)}
+        onClose={() => {
+          if (!isSavingCategoryInterests) setIsCategoryInterestsSheetOpen(false);
+        }}
       />
 
       <BottomSheetPortal open={isDeleteSheetOpen}>

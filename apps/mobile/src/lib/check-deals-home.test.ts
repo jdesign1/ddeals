@@ -5,6 +5,7 @@ import type { DealCheckRow } from "@dodgey-deals/shared";
 import {
   buildCurrentSpecialCounts,
   buildNewSinceLastVisitDeals,
+  buildPersonalisedCategoryDealRails,
   buildPreviouslyCheckedChangedDeals,
   buildWatchlistSpecialDeals,
   formatCompactUpdatedText,
@@ -37,12 +38,12 @@ function deal(overrides: Partial<CurrentDeal> = {}): CurrentDeal {
   };
 }
 
-function product(id: string, name: string, currentDeals: CurrentDeal[]): ProductCard {
+function product(id: string, name: string, currentDeals: CurrentDeal[], category = "Pantry"): ProductCard {
   return {
     id,
     brand: "Test brand",
     name,
-    category: "Pantry",
+    category,
     image: "",
     standardPrice: 10,
     unit: "1 each",
@@ -81,6 +82,41 @@ test("new since last visit honours the semantic deal keys and store filter", () 
     buildNewSinceLastVisitDeals(products, keys, ["newworld"]).map(({ product: item }) => item.id),
     ["1"],
   );
+});
+
+test("personalised category belts group before limiting and show one card per product", () => {
+  const pantryProducts = Array.from({ length: 20 }, (_, index) =>
+    product(`pantry-${index}`, `Pantry ${index}`, [deal({ store: "New World" })]),
+  );
+  const drinkProducts = [
+    product("drink-1", "Drink one", [deal({ store: "New World" })], "Drinks"),
+    product("drink-2", "Drink two", [deal({ store: "New World" }), deal({ store: "Woolworths", price: 7 })], "Drinks"),
+  ];
+  const products = [...pantryProducts, ...drinkProducts];
+  const keys = products.flatMap((item) => item.currentDeals.map((currentDeal) => {
+    const storeKey = currentDeal.store.toLowerCase().replace(/[^a-z]/g, "");
+    return `${item.id}::${storeKey}`;
+  }));
+
+  const rails = buildPersonalisedCategoryDealRails(products, keys, ["all"], ["Pantry", "Drinks"]);
+
+  assert.equal(rails.length, 2);
+  assert.deepEqual(rails.map((rail) => rail.category), ["Pantry", "Drinks"]);
+  assert.equal(rails[0]?.deals.length, 10);
+  assert.equal(rails[1]?.deals.length, 2);
+  assert.equal(rails[1]?.dealKeys.length, 3);
+  assert.equal(new Set(rails[1]?.deals.map((item) => item.product.id)).size, 2);
+});
+
+test("personalised category belts skip a category with fewer than two products", () => {
+  const rails = buildPersonalisedCategoryDealRails(
+    [product("one", "One", [deal({ store: "New World" })], "Frozen")],
+    ["one::newworld"],
+    ["all"],
+    ["Frozen"],
+  );
+
+  assert.deepEqual(rails, []);
 });
 
 test("watchlist belt only includes saved active specials and picks the strongest offer", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
@@ -19,6 +19,7 @@ import MascotImage from "@/components/MascotImage";
 import CheckDealsSummary from "@/components/CheckDealsSummary";
 import PersonalDealRail from "@/components/PersonalDealRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
+import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
@@ -26,6 +27,7 @@ import { getNewSpecialDealKey } from "@/lib/new-specials";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
+  buildPersonalisedCategoryDealRails,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getLatestPublishedAt,
@@ -57,6 +59,7 @@ import {
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { compareLatestSpecials } from "@/lib/special-freshness";
+import { normalizeCategoryInterests } from "@/lib/category-interests";
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 
@@ -252,7 +255,14 @@ export default function HomePage() {
     setDealFilter,
     openSearchForFilter,
   } = useSearch();
-  const { session } = useAuth();
+  const {
+    session,
+    user,
+    profile,
+    isAnonymousSession,
+    updateCategoryInterests,
+    dismissCategoryInterestsPrompt,
+  } = useAuth();
   const { digest } = useNewSpecials();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
@@ -262,6 +272,10 @@ export default function HomePage() {
   const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
   const [dismissedWorthAnotherLookKeys, setDismissedWorthAnotherLookKeys] = useState<Set<string>>(() => new Set());
   const [isWorthAnotherLookSheetOpen, setIsWorthAnotherLookSheetOpen] = useState(false);
+  const [isCategoryInterestsSheetOpen, setIsCategoryInterestsSheetOpen] = useState(false);
+  const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
+  const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
+  const categoryInterestsPromptedForRef = useRef<string | null>(null);
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
@@ -277,6 +291,21 @@ export default function HomePage() {
   const worthAnotherLookStorageKey = session?.user?.id
     ? `${WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX}:${session.user.id}`
     : null;
+  const preferredCategories = useMemo(
+    () => normalizeCategoryInterests(profile?.preferred_categories),
+    [profile?.preferred_categories],
+  );
+
+  useEffect(() => {
+    if (!user || isAnonymousSession || !profile?.onboarding_complete || profile.category_interests_prompted_at) {
+      if (!user) categoryInterestsPromptedForRef.current = null;
+      return;
+    }
+    if (categoryInterestsPromptedForRef.current === profile.id) return;
+    categoryInterestsPromptedForRef.current = profile.id;
+    setCategoryInterestsError(null);
+    setIsCategoryInterestsSheetOpen(true);
+  }, [isAnonymousSession, profile?.category_interests_prompted_at, profile?.id, profile?.onboarding_complete, user]);
 
   useEffect(() => {
     if (!worthAnotherLookStorageKey) {
@@ -381,6 +410,10 @@ export default function HomePage() {
     : "Live data";
   const newDealKeySet = useMemo(() => new Set(newDealKeys), [newDealKeys]);
   const newDealsCount = digest?.total ?? 0;
+  const personalisedNewDealRails = useMemo(
+    () => buildPersonalisedCategoryDealRails(products, newDealKeys, selectedStores, preferredCategories),
+    [newDealKeys, preferredCategories, products, selectedStores],
+  );
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const previouslyCheckedDeals = useMemo(
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
@@ -487,6 +520,36 @@ export default function HomePage() {
     toggleStore("all");
     toggleStore(store);
     openSearchForFilter("all", { focus: false });
+  };
+
+  const saveCategoryInterests = async (categories: string[]) => {
+    setCategoryInterestsError(null);
+    setIsSavingCategoryInterests(true);
+    try {
+      const result = await updateCategoryInterests(categories);
+      if (result.error) {
+        setCategoryInterestsError("We couldn't save your deal interests. Please try again.");
+        return;
+      }
+      setIsCategoryInterestsSheetOpen(false);
+    } finally {
+      setIsSavingCategoryInterests(false);
+    }
+  };
+
+  const dismissCategoryInterests = async () => {
+    setCategoryInterestsError(null);
+    setIsSavingCategoryInterests(true);
+    try {
+      const result = await dismissCategoryInterestsPrompt();
+      if (result.error) {
+        setCategoryInterestsError("We couldn't save that choice. Please try again.");
+        return;
+      }
+      setIsCategoryInterestsSheetOpen(false);
+    } finally {
+      setIsSavingCategoryInterests(false);
+    }
   };
 
   return (
@@ -727,6 +790,23 @@ export default function HomePage() {
                 tone="history"
                 onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
               />
+              {personalisedNewDealRails.map(({ category, deals, dealKeys }) => (
+                <PersonalDealRail
+                  key={category}
+                  id={`new-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-rail`}
+                  title={`New in ${category}`}
+                  description="Fresh specials in a category you follow."
+                  deals={deals}
+                  tone="new"
+                  onSeeAll={dealKeys.length > deals.length
+                    ? () => openSearchForFilter("all", {
+                      focus: false,
+                      dealKeys,
+                      sortBy: "latest",
+                    })
+                    : undefined}
+                />
+              ))}
               <DealSnapshotRail
                 kind="savings"
                 deals={topSavingsDeals}
@@ -775,6 +855,15 @@ export default function HomePage() {
         open={isWorthAnotherLookSheetOpen}
         onClose={() => setIsWorthAnotherLookSheetOpen(false)}
         onRemove={dismissWorthAnotherLook}
+      />
+      <CategoryInterestsSheet
+        open={isCategoryInterestsSheetOpen}
+        mode="onboarding"
+        initialCategories={preferredCategories}
+        isSaving={isSavingCategoryInterests}
+        error={categoryInterestsError}
+        onSave={(categories) => void saveCategoryInterests(categories)}
+        onClose={() => void dismissCategoryInterests()}
       />
     </>
   );

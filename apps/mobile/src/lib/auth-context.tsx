@@ -8,6 +8,7 @@ import { isNativeAppleSignInAvailable, linkWithNativeApple, signInWithNativeAppl
 import { isNativeGoogleSignInAvailable, signInWithNativeGoogle } from "./native-google-auth";
 import { suppressNewSpecialsPopupUntilHomeExit } from "./new-specials";
 import { containsPublicProfileContactDetails, normalizePublicProfileDraft, PUBLIC_PROFILE_FIELD_LIMITS, PUBLIC_PROFILE_QUOTE_CONTACT_ERROR } from "./public-profile-fields";
+import { normalizeCategoryInterests } from "./category-interests";
 
 export interface AccountProfile {
   id: string;
@@ -17,6 +18,8 @@ export interface AccountProfile {
   city: string | null;
   favorite_store_branch: string | null;
   profile_quote: string | null;
+  preferred_categories: string[];
+  category_interests_prompted_at: string | null;
   onboarding_complete: boolean;
   analytics_consent_at: string | null;
   created_at: string;
@@ -71,6 +74,8 @@ interface AuthContextValue {
   completeProfile: (details: AccountDetails) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   updateProfileName: (name: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   updateProfile: (details: AccountProfileUpdate) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  updateCategoryInterests: (categories: string[]) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  dismissCategoryInterestsPrompt: () => Promise<{ error: string | null; profile: AccountProfile | null }>;
   refreshProfile: () => Promise<AccountProfile | null>;
   signOut: () => Promise<void>;
   isAnonymousSession: boolean;
@@ -359,7 +364,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) return { error: error.message, profile: null };
         const nextProfile = data as AccountProfile;
         setProfile(nextProfile);
-        setOnboardingTourRequest("new");
         return { error: null, profile: nextProfile };
       },
       updateProfileName: async (name) => {
@@ -370,6 +374,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await client
           .from("profiles")
           .update({ full_name: trimmedName })
+          .eq("id", user.id)
+          .select("*")
+          .single();
+        if (error) return { error: error.message, profile: null };
+        const nextProfile = data as AccountProfile;
+        setProfile(nextProfile);
+        return { error: null, profile: nextProfile };
+      },
+      updateCategoryInterests: async (categories) => {
+        if (!client) return { error: configurationError(), profile: null };
+        if (!user) return { error: "Please sign in before choosing deal interests.", profile: null };
+        const preferredCategories = normalizeCategoryInterests(categories);
+        const { data, error } = await client
+          .from("profiles")
+          .update({
+            preferred_categories: preferredCategories,
+            category_interests_prompted_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+          .select("*")
+          .single();
+        if (error) return { error: error.message, profile: null };
+        const nextProfile = data as AccountProfile;
+        setProfile(nextProfile);
+        return { error: null, profile: nextProfile };
+      },
+      dismissCategoryInterestsPrompt: async () => {
+        if (!client) return { error: configurationError(), profile: null };
+        if (!user) return { error: "Please sign in before updating deal interests.", profile: null };
+        const { data, error } = await client
+          .from("profiles")
+          .update({ category_interests_prompted_at: new Date().toISOString() })
           .eq("id", user.id)
           .select("*")
           .single();
