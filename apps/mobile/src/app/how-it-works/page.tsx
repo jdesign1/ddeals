@@ -103,7 +103,7 @@ export default function HowItWorksPage() {
         </InfoSection>
 
         <InfoSection id="how-it-works-ratings-title" title="Our deal rating system">
-          <ul className="overflow-hidden rounded-2xl border border-stone-200/80">
+          <ul className="divide-y divide-stone-100">
             <RatingCard
               tag="Dodgy Deal"
               tagClassName="dd-badge-alert"
@@ -123,7 +123,7 @@ export default function HowItWorksPage() {
         </InfoSection>
 
         <InfoSection id="how-it-works-steps-title" title="How to use Dodgy Deal">
-          <ol className="overflow-hidden rounded-2xl border border-stone-200/80">
+          <ol className="divide-y divide-stone-100">
             <Step title="Search grocery products">
               Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
               across different NZ supermarkets.
@@ -156,7 +156,7 @@ function RatingCard({
   description: string;
 }) {
   return (
-    <li className="flex items-start gap-3 border-b border-stone-100 bg-stone-50 p-4 last:border-b-0">
+    <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
       <div className="min-w-0 space-y-2">
         <span className={`dd-badge ${tagClassName}`}>{tag}</span>
         <p className="dd-type-secondary text-stone-600">{description}</p>
@@ -192,7 +192,7 @@ function Step({
   children: ReactNode;
 }) {
   return (
-    <li className="border-b border-stone-100 bg-stone-50 p-4 last:border-b-0">
+    <li className="py-3 first:pt-0 last:pb-0">
       <h3 className="dd-type-control text-stone-900">{title}</h3>
       <p className="mt-1 dd-type-secondary text-stone-600">{children}</p>
     </li>
