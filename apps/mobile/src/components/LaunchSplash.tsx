@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 import WinkMascot from "@/components/WinkMascot";
 
@@ -10,7 +10,29 @@ const SPLASH_DURATION_MS = 1200;
 const SPLASH_EXIT_MS = 260;
 type LaunchSplashStyle = CSSProperties & { "--launch-cycle-duration": string };
 const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
+type LaunchWindow = Window & { __ddLaunchSplashClaimed?: boolean };
 export const LAUNCH_SPLASH_COMPLETE_EVENT = "dd-launch-splash-complete";
+
+function hasClaimedLaunchSplash(): boolean {
+  if (typeof window === "undefined") return false;
+  if ((window as LaunchWindow).__ddLaunchSplashClaimed) return true;
+  try {
+    return window.sessionStorage.getItem(SPLASH_CLAIM_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function claimLaunchSplash(): void {
+  const launchWindow = window as LaunchWindow;
+  launchWindow.__ddLaunchSplashClaimed = true;
+  try {
+    window.sessionStorage.setItem(SPLASH_CLAIM_KEY, "1");
+  } catch {
+    // Session storage can be unavailable in restricted WebViews; the
+    // window-level claim still survives root-layout remounts in this session.
+  }
+}
 
 /** One-time branded startup layer shown after the native launch storyboard.
  *
@@ -25,12 +47,8 @@ export default function LaunchSplash() {
   const pathname = usePathname();
   const launchPathnameRef = useRef<string | null>(pathname);
   const [visible, setVisible] = useState(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      return window.sessionStorage.getItem(SPLASH_CLAIM_KEY) !== "1";
-    } catch {
-      return true;
-    }
+    if (pathname !== "/") return false;
+    return !hasClaimedLaunchSplash();
   });
   const [exiting, setExiting] = useState(false);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
@@ -38,8 +56,20 @@ export default function LaunchSplash() {
     "--launch-cycle-duration": `${SPLASH_DURATION_MS}ms`,
   };
 
+  const completeSplash = useCallback(() => {
+    claimLaunchSplash();
+    setVisible(false);
+    setExiting(false);
+    setMinimumElapsed(false);
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event(LAUNCH_SPLASH_COMPLETE_EVENT));
+    });
+  }, []);
+
   useEffect(() => {
-    if (!visible || pathname === null) return;
+    if (pathname === null) return;
+    claimLaunchSplash();
+    if (!visible) return;
     if (launchPathnameRef.current === null) {
       launchPathnameRef.current = pathname;
       return;
@@ -50,22 +80,24 @@ export default function LaunchSplash() {
     // Dismiss that startup-only layer as soon as the route changes so it
     // cannot cover the destination's normal PageLoader (or flash back over
     // the loaded deal page if sessionStorage is unavailable in a WebView).
-    setVisible(false);
-    setExiting(false);
-    setMinimumElapsed(false);
-  }, [pathname, visible]);
+    completeSplash();
+  }, [completeSplash, pathname, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") completeSplash();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [completeSplash, visible]);
 
   useEffect(() => {
     if (!visible) return;
     // Claim the startup animation immediately. If a native/WebView route
     // transition remounts the root layout before the animation finishes, the
     // new route must not replay the long wink over the product-loading state.
-    try {
-      window.sessionStorage.setItem(SPLASH_CLAIM_KEY, "1");
-    } catch {
-      // Session storage can be unavailable in restricted WebViews; the
-      // in-memory state still keeps the normal launch path working.
-    }
+    claimLaunchSplash();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => setMinimumElapsed(true), reducedMotion ? 300 : SPLASH_DURATION_MS);
 
