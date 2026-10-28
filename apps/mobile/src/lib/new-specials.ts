@@ -5,8 +5,11 @@ const SNAPSHOT_VERSION = 2;
 const SNAPSHOT_STORAGE_PREFIX = "dd-semantic-specials-snapshot-v2:";
 export const NEW_SPECIALS_PENDING_TTL_MS = 48 * 60 * 60 * 1000;
 export const NEW_SPECIALS_PENDING_VERSION = 3;
+export const NEW_SPECIALS_POPUP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+export const NEW_SPECIALS_POPUP_STATE_VERSION = 1;
 export const NEW_SPECIALS_POPUP_SUPPRESS_EVENT = "dd:suppress-new-specials-popup-until-home-exit";
 const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v3:";
+const POPUP_STATE_STORAGE_PREFIX = "dd-semantic-specials-popup-state-v1:";
 const PRICE_CHANGE_EPSILON = 0.005;
 
 type SnapshotEntry = {
@@ -53,6 +56,17 @@ export type NewSpecialsPending = {
 };
 
 /**
+ * Popup throttling is deliberately separate from the unread batch. A batch
+ * can remain useful for 48 hours, while the modal should interrupt a user at
+ * most once per rolling 24-hour window and only when its contents changed.
+ */
+export type NewSpecialsPopupState = {
+  version: number;
+  lastShownAt: number | null;
+  lastShownFingerprint: string | null;
+};
+
+/**
  * Suppress the automatic popup during the route transition caused by logout.
  * This is intentionally an in-memory event rather than persisted state so a
  * later app launch can still surface the unread batch.
@@ -90,12 +104,82 @@ export function isNewSpecialsPendingActive(pending: NewSpecialsPending, now = Da
   return pending.summary.total > 0 && pending.expiresAt > now;
 }
 
-/** The unread batch may keep its badge while the launch popup is shown once. */
+/** Legacy v3 compatibility helper; new popup eligibility uses the separate cooldown state. */
 export function isNewSpecialsPopupPresented(
   pending: Pick<NewSpecialsPending, "batchId" | "popupPresented"> | null,
   sessionPresentedBatchId: string | null,
 ): boolean {
   return Boolean(pending && (pending.popupPresented || sessionPresentedBatchId === pending.batchId));
+}
+
+/** Stable identity for the currently unread deal set and its meaningful counts. */
+export function getNewSpecialsSummaryFingerprint(summary: NewSpecialsSummary): string {
+  return JSON.stringify({
+    ...summary,
+    allDealKeys: [...summary.allDealKeys].sort(),
+    realDealKeys: [...summary.realDealKeys].sort(),
+    dodgyDealKeys: [...summary.dodgyDealKeys].sort(),
+    newlyStartedDealKeys: [...summary.newlyStartedDealKeys].sort(),
+    priceDropDealKeys: [...summary.priceDropDealKeys].sort(),
+  });
+}
+
+export function createNewSpecialsPopupState(
+  summary: NewSpecialsSummary,
+  now = Date.now(),
+): NewSpecialsPopupState {
+  return {
+    version: NEW_SPECIALS_POPUP_STATE_VERSION,
+    lastShownAt: now,
+    lastShownFingerprint: getNewSpecialsSummaryFingerprint(summary),
+  };
+}
+
+export function readNewSpecialsPopupState(scope = "device"): NewSpecialsPopupState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(scopedStorageKey(POPUP_STATE_STORAGE_PREFIX, scope));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<NewSpecialsPopupState>;
+    if (
+      parsed.version !== NEW_SPECIALS_POPUP_STATE_VERSION
+      || (parsed.lastShownAt !== null && typeof parsed.lastShownAt !== "number")
+      || (parsed.lastShownFingerprint !== null && typeof parsed.lastShownFingerprint !== "string")
+    ) return null;
+    return {
+      version: NEW_SPECIALS_POPUP_STATE_VERSION,
+      lastShownAt: parsed.lastShownAt ?? null,
+      lastShownFingerprint: parsed.lastShownFingerprint ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeNewSpecialsPopupState(state: NewSpecialsPopupState, scope = "device"): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(scopedStorageKey(POPUP_STATE_STORAGE_PREFIX, scope), JSON.stringify(state));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A popup is eligible only for unread data that was not in the last popup.
+ * The cooldown is measured from actual presentation, not scrape time.
+ */
+export function canShowNewSpecialsPopup(
+  summary: NewSpecialsSummary,
+  state: NewSpecialsPopupState | null,
+  now = Date.now(),
+): boolean {
+  if (summary.total <= 0) return false;
+  const fingerprint = getNewSpecialsSummaryFingerprint(summary);
+  const hasNewData = !state?.lastShownFingerprint || state.lastShownFingerprint !== fingerprint;
+  const cooldownExpired = !state?.lastShownAt || now - state.lastShownAt >= NEW_SPECIALS_POPUP_COOLDOWN_MS;
+  return hasNewData && cooldownExpired;
 }
 
 function storeKeyFromDealKey(dealKey: string): string {

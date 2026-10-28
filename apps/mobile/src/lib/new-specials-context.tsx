@@ -8,17 +8,23 @@ import {
   clearNewSpecialsPending,
   createNewSpecialsPending,
   createNewSpecialsSnapshot,
+  canShowNewSpecialsPopup,
   getNewSpecialsStorageScope,
+  getNewSpecialsSummaryFingerprint,
   isNewSpecialsPendingActive,
-  isNewSpecialsPopupPresented,
+  NEW_SPECIALS_POPUP_STATE_VERSION,
   NEW_SPECIALS_POPUP_SUPPRESS_EVENT,
+  createNewSpecialsPopupState,
   readNewSpecialsPending,
+  readNewSpecialsPopupState,
   readNewSpecialsSnapshot,
   removeReviewedNewSpecials,
   summarizeNewSpecials,
   writeNewSpecialsPending,
+  writeNewSpecialsPopupState,
   writeNewSpecialsSnapshot,
   type NewSpecialsPending,
+  type NewSpecialsPopupState,
   type NewSpecialsSnapshot,
   type NewSpecialsSummary,
 } from "./new-specials";
@@ -27,7 +33,7 @@ import type { DealFilter } from "./deal-filters";
 interface NewSpecialsContextValue {
   digest: NewSpecialsSummary | null;
   hasPendingDigest: boolean;
-  popupPresented: boolean;
+  popupEligible: boolean;
   popupSuppressedUntilHomeExit: boolean;
   openRequested: boolean;
   requestOpen: () => void;
@@ -40,23 +46,13 @@ interface StoredNewSpecialsState {
   scope: string | null;
   snapshot: NewSpecialsSnapshot | null;
   pending: NewSpecialsPending | null;
+  popupState: NewSpecialsPopupState | null;
 }
 
 const NewSpecialsContext = createContext<NewSpecialsContextValue | null>(null);
 
 function snapshotFingerprint(snapshot: NewSpecialsSnapshot): string {
   return JSON.stringify(snapshot.deals);
-}
-
-function summaryFingerprint(summary: NewSpecialsSummary): string {
-  return JSON.stringify({
-    ...summary,
-    allDealKeys: [...summary.allDealKeys].sort(),
-    realDealKeys: [...summary.realDealKeys].sort(),
-    dodgyDealKeys: [...summary.dodgyDealKeys].sort(),
-    newlyStartedDealKeys: [...summary.newlyStartedDealKeys].sort(),
-    priceDropDealKeys: [...summary.priceDropDealKeys].sort(),
-  });
 }
 
 function filterReviewKeys(summary: NewSpecialsSummary, dealKeys?: string[], filter: DealFilter = "all"): string[] {
@@ -87,10 +83,10 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
   const { user, loading: authLoading, isAnonymousSession } = useAuth();
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
-  const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null });
+  const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null });
   const [openRequested, setOpenRequested] = useState(false);
   const lastProcessedPublicationRef = useRef<string | null>(null);
-  const [sessionPresentedBatchId, setSessionPresentedBatchId] = useState<string | null>(null);
+  const [sessionPopupState, setSessionPopupState] = useState<NewSpecialsPopupState | null>(null);
   const [popupSuppressedUntilHomeExit, setPopupSuppressedUntilHomeExit] = useState(false);
   const suppressionReachedHomeRef = useRef(false);
 
@@ -101,11 +97,21 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!scope) return;
     lastProcessedPublicationRef.current = null;
-    setSessionPresentedBatchId(null);
+    setSessionPopupState(null);
+    const hydratedPending = readNewSpecialsPending(scope);
+    let hydratedPopupState = readNewSpecialsPopupState(scope);
+    // Migrate the old per-batch flag conservatively. The old implementation
+    // did not store the exact presentation time, so the batch detection time
+    // is the safest boundary for the first cooldown after upgrading.
+    if (!hydratedPopupState && hydratedPending?.popupPresented) {
+      hydratedPopupState = createNewSpecialsPopupState(hydratedPending.summary, hydratedPending.detectedAt);
+      writeNewSpecialsPopupState(hydratedPopupState, scope);
+    }
     setStored({
       scope,
       snapshot: readNewSpecialsSnapshot(scope),
-      pending: readNewSpecialsPending(scope),
+      pending: hydratedPending,
+      popupState: hydratedPopupState,
     });
     setOpenRequested(false);
   }, [scope]);
@@ -134,7 +140,12 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const storageReady = scope !== null && stored.scope === scope;
   const previousSnapshot = storageReady ? stored.snapshot : null;
   const pending = storageReady ? stored.pending : null;
+  const persistedPopupState = storageReady ? stored.popupState : null;
   const activePending = pending && isNewSpecialsPendingActive(pending) ? pending : null;
+  const popupState = sessionPopupState && (
+    !persistedPopupState
+    || (sessionPopupState.lastShownAt ?? -1) >= (persistedPopupState.lastShownAt ?? -1)
+  ) ? sessionPopupState : persistedPopupState;
   const currentSnapshot = useMemo(() => createNewSpecialsSnapshot(products), [products]);
   const detectedSummary = useMemo(
     () => (previousSnapshot ? summarizeNewSpecials(products, previousSnapshot) : null),
@@ -157,7 +168,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
         lastProcessedPublicationRef.current = cataloguePublicationKey;
-        setStored({ scope, snapshot: currentSnapshot, pending: null });
+        setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
       }
       return;
     }
@@ -167,7 +178,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
         lastProcessedPublicationRef.current = cataloguePublicationKey;
-        setStored({ scope, snapshot: currentSnapshot, pending: null });
+        setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
       }
       return;
     }
@@ -182,7 +193,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
         lastProcessedPublicationRef.current = cataloguePublicationKey;
-        setStored({ scope, snapshot: currentSnapshot, pending: null });
+        setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
       }
       return;
     }
@@ -191,7 +202,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       ? { ...pending, summary: detectedSummary, snapshot: currentSnapshot }
       : createNewSpecialsPending(detectedSummary, currentSnapshot);
     const pendingUnchanged = pending
-      && summaryFingerprint(pending.summary) === summaryFingerprint(detectedSummary)
+      && getNewSpecialsSummaryFingerprint(pending.summary) === getNewSpecialsSummaryFingerprint(detectedSummary)
       && snapshotFingerprint(pending.snapshot) === snapshotFingerprint(currentSnapshot);
     if (pendingUnchanged) {
       lastProcessedPublicationRef.current = cataloguePublicationKey;
@@ -200,9 +211,9 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
     if (writeNewSpecialsPending(nextPending, scope)) {
       lastProcessedPublicationRef.current = cataloguePublicationKey;
-      setStored({ scope, snapshot: previousSnapshot, pending: nextPending });
+      setStored({ scope, snapshot: previousSnapshot, pending: nextPending, popupState: persistedPopupState });
     }
-  }, [cataloguePublicationComplete, cataloguePublicationKey, currentSnapshot, detectedSummary, loadingProducts, pending, previousSnapshot, products.length, scope, storageReady]);
+  }, [cataloguePublicationComplete, cataloguePublicationKey, currentSnapshot, detectedSummary, loadingProducts, pending, persistedPopupState, previousSnapshot, products.length, scope, storageReady]);
 
   // Retire an untouched batch while the app remains open too. Relaunches are
   // covered by the reconciliation effect above; this timer keeps the badge
@@ -214,33 +225,43 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       if (!latestPending || latestPending.batchId !== pending.batchId || isNewSpecialsPendingActive(latestPending)) return;
       const wroteSnapshot = writeNewSpecialsSnapshot(currentSnapshot, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
-      if (wroteSnapshot && clearedPending) setStored({ scope, snapshot: currentSnapshot, pending: null });
+      if (wroteSnapshot && clearedPending) setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
     }, Math.max(0, pending.expiresAt - Date.now()));
     return () => window.clearTimeout(expiryTimer);
-  }, [currentSnapshot, pending, scope, storageReady]);
+  }, [currentSnapshot, pending, persistedPopupState, scope, storageReady]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const popupPresented = isNewSpecialsPopupPresented(activePending, sessionPresentedBatchId);
+  const popupEligible = Boolean(
+    activePending
+    && canShowNewSpecialsPopup(activePending.summary, popupState),
+  );
 
   const requestOpen = useCallback(() => {
-    if (!popupSuppressedUntilHomeExit && pendingDigest?.total && !popupPresented) setOpenRequested(true);
-  }, [pendingDigest, popupPresented, popupSuppressedUntilHomeExit]);
+    if (!popupSuppressedUntilHomeExit && pendingDigest?.total && popupEligible) setOpenRequested(true);
+  }, [pendingDigest, popupEligible, popupSuppressedUntilHomeExit]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
   }, []);
 
   const markPopupShown = useCallback(() => {
-    if (!scope || !storageReady || !activePending || activePending.popupPresented) return;
+    if (!scope || !storageReady || !activePending) return;
     const nextPending = { ...activePending, popupPresented: true };
+    const nextPopupState = createNewSpecialsPopupState(activePending.summary);
+    const wrotePending = writeNewSpecialsPending(nextPending, scope);
+    const wrotePopupState = writeNewSpecialsPopupState(nextPopupState, scope);
     // Keep a session-only fallback when storage is unavailable. This does not
-    // claim the batch was persisted, but it prevents a route change from
-    // repeatedly interrupting the user with the same popup in this session.
-    setSessionPresentedBatchId(activePending.batchId);
-    writeNewSpecialsPending(nextPending, scope);
-    setStored({ scope, snapshot: previousSnapshot, pending: nextPending });
+    // claim the cooldown was persisted, but it prevents repeated interruption
+    // during the current session.
+    setSessionPopupState(nextPopupState);
+    setStored({
+      scope,
+      snapshot: previousSnapshot,
+      pending: wrotePending ? nextPending : activePending,
+      popupState: wrotePopupState ? nextPopupState : persistedPopupState,
+    });
     setOpenRequested(false);
-  }, [activePending, previousSnapshot, scope, storageReady]);
+  }, [activePending, persistedPopupState, previousSnapshot, scope, storageReady]);
 
   const markReviewed = useCallback((dealKeys?: string[], filter: DealFilter = "all") => {
     if (!scope || !storageReady || !activePending) return;
@@ -251,24 +272,42 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const snapshotToKeep = activePending.snapshot ?? currentSnapshot;
       const wroteSnapshot = writeNewSpecialsSnapshot(snapshotToKeep, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
-      if (wroteSnapshot && clearedPending) setStored({ scope, snapshot: snapshotToKeep, pending: null });
+      if (wroteSnapshot && clearedPending) {
+        setStored({ scope, snapshot: snapshotToKeep, pending: null, popupState: persistedPopupState });
+      }
       setOpenRequested(false);
       return;
     }
 
     const nextBaseline = baselineAfterReview(previousSnapshot, activePending.snapshot, reviewedKeys);
     const nextPending = { ...activePending, summary: remainingSummary, popupPresented: true };
+    const nextPopupState: NewSpecialsPopupState = popupState
+      ? { ...popupState, lastShownFingerprint: getNewSpecialsSummaryFingerprint(remainingSummary) }
+      : {
+          version: NEW_SPECIALS_POPUP_STATE_VERSION,
+          lastShownAt: null,
+          lastShownFingerprint: getNewSpecialsSummaryFingerprint(remainingSummary),
+        };
     const wroteBaseline = writeNewSpecialsSnapshot(nextBaseline, scope);
     const wrotePending = wroteBaseline && writeNewSpecialsPending(nextPending, scope);
-    if (wrotePending) setStored({ scope, snapshot: nextBaseline, pending: nextPending });
+    if (wrotePending) {
+      const wrotePopupState = writeNewSpecialsPopupState(nextPopupState, scope);
+      setSessionPopupState(nextPopupState);
+      setStored({
+        scope,
+        snapshot: nextBaseline,
+        pending: nextPending,
+        popupState: wrotePopupState ? nextPopupState : persistedPopupState,
+      });
+    }
     setOpenRequested(false);
-  }, [activePending, currentSnapshot, previousSnapshot, scope, storageReady]);
+  }, [activePending, currentSnapshot, persistedPopupState, popupState, previousSnapshot, scope, storageReady]);
 
   const value = useMemo<NewSpecialsContextValue>(
     () => ({
       digest,
       hasPendingDigest: Boolean(pendingDigest?.total),
-      popupPresented,
+      popupEligible,
       popupSuppressedUntilHomeExit,
       openRequested,
       requestOpen,
@@ -276,7 +315,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       markPopupShown,
       markReviewed,
     }),
-    [consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, popupPresented, popupSuppressedUntilHomeExit, requestOpen],
+    [consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, requestOpen],
   );
 
   return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;

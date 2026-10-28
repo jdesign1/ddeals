@@ -48,7 +48,7 @@ export default function AppHeader({
   const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
   const {
     digest,
-    popupPresented,
+    popupEligible,
     popupSuppressedUntilHomeExit,
     openRequested,
     consumeOpenRequest,
@@ -74,9 +74,9 @@ export default function AppHeader({
     && pathname === "/"
     && !popupSuppressedUntilHomeExit;
   useEffect(() => {
-    if (!shouldPresentNewSpecialsModal || (!openRequested && popupPresented)) return;
+    if (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible)) return;
     const presentationTimer = window.setTimeout(() => {
-      if (!openRequested && popupPresented) return;
+      if (!openRequested && !popupEligible) return;
       consumeOpenRequest();
       if (!digest) return;
       const summaryToPresent = digest;
@@ -84,7 +84,7 @@ export default function AppHeader({
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [consumeOpenRequest, digest, openRequested, popupPresented, popupSuppressedUntilHomeExit, shouldPresentNewSpecialsModal]);
+  }, [consumeOpenRequest, digest, openRequested, popupEligible, popupSuppressedUntilHomeExit, shouldPresentNewSpecialsModal]);
 
   useEffect(() => {
     if (isNewSpecialsModalOpen && newSpecialsModalSummary) markPopupShown();

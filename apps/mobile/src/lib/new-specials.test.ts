@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import {
+  canShowNewSpecialsPopup,
   createNewSpecialsPending,
+  createNewSpecialsPopupState,
   createNewSpecialsSnapshot,
   getNewSpecialDealKey,
   getNewSpecialsStorageScope,
+  NEW_SPECIALS_POPUP_COOLDOWN_MS,
   isNewSpecialsPendingActive,
   isNewSpecialsPopupPresented,
   removeReviewedNewSpecials,
@@ -124,6 +127,30 @@ test("new batches keep the popup state separate from the unread deal state", () 
   assert.equal(pending.detectedAt, now);
   assert.equal(isNewSpecialsPendingActive(pending, now + 1), true);
   assert.equal(isNewSpecialsPendingActive(pending, pending.expiresAt), false);
+});
+
+test("popup cooldown only resets for changed unread data", () => {
+  const now = Date.parse("2026-10-01T12:00:00.000Z");
+  const initialSummary = summarizeNewSpecials([product("p1", [deal()])], createNewSpecialsSnapshot([]));
+  const shown = createNewSpecialsPopupState(initialSummary, now);
+
+  assert.equal(canShowNewSpecialsPopup(initialSummary, shown, now + 1), false);
+  assert.equal(canShowNewSpecialsPopup(initialSummary, shown, now + NEW_SPECIALS_POPUP_COOLDOWN_MS), false);
+
+  const newSummary = summarizeNewSpecials(
+    [
+      product("p1", [deal()]),
+      product("p2", [deal({ store: "newworld", saleStartedAt: "2026-10-01T00:00:00.000Z" })]),
+    ],
+    createNewSpecialsSnapshot([]),
+  );
+  assert.equal(canShowNewSpecialsPopup(newSummary, shown, now + NEW_SPECIALS_POPUP_COOLDOWN_MS - 1), false);
+  assert.equal(canShowNewSpecialsPopup(newSummary, shown, now + NEW_SPECIALS_POPUP_COOLDOWN_MS), true);
+});
+
+test("popup never opens for an empty summary", () => {
+  const empty = summarizeNewSpecials([], createNewSpecialsSnapshot([]));
+  assert.equal(canShowNewSpecialsPopup(empty, null), false);
 });
 
 test("a presented batch remains unread without requesting the popup again", () => {
