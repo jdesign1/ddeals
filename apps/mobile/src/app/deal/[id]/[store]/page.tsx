@@ -1405,20 +1405,22 @@ export default function DealAssessmentPage() {
               </button>
             </div>
             {priceHistoryViewTab === "90-day-view" ? (
-              <PriceHistoryChart
-                points={priceHistoryPoints}
-                currentPrice={historyDeal?.price ?? selectedDeal.price}
-                currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
-                currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
-                comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
-                loading={priceHistoryLoadingForSelection}
-                error={priceHistoryErrorForSelection}
-                historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
-                storeOptions={historyStoreOptions}
-                selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
-                onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
-                verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
-              />
+              <div data-onboarding="price-history-chart">
+                <PriceHistoryChart
+                  points={priceHistoryPoints}
+                  currentPrice={historyDeal?.price ?? selectedDeal.price}
+                  currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
+                  currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
+                  comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
+                  loading={priceHistoryLoadingForSelection}
+                  error={priceHistoryErrorForSelection}
+                  historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
+                  storeOptions={historyStoreOptions}
+                  selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
+                  onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
+                  verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
+                />
+              </div>
             ) : (
               <div className="space-y-3">
                 <StoreCompareChart rows={barChartData} />

@@ -18,6 +18,8 @@ type TourStep = {
   position?: "top" | "search" | "bottom" | "middle" | "lower";
   welcome?: boolean;
   scrim?: "below-card";
+  autoScroll?: boolean;
+  scrollBlock?: "center" | "end";
 };
 
 const DEAL_ROUTE = "__deal__";
@@ -43,21 +45,25 @@ const TOUR_STEPS: TourStep[] = [
     title: "Check a deal",
     body: "Tap an item to see whether the special is Dodgy, Fair, or a Real Saver based on price history.",
     position: "top",
+    autoScroll: true,
+    scrollBlock: "end",
   },
   {
     href: DEAL_ROUTE,
     target: "",
     title: "Deal assessment",
-    body: "This page brings together the current price, product details, and supermarket comparison so you can see the full picture.",
+    body: "This page brings together the current price, supermarket comparison, and verdict so you can see whether it’s a Dodgy Deal, Fair Price, or Real Saver.",
     position: "lower",
     scrim: "below-card",
   },
   {
     href: DEAL_ROUTE,
-    target: '[data-onboarding="deal-verdict"]',
-    title: "Read the verdict",
-    body: "The verdict tells you whether the special is Dodgy, Fair, or a Real Saver. Scroll down for the evidence and price history behind it.",
-    position: "middle",
+    target: '[data-onboarding="price-history-chart"]',
+    title: "View the price history",
+    body: "Use the 90-day price history to see how the price has moved and judge whether today’s price is fair.",
+    position: "top",
+    autoScroll: true,
+    scrollBlock: "center",
   },
   {
     href: DEAL_ROUTE,
@@ -65,12 +71,8 @@ const TOUR_STEPS: TourStep[] = [
     title: "Add items to your Watchlist",
     body: "Use the plus button to save this product to your Watchlist. You can then keep an eye out for a better price.",
     position: "middle",
-  },
-  {
-    href: "/lists",
-    target: '[data-onboarding="watchlist-tab"]',
-    title: "Your Watchlist",
-    body: "Your saved products live here, ready to check for your next shop. We'll notify you when these items go on special for a better price.",
+    autoScroll: true,
+    scrollBlock: "end",
   },
 ];
 
@@ -159,14 +161,12 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       if ((nextRect && nextRect.width > 0 && nextRect.height > 0) || attempts >= 80) window.clearInterval(retryTimer);
 
       const hasLayout = Boolean(nextRect && nextRect.width > 0 && nextRect.height > 0);
-      const shouldAutoScroll = hasLayout && stepIndex === 2;
+      const shouldAutoScroll = hasLayout && step.autoScroll;
 
       if (target && shouldAutoScroll && !didAutoScrollRef.current) {
         didAutoScrollRef.current = true;
         isAutoScrolling = true;
-        // Keep the card comfortably below the explanatory card at the top,
-        // while reserving a little space above the iOS safe-area controls.
-        target.scrollIntoView({ block: "end", behavior: prefersReducedMotion ? "auto" : "smooth" });
+        target.scrollIntoView({ block: step.scrollBlock ?? "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
         settleTimer = window.setTimeout(() => {
           isAutoScrolling = false;
           measure();
@@ -216,16 +216,16 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     if (!targetRect || targetRect.width === 0 || targetRect.height === 0) {
       return { top: -100, left: -100, width: 0, height: 0, borderRadius: 18 };
     }
-    const verdictCardLeftOffset = stepIndex === 4 ? 12 : 0;
-    const searchBarTopOffset = stepIndex === 1 ? 12 : 8;
+    const isSearchSpotlight = step.target === '[data-onboarding="search-bar"]';
+    const verticalPadding = isSearchSpotlight ? 10 : 8;
     return {
-      top: Math.max(8, targetRect.top - searchBarTopOffset),
-      left: Math.max(8, targetRect.left - 8 - verdictCardLeftOffset),
-      width: targetRect.width + 16 + verdictCardLeftOffset,
-      height: targetRect.height + (stepIndex === 1 ? 20 : 16),
+      top: Math.max(8, targetRect.top - verticalPadding),
+      left: Math.max(8, targetRect.left - 8),
+      width: targetRect.width + 16,
+      height: targetRect.height + verticalPadding * 2,
       borderRadius: 18,
     };
-  }, [stepIndex, targetRect]);
+  }, [step.target, targetRect]);
 
   const cardStyle = useMemo(() => {
     const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
