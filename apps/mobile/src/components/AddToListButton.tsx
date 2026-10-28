@@ -6,6 +6,7 @@ import { Check, Plus, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 /**
  * Product-card save action. Tapping an unsaved product stages it in the
@@ -81,7 +82,9 @@ export default function AddToListButton({
           className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
         >
           <span className={buttonClassName} aria-hidden="true">
-            {isCheckmarkVisible ? (
+            {loadingSavedItems || isRemoving ? (
+              <ButtonSpinner className={iconClassName} />
+            ) : isCheckmarkVisible ? (
               <Check className={`block ${iconClassName}`} strokeWidth={3} />
             ) : (
               <Plus className={`block ${iconClassName}`} strokeWidth={3} />
@@ -163,7 +166,10 @@ function RemoveFromWatchlistSheet({
                 {error && <p role="alert" className="dd-type-secondary text-alert-700">{error}</p>}
                 <div className="mt-auto flex flex-col gap-3 pt-4">
                   <button type="button" onClick={onClose} disabled={isRemoving} className="dd-btn dd-btn-outline-muted w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">Cancel</button>
-                  <button type="button" onClick={onConfirm} disabled={isRemoving} className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">{isRemoving ? "Removing…" : "Remove from Watchlist"}</button>
+                  <button type="button" onClick={onConfirm} disabled={isRemoving} aria-busy={isRemoving} className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                    {isRemoving && <ButtonSpinner />}
+                    Remove from Watchlist
+                  </button>
                 </div>
               </div>
             </motion.section>

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, Share, X } from "lucide-react";
 import type { ListItemLowestPrice, ListItemProductMeta, ListItemRow, ListRow } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 function buildShareText(
   selectedLists: ListRow[],
@@ -184,10 +185,11 @@ export default function ShareListsSheet({
                   type="button"
                   onClick={() => void handleShare()}
                   disabled={sharing || selectedLists.length === 0}
+                  aria-busy={sharing}
                   className="dd-btn dd-btn-primary flex w-full items-center justify-center gap-2 cursor-pointer font-display disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Share className="h-5 w-5" aria-hidden="true" />
-                  {sharing ? "Preparing…" : "Share"}
+                  {sharing ? <ButtonSpinner className="h-5 w-5" /> : <Share className="h-5 w-5" aria-hidden="true" />}
+                  Share
                 </button>
               </div>
             </motion.section>

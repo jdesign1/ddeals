@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth, type AccountIdentity } from "@/lib/auth-context";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 function hasProvider(identities: AccountIdentity[], provider: string): boolean {
   return identities.some((identity) => identity.provider === provider);
@@ -111,9 +112,11 @@ export default function IdentityLinkingPanel() {
                 type="button"
                 onClick={() => void handleLinkApple()}
                 disabled={isBusy}
+                aria-busy={isBusy}
                 className="shrink-0 rounded-full bg-stone-900 px-3 py-2 text-[12px] font-bold text-white transition-colors hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isBusy ? "Linking…" : "Link Apple"}
+                {isBusy && <ButtonSpinner className="h-3.5 w-3.5" />}
+                Link Apple
               </button>
             )}
           </div>

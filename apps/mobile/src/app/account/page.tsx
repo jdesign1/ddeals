@@ -7,6 +7,7 @@ import { useState } from "react";
 import LoadingMascot from "@/components/LoadingMascot";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import { useAuth } from "@/lib/auth-context";
 import { getAccountEmailDisplay } from "@/lib/account-display";
 import { usePageHeader } from "@/lib/header-context";
@@ -120,9 +121,11 @@ export default function AccountPage() {
           type="button"
           onClick={openSubscriptionPage}
           disabled={subscriptionLoading}
+          aria-busy={subscriptionLoading}
           className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
         >
-          {subscriptionLoading ? "Checking subscription…" : isPremium ? "View subscription" : "See subscription options"}
+          {subscriptionLoading && <ButtonSpinner className="h-5 w-5" />}
+          {isPremium ? "View subscription" : "See subscription options"}
         </button>
       </section>
 
@@ -205,9 +208,11 @@ export default function AccountPage() {
                     type="button"
                     onClick={handleLogout}
                     disabled={isLoggingOut}
+                    aria-busy={isLoggingOut}
                     className="dd-btn dd-btn-outline-alert w-full cursor-pointer"
                   >
-                    {isLoggingOut ? "Logging out…" : "Log out"}
+                    {isLoggingOut && <ButtonSpinner />}
+                    Log out
                   </button>
                 </div>
               </div>

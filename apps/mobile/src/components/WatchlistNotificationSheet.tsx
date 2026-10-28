@@ -4,6 +4,7 @@ import { BellRing, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { PermissionState } from "@capacitor/core";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 export default function WatchlistNotificationSheet({
   open,
@@ -85,9 +86,11 @@ export default function WatchlistNotificationSheet({
                     type="button"
                     onClick={permissionDenied ? onOpenSettings : onEnable}
                     disabled={isSaving}
+                    aria-busy={isSaving}
                     className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
                   >
-                    {isSaving ? "Updating…" : permissionDenied ? "Open iPhone Settings" : "Turn on notifications"}
+                    {isSaving && <ButtonSpinner className="h-5 w-5" />}
+                    {permissionDenied ? "Open iPhone Settings" : "Turn on notifications"}
                   </button>
                   <button type="button" onClick={onClose} disabled={isSaving} className="dd-btn dd-btn-outline-muted w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
                     Not now

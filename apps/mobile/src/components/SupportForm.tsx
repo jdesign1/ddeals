@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CONTACT_SUPPORT_EMAIL } from "@/lib/contact-config";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 const INITIAL_FORM = {
   name: "",
@@ -235,9 +236,11 @@ export default function SupportForm({ mode }: { mode: "support" | "report" }) {
         <button
           type="submit"
           disabled={!canSubmit || submitState === "sending"}
+          aria-busy={submitState === "sending"}
           className="dd-btn dd-btn-primary w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitState === "sending" ? "Sending…" : isReport ? "Send report" : "Send message"}
+          {submitState === "sending" && <ButtonSpinner className="h-5 w-5" />}
+          {isReport ? "Send report" : "Send message"}
         </button>
       </div>
 

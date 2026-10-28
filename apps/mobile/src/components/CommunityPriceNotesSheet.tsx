@@ -8,6 +8,7 @@ import { Pencil, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import { useAuth } from "@/lib/auth-context";
 import {
   blockCommunityNote,
@@ -403,7 +404,10 @@ export default function CommunityPriceNotesSheet({
                                   </div>
                                   {reportError && <p className="text-sm font-semibold text-alert-600" role="alert">{reportError}</p>}
                                   <div className="flex flex-wrap gap-2">
-                                    <button type="submit" disabled={reportState === "sending"} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-60">{reportState === "sending" ? "Sending…" : "Send report"}</button>
+                                    <button type="submit" disabled={reportState === "sending"} aria-busy={reportState === "sending"} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-60">
+                                      {reportState === "sending" && <ButtonSpinner />}
+                                      Send report
+                                    </button>
                                     <button type="button" onClick={() => setReportNoteId(null)} disabled={reportState === "sending"} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">Cancel</button>
                                   </div>
                                   <p className="text-xs leading-4 text-stone-500">Need more help? <Link href="/support" className="font-bold underline underline-offset-2">Contact support</Link>.</p>
@@ -413,7 +417,10 @@ export default function CommunityPriceNotesSheet({
                               <div className="space-y-3">
                                 <p className="text-sm leading-5 text-stone-700">Hide this shopper&rsquo;s other notes from your view? This is a persistent setting for your account. <Link href="/support" className="font-bold underline underline-offset-2">Contact support</Link> if you need help changing it.</p>
                                 <div className="flex flex-wrap gap-2">
-                                  <button type="button" onClick={confirmBlock} disabled={blockState === "sending"} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-60">{blockState === "sending" ? "Hiding…" : "Hide notes"}</button>
+                                  <button type="button" onClick={confirmBlock} disabled={blockState === "sending"} aria-busy={blockState === "sending"} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-60">
+                                    {blockState === "sending" && <ButtonSpinner />}
+                                    Hide notes
+                                  </button>
                                   <button type="button" onClick={() => setBlockNoteId(null)} disabled={blockState === "sending"} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">Cancel</button>
                                 </div>
                                 {blockError && <p className="text-sm font-semibold text-alert-600" role="alert">{blockError}</p>}

@@ -7,6 +7,7 @@ import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, Trash2, X } fro
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import ProductImage from "@/components/ProductImage";
 import CommunityPublicProfileSheet from "@/components/CommunityPublicProfileSheet";
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
@@ -541,9 +542,9 @@ function NoteComposer({
                           <p id="community-note-remove-description" className="mt-1 text-sm leading-5 text-stone-700">This removes it from the community and can&rsquo;t be undone.</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <button ref={removeConfirmRef} type="button" onClick={removeTip} disabled={removing} className="dd-btn dd-btn-outline-alert min-h-11 cursor-pointer disabled:opacity-60">
-                            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                            {removing ? "Removing…" : "Remove tip"}
+                          <button ref={removeConfirmRef} type="button" onClick={removeTip} disabled={removing} aria-busy={removing} className="dd-btn dd-btn-outline-alert min-h-11 cursor-pointer disabled:opacity-60">
+                            {removing ? <ButtonSpinner /> : <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />}
+                            Remove tip
                           </button>
                           <button type="button" onClick={cancelRemoveConfirmation} disabled={removing} className="dd-btn dd-btn-outline min-h-11 cursor-pointer">Cancel</button>
                         </div>
@@ -551,8 +552,9 @@ function NoteComposer({
                       </div>
                     ) : (
                       <>
-                        <button type="submit" disabled={submitting || removing} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-                          {submitting ? (editingNote ? "Updating…" : "Sharing…") : (editingNote ? "Update tip" : "Share tip")}
+                        <button type="submit" disabled={submitting || removing} aria-busy={submitting} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                          {submitting && <ButtonSpinner className="h-5 w-5" />}
+                          {editingNote ? "Update tip" : "Share tip"}
                         </button>
                         {editingNote && (
                           <button ref={removeTriggerRef} type="button" onClick={() => { setRemoveConfirmOpen(true); setRemoveError(null); }} disabled={submitting || removing} className="dd-btn dd-btn-outline-alert mt-3 min-h-11 w-full cursor-pointer disabled:opacity-60">

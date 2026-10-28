@@ -19,6 +19,7 @@ import { useSubscriptions } from "@/lib/subscription-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { describeFetchError } from "@dodgey-deals/shared";
 import WatchlistNotificationSheet from "@/components/WatchlistNotificationSheet";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 interface WatchlistContextValue {
   savedProductIds: ReadonlySet<string>;
@@ -377,6 +378,7 @@ function WatchlistSelectionBar() {
                   aria-busy={isCommitting}
                   className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-extrabold text-ink-900 transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
                 >
+                  {isCommitting && <ButtonSpinner className="mr-1.5 inline-block h-4 w-4 align-[-0.15em]" />}
                   Add to Watchlist
                 </button>
                 <button

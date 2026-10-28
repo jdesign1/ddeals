@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MascotImage from "@/components/MascotImage";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import { usePageHeader } from "@/lib/header-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 
@@ -47,6 +48,7 @@ export default function SubscriptionSuccessPage() {
             <button
               type="button"
               disabled={loading || retrying}
+              aria-busy={retrying}
               onClick={() => {
                 if (retrying) return;
                 setRetrying(true);
@@ -60,6 +62,7 @@ export default function SubscriptionSuccessPage() {
               }}
               className="dd-btn dd-btn-outline cursor-pointer"
             >
+              {retrying && <ButtonSpinner />}
               Try again
             </button>
           </div>

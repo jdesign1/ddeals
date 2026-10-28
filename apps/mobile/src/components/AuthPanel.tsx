@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { useAuth, type AccountDetails } from "@/lib/auth-context";
 import { getAccountMetadataName } from "@/lib/account-display";
+import ButtonSpinner from "@/components/ButtonSpinner";
 
 type AuthMode = "signin" | "signup";
 type AuthView = "details" | "otp" | "profile";
@@ -77,6 +78,9 @@ export default function AuthPanel({
   const [details, setDetails] = useState<AccountDetails>({ full_name: "", date_of_birth: "", zip_code: "" });
   const [submitting, setSubmitting] = useState(false);
   const [requestingOtp, setRequestingOtp] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [providerLoading, setProviderLoading] = useState<"google" | "apple" | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [lastMode, setLastMode] = useState(mode);
@@ -196,23 +200,27 @@ export default function AuthPanel({
     if (resendCooldown > 0 || submitting) return;
     setError(null);
     setSubmitting(true);
+    setResending(true);
     try {
       const result = await requestOtp(email, mode === "signup");
       if (result.error) setError("We couldn't resend the code. Please try again.");
       else setResendCooldown(80);
     } finally {
       setSubmitting(false);
+      setResending(false);
     }
   }
 
   async function handleProvider(provider: "google" | "apple") {
     setError(null);
     setSubmitting(true);
+    setProviderLoading(provider);
     try {
       const result = await signInWithProvider(provider);
       if (result.error) setError("Something went wrong with your sign-in, try again later");
     } finally {
       setSubmitting(false);
+      setProviderLoading(null);
     }
   }
 
@@ -239,6 +247,15 @@ export default function AuthPanel({
     await refreshProfile();
   }
 
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await signOut();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   const inputClass =
     "dd-auth-field w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base text-stone-700 shadow-sm transition-colors placeholder:text-stone-500 focus:border-stone-900 focus:outline-none";
   const labelClass = "block dd-type-meta dd-type-meta-strong text-stone-500";
@@ -261,7 +278,14 @@ export default function AuthPanel({
         <button type="button" onClick={() => void handleRetryProfile()} className="dd-btn dd-btn-primary w-full cursor-pointer">
           Try again
         </button>
-        <button type="button" onClick={() => void signOut()} className="dd-btn dd-btn-outline w-full cursor-pointer">
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={loggingOut}
+          aria-busy={loggingOut}
+          className="dd-btn dd-btn-outline w-full cursor-pointer disabled:cursor-wait disabled:opacity-60"
+        >
+          {loggingOut && <ButtonSpinner className="h-5 w-5" />}
           Log out
         </button>
       </div>
@@ -330,8 +354,9 @@ export default function AuthPanel({
         </label>
 
         {(error || profileError) && <p className="dd-type-secondary text-alert-600">{error || profileError}</p>}
-        <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary w-full cursor-pointer">
-          {submitting ? "Saving…" : "Continue"}
+        <button type="submit" disabled={submitting} aria-busy={submitting} className="dd-btn dd-btn-primary w-full cursor-pointer">
+          {submitting && <ButtonSpinner className="h-5 w-5" />}
+          Continue
         </button>
       </form>
     );
@@ -362,14 +387,16 @@ export default function AuthPanel({
             autoFocus
           />
         </label>
-        <button type="submit" disabled={submitting} className="dd-btn dd-btn-primary w-full cursor-pointer">
-          {submitting ? "Checking…" : "Verify code"}
+        <button type="submit" disabled={submitting} aria-busy={submitting} className="dd-btn dd-btn-primary w-full cursor-pointer">
+          {submitting && <ButtonSpinner className="h-5 w-5" />}
+          Verify code
         </button>
         <div className="flex items-center justify-between gap-3">
           <button type="button" onClick={() => { setView("details"); setError(null); }} className="cursor-pointer dd-type-control text-stone-600 hover:text-stone-900">
             Change email
           </button>
-          <button type="button" disabled={resendCooldown > 0 || submitting} onClick={() => void handleResend()} className="cursor-pointer dd-type-control text-ink-600 disabled:cursor-default disabled:text-stone-400">
+          <button type="button" disabled={resendCooldown > 0 || submitting} aria-busy={resending} onClick={() => void handleResend()} className="inline-flex cursor-pointer items-center gap-1.5 dd-type-control text-ink-600 disabled:cursor-default disabled:text-stone-400">
+            {resending && <ButtonSpinner />}
             {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
           </button>
         </div>
@@ -421,19 +448,20 @@ export default function AuthPanel({
           </p>
         )}
         {error && <p className="dd-type-secondary text-alert-600">{error}</p>}
-        <button type="submit" disabled={submitting || !canRequestOtp} className="dd-btn dd-btn-primary mt-2 w-full cursor-pointer">
-          {requestingOtp ? "Please wait…" : "Send log in code"}
+        <button type="submit" disabled={submitting || !canRequestOtp} aria-busy={requestingOtp} className="dd-btn dd-btn-primary mt-2 w-full cursor-pointer">
+          {requestingOtp && <ButtonSpinner className="h-5 w-5" />}
+          Send log in code
         </button>
       </form>
 
       <div className="flex items-center gap-3 text-stone-400" aria-hidden="true"><span className="h-px flex-1 bg-stone-200" /><span className="dd-type-meta">or</span><span className="h-px flex-1 bg-stone-200" /></div>
       <div className="flex flex-col gap-4">
-        <button type="button" disabled={submitting} onClick={() => void handleProvider("google")} className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-stone-400 bg-white px-5 py-3 text-base font-semibold text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">
-          <GoogleMark />
+        <button type="button" disabled={submitting} aria-busy={providerLoading === "google"} onClick={() => void handleProvider("google")} className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-stone-400 bg-white px-5 py-3 text-base font-semibold text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">
+          {providerLoading === "google" ? <ButtonSpinner className="h-6 w-6" /> : <GoogleMark />}
           Sign in with Google
         </button>
-        <button type="button" disabled={submitting} onClick={() => void handleProvider("apple")} className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-black px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50">
-          <AppleMark />
+        <button type="button" disabled={submitting} aria-busy={providerLoading === "apple"} onClick={() => void handleProvider("apple")} className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-black px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50">
+          {providerLoading === "apple" ? <ButtonSpinner className="h-6 w-6" /> : <AppleMark />}
           Sign in with Apple
         </button>
       </div>

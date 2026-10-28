@@ -16,6 +16,7 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityProfileDetails from "@/components/CommunityProfileDetails";
 import CommunityProfileSummary from "@/components/CommunityProfileSummary";
 import MascotImage from "@/components/MascotImage";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
 import { useNotifications } from "@/lib/notifications-context";
@@ -192,9 +193,11 @@ function ProfileEditForm({
         <button
           type="submit"
           disabled={isSaving || !draft.full_name.trim()}
+          aria-busy={isSaving}
           className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
         >
-          {isSaving ? "Saving…" : "Save changes"}
+          {isSaving && <ButtonSpinner className="h-5 w-5" />}
+          Save changes
         </button>
       </div>
     </form>
@@ -710,12 +713,17 @@ export default function SettingsPage() {
               aria-checked={pushEnabled}
               aria-label="Push notifications"
               disabled={authLoading || isSavingNotifications}
+              aria-busy={isSavingNotifications}
               onClick={() => void handlePushToggle()}
               className="inline-flex h-11 w-12 flex-shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span className={`settings-display-switch relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors ${pushEnabled ? "bg-ink-600" : "bg-stone-300"}`} aria-hidden="true">
-                <span className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`} />
-              </span>
+              {isSavingNotifications ? (
+                <ButtonSpinner className="h-5 w-5" />
+              ) : (
+                <span className={`settings-display-switch relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors ${pushEnabled ? "bg-ink-600" : "bg-stone-300"}`} aria-hidden="true">
+                  <span className={`theme-switch-thumb h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -723,11 +731,13 @@ export default function SettingsPage() {
           <button
             type="button"
             disabled={authLoading || isSavingNotifications}
+            aria-busy={isSavingNotifications}
             onClick={() => void (notificationPermissionDenied ? handleOpenNotificationSettings() : handleEnableNotifications())}
             className={`${SETTINGS_SECONDARY_BUTTON_CLASS} text-left text-ink-700`}
           >
+            {isSavingNotifications && <ButtonSpinner />}
             <span>{notificationPermissionDenied ? "Open iPhone Settings" : "Enable notifications"}</span>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />
+            {!isSavingNotifications && <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-400" aria-hidden="true" />}
           </button>
         )}
         {notificationError && <p role="status" className="mt-3 dd-type-secondary text-alert-700">{notificationError}</p>}
@@ -867,7 +877,8 @@ export default function SettingsPage() {
                           className={`${SETTINGS_SECONDARY_BUTTON_CLASS} mt-2`}
                           aria-busy={restoring}
                         >
-                          {restoring ? "Checking Apple purchases…" : "Check Apple purchases"}
+                          {restoring && <ButtonSpinner />}
+                          Check Apple purchases
                         </button>
                       </div>
                     )}
@@ -1022,9 +1033,11 @@ export default function SettingsPage() {
                         type="button"
                         onClick={() => void finishAccountDeletion()}
                         disabled={isFinishingDeletion}
+                        aria-busy={isFinishingDeletion}
                         className="dd-btn dd-btn-primary mt-auto w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {isFinishingDeletion ? "Signing out…" : "Done"}
+                        {isFinishingDeletion && <ButtonSpinner className="h-5 w-5" />}
+                        Done
                       </button>
                     </>
                   ) : (
@@ -1063,9 +1076,11 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => void handleDeleteAccount()}
                           disabled={isDeletingAccount}
+                          aria-busy={isDeletingAccount}
                           className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-not-allowed"
                         >
-                          {isDeletingAccount ? "Deleting account…" : "Delete account"}
+                          {isDeletingAccount && <ButtonSpinner />}
+                          Delete account
                         </button>
                       </div>
                     </>
@@ -1140,9 +1155,11 @@ export default function SettingsPage() {
                       type="button"
                       onClick={handleLogout}
                       disabled={isLoggingOut}
+                      aria-busy={isLoggingOut}
                       className="dd-btn dd-btn-outline-alert w-full cursor-pointer"
                     >
-                      {isLoggingOut ? "Logging out…" : "Log out"}
+                      {isLoggingOut && <ButtonSpinner />}
+                      Log out
                     </button>
                   </div>
                 </div>

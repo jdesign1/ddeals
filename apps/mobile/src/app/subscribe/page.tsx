@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { SUBSCRIPTION_PRODUCT_IDS } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
 import { useAuth } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
@@ -293,7 +294,7 @@ export default function SubscribePage() {
                       className="dd-btn dd-btn-primary my-2 w-full cursor-pointer"
                     >
                       {busyProductId === selectedProduct.id ? (
-                        <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+                        <ButtonSpinner className="h-5 w-5" />
                       ) : user ? "Subscribe now" : "Create account to subscribe"}
                     </button>
                   )}

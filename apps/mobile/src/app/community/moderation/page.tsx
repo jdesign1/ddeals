@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import LoadingMascot from "@/components/LoadingMascot";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import { useAuth } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
 
@@ -240,9 +241,11 @@ export default function CommunityModerationPage() {
                       type="button"
                       onClick={() => void takeAction("dismiss_report", note.id, report.id)}
                       disabled={actionKey === `dismiss_report:${report.id}`}
+                      aria-busy={actionKey === `dismiss_report:${report.id}`}
                       className="mt-2 min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 disabled:opacity-50"
                     >
-                      {actionKey === `dismiss_report:${report.id}` ? "Saving…" : "Dismiss report"}
+                      {actionKey === `dismiss_report:${report.id}` && <ButtonSpinner className="mr-1.5 inline-block h-3.5 w-3.5 align-[-0.15em]" />}
+                      Dismiss report
                     </button>
                   </div>
                 ))}
@@ -267,14 +270,26 @@ export default function CommunityModerationPage() {
             {pendingConfirmation?.noteId === note.id ? (
               <>
                 <p className="basis-full text-sm font-semibold text-stone-700">Confirm {pendingConfirmation.action === "reject" ? "rejecting" : "hiding"} this note?</p>
-                <button type="button" onClick={() => void takeAction(pendingConfirmation.action, note.id)} disabled={actionKey !== null} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-50">Confirm</button>
+                <button type="button" onClick={() => void takeAction(pendingConfirmation.action, note.id)} disabled={actionKey !== null} aria-busy={actionKey === `${pendingConfirmation.action}:${note.id}`} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-50">
+                  {actionKey === `${pendingConfirmation.action}:${note.id}` && <ButtonSpinner />}
+                  Confirm
+                </button>
                 <button type="button" onClick={() => setPendingConfirmation(null)} disabled={actionKey !== null} className="dd-btn dd-btn-outline min-h-11 cursor-pointer disabled:opacity-50">Cancel</button>
               </>
             ) : (
               <>
-                <button type="button" onClick={() => void takeAction("approve", note.id)} disabled={actionKey !== null || note.status !== "pending"} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-50">Approve</button>
-                <button type="button" onClick={() => void takeAction("reject", note.id)} disabled={actionKey !== null || note.status !== "pending"} className="dd-btn dd-btn-outline min-h-11 cursor-pointer disabled:opacity-50">Reject</button>
-                <button type="button" onClick={() => void takeAction("hide", note.id)} disabled={actionKey !== null || note.status !== "approved"} className="dd-btn dd-btn-outline min-h-11 cursor-pointer disabled:opacity-50">Hide</button>
+                <button type="button" onClick={() => void takeAction("approve", note.id)} disabled={actionKey !== null || note.status !== "pending"} aria-busy={actionKey === `approve:${note.id}`} className="dd-btn dd-btn-primary min-h-11 cursor-pointer disabled:opacity-50">
+                  {actionKey === `approve:${note.id}` && <ButtonSpinner />}
+                  Approve
+                </button>
+                <button type="button" onClick={() => void takeAction("reject", note.id)} disabled={actionKey !== null || note.status !== "pending"} aria-busy={actionKey === `reject:${note.id}`} className="dd-btn dd-btn-outline min-h-11 cursor-pointer disabled:opacity-50">
+                  {actionKey === `reject:${note.id}` && <ButtonSpinner />}
+                  Reject
+                </button>
+                <button type="button" onClick={() => void takeAction("hide", note.id)} disabled={actionKey !== null || note.status !== "approved"} aria-busy={actionKey === `hide:${note.id}`} className="dd-btn dd-btn-outline min-h-11 cursor-pointer disabled:opacity-50">
+                  {actionKey === `hide:${note.id}` && <ButtonSpinner />}
+                  Hide
+                </button>
               </>
             )}
           </div>
@@ -287,9 +302,11 @@ export default function CommunityModerationPage() {
           type="button"
           onClick={() => void loadQueue(nextCursor, true)}
           disabled={loading}
+          aria-busy={loading}
           className="dd-btn dd-btn-outline min-h-11 cursor-pointer disabled:opacity-50"
         >
-          {loading ? "Loading more…" : nextQueue === "reports" ? "Load more reports" : "Load pending notes"}
+          {loading && <ButtonSpinner />}
+          {nextQueue === "reports" ? "Load more reports" : "Load pending notes"}
         </button>
       )}
     </main>

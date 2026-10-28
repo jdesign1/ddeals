@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
+import ButtonSpinner from "@/components/ButtonSpinner";
 import {
   canonicalStoreKey,
   describeFetchError,
@@ -34,7 +34,6 @@ import ShareListsSheet from "@/components/ShareListsSheet";
 import ListItemProductCard from "@/components/ListItemProductCard";
 import StickySubscriptionCta from "@/components/StickySubscriptionCta";
 import UnreadListItem from "@/components/UnreadListItem";
-import WatchlistUpdateSheet from "@/components/WatchlistUpdateSheet";
 import WatchlistUpgradePrompt from "@/components/WatchlistUpgradePrompt";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -133,7 +132,6 @@ export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const userId = user?.id;
-  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const {
     unreadListItemKeys,
@@ -156,7 +154,6 @@ export default function ListsPage() {
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
   const [isWatchlistUpgradePromptOpen, setIsWatchlistUpgradePromptOpen] = useState(false);
-  const [selectedWatchlistUpdate, setSelectedWatchlistUpdate] = useState<ReadonlyArray<UnreadListAlert> | null>(null);
   const watchlistVisitRecordedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -492,8 +489,9 @@ export default function ListsPage() {
           listId={sourceItem.list_id}
           productId={entry.productId}
           isUnread={!isLocked && isUnread}
+          updates={unreadUpdates}
           updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
-          onUpdateClick={isLocked ? undefined : () => setSelectedWatchlistUpdate(unreadUpdates)}
+          onUpdateClick={isLocked ? undefined : onDealAssessmentOpen}
         >
           {card && deal ? (
             <ListItemProductCard
@@ -713,18 +711,6 @@ export default function ListsPage() {
         </div>
       )}
 
-      <WatchlistUpdateSheet
-        open={selectedWatchlistUpdate !== null}
-        updates={selectedWatchlistUpdate ?? []}
-        onClose={() => setSelectedWatchlistUpdate(null)}
-        onOpenAssessment={() => {
-          const update = selectedWatchlistUpdate?.[0];
-          if (!update) return;
-          setSelectedWatchlistUpdate(null);
-          void markListItemViewed(update.list_id, update.list_item_id);
-          router.push(`/deal/${encodeURIComponent(update.product_id)}/${encodeURIComponent(update.store_name)}`);
-        }}
-      />
       <ShareListsSheet open={isShareSheetOpen} lists={watchlistItems.length ? [shareList] : []} itemsByList={shareItems} productMeta={productMeta} lowestPriceByProduct={lowestPriceByProduct} onClose={() => setIsShareSheetOpen(false)} />
       <WatchlistUpgradePrompt
         open={isWatchlistUpgradePromptOpen}
@@ -801,8 +787,9 @@ function ClearWatchlistSheet({
                   <button type="button" onClick={onClose} disabled={isClearing} className="dd-btn dd-btn-outline-muted w-full cursor-pointer">
                     Cancel
                   </button>
-                  <button type="button" onClick={onClear} disabled={isClearing} className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
-                    {isClearing ? "Clearing Watchlist…" : "Clear Watchlist"}
+                  <button type="button" onClick={onClear} disabled={isClearing} aria-busy={isClearing} className="dd-btn dd-btn-outline-alert w-full cursor-pointer disabled:cursor-wait disabled:opacity-60">
+                    {isClearing && <ButtonSpinner />}
+                    Clear Watchlist
                   </button>
                 </div>
               </div>
