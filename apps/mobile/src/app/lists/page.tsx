@@ -560,7 +560,7 @@ export default function ListsPage() {
 
       {loadingWatchlist ? (
         <WatchlistFilterSkeleton />
-      ) : (
+      ) : watchlistItems.length > 0 ? (
         <div className="watchlist-filter-bar">
           <div className="hide-scrollbar flex min-w-0 gap-1.5 overflow-x-auto px-5">
             <div className="shrink-0">
@@ -584,7 +584,7 @@ export default function ListsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {!loadingWatchlist && (
         <div className="sr-only" aria-live="polite">
