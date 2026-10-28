@@ -775,14 +775,15 @@ export default function DealAssessmentPage() {
     .filter((candidate, index, deals) =>
       deals.findIndex((other) => canonicalStoreKey(other.store) === canonicalStoreKey(candidate.store)) === index
     );
-  const cheaperRealSaverDeal = cheaperRealSaverDeals.length === 1 ? cheaperRealSaverDeals[0] : null;
-  const selectedDealIsUniqueLowestRealSaver =
+  const cheaperRealSaverDeal =
+    cheaperRealSaverDeals.length === 1 && getTrustedDealLocation(cheaperRealSaverDeals[0])
+      ? cheaperRealSaverDeals[0]
+      : null;
+  const selectedDealCanShowTrustedLocation =
     verdict === "Real Saver"
-    && rankingList.length > 1
-    && storesMatch(rankingList[0].store, selectedDeal.store)
-    && Math.round(rankingList[0].price * 100) === selectedDealCents
-    && Math.round(rankingList[1].price * 100) > selectedDealCents;
-  const locationDeal = cheaperRealSaverDeal || (selectedDealIsUniqueLowestRealSaver ? selectedDeal : null);
+    && cheaperRealSaverDeals.length === 0
+    && Boolean(getTrustedDealLocation(selectedDeal));
+  const locationDeal = cheaperRealSaverDeal || (selectedDealCanShowTrustedLocation ? selectedDeal : null);
   const locationLabel = locationDeal ? getTrustedDealLocation(locationDeal) : null;
   const locationDealUrl = locationDeal?.productUrl ?? null;
 
