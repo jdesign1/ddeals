@@ -176,10 +176,10 @@ function InfoSection({
 }) {
   return (
     <section className="rounded-3xl border border-stone-200/80 bg-white p-4" aria-labelledby={id}>
-      <div className="px-1">
+      <div className="border-b border-stone-200/80 px-1 pb-3">
         <h2 id={id} className="dd-type-section text-stone-900">{title}</h2>
       </div>
-      <div className="mt-3">{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
