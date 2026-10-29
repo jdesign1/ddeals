@@ -64,8 +64,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [entitlements, setEntitlements] = useState<SubscriptionEntitlementRecord[]>([]);
   const [products, setProducts] = useState<AppleSubscriptionProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  // This is the first authoritative entitlement read for the current user.
+  // Later refreshes (including native StoreKit reconciliation) run in the
+  // background and must not make the profile briefly lose its Plus badge.
   const [loading, setLoading] = useState(true);
-  const [nativeEntitlementsSyncedKey, setNativeEntitlementsSyncedKey] = useState<string | null>(null);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  const loadedUserIdRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorSource, setErrorSource] = useState<SubscriptionErrorSource | null>(null);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
@@ -96,7 +100,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const nativeEntitlementsSessionKey = nativeAvailable && user && session
     ? `${user.id}:${session.expires_at ?? ""}`
     : null;
-  const nativeEntitlementsLoading = nativeEntitlementsSessionKey !== null && nativeEntitlementsSyncedKey !== nativeEntitlementsSessionKey;
+  const subscriptionLoading = loading || Boolean(user && loadedUserId !== user.id);
 
   const refresh = useCallback(async () => {
     const requestId = refreshRequestRef.current + 1;
@@ -105,12 +109,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (!client || !user) {
       if (requestId === refreshRequestRef.current) {
         setEntitlements([]);
+        setLoadedUserId(null);
+        loadedUserIdRef.current = null;
         setLoading(false);
       }
       return [];
     }
 
-    setLoading(true);
+    if (loadedUserIdRef.current !== user.id) setLoading(true);
     try {
       const nextEntitlements = await fetchUserEntitlements(client);
       if (requestId !== refreshRequestRef.current) return null;
@@ -124,7 +130,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // temporary network or backend failure.
       return null;
     } finally {
-      if (requestId === refreshRequestRef.current) setLoading(false);
+      if (requestId === refreshRequestRef.current) {
+        setLoadedUserId(user.id);
+        loadedUserIdRef.current = user.id;
+        setLoading(false);
+      }
     }
   }, [clearError, client, setMappedSubscriptionError, user]);
 
@@ -152,7 +162,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (!nativeAvailable || !user || !session || !nativeEntitlementsSessionKey) return;
     let cancelled = false;
     let transactionHandle: { remove: () => Promise<void> } | undefined;
-    const syncKey = nativeEntitlementsSessionKey;
 
     void DodgySubscriptions.addListener("transactionUpdated", ({ transaction }) => {
       void verifyAppleSubscriptionTransaction(transaction, session.access_token, user.id)
@@ -174,9 +183,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       })
       .catch((syncError) => {
         if (!cancelled) setMappedSubscriptionError(syncError, "entitlement_sync");
-      })
-      .finally(() => {
-        if (!cancelled) setNativeEntitlementsSyncedKey(syncKey);
       });
     return () => {
       cancelled = true;
@@ -307,7 +313,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SubscriptionContextValue>(() => ({
     entitlements,
     isPremium,
-    loading: loading || nativeEntitlementsLoading,
+    loading: subscriptionLoading,
     error,
     products,
     productsLoading,
@@ -324,7 +330,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     refresh,
     purchase,
     restore,
-  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loading, nativeAvailable, nativeEntitlementsLoading, products, productsLoading, purchase, refresh, restore, restoring, router]);
+  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loadedUserId, loading, nativeAvailable, products, productsLoading, purchase, refresh, restore, restoring, router, subscriptionLoading]);
 
   return (
     <SubscriptionContext.Provider value={value}>
