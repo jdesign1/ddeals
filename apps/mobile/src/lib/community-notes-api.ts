@@ -55,11 +55,27 @@ export interface CommunityHelpfulVoteResult {
 export interface CommunityProfileSummary {
   tips_shared: number;
   helpful_received: number;
+  deal_detective_quiz_correct: number;
+  deal_detective_quiz_attempts: number;
   rank: number | null;
   contributor_count: number | null;
   city: string | null;
   favorite_store_branch: string | null;
   profile_quote: string | null;
+}
+
+function normaliseCommunityProfileSummary(profile: Partial<CommunityProfileSummary>): CommunityProfileSummary {
+  return {
+    tips_shared: typeof profile.tips_shared === "number" && Number.isFinite(profile.tips_shared) ? profile.tips_shared : 0,
+    helpful_received: typeof profile.helpful_received === "number" && Number.isFinite(profile.helpful_received) ? profile.helpful_received : 0,
+    deal_detective_quiz_correct: typeof profile.deal_detective_quiz_correct === "number" && Number.isFinite(profile.deal_detective_quiz_correct) ? profile.deal_detective_quiz_correct : 0,
+    deal_detective_quiz_attempts: typeof profile.deal_detective_quiz_attempts === "number" && Number.isFinite(profile.deal_detective_quiz_attempts) ? profile.deal_detective_quiz_attempts : 0,
+    rank: typeof profile.rank === "number" && Number.isFinite(profile.rank) ? profile.rank : null,
+    contributor_count: typeof profile.contributor_count === "number" && Number.isFinite(profile.contributor_count) ? profile.contributor_count : null,
+    city: typeof profile.city === "string" ? profile.city : null,
+    favorite_store_branch: typeof profile.favorite_store_branch === "string" ? profile.favorite_store_branch : null,
+    profile_quote: typeof profile.profile_quote === "string" ? profile.profile_quote : null,
+  };
 }
 
 export async function fetchCommunityPriceNotes(
@@ -205,7 +221,7 @@ export async function fetchCommunityProfileSummary(
     | { profile?: CommunityProfileSummary; error?: string }
     | null;
   if (!response.ok || !payload?.profile) throw new Error(payload?.error ?? "Community profile is unavailable right now.");
-  return payload.profile;
+  return normaliseCommunityProfileSummary(payload.profile);
 }
 
 export async function fetchCommunityPublicProfile(
@@ -220,5 +236,5 @@ export async function fetchCommunityPublicProfile(
     | { profile?: CommunityProfileSummary; error?: string }
     | null;
   if (!response.ok || !payload?.profile) throw new Error(payload?.error ?? "This shopper profile is unavailable right now.");
-  return payload.profile;
+  return normaliseCommunityProfileSummary(payload.profile);
 }

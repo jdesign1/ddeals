@@ -1,6 +1,6 @@
 "use client";
 
-import { Lightbulb, LoaderCircle, Medal, ThumbsUp, Trophy } from "lucide-react";
+import { BadgeCheck, Lightbulb, LoaderCircle, Medal, ThumbsUp, Trophy } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -22,7 +22,7 @@ export function CommunityProfileStats({
   isDark: boolean;
   showCommunityRank?: boolean;
 }) {
-  const detectiveRank = summary ? getCommunityDetectiveRank(summary.tips_shared, summary.helpful_received) : null;
+  const detectiveRank = summary ? getCommunityDetectiveRank(summary.tips_shared, summary.helpful_received, summary.deal_detective_quiz_correct) : null;
   const prefersReducedMotion = useReducedMotion();
 
   return (
@@ -53,7 +53,7 @@ export function CommunityProfileStats({
             transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
             className="h-full"
           >
-            <div className={isDark ? `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid h-full ${showCommunityRank ? "grid-cols-3" : "grid-cols-2"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
+            <div className={isDark ? `grid h-full ${showCommunityRank ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid h-full ${showCommunityRank ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
               <div className="px-3 text-center">
                 <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
                   <Lightbulb className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
@@ -67,6 +67,13 @@ export function CommunityProfileStats({
                   {summary?.helpful_received ?? 0}
                 </p>
                 <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Helpful votes</p>
+              </div>
+              <div className="px-3 text-center">
+                <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
+                  <BadgeCheck className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
+                  {summary?.deal_detective_quiz_correct ?? 0}
+                </p>
+                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Correct cases</p>
               </div>
               {showCommunityRank && (
                 <div className="px-3 text-center">

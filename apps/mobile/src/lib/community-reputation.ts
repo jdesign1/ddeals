@@ -2,11 +2,13 @@ export interface CommunityAuthorContribution {
   authorId: string;
   tipsShared: number;
   helpfulReceived: number;
+  quizCorrect?: number;
 }
 
 export interface CommunityReputation {
   tipsShared: number;
   helpfulReceived: number;
+  quizCorrect: number;
   rank: number | null;
   contributorCount: number;
 }
@@ -27,13 +29,15 @@ export interface CommunityDetectiveRank {
 }
 
 /**
- * Helpful votes are the quality signal; published tips add a smaller
- * experience signal. Both values come from approved community tips.
+ * Helpful votes are the strongest quality signal; published tips and verified
+ * Deal Detective cases add smaller experience signals. Quiz answers are kept
+ * separate from tip counts, but still contribute to the same rank ladder.
  */
-export function getCommunityDetectiveRank(tipsShared: number, helpfulReceived: number): CommunityDetectiveRank {
+export function getCommunityDetectiveRank(tipsShared: number, helpfulReceived: number, quizCorrect = 0): CommunityDetectiveRank {
   const normalizedTips = Math.max(0, Math.trunc(tipsShared));
   const normalizedHelpful = Math.max(0, Math.trunc(helpfulReceived));
-  const score = normalizedHelpful * 3 + normalizedTips;
+  const normalizedQuizCorrect = Math.max(0, Math.trunc(quizCorrect));
+  const score = normalizedHelpful * 3 + normalizedTips + normalizedQuizCorrect;
   const rank = COMMUNITY_DETECTIVE_RANKS.reduce(
     (current, candidate) => candidate.minimumScore <= score ? candidate : current,
     COMMUNITY_DETECTIVE_RANKS[0],
@@ -55,6 +59,7 @@ export function buildCommunityReputation(
       authorId: contribution.authorId,
       tipsShared: Math.max(0, Math.trunc(contribution.tipsShared)),
       helpfulReceived: Math.max(0, Math.trunc(contribution.helpfulReceived)),
+      quizCorrect: Math.max(0, Math.trunc(contribution.quizCorrect ?? 0)),
     }))
     .filter((contribution) => contribution.tipsShared > 0);
 
@@ -66,13 +71,14 @@ export function buildCommunityReputation(
 
   const current = normalized.find((contribution) => contribution.authorId === authorId);
   if (!current) {
-    return { tipsShared: 0, helpfulReceived: 0, rank: null, contributorCount: normalized.length };
+    return { tipsShared: 0, helpfulReceived: 0, quizCorrect: 0, rank: null, contributorCount: normalized.length };
   }
 
   const currentIndex = normalized.indexOf(current);
   return {
     tipsShared: current.tipsShared,
     helpfulReceived: current.helpfulReceived,
+    quizCorrect: current.quizCorrect,
     rank: currentIndex + 1,
     contributorCount: normalized.length,
   };

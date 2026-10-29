@@ -25,14 +25,14 @@ async function readPublicProfileFields(
 ) {
   const { data, error } = await accounts
     .from("profiles")
-    .select("city,favorite_store_branch,profile_quote")
+    .select("city,favorite_store_branch,profile_quote,deal_detective_quiz_correct,deal_detective_quiz_attempts")
     .eq("id", authorId)
     .maybeSingle();
 
   // Keep the stats endpoint backwards-compatible while the accounts migration
   // rolls out. The fields remain empty until the columns exist.
   if (error && (error.code === "42703" || /column .* does not exist/i.test(error.message))) {
-    return { city: null, favorite_store_branch: null, profile_quote: null };
+    return { city: null, favorite_store_branch: null, profile_quote: null, deal_detective_quiz_correct: 0, deal_detective_quiz_attempts: 0 };
   }
   if (error) throw error;
 
@@ -41,6 +41,8 @@ async function readPublicProfileFields(
     city: cleanPublicProfileField(data?.city, PUBLIC_PROFILE_FIELD_LIMITS.city),
     favorite_store_branch: cleanPublicProfileField(data?.favorite_store_branch, PUBLIC_PROFILE_FIELD_LIMITS.favorite_store_branch),
     profile_quote: quote && !containsPublicProfileContactDetails(quote) ? quote : null,
+    deal_detective_quiz_correct: Math.max(0, Number(data?.deal_detective_quiz_correct ?? 0)),
+    deal_detective_quiz_attempts: Math.max(0, Number(data?.deal_detective_quiz_attempts ?? 0)),
   };
 }
 
@@ -130,6 +132,9 @@ export async function GET(request: Request) {
       lastNoteId = data[data.length - 1]?.id ?? null;
       if (!lastNoteId) break;
     }
+
+    const targetContribution = contributionsByAuthor.get(targetAuthorId);
+    if (targetContribution) targetContribution.quizCorrect = publicProfileFields.deal_detective_quiz_correct;
 
     const profile = buildCommunityReputation(targetAuthorId, [...contributionsByAuthor.values()]);
     return Response.json({

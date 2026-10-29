@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -12,6 +12,7 @@ import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
+import { buildDealDetectiveQuizCase } from "@/lib/deal-detective-quiz";
 import { publishCheckDealsScrollToTop, subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
@@ -42,10 +43,10 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { isAnonymousSession, user, profile, profileLoading } = useAuth();
+  const { isAnonymousSession, user, profile, profileLoading, session } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
+  const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch, products } = useSearch();
   const {
     digest,
     popupEligible,
@@ -108,6 +109,12 @@ export default function AppHeader({
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
   const avatarInitial = profileDisplayName.charAt(0).toUpperCase();
   const profileAvatarLoading = Boolean(user && profileLoading && !profile);
+  const dealDetectiveQuizCase = useMemo(
+    () => digest
+      ? buildDealDetectiveQuizCase(products, digest, profile?.preferred_categories ?? [])
+      : null,
+    [digest, products, profile?.preferred_categories],
+  );
   const handleNewSpecialsClose = () => {
     setIsNewSpecialsModalOpen(false);
   };
@@ -205,6 +212,8 @@ export default function AppHeader({
           }}
           onSelectAllNewDeals={handleShowAllNewDeals}
           onSelectTopDeals={handleShowTopDeals}
+          quizCase={dealDetectiveQuizCase}
+          accessToken={session?.access_token ?? null}
         />
       )}
     </>
