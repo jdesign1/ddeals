@@ -63,6 +63,7 @@ import { compareLatestSpecials } from "@/lib/special-freshness";
 import { normalizeCategoryInterests } from "@/lib/category-interests";
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
+const FOR_YOU_CATEGORY_STORAGE_PREFIX = "dodgey-deals:for-you-category:v1";
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -293,6 +294,9 @@ export default function HomePage() {
   const worthAnotherLookStorageKey = session?.user?.id
     ? `${WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX}:${session.user.id}`
     : null;
+  const forYouCategoryStorageKey = session?.user?.id && !isAnonymousSession
+    ? `${FOR_YOU_CATEGORY_STORAGE_PREFIX}:${session.user.id}`
+    : null;
   const preferredCategories = useMemo(
     () => normalizeCategoryInterests(profile?.preferred_categories),
     [profile?.preferred_categories],
@@ -323,6 +327,18 @@ export default function HomePage() {
       setDismissedWorthAnotherLookKeys(new Set());
     }
   }, [worthAnotherLookStorageKey]);
+
+  useEffect(() => {
+    setActiveForYouCategory(null);
+    if (!forYouCategoryStorageKey) return;
+
+    try {
+      const stored = window.localStorage.getItem(forYouCategoryStorageKey);
+      if (stored) setActiveForYouCategory(stored);
+    } catch {
+      // The first preferred category remains the safe fallback when storage is unavailable.
+    }
+  }, [forYouCategoryStorageKey]);
 
   useEffect(() => {
     if (!accessToken || !catalogueLiveLoaded) return;
@@ -523,6 +539,18 @@ export default function HomePage() {
     if (!visibleForYouCategory) return;
     setDealCategoryFilter([visibleForYouCategory]);
     handleDealFilterChange("real");
+  };
+
+  const handleForYouCategorySelect = (category: string) => {
+    if (!preferredCategories.includes(category)) return;
+    setActiveForYouCategory(category);
+    if (!forYouCategoryStorageKey) return;
+
+    try {
+      window.localStorage.setItem(forYouCategoryStorageKey, category);
+    } catch {
+      // The in-memory selection still lasts for this visit when storage is unavailable.
+    }
   };
 
   const handleDealSortChange = (sortBy: DealSortBy) => {
@@ -804,7 +832,7 @@ export default function HomePage() {
                   categories={preferredCategories}
                   activeCategory={visibleForYouCategory}
                   deals={visibleForYouDeals}
-                  onSelectCategory={setActiveForYouCategory}
+                  onSelectCategory={handleForYouCategorySelect}
                   onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
                   onSeeAll={handleForYouSeeAll}
                 />
