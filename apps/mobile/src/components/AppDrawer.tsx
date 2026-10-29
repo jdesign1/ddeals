@@ -32,7 +32,7 @@ export default function AppDrawer() {
     completeSettingsNavigation,
     closeDrawer,
   } = useNavigationDrawer();
-  const { user, profile, loading, openAuthSheet, requestOnboardingTour } = useAuth();
+  const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadCount, unreadAlerts } = useNotifications();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -108,6 +108,7 @@ export default function AppDrawer() {
 
   const displayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "Your account";
   const avatarInitial = user ? displayName.charAt(0).toUpperCase() : null;
+  const accountCardLoading = loading || Boolean(user && profileLoading && !profile);
 
   return (
     <>
@@ -154,7 +155,7 @@ export default function AppDrawer() {
         </div>
 
         <div className="px-4 pb-4">
-          {loading ? (
+          {accountCardLoading ? (
             <div className="h-[76px] animate-pulse rounded-2xl bg-stone-100" aria-label="Loading account" />
           ) : user ? (
             <Link

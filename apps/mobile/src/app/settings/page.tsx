@@ -214,6 +214,7 @@ function ProfileDetailsSheet({
   profileEditError,
   profileName,
   profileInitial,
+  profileLoading,
   accountIdentifier,
   isPremium,
   subscriptionLoading,
@@ -235,6 +236,7 @@ function ProfileDetailsSheet({
   profileEditError: string | null;
   profileName: string;
   profileInitial: string;
+  profileLoading: boolean;
   accountIdentifier: string;
   isPremium: boolean;
   subscriptionLoading: boolean;
@@ -313,7 +315,9 @@ function ProfileDetailsSheet({
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6">
                   <div className="flex flex-col items-center text-center">
                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-300/30 shadow-lg">
-                      <span className="font-display text-4xl font-extrabold" aria-hidden="true">{profileInitial}</span>
+                      {profileLoading
+                        ? <span className="h-10 w-10 animate-pulse rounded-full bg-ink-950/20" aria-hidden="true" />
+                        : <span className="font-display text-4xl font-extrabold" aria-hidden="true">{profileInitial}</span>}
                     </div>
                     <div className="mt-4 inline-flex max-w-full items-center justify-center gap-2">
                       <h3 className="min-w-0 max-w-full truncate dd-type-section text-white">{profileName}</h3>
@@ -365,6 +369,7 @@ export default function SettingsPage() {
     session,
     profile,
     loading: authLoading,
+    profileLoading,
     signOut,
     updateProfile,
     updateCategoryInterests,
@@ -437,6 +442,7 @@ export default function SettingsPage() {
 
   const profileName = user ? getAccountDisplayName(user, profile) : "Dodgy Deal shopper";
   const profileInitial = profileName.trim().charAt(0).toUpperCase() || "D";
+  const profileAvatarLoading = Boolean(user && profileLoading && !profile);
   const accountEmail = getAccountEmailDisplay(user?.email);
   const accountSignInMethod = getAccountSignInMethodDisplay(user);
   const accountIdentifier = accountEmail === "-" ? accountSignInMethod : accountEmail;
@@ -622,7 +628,11 @@ export default function SettingsPage() {
           <div className="relative flex flex-col items-center text-center">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-fair-400 text-ink-950 ring-4 ring-fair-200/40 shadow-lg">
               <span className="font-display text-4xl font-extrabold" aria-hidden="true">
-                {user ? profileInitial : "D"}
+                {user
+                  ? profileAvatarLoading
+                    ? <span className="h-8 w-8 animate-pulse rounded-full bg-white/25" aria-hidden="true" />
+                    : profileInitial
+                  : "D"}
               </span>
             </div>
             <div className="mt-4 inline-flex max-w-full items-center justify-center gap-2">
@@ -1004,6 +1014,7 @@ export default function SettingsPage() {
         profileEditError={profileEditError}
         profileName={profileName}
         profileInitial={profileInitial}
+        profileLoading={profileAvatarLoading}
         accountIdentifier={accountIdentifier}
         isPremium={isPremium}
         subscriptionLoading={subscriptionLoading}

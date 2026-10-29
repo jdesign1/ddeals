@@ -42,7 +42,7 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { isAnonymousSession, user, profile } = useAuth();
+  const { isAnonymousSession, user, profile, profileLoading } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
   const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
@@ -107,6 +107,7 @@ export default function AppHeader({
   const isHeaderHidden = pathname === "/" && isHiddenOnCheckDeals;
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
   const avatarInitial = profileDisplayName.charAt(0).toUpperCase();
+  const profileAvatarLoading = Boolean(user && profileLoading && !profile);
   const handleNewSpecialsClose = () => {
     setIsNewSpecialsModalOpen(false);
   };
@@ -153,9 +154,9 @@ export default function AppHeader({
             <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2.5">
               <button type="button" id="global-header-menu-btn" aria-label={user ? "Open profile menu" : "Open menu"} aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${user ? "border-fair-600 bg-fair-600 text-white hover:bg-fair-700" : "border-stone-300 bg-white text-stone-800 hover:bg-stone-50"}`}>
                 {user ? (
-                  <span className="text-base font-bold text-white" aria-hidden="true">
-                    {avatarInitial}
-                  </span>
+                  profileAvatarLoading
+                    ? <span className="h-4 w-4 animate-pulse rounded-full bg-white/60" aria-hidden="true" />
+                    : <span className="text-base font-bold text-white" aria-hidden="true">{avatarInitial}</span>
                 ) : (
                   <Menu className="h-5 w-5" aria-hidden="true" />
                 )}
