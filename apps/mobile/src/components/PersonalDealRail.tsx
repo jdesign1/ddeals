@@ -6,10 +6,9 @@ import { getDealSnapshotAmount, type DealSnapshotKind } from "@dodgey-deals/shar
 import ProductListCard from "@/components/ProductListCard";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
 
-type PersonalRailTone = "new" | "watchlist" | "history";
+type PersonalRailTone = "watchlist" | "history";
 
 const toneStyles: Record<PersonalRailTone, { section: string; title: string; action: string }> = {
-  new: { section: "bg-ink-50", title: "text-ink-700", action: "text-ink-700 hover:text-ink-950" },
   watchlist: { section: "bg-fair-50", title: "text-fair-800", action: "text-fair-800 hover:text-fair-950" },
   history: { section: "bg-stone-50", title: "text-stone-900", action: "text-stone-700 hover:text-stone-950" },
 };

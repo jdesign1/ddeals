@@ -1,4 +1,5 @@
 import {
+  compareDealSnapshotEntries,
   getDealSnapshotAmount,
   groupCategory,
   matchesAnySelectedStore,
@@ -21,15 +22,33 @@ export interface CheckDealsRailItem {
   isNew?: boolean;
 }
 
-export const MIN_PERSONALISED_CATEGORY_PRODUCTS = 2;
-export const MAX_PERSONALISED_CATEGORY_PRODUCTS = 10;
+export const MAX_FOR_YOU_CATEGORY_PRODUCTS = 10;
 
-export interface PersonalisedCategoryDealRail {
-  category: string;
-  /** The compact, one-card-per-product preview shown on Check Deals. */
-  deals: CheckDealsRailItem[];
-  /** Every matching new-special key, retained for the full-results handoff. */
-  dealKeys: string[];
+/**
+ * Rank the current genuine specials for one of a shopper's saved categories.
+ * New-to-you items are promoted inside the persistent For you rail, but the
+ * rail remains useful after that new-special batch has been read.
+ */
+export function buildForYouCategoryDeals(
+  deals: readonly Pick<CheckDealsRailItem, "product" | "deal">[],
+  category: string,
+  newDealKeys: readonly string[] = [],
+): CheckDealsRailItem[] {
+  const newKeys = new Set(newDealKeys);
+  return deals
+    .filter(({ product }) => groupCategory(product.category, product.name) === category)
+    .map(({ product, deal }) => ({
+      product,
+      deal,
+      isNew: newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
+    }))
+    .sort((left, right) => {
+      const newDifference = Number(right.isNew) - Number(left.isNew);
+      return newDifference
+        || compareDealSnapshotEntries(left, right, "savings")
+        || left.product.name.localeCompare(right.product.name);
+    })
+    .slice(0, MAX_FOR_YOU_CATEGORY_PRODUCTS);
 }
 
 /**
@@ -161,64 +180,6 @@ export function buildNewSinceLastVisitDeals(
   return items
     .sort((left, right) => dealFreshness(right.deal) - dealFreshness(left.deal) || left.product.name.localeCompare(right.product.name))
     .slice(0, 20);
-}
-
-/**
- * Build small, meaningful category belts from a shopper's unread new-special
- * batch. We group before limiting, choose one offer per product for the
- * visible cards, and preserve every matching offer key for the full results.
- */
-export function buildPersonalisedCategoryDealRails(
-  products: readonly ProductCard[],
-  dealKeys: readonly string[],
-  selectedStores: readonly string[],
-  categories: readonly string[],
-): PersonalisedCategoryDealRail[] {
-  const requestedCategories = [...new Set(categories)];
-  const requested = new Set(requestedCategories);
-  const newKeys = new Set(dealKeys);
-  const cardsByCategory = new Map<string, CheckDealsRailItem[]>();
-  const keysByCategory = new Map<string, Set<string>>();
-
-  for (const category of requestedCategories) {
-    cardsByCategory.set(category, []);
-    keysByCategory.set(category, new Set());
-  }
-
-  for (const product of products) {
-    const category = groupCategory(product.category, product.name);
-    if (!requested.has(category)) continue;
-
-    const candidates = product.currentDeals.filter(
-      (deal) => deal.isOnSpecial
-        && matchesAnySelectedStore(deal.store, [...selectedStores])
-        && newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
-    );
-    if (candidates.length === 0) continue;
-
-    const categoryKeys = keysByCategory.get(category);
-    for (const deal of candidates) categoryKeys?.add(getNewSpecialDealKey(product.id, deal.store));
-
-    const best = candidates.reduce((currentBest, candidate) => {
-      const freshnessDifference = dealFreshness(candidate) - dealFreshness(currentBest);
-      if (freshnessDifference !== 0) return freshnessDifference > 0 ? candidate : currentBest;
-      return candidate.price < currentBest.price ? candidate : currentBest;
-    });
-    cardsByCategory.get(category)?.push({ product, deal: best, isNew: true });
-  }
-
-  return requestedCategories.flatMap((category) => {
-    const cards = cardsByCategory.get(category) ?? [];
-    if (cards.length < MIN_PERSONALISED_CATEGORY_PRODUCTS) return [];
-    const deals = [...cards]
-      .sort((left, right) => dealFreshness(right.deal) - dealFreshness(left.deal) || left.product.name.localeCompare(right.product.name))
-      .slice(0, MAX_PERSONALISED_CATEGORY_PRODUCTS);
-    return [{
-      category,
-      deals,
-      dealKeys: [...(keysByCategory.get(category) ?? [])],
-    }];
-  });
 }
 
 export function buildWatchlistSpecialDeals(

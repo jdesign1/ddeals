@@ -18,6 +18,7 @@ import {
 import MascotImage from "@/components/MascotImage";
 import CheckDealsSummary from "@/components/CheckDealsSummary";
 import PersonalDealRail from "@/components/PersonalDealRail";
+import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearch } from "@/lib/search-context";
@@ -27,7 +28,7 @@ import { getNewSpecialDealKey } from "@/lib/new-specials";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
-  buildPersonalisedCategoryDealRails,
+  buildForYouCategoryDeals,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getLatestPublishedAt,
@@ -276,6 +277,7 @@ export default function HomePage() {
   const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
   const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
   const categoryInterestsPromptedForRef = useRef<string | null>(null);
+  const [activeForYouCategory, setActiveForYouCategory] = useState<string | null>(null);
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
@@ -410,10 +412,6 @@ export default function HomePage() {
     : "Live data";
   const newDealKeySet = useMemo(() => new Set(newDealKeys), [newDealKeys]);
   const newDealsCount = digest?.total ?? 0;
-  const personalisedNewDealRails = useMemo(
-    () => buildPersonalisedCategoryDealRails(products, newDealKeys, selectedStores, preferredCategories),
-    [newDealKeys, preferredCategories, products, selectedStores],
-  );
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const previouslyCheckedDeals = useMemo(
     () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
@@ -443,6 +441,17 @@ export default function HomePage() {
     () => buildSnapshotDeals(products, selectedStores, "savings"),
     [products, selectedStores]
   );
+  const forYouCategoryDeals = useMemo(
+    () => preferredCategories.map((category) => ({
+      category,
+      deals: buildForYouCategoryDeals(allTopSavingsDeals, category, newDealKeys),
+    })),
+    [allTopSavingsDeals, newDealKeys, preferredCategories],
+  );
+  const visibleForYouCategory = activeForYouCategory && preferredCategories.includes(activeForYouCategory)
+    ? activeForYouCategory
+    : preferredCategories[0] ?? null;
+  const visibleForYouDeals = forYouCategoryDeals.find(({ category }) => category === visibleForYouCategory)?.deals ?? [];
   const allWorstDodgyDeals = useMemo(
     () => buildSnapshotDeals(products, selectedStores, "dodgy"),
     [products, selectedStores]
@@ -508,6 +517,12 @@ export default function HomePage() {
     setDealFilter(filter);
     setDealSortBy(getDefaultDealSort(filter));
     if (filter !== "all") setIsNewForYouFilter(false);
+  };
+
+  const handleForYouSeeAll = () => {
+    if (!visibleForYouCategory) return;
+    setDealCategoryFilter([visibleForYouCategory]);
+    handleDealFilterChange("real");
   };
 
   const handleDealSortChange = (sortBy: DealSortBy) => {
@@ -782,6 +797,16 @@ export default function HomePage() {
               language app-wide instead of border outlines. */}
           {dealFilter === "all" && (
             <>
+              {preferredCategories.length > 0 && visibleForYouCategory && (
+                <ForYouCategoryRail
+                  categories={preferredCategories}
+                  activeCategory={visibleForYouCategory}
+                  deals={visibleForYouDeals}
+                  onSelectCategory={setActiveForYouCategory}
+                  onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
+                  onSeeAll={handleForYouSeeAll}
+                />
+              )}
               <PersonalDealRail
                 id="previously-checked-rail"
                 title="Worth another look"
@@ -790,23 +815,6 @@ export default function HomePage() {
                 tone="history"
                 onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
               />
-              {personalisedNewDealRails.map(({ category, deals, dealKeys }) => (
-                <PersonalDealRail
-                  key={category}
-                  id={`new-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-rail`}
-                  title={`New in ${category}`}
-                  description="Fresh specials in a category you follow."
-                  deals={deals}
-                  tone="new"
-                  onSeeAll={dealKeys.length > deals.length
-                    ? () => openSearchForFilter("all", {
-                      focus: false,
-                      dealKeys,
-                      sortBy: "latest",
-                    })
-                    : undefined}
-                />
-              ))}
               <DealSnapshotRail
                 kind="savings"
                 deals={topSavingsDeals}
