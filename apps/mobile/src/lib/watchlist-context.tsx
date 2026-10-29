@@ -375,11 +375,16 @@ function WatchlistSelectionBar() {
                   type="button"
                   onClick={() => void commitSelection()}
                   disabled={isCommitting}
+                  aria-label={isCommitting ? "Adding to Watchlist" : "Add to Watchlist"}
                   aria-busy={isCommitting}
-                  className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-extrabold text-ink-900 transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+                  className="relative min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-extrabold text-ink-900 transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
                 >
-                  {isCommitting && <ButtonSpinner className="mr-1.5 inline-block h-4 w-4 align-[-0.15em]" />}
-                  Add to Watchlist
+                  {isCommitting ? (
+                    <>
+                      <span className="opacity-0" aria-hidden="true">Add to Watchlist</span>
+                      <ButtonSpinner className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2" />
+                    </>
+                  ) : "Add to Watchlist"}
                 </button>
                 <button
                   type="button"
