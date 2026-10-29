@@ -1,5 +1,6 @@
 "use client";
 
+import { Cog } from "lucide-react";
 import { getDealSnapshotAmount } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
@@ -29,9 +30,12 @@ export default function ForYouCategoryRail({
         <button
           type="button"
           onClick={onEditCategories}
-          className="shrink-0 cursor-pointer dd-type-control text-fair-800 underline underline-offset-4 transition-colors hover:text-fair-950"
+          aria-label="Edit deal categories"
+          aria-haspopup="dialog"
+          title="Edit deal categories"
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-fair-800 transition-colors hover:bg-white/70 hover:text-fair-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
         >
-          Edit
+          <Cog className="h-5 w-5" strokeWidth={2.2} aria-hidden="true" />
         </button>
       </div>
 

@@ -695,7 +695,7 @@ export default function HomePage() {
                 />
               </div>
               {dealFilter === "all" ? (
-                <div className="min-w-[8.75rem] shrink-0">
+                <div className="min-w-[7.5rem] shrink-0">
                   <CategoryPicker
                     label="Category"
                     selectedCategories={topDealsCategories}
@@ -709,7 +709,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 <>
-                  <div className="min-w-[8.75rem] shrink-0">
+                  <div className="min-w-[7.5rem] shrink-0">
                     <CategoryPicker
                       selectedCategories={dealCategoryFilter}
                       onChange={setDealCategoryFilter}
