@@ -88,7 +88,7 @@ interface SearchContextValue {
    * destination opens ready to browse without summoning the keyboard. */
   openSearchForFilter: (
     filter: DealFilter,
-    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy },
+    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy; category?: string },
   ) => void;
   /** Clears the temporary new-specials scope while keeping the search open. */
   clearNewSpecialsFilter: () => void;
@@ -102,6 +102,8 @@ interface SearchContextValue {
   cataloguePublicationComplete: boolean;
   /** Optional sort used only for the next fresh search opening. */
   searchSortOverride: CheckDealsSortBy | null;
+  /** Optional category used only for the next fresh search opening. */
+  searchCategoryOverride: string | null;
   /** Back arrow / dedicated close button -- clears the query AND exits,
    * same as the prototype's `handleClearSearch`. */
   closeSearch: () => void;
@@ -207,6 +209,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [cataloguePublicationKey, setCataloguePublicationKey] = useState<string | null>(null);
   const [cataloguePublicationComplete, setCataloguePublicationComplete] = useState(false);
   const [searchSortOverride, setSearchSortOverride] = useState<CheckDealsSortBy | null>(null);
+  const [searchCategoryOverride, setSearchCategoryOverride] = useState<string | null>(null);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -398,6 +401,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       cataloguePublicationKey,
       cataloguePublicationComplete,
       searchSortOverride,
+      searchCategoryOverride,
       query,
       setQuery,
       isActive,
@@ -422,6 +426,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setNewSpecialDealKeys(null);
         setNewSpecialsSearchMode("auto");
         setSearchSortOverride(null);
+        setSearchCategoryOverride(null);
         setPreserveSearchStateOnOpen(false);
         setFocusSearchOnOpen(true);
         setIsActive(true);
@@ -434,6 +439,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setNewSpecialsSearchMode(hasDealKeys ? "keys" : "all");
         setNewSpecialDealKeys(hasDealKeys ? options?.dealKeys ?? null : null);
         setSearchSortOverride(options?.sortBy ?? null);
+        setSearchCategoryOverride(options?.category ?? null);
         // The digest count spans every supermarket. Reset a previous search
         // preference here so its "View all" promise cannot land on a
         // smaller, hidden subset of the selected deals.
@@ -452,6 +458,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setNewSpecialDealKeys(null);
         setNewSpecialsSearchMode("auto");
         setSearchSortOverride(null);
+        setSearchCategoryOverride(null);
         setSelectedStores(["all"]);
         setDealFilter("all");
         setFocusSearchOnOpen(true);
@@ -482,7 +489,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
+    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already

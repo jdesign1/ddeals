@@ -268,6 +268,7 @@ export default function FullScreenSearch() {
     setDealFilter,
     newSpecialDealKeys,
     searchSortOverride,
+    searchCategoryOverride,
   } = useSearch();
   const { digest, markReviewed } = useNewSpecials();
   const { isGridLayout } = useCardLayout();
@@ -451,6 +452,9 @@ export default function FullScreenSearch() {
       const initialSort = searchSortOverride ?? getDefaultDealSort(dealFilter);
       setPopularSortBy(initialSort);
       setResultsSortBy(initialSort);
+      const initialCategoryFilter = searchCategoryOverride ? [searchCategoryOverride] : [];
+      setPopularCategoryFilter(initialCategoryFilter);
+      setResultsCategoryFilter(initialCategoryFilter);
     } else if (!isOpen) {
       setSessionNewSpecialDealKeys(null);
     }

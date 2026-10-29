@@ -537,8 +537,7 @@ export default function HomePage() {
 
   const handleForYouSeeAll = () => {
     if (!visibleForYouCategory) return;
-    setDealCategoryFilter([visibleForYouCategory]);
-    handleDealFilterChange("real");
+    openSearchForFilter("real", { focus: false, category: visibleForYouCategory });
   };
 
   const handleForYouCategorySelect = (category: string) => {
