@@ -676,6 +676,7 @@ export default function HomePage() {
                     categoryCounts={topDealsCategoryCounts}
                     emptyMessage="No Top Deals in this category right now."
                     singleCategoryLabel="1 category"
+                    align="left"
                   />
                 </div>
               ) : (
@@ -687,6 +688,7 @@ export default function HomePage() {
                       availableCategories={availableCategories}
                       categoryCounts={categoryCounts}
                       emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
+                      align="left"
                     />
                   </div>
                 </>

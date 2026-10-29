@@ -35,7 +35,7 @@ export default function ForYouCategoryRail({
         </button>
       </div>
 
-      <div className="hide-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Your deal categories">
+      <div className="hide-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 pt-1" role="tablist" aria-label="Your deal categories">
         {categories.map((category) => {
           const isActive = category === activeCategory;
           const tabId = `for-you-tab-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
