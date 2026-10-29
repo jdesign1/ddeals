@@ -615,6 +615,20 @@ export default function HomePage() {
           onOpenStoreDeals={handleSummaryStoreSelect}
         />
       )}
+      {!isSearchActive && !loadingProducts && !error && dealFilter === "all" && (
+        <>
+          {preferredCategories.length > 0 && visibleForYouCategory && (
+            <ForYouCategoryRail
+              categories={preferredCategories}
+              activeCategory={visibleForYouCategory}
+              deals={visibleForYouDeals}
+              onSelectCategory={handleForYouCategorySelect}
+              onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
+              onSeeAll={handleForYouSeeAll}
+            />
+          )}
+        </>
+      )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
           restyle session).
@@ -830,16 +844,6 @@ export default function HomePage() {
               language app-wide instead of border outlines. */}
           {dealFilter === "all" && (
             <>
-              {preferredCategories.length > 0 && visibleForYouCategory && (
-                <ForYouCategoryRail
-                  categories={preferredCategories}
-                  activeCategory={visibleForYouCategory}
-                  deals={visibleForYouDeals}
-                  onSelectCategory={handleForYouCategorySelect}
-                  onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
-                  onSeeAll={handleForYouSeeAll}
-                />
-              )}
               <PersonalDealRail
                 id="previously-checked-rail"
                 title="Worth another look"
