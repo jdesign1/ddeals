@@ -581,14 +581,18 @@ export default function HomePage() {
 
   const dismissCategoryInterests = async () => {
     setCategoryInterestsError(null);
+    // Dismissing is a navigation decision, not a save form submission. Close
+    // the sheet immediately and persist the prompt state in the background so
+    // a slow account request cannot make the bottom sheet feel stuck.
+    setIsCategoryInterestsSheetOpen(false);
     setIsSavingCategoryInterests(true);
     try {
       const result = await dismissCategoryInterestsPrompt();
       if (result.error) {
         setCategoryInterestsError("We couldn't save that choice. Please try again.");
+        setIsCategoryInterestsSheetOpen(true);
         return;
       }
-      setIsCategoryInterestsSheetOpen(false);
     } finally {
       setIsSavingCategoryInterests(false);
     }
