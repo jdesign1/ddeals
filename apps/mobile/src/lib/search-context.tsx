@@ -320,9 +320,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }, [shouldLoadCatalogue]);
 
   // Revalidate at foreground checkpoints instead of holding one database
-  // Realtime subscription per active client. The persisted marker cooldown in
-  // loadLiveProducts keeps these checks cheap, while a short jitter avoids
-  // synchronising a large group of clients after a resume or deploy.
+  // Realtime subscription per active client. The publication marker is
+  // browser/CDN-cacheable and the full catalogue is still fetched only when
+  // its version advances, while a short jitter avoids synchronising a large
+  // group of clients after a resume or deploy.
   useEffect(() => {
     let cancelled = false;
     let revalidation: Promise<void> | null = null;

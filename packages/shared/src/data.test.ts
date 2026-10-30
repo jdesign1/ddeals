@@ -1290,6 +1290,35 @@ test("loadLiveProducts: a warm IndexedDB cache hit checks the marker but skips t
   }
 });
 
+test("loadLiveProducts: a recent marker check does not hide a newly published batch", async () => {
+  const cachedProducts = [fakeProductCard("prompt-cache")];
+  const sourceUpdatedAt = Date.parse("2026-08-26T14:00:00Z");
+  await writeCatalogueCache(cachedProducts, sourceUpdatedAt);
+  await writeCataloguePublicationCheck(sourceUpdatedAt, Date.now());
+
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => [{ published_at: "2026-08-26T14:00:00Z" }],
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const result = await loadLiveProducts(fakeConfig("prompt-marker"));
+    assert.deepEqual(result, cachedProducts);
+    assert.equal(calls.length, 1, "a foreground checkpoint must re-check the small publication marker");
+    assert.ok(calls[0].includes("catalogue_publications"));
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("loadLiveProducts: prefers the CDN artifact and does not query Supabase", async () => {
   const products = [fakeProductCard("cdn-product")];
   const config = { ...fakeConfig("cdn-artifact"), catalogueUrl: "https://cdn.example.com/catalogue/latest.json" };

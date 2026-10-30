@@ -68,6 +68,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${inter.variable} ${manrope.variable} h-full bg-stone-100 antialiased`}
     >
       <head>
+        {/* Start the tiny publication check while the app shell hydrates. The
+            response is CDN/browser-cacheable and lets the first catalogue
+            load discover a completed scrape without waiting for JS startup. */}
+        <link
+          rel="preload"
+          href="/api/catalogue/version.json"
+          as="fetch"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL,GRAD,opsz,wght@0..1,0..200,20..48,100..700&icon_names=account_circle,app_registration,balance,check_circle,help_center,leaderboard,list_alt_add,play_circle,search,search_check_2,settings,warning,workspace_premium&display=block"

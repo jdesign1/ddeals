@@ -1368,7 +1368,7 @@ export async function buildCatalogueArtifact(config: SupabaseRestConfig): Promis
 }
 
 /**
- * An explicit publication invalidation means the marker cooldown must not
+ * An explicit publication invalidation means the marker cache must not
  * hide a newly published version. The timestamp also forces a fresh fetch if
  * an earlier asynchronous IndexedDB write has not completed yet.
  */
@@ -1607,11 +1607,18 @@ export const __liveProductsRefreshes = new Map<string, RefreshLiveProductsEntry>
 const LIVE_PRODUCTS_AUTO_REFRESH_MS = 6 * 60 * 60 * 1000;
 
 /**
- * Warm clients do not need to ask Supabase for the publication marker on
- * every route transition, visibility event, or back/forward-cache restore.
- * Manual refresh still bypasses this window through refreshLiveProducts().
+ * Warm clients still need to re-check the publication marker at foreground
+ * checkpoints so a newly published specials batch can reach the app promptly.
+ * The marker endpoint is already CDN/browser-cacheable for 60 seconds, so
+ * allowing this lightweight request through on each checkpoint does not turn
+ * every route transition into a Supabase query. The old ten-minute local
+ * gate made a new-deals popup wait behind a warm IndexedDB snapshot even
+ * after a completed scrape.
+ *
+ * Manual refresh still bypasses the marker cache through
+ * refreshLiveProducts().
  */
-export const CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS = 10 * 60 * 1000;
+export const CATALOGUE_PUBLICATION_MARKER_COOLDOWN_MS = 0;
 
 function loadLiveProductsDeduped(
   config: SupabaseRestConfig,
@@ -1647,7 +1654,7 @@ function loadLiveProductsDeduped(
  * session IndexedDB cache (`catalogue-cache.ts`, a direct port of
  * `Prototype/index.html`'s own egress fix) FIRST. A warm hit (same
  * browser, within its 6-hour TTL) skips the full catalogue network fetch while
- * the CDN version marker remains within its cooldown and unchanged --
+ * the CDN/browser-cached version marker remains unchanged --
  * `dodgy_deals` AND `buildMatchIndex()`'s canonical-product fetch, not just
  * one of them. Only on a miss does this fall through to the in-memory
  * dedup + real network fetch, then best-effort writes the result back to
