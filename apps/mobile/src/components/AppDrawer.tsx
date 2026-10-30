@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, X } from "lucide-react";
+import { Bell, ChevronDown, Gamepad2, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
@@ -268,9 +268,7 @@ export default function AppDrawer() {
               }}
               className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
             >
-              <span className="material-symbols-outlined text-[24px] leading-none text-fair-700" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
-                sports_esports
-              </span>
+              <Gamepad2 className="h-5 w-5 shrink-0 text-fair-700" aria-hidden="true" />
               Dodgy or not?
             </button>
           )}
