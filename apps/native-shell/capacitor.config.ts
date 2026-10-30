@@ -17,7 +17,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const configuredMobileAppUrl =
   process.env.CAPACITOR_SERVER_URL?.trim() ||
-  "https://dodgy-deal-mobile.vercel.app";
+  "https://app.dodgydeal.co.nz";
 
 let mobileAppUrl: string;
 try {
@@ -39,9 +39,10 @@ const config: CapacitorConfig = {
   // backgrounds so the iOS safe-area region never shows a colour seam.
   backgroundColor: "#faf8f4",
   server: {
-    // Set CAPACITOR_SERVER_URL to the deployed apps/mobile URL before syncing
-    // or archiving. The config intentionally has no fallback: an unreachable
-    // placeholder leaves Capacitor's launch splash visible forever.
+    // Set CAPACITOR_SERVER_URL to a preview or alternate deployed apps/mobile
+    // URL before syncing or archiving. The production fallback is the verified
+    // custom domain so consumer builds do not depend on a protected Vercel
+    // deployment hostname.
     url: mobileAppUrl,
     cleartext: false,
     // The native shell is remote-first, but this local page gives users a

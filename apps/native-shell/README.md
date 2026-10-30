@@ -5,7 +5,7 @@ Capacitor wrapper for the iOS/Android apps. No app logic lives here — it's a t
 ## iOS setup
 
 The iOS platform project is checked in under `ios/`. The wrapper defaults to
-the stable Vercel domain below. Set `CAPACITOR_SERVER_URL` only when switching
+the stable custom domain below. Set `CAPACITOR_SERVER_URL` only when switching
 to another preview or production deployment:
 
 ```bash
@@ -13,7 +13,7 @@ npm run sync:ios
 npm run open:ios
 ```
 
-The config defaults to `https://dodgy-deal-mobile.vercel.app`. Set
+The config defaults to `https://app.dodgydeal.co.nz`. Set
 `CAPACITOR_SERVER_URL` when switching to a different preview or production
 deployment. It rejects placeholder domains and non-HTTPS URLs so a build
 cannot be produced that hangs on the launch splash waiting for a site that
