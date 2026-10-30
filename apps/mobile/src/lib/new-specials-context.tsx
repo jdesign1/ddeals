@@ -5,6 +5,18 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { useSearch } from "./search-context";
 import {
+  buildDealDetectiveQuizCase,
+  clearStoredDealDetectiveCase,
+  clearStoredDealDetectivePlayedState,
+  createStoredDealDetectiveCase,
+  readStoredDealDetectiveCase,
+  readStoredDealDetectivePlayedState,
+  writeStoredDealDetectiveCase,
+  writeStoredDealDetectivePlayedState,
+  type DealDetectiveQuizCase,
+  type StoredDealDetectiveCase,
+} from "./deal-detective-quiz";
+import {
   clearNewSpecialsPending,
   createNewSpecialsPending,
   createNewSpecialsSnapshot,
@@ -12,6 +24,7 @@ import {
   getNewSpecialsStorageScope,
   getNewSpecialsSummaryFingerprint,
   isNewSpecialsPendingActive,
+  NEW_SPECIALS_PENDING_TTL_MS,
   NEW_SPECIALS_POPUP_STATE_VERSION,
   NEW_SPECIALS_POPUP_SUPPRESS_EVENT,
   createNewSpecialsPopupState,
@@ -32,13 +45,19 @@ import type { DealFilter } from "./deal-filters";
 
 interface NewSpecialsContextValue {
   digest: NewSpecialsSummary | null;
+  detectiveCase: DealDetectiveQuizCase | null;
+  hasUnplayedDetectiveCase: boolean;
   hasPendingDigest: boolean;
   popupEligible: boolean;
   popupSuppressedUntilHomeExit: boolean;
   openRequested: boolean;
+  detectiveCaseOpenRequested: boolean;
   requestOpen: () => void;
+  requestDetectiveCaseOpen: () => void;
   consumeOpenRequest: () => void;
+  consumeDetectiveCaseOpenRequest: () => void;
   markPopupShown: () => void;
+  markDetectiveCasePlayed: () => void;
   markReviewed: (dealKeys?: string[], filter?: DealFilter) => void;
 }
 
@@ -47,6 +66,8 @@ interface StoredNewSpecialsState {
   snapshot: NewSpecialsSnapshot | null;
   pending: NewSpecialsPending | null;
   popupState: NewSpecialsPopupState | null;
+  detectiveCase: StoredDealDetectiveCase | null;
+  detectiveCasePlayedPublicationKey: string | null;
 }
 
 const NewSpecialsContext = createContext<NewSpecialsContextValue | null>(null);
@@ -81,10 +102,11 @@ function baselineAfterReview(
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
-  const { user, loading: authLoading, isAnonymousSession } = useAuth();
+  const { user, profile, loading: authLoading, isAnonymousSession } = useAuth();
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
-  const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null });
+  const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null });
   const [openRequested, setOpenRequested] = useState(false);
+  const [detectiveCaseOpenRequested, setDetectiveCaseOpenRequested] = useState(false);
   const lastProcessedPublicationRef = useRef<string | null>(null);
   const [sessionPopupState, setSessionPopupState] = useState<NewSpecialsPopupState | null>(null);
   const [popupSuppressedUntilHomeExit, setPopupSuppressedUntilHomeExit] = useState(false);
@@ -112,8 +134,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       snapshot: readNewSpecialsSnapshot(scope),
       pending: hydratedPending,
       popupState: hydratedPopupState,
+      detectiveCase: readStoredDealDetectiveCase(scope),
+      detectiveCasePlayedPublicationKey: readStoredDealDetectivePlayedState(scope)?.publicationKey ?? null,
     });
     setOpenRequested(false);
+    setDetectiveCaseOpenRequested(false);
   }, [scope]);
 
   useEffect(() => {
@@ -155,6 +180,16 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // launch popup from racing the storage write on a cold load.
   const digest = activePending?.summary ?? null;
   const pendingDigest = activePending?.summary ?? null;
+  const storedDetectiveCase = storageReady && stored.detectiveCase && stored.detectiveCase.expiresAt > Date.now()
+    ? stored.detectiveCase
+    : null;
+  const detectiveCasePlayedPublicationKey = storageReady ? stored.detectiveCasePlayedPublicationKey : null;
+  const detectiveCase = storedDetectiveCase?.quizCase ?? null;
+  const currentQuizCase = useMemo(() => {
+    const summaryForCase = detectedSummary?.total ? detectedSummary : activePending?.summary;
+    if (!summaryForCase) return null;
+    return buildDealDetectiveQuizCase(products, summaryForCase, profile?.preferred_categories ?? []);
+  }, [activePending, detectedSummary, products, profile?.preferred_categories]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
@@ -168,7 +203,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
         lastProcessedPublicationRef.current = cataloguePublicationKey;
-        setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
+        setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
       }
       return;
     }
@@ -178,7 +213,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
         lastProcessedPublicationRef.current = cataloguePublicationKey;
-        setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
+        setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
       }
       return;
     }
@@ -193,7 +228,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
         lastProcessedPublicationRef.current = cataloguePublicationKey;
-        setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
+        setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
       }
       return;
     }
@@ -211,9 +246,59 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
     if (writeNewSpecialsPending(nextPending, scope)) {
       lastProcessedPublicationRef.current = cataloguePublicationKey;
-      setStored({ scope, snapshot: previousSnapshot, pending: nextPending, popupState: persistedPopupState });
+      setStored((current) => ({ ...current, scope, snapshot: previousSnapshot, pending: nextPending, popupState: persistedPopupState }));
     }
   }, [cataloguePublicationComplete, cataloguePublicationKey, currentSnapshot, detectedSummary, loadingProducts, pending, persistedPopupState, previousSnapshot, products.length, scope, storageReady]);
+
+  // The detective case is intentionally separate from the unread-deals batch.
+  // Reviewing or dismissing the batch must not make an unanswered case
+  // disappear, while a genuinely newer publication must replace the old case.
+  useEffect(() => {
+    if (!scope || !storageReady || !cataloguePublicationKey || !cataloguePublicationComplete) return;
+    const hasNewPublication = Boolean(detectedSummary?.total);
+    if (detectiveCasePlayedPublicationKey === cataloguePublicationKey) {
+      if (storedDetectiveCase) {
+        clearStoredDealDetectiveCase(scope);
+        setStored((current) => ({ ...current, detectiveCase: null }));
+      }
+      return;
+    }
+    if (hasNewPublication && storedDetectiveCase?.publicationKey !== cataloguePublicationKey && !currentQuizCase) {
+      clearStoredDealDetectiveCase(scope);
+      setStored((current) => ({ ...current, detectiveCase: null }));
+      return;
+    }
+    if (!currentQuizCase) return;
+    if (!hasNewPublication && storedDetectiveCase) return;
+    if (storedDetectiveCase?.publicationKey === cataloguePublicationKey) return;
+
+    const nextCase = createStoredDealDetectiveCase(
+      cataloguePublicationKey,
+      currentQuizCase,
+      hasNewPublication
+        ? Date.now() + NEW_SPECIALS_PENDING_TTL_MS
+        : activePending?.expiresAt ?? Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
+    );
+    if (writeStoredDealDetectiveCase(nextCase, scope)) {
+      clearStoredDealDetectivePlayedState(scope);
+      setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null }));
+    }
+  }, [activePending, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, scope, storageReady, storedDetectiveCase]);
+
+  useEffect(() => {
+    if (!scope || !storageReady || !stored.detectiveCase) return;
+    const remainingMs = stored.detectiveCase.expiresAt - Date.now();
+    if (remainingMs <= 0) {
+      clearStoredDealDetectiveCase(scope);
+      setStored((current) => ({ ...current, detectiveCase: null }));
+      return;
+    }
+    const expiryTimer = window.setTimeout(() => {
+      clearStoredDealDetectiveCase(scope);
+      setStored((current) => ({ ...current, detectiveCase: null }));
+    }, remainingMs);
+    return () => window.clearTimeout(expiryTimer);
+  }, [scope, storageReady, stored.detectiveCase]);
 
   // Retire an untouched batch while the app remains open too. Relaunches are
   // covered by the reconciliation effect above; this timer keeps the badge
@@ -225,7 +310,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       if (!latestPending || latestPending.batchId !== pending.batchId || isNewSpecialsPendingActive(latestPending)) return;
       const wroteSnapshot = writeNewSpecialsSnapshot(currentSnapshot, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
-      if (wroteSnapshot && clearedPending) setStored({ scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState });
+      if (wroteSnapshot && clearedPending) setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
     }, Math.max(0, pending.expiresAt - Date.now()));
     return () => window.clearTimeout(expiryTimer);
   }, [currentSnapshot, pending, persistedPopupState, scope, storageReady]);
@@ -240,9 +325,26 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!popupSuppressedUntilHomeExit && pendingDigest?.total && popupEligible) setOpenRequested(true);
   }, [pendingDigest, popupEligible, popupSuppressedUntilHomeExit]);
 
+  const requestDetectiveCaseOpen = useCallback(() => {
+    if (detectiveCase) setDetectiveCaseOpenRequested(true);
+  }, [detectiveCase]);
+
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
   }, []);
+
+  const consumeDetectiveCaseOpenRequest = useCallback(() => {
+    setDetectiveCaseOpenRequested(false);
+  }, []);
+
+  const markDetectiveCasePlayed = useCallback(() => {
+    if (!scope || !storageReady || !storedDetectiveCase) return;
+    const playedPublicationKey = storedDetectiveCase.publicationKey;
+    writeStoredDealDetectivePlayedState(playedPublicationKey, scope);
+    clearStoredDealDetectiveCase(scope);
+    setStored((current) => ({ ...current, detectiveCase: null, detectiveCasePlayedPublicationKey: playedPublicationKey }));
+    setDetectiveCaseOpenRequested(false);
+  }, [scope, storageReady, storedDetectiveCase]);
 
   const markPopupShown = useCallback(() => {
     if (!scope || !storageReady || !activePending) return;
@@ -254,12 +356,13 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     // claim the cooldown was persisted, but it prevents repeated interruption
     // during the current session.
     setSessionPopupState(nextPopupState);
-    setStored({
+    setStored((current) => ({
+      ...current,
       scope,
       snapshot: previousSnapshot,
       pending: wrotePending ? nextPending : activePending,
       popupState: wrotePopupState ? nextPopupState : persistedPopupState,
-    });
+    }));
     setOpenRequested(false);
   }, [activePending, persistedPopupState, previousSnapshot, scope, storageReady]);
 
@@ -273,7 +376,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const wroteSnapshot = writeNewSpecialsSnapshot(snapshotToKeep, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
-        setStored({ scope, snapshot: snapshotToKeep, pending: null, popupState: persistedPopupState });
+        setStored((current) => ({ ...current, scope, snapshot: snapshotToKeep, pending: null, popupState: persistedPopupState }));
       }
       setOpenRequested(false);
       return;
@@ -293,12 +396,13 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (wrotePending) {
       const wrotePopupState = writeNewSpecialsPopupState(nextPopupState, scope);
       setSessionPopupState(nextPopupState);
-      setStored({
+      setStored((current) => ({
+        ...current,
         scope,
         snapshot: nextBaseline,
         pending: nextPending,
         popupState: wrotePopupState ? nextPopupState : persistedPopupState,
-      });
+      }));
     }
     setOpenRequested(false);
   }, [activePending, currentSnapshot, persistedPopupState, popupState, previousSnapshot, scope, storageReady]);
@@ -306,16 +410,22 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NewSpecialsContextValue>(
     () => ({
       digest,
+      detectiveCase,
+      hasUnplayedDetectiveCase: Boolean(detectiveCase),
       hasPendingDigest: Boolean(pendingDigest?.total),
       popupEligible,
       popupSuppressedUntilHomeExit,
       openRequested,
+      detectiveCaseOpenRequested,
       requestOpen,
+      requestDetectiveCaseOpen,
       consumeOpenRequest,
+      consumeDetectiveCaseOpenRequest,
       markPopupShown,
       markReviewed,
+      markDetectiveCasePlayed,
     }),
-    [consumeOpenRequest, digest, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, requestOpen],
+    [consumeDetectiveCaseOpenRequest, consumeOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, requestDetectiveCaseOpen, requestOpen],
   );
 
   return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;

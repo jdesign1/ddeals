@@ -18,6 +18,7 @@ interface DealDetectiveQuizProps {
   accessToken: string | null;
   onBack: () => void;
   onViewDeals: () => void;
+  onPlayed: () => void;
 }
 
 function currency(value: number): string {
@@ -31,7 +32,7 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
   return "border-stone-200 bg-stone-50 opacity-70";
 }
 
-export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals }: DealDetectiveQuizProps) {
+export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onPlayed }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const chooseSide = (side: DealDetectiveQuizSide) => {
     if (answered || isSubmitting) return;
     setSelectedSide(side);
+    onPlayed();
     saveAnswer(side);
   };
 

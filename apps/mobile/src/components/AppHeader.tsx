@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -12,7 +12,6 @@ import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
-import { buildDealDetectiveQuizCase } from "@/lib/deal-detective-quiz";
 import { publishCheckDealsScrollToTop, subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
@@ -46,19 +45,24 @@ export default function AppHeader({
   const { isAnonymousSession, user, profile, profileLoading, session } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch, products } = useSearch();
+  const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
   const {
     digest,
     popupEligible,
     popupSuppressedUntilHomeExit,
     openRequested,
+    detectiveCase,
+    detectiveCaseOpenRequested,
     consumeOpenRequest,
+    consumeDetectiveCaseOpenRequest,
     markPopupShown,
+    markDetectiveCasePlayed,
   } = useNewSpecials();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
+  const [newSpecialsModalGameOnly, setNewSpecialsModalGameOnly] = useState(false);
 
   useEffect(() => {
     const syncSplashState = (isComplete = false) => setIsLaunchSplashFinished(isComplete || !document.querySelector(".launch-splash"));
@@ -74,18 +78,24 @@ export default function AppHeader({
     && (digest?.total ?? 0) > 0
     && pathname === "/"
     && !popupSuppressedUntilHomeExit;
+  const shouldPresentDetectiveCaseModal = isLaunchSplashFinished
+    && detectiveCaseOpenRequested
+    && Boolean(detectiveCase);
   useEffect(() => {
-    if (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible)) return;
+    const shouldPresentAutomatically = shouldPresentNewSpecialsModal && (openRequested || popupEligible);
+    if (!shouldPresentAutomatically && !shouldPresentDetectiveCaseModal) return;
     const presentationTimer = window.setTimeout(() => {
-      if (!openRequested && !popupEligible) return;
+      const openGameOnly = shouldPresentDetectiveCaseModal;
+      if (!openGameOnly && (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible))) return;
       consumeOpenRequest();
-      if (!digest) return;
-      const summaryToPresent = digest;
-      setNewSpecialsModalSummary(summaryToPresent);
+      consumeDetectiveCaseOpenRequest();
+      if (!openGameOnly && !digest) return;
+      setNewSpecialsModalSummary(digest);
+      setNewSpecialsModalGameOnly(openGameOnly);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [consumeOpenRequest, digest, openRequested, popupEligible, popupSuppressedUntilHomeExit, shouldPresentNewSpecialsModal]);
+  }, [consumeDetectiveCaseOpenRequest, consumeOpenRequest, detectiveCase, digest, openRequested, popupEligible, shouldPresentDetectiveCaseModal, shouldPresentNewSpecialsModal]);
 
   useEffect(() => {
     if (isNewSpecialsModalOpen && newSpecialsModalSummary) markPopupShown();
@@ -96,6 +106,7 @@ export default function AppHeader({
     setLastPathname(pathname);
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);
+    setNewSpecialsModalGameOnly(false);
   }
 
   const isContextHeader = Boolean(override) || CONTEXT_HEADER_ROUTES.includes(pathname) || pathname.startsWith("/deal/");
@@ -109,14 +120,9 @@ export default function AppHeader({
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
   const avatarInitial = profileDisplayName.charAt(0).toUpperCase();
   const profileAvatarLoading = Boolean(user && profileLoading && !profile);
-  const dealDetectiveQuizCase = useMemo(
-    () => digest
-      ? buildDealDetectiveQuizCase(products, digest, profile?.preferred_categories ?? [])
-      : null,
-    [digest, products, profile?.preferred_categories],
-  );
   const handleNewSpecialsClose = () => {
     setIsNewSpecialsModalOpen(false);
+    setNewSpecialsModalGameOnly(false);
   };
   const handleShowTopDeals = () => {
     setIsNewSpecialsModalOpen(false);
@@ -201,9 +207,9 @@ export default function AppHeader({
         </header>
       </div>
 
-      {newSpecialsModalSummary && (
+      {(newSpecialsModalSummary || (isNewSpecialsModalOpen && newSpecialsModalGameOnly)) && (
         <NewSpecialsModal
-          open={isNewSpecialsModalOpen && pathname === "/" && !popupSuppressedUntilHomeExit}
+          open={isNewSpecialsModalOpen && (newSpecialsModalGameOnly || pathname === "/") && !popupSuppressedUntilHomeExit}
           summary={newSpecialsModalSummary}
           onClose={handleNewSpecialsClose}
           onSelectFilter={(filter, dealKeys) => {
@@ -212,8 +218,10 @@ export default function AppHeader({
           }}
           onSelectAllNewDeals={handleShowAllNewDeals}
           onSelectTopDeals={handleShowTopDeals}
-          quizCase={dealDetectiveQuizCase}
+          quizCase={detectiveCase}
           accessToken={session?.access_token ?? null}
+          onPlayed={markDetectiveCasePlayed}
+          gameOnly={newSpecialsModalGameOnly}
         />
       )}
     </>

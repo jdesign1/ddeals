@@ -10,6 +10,7 @@ import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
+import { useNewSpecials } from "@/lib/new-specials-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 
 function alertFreshnessLabel(createdAt: string): string | null {
@@ -34,6 +35,7 @@ export default function AppDrawer() {
   } = useNavigationDrawer();
   const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadCount, unreadAlerts } = useNotifications();
+  const { hasUnplayedDetectiveCase, requestDetectiveCaseOpen } = useNewSpecials();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -257,6 +259,21 @@ export default function AppDrawer() {
               </span>
               How to use Dodgy Deal
             </button>
+          {hasUnplayedDetectiveCase && (
+            <button
+              type="button"
+              onClick={() => {
+                closeDrawer();
+                requestDetectiveCaseOpen();
+              }}
+              className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
+            >
+              <span className="material-symbols-outlined text-[24px] leading-none text-fair-700" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
+                sports_esports
+              </span>
+              Dodgy or not?
+            </button>
+          )}
           {!subscriptionLoading && !isPremium && (
             <Link href="/subscribe" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-fair-800 transition-colors hover:bg-fair-50">
               <span className="material-symbols-outlined text-[24px] leading-none" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">

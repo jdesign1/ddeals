@@ -11,23 +11,26 @@ import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 interface NewSpecialsModalProps {
   open: boolean;
-  summary: NewSpecialsSummary;
+  summary: NewSpecialsSummary | null;
   onClose: () => void;
   onSelectFilter: (filter: DealFilter, dealKeys: string[]) => void;
   onSelectAllNewDeals: (dealKeys: string[]) => void;
   onSelectTopDeals: () => void;
   quizCase: DealDetectiveQuizCase | null;
   accessToken: string | null;
+  onPlayed: () => void;
+  gameOnly?: boolean;
 }
 
-export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, onSelectTopDeals, quizCase, accessToken }: NewSpecialsModalProps) {
+export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, onSelectTopDeals, quizCase, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
   // Keep the shared viewport lock active until the exit animation finishes.
   // Otherwise the underlying page/nav becomes visible during the modal's
   // fade-and-scale exit, which reads as a flicker on iOS cold starts.
   const [isClosing, setIsClosing] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const hasNewSpecials = summary.total > 0;
-  const hasRatedSpecials = summary.realDeals > 0 || summary.dodgyDeals > 0;
+  const [showQuiz, setShowQuiz] = useState(gameOnly);
+  const [displayedQuizCase, setDisplayedQuizCase] = useState<DealDetectiveQuizCase | null>(quizCase);
+  const hasNewSpecials = (summary?.total ?? 0) > 0;
+  const hasRatedSpecials = (summary?.realDeals ?? 0) > 0 || (summary?.dodgyDeals ?? 0) > 0;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const quizTriggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -45,8 +48,19 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   }, [onClose, onSelectAllNewDeals, onSelectFilter, onSelectTopDeals]);
 
   useEffect(() => {
-    if (!open) setShowQuiz(false);
-  }, [open]);
+    if (!quizCase) return;
+    setDisplayedQuizCase(quizCase);
+  }, [quizCase]);
+
+  useEffect(() => {
+    if (!open) {
+      setShowQuiz(false);
+      setDisplayedQuizCase(null);
+      return;
+    }
+    if (quizCase) setDisplayedQuizCase(quizCase);
+    if (gameOnly) setShowQuiz(true);
+  }, [gameOnly, open, quizCase]);
 
   const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
 
@@ -148,15 +162,26 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 <span className="text-2xl leading-none" aria-hidden="true">×</span>
               </button>
 
-              {showQuiz && quizCase ? (
+              {showQuiz && displayedQuizCase ? (
                 <DealDetectiveQuiz
-                  quizCase={quizCase}
+                  quizCase={displayedQuizCase}
                   accessToken={accessToken}
                   onBack={() => {
+                    if (gameOnly) {
+                      handleClose();
+                      return;
+                    }
                     setShowQuiz(false);
                     window.requestAnimationFrame(() => quizTriggerRef.current?.focus());
                   }}
-                  onViewDeals={() => handleSelectAllNewDeals(summary.allDealKeys)}
+                  onViewDeals={() => {
+                    if (gameOnly || !summary) {
+                      handleClose();
+                      return;
+                    }
+                    handleSelectAllNewDeals(summary.allDealKeys);
+                  }}
+                  onPlayed={onPlayed}
                 />
               ) : (
                 <>
@@ -177,19 +202,19 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                       {!hasNewSpecials
                         ? "All caught up"
-                        : `${summary.total} new deal${summary.total === 1 ? "" : "s"} to inspect`}
+                        : `${summary?.total ?? 0} new deal${summary?.total === 1 ? "" : "s"} to inspect`}
                     </h2>
                     {!hasNewSpecials ? (
                       <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">No fresh deals just yet.</p>
                     ) : (
                       <>
                         <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">Are they real or dodgy?</p>
-                        <p className="mt-2 dd-type-meta dd-type-meta-strong text-stone-500">{summary.realDeals} Real Savers · {summary.dodgyDeals} Dodgy Deals</p>
+                        <p className="mt-2 dd-type-meta dd-type-meta-strong text-stone-500">{summary?.realDeals ?? 0} Real Savers · {summary?.dodgyDeals ?? 0} Dodgy Deals</p>
                       </>
                     )}
                   </div>
 
-                  {hasNewSpecials && (
+                  {hasNewSpecials && summary && (
                     <div className="mt-6 flex flex-col gap-3">
                       <button
                         type="button"

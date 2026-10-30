@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
-import { buildDealDetectiveQuizCase } from "./deal-detective-quiz.ts";
+import {
+  buildDealDetectiveQuizCase,
+  clearStoredDealDetectiveCase,
+  clearStoredDealDetectivePlayedState,
+  createStoredDealDetectiveCase,
+  readStoredDealDetectiveCase,
+  readStoredDealDetectivePlayedState,
+  writeStoredDealDetectiveCase,
+  writeStoredDealDetectivePlayedState,
+} from "./deal-detective-quiz.ts";
 
 function deal(overrides: Partial<CurrentDeal> = {}): CurrentDeal {
   return {
@@ -113,4 +122,46 @@ test("the case never pairs two verdicts from the same product", () => {
 
   assert.equal(result?.left.product.id, "other");
   assert.equal(result?.right.product.id, "shared");
+});
+
+test("a detective case is scoped, expires, and records the played publication", () => {
+  const products = [
+    product("real", "Real", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("dodgy", "Dodgy", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+  ];
+  const quizCase = buildDealDetectiveQuizCase(products, {
+    realDealKeys: ["real::newworld"],
+    dodgyDealKeys: ["dodgy::woolworths"],
+  });
+  assert.ok(quizCase);
+
+  const originalWindow = globalThis.window;
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+    },
+  });
+
+  try {
+    const storedCase = createStoredDealDetectiveCase("publication-1", quizCase, 2_000);
+    assert.equal(writeStoredDealDetectiveCase(storedCase, "user:user-1"), true);
+    assert.equal(readStoredDealDetectiveCase("user:user-1", 1_999)?.publicationKey, "publication-1");
+    assert.equal(readStoredDealDetectiveCase("user:user-1", 2_000), null);
+    assert.equal(readStoredDealDetectiveCase("device", 1_000), null);
+
+    assert.equal(writeStoredDealDetectivePlayedState("publication-1", "user:user-1"), true);
+    assert.equal(readStoredDealDetectivePlayedState("user:user-1")?.publicationKey, "publication-1");
+    assert.equal(clearStoredDealDetectiveCase("user:user-1"), true);
+    assert.equal(clearStoredDealDetectivePlayedState("user:user-1"), true);
+    assert.equal(readStoredDealDetectivePlayedState("user:user-1"), null);
+  } finally {
+    if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window;
+    else Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
+  }
 });

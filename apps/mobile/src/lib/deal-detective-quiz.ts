@@ -2,6 +2,10 @@ import { groupCategory, normalizeStoreKey, type CurrentDeal, type ProductCard } 
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 export const DEAL_DETECTIVE_QUIZ_VERSION = 1;
+export const DEAL_DETECTIVE_CASE_STORAGE_VERSION = 1;
+
+const DEAL_DETECTIVE_CASE_STORAGE_PREFIX = "dd-deal-detective-case-v1:";
+const DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX = "dd-deal-detective-played-v1:";
 
 export type DealDetectiveQuizSide = "left" | "right";
 export type DealDetectiveQuizKind = "real" | "dodgy";
@@ -21,6 +25,20 @@ export interface DealDetectiveQuizCase {
   right: DealDetectiveQuizCandidate;
 }
 
+export interface StoredDealDetectiveCase {
+  version: number;
+  /** The catalogue publication that produced this case. Newer publications replace it. */
+  publicationKey: string;
+  /** Keep abandoned cases from becoming a permanent profile-menu item. */
+  expiresAt: number;
+  quizCase: DealDetectiveQuizCase;
+}
+
+export interface StoredDealDetectivePlayedState {
+  version: number;
+  publicationKey: string;
+}
+
 export interface DealDetectiveQuizResult {
   already_recorded: boolean;
   correct: boolean;
@@ -32,6 +50,136 @@ export interface DealDetectiveQuizResult {
 
 export interface DealDetectiveQuizChallenge {
   challenge_token: string;
+}
+
+function scopedCaseStorageKey(scope: string): string {
+  return `${DEAL_DETECTIVE_CASE_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+function scopedPlayedStorageKey(scope: string): string {
+  return `${DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+function isQuizCandidate(value: unknown): value is DealDetectiveQuizCandidate {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<DealDetectiveQuizCandidate>;
+  return (
+    (candidate.side === "left" || candidate.side === "right")
+    && (candidate.kind === "real" || candidate.kind === "dodgy")
+    && typeof candidate.dealKey === "string"
+    && typeof candidate.category === "string"
+    && Boolean(candidate.product && typeof candidate.product === "object")
+    && Boolean(candidate.deal && typeof candidate.deal === "object")
+  );
+}
+
+function isDealDetectiveQuizCase(value: unknown): value is DealDetectiveQuizCase {
+  if (!value || typeof value !== "object") return false;
+  const quizCase = value as Partial<DealDetectiveQuizCase>;
+  return (
+    (quizCase.category === null || typeof quizCase.category === "string")
+    && isQuizCandidate(quizCase.left)
+    && isQuizCandidate(quizCase.right)
+  );
+}
+
+export function createStoredDealDetectiveCase(
+  publicationKey: string,
+  quizCase: DealDetectiveQuizCase,
+  expiresAt: number,
+): StoredDealDetectiveCase {
+  return {
+    version: DEAL_DETECTIVE_CASE_STORAGE_VERSION,
+    publicationKey,
+    expiresAt,
+    quizCase,
+  };
+}
+
+export function readStoredDealDetectiveCase(scope = "device", now = Date.now()): StoredDealDetectiveCase | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(scopedCaseStorageKey(scope));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredDealDetectiveCase>;
+    if (
+      parsed.version !== DEAL_DETECTIVE_CASE_STORAGE_VERSION
+      || typeof parsed.publicationKey !== "string"
+      || typeof parsed.expiresAt !== "number"
+      || parsed.expiresAt <= now
+      || !isDealDetectiveQuizCase(parsed.quizCase)
+    ) return null;
+    return {
+      version: DEAL_DETECTIVE_CASE_STORAGE_VERSION,
+      publicationKey: parsed.publicationKey,
+      expiresAt: parsed.expiresAt,
+      quizCase: parsed.quizCase,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredDealDetectiveCase(
+  storedCase: StoredDealDetectiveCase,
+  scope = "device",
+): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(scopedCaseStorageKey(scope), JSON.stringify(storedCase));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearStoredDealDetectiveCase(scope = "device"): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.removeItem(scopedCaseStorageKey(scope));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readStoredDealDetectivePlayedState(scope = "device"): StoredDealDetectivePlayedState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(scopedPlayedStorageKey(scope));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredDealDetectivePlayedState>;
+    if (parsed.version !== DEAL_DETECTIVE_CASE_STORAGE_VERSION || typeof parsed.publicationKey !== "string") return null;
+    return { version: DEAL_DETECTIVE_CASE_STORAGE_VERSION, publicationKey: parsed.publicationKey };
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredDealDetectivePlayedState(
+  publicationKey: string,
+  scope = "device",
+): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(
+      scopedPlayedStorageKey(scope),
+      JSON.stringify({ version: DEAL_DETECTIVE_CASE_STORAGE_VERSION, publicationKey }),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearStoredDealDetectivePlayedState(scope = "device"): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.removeItem(scopedPlayedStorageKey(scope));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function issueDealDetectiveChallenge(
