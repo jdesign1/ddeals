@@ -22,6 +22,7 @@ import {
   createNewSpecialsPending,
   createNewSpecialsSnapshot,
   canShowNewSpecialsPopup,
+  getNewSpecialDealKey,
   getNewSpecialsStorageScope,
   getNewSpecialsSummaryFingerprint,
   isNewSpecialsPendingActive,
@@ -194,11 +195,31 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const detectiveCasePlayedPublicationKey = storageReady ? stored.detectiveCasePlayedPublicationKey : null;
   const detectiveCasePlayedQuestionKind = storageReady ? stored.detectiveCasePlayedQuestionKind : null;
   const detectiveCase = storedDetectiveCase?.quizCase ?? null;
+  const testCaseSummary = useMemo(() => {
+    if (!isAnonymousSession) return null;
+    const realDealKeys: string[] = [];
+    const dodgyDealKeys: string[] = [];
+    for (const product of products) {
+      for (const deal of product.currentDeals) {
+        if (!deal.isOnSpecial) continue;
+        const dealKey = getNewSpecialDealKey(product.id, deal.store);
+        if (deal.dealType === "Real Deal") realDealKeys.push(dealKey);
+        if (deal.dealType === "Dodgy Deal") dodgyDealKeys.push(dealKey);
+      }
+    }
+    return { realDealKeys, dodgyDealKeys };
+  }, [isAnonymousSession, products]);
   const currentQuizCase = useMemo(() => {
-    const summaryForCase = detectedSummary?.total ? detectedSummary : activePending?.summary;
-    if (!summaryForCase) return null;
-    return buildDealDetectiveQuizCase(products, summaryForCase, profile?.preferred_categories ?? []);
-  }, [activePending, detectedSummary, products, profile?.preferred_categories]);
+    const summaries = [
+      detectedSummary?.total ? detectedSummary : activePending?.summary,
+      testCaseSummary,
+    ].filter((summary): summary is NonNullable<typeof summary> => Boolean(summary));
+    for (const summary of summaries) {
+      const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? []);
+      if (quizCase) return quizCase;
+    }
+    return null;
+  }, [activePending, detectedSummary, products, profile?.preferred_categories, testCaseSummary]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
