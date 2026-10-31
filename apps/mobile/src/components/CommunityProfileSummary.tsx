@@ -23,6 +23,11 @@ export function CommunityProfileStats({
   showCommunityRank?: boolean;
 }) {
   const detectiveRank = summary ? getCommunityDetectiveRank(summary.tips_shared, summary.helpful_received, summary.deal_detective_quiz_correct) : null;
+  const quizCorrect = summary?.deal_detective_quiz_correct ?? 0;
+  const quizAttempts = summary?.deal_detective_quiz_attempts ?? 0;
+  const quizAccuracy = quizAttempts > 0
+    ? `${Math.min(100, Math.round((quizCorrect / quizAttempts) * 100))}%`
+    : "—";
   const prefersReducedMotion = useReducedMotion();
 
   return (
@@ -36,7 +41,7 @@ export function CommunityProfileStats({
         )}
       </div>
 
-      <div className="mt-4 h-[5.5rem] overflow-hidden">
+      <div className="mt-4 min-h-[5.5rem]">
         {loading ? (
           <div className={isDark ? "flex h-full items-center justify-center text-white/65" : "flex h-full items-center justify-center text-stone-500"} role="status" aria-label="Loading shopper stats" aria-live="polite">
             <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -51,9 +56,9 @@ export function CommunityProfileStats({
             initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
-            className="h-full"
+            className="h-auto"
           >
-            <div className={isDark ? `grid h-full ${showCommunityRank ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"} divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3` : `grid h-full ${showCommunityRank ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"} divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3`}>
+            <div className={isDark ? "grid h-full grid-cols-2 divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3" : "grid h-full grid-cols-2 divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3"}>
               <div className="px-3 text-center">
                 <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
                   <Lightbulb className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
@@ -68,20 +73,26 @@ export function CommunityProfileStats({
                 </p>
                 <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Helpful votes</p>
               </div>
+            </div>
+            <div className={isDark ? "mt-3 grid grid-cols-2 divide-x divide-white/10 rounded-xl border border-white/10 bg-ink-950/30 py-3" : "mt-3 grid grid-cols-2 divide-x divide-stone-200 rounded-xl border border-stone-200 bg-white py-3"}>
               <div className="px-3 text-center">
                 <p className={isDark ? "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-white" : "flex items-center justify-center gap-1 font-display text-xl font-extrabold tabular-nums text-stone-900"}>
                   <BadgeCheck className={isDark ? "h-4 w-4 text-fair-300" : "h-4 w-4 text-fair-700"} aria-hidden="true" />
-                  {summary?.deal_detective_quiz_correct ?? 0}
+                  {quizCorrect}
                 </p>
-                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Correct cases</p>
+                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Cases solved</p>
               </div>
-              {showCommunityRank && (
-                <div className="px-3 text-center">
-                  <p className={isDark ? "font-display text-xl font-extrabold tabular-nums text-white" : "font-display text-xl font-extrabold tabular-nums text-stone-900"}>{summary?.rank ? `#${summary.rank}` : "—"}</p>
-                  <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Community rank</p>
-                </div>
-              )}
+              <div className="px-3 text-center">
+                <p className={isDark ? "font-display text-xl font-extrabold tabular-nums text-white" : "font-display text-xl font-extrabold tabular-nums text-stone-900"}>{quizAccuracy}</p>
+                <p className={isDark ? "mt-0.5 dd-type-meta text-white/65" : "mt-0.5 dd-type-meta text-stone-500"}>Case accuracy</p>
+              </div>
             </div>
+            {showCommunityRank && (
+              <div className={isDark ? "mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-ink-950/30 px-4 py-3" : "mt-3 flex items-center justify-between rounded-xl border border-stone-200 bg-white px-4 py-3"}>
+                <p className={isDark ? "dd-type-meta dd-type-meta-strong text-white/65" : "dd-type-meta dd-type-meta-strong text-stone-500"}>Community rank</p>
+                <p className={isDark ? "font-display text-lg font-extrabold tabular-nums text-white" : "font-display text-lg font-extrabold tabular-nums text-stone-900"}>{summary?.rank ? `#${summary.rank}` : "—"}</p>
+              </div>
+            )}
           </motion.div>
         )}
       </div>
