@@ -21,6 +21,7 @@ interface DealDetectiveQuizProps {
   onDone: () => void;
   onPlayed: () => void;
   showViewDealsButton?: boolean;
+  showBackButton?: boolean;
 }
 
 const CONFETTI_PIECES = [
@@ -73,7 +74,7 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
   return "border-stone-200 bg-stone-50 opacity-70";
 }
 
-export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true }: DealDetectiveQuizProps) {
+export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -113,6 +114,9 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
     const isSelected = selectedSide === side;
     const isCorrect = correctSide === side;
     const verdictLabel = candidate.kind === "real" ? "Real Saver" : "Dodgy Deal";
+    const verdictBadgeClass = candidate.kind === "dodgy" || (isSelected && !isCorrect)
+      ? "bg-alert-100 text-alert-900"
+      : "bg-fair-100 text-fair-900";
 
     return (
       <button
@@ -128,14 +132,13 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
           <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-1 dd-type-meta dd-type-meta-strong text-stone-700 shadow-xs">{side === "left" ? "A" : "B"}</span>
         </div>
         <div className="flex min-h-32 flex-1 flex-col p-3">
-          <div className="flex items-center gap-1.5">
-            <StoreLogoBadge store={candidate.deal.store} variant="compact" decorative />
-            <span className="min-w-0 truncate dd-type-meta text-stone-500">{candidate.deal.store}</span>
-          </div>
           <p className="mt-2 line-clamp-2 dd-type-control text-stone-900">{candidate.product.name}</p>
-          <p className="mt-auto pt-3 text-lg font-black tabular-nums text-stone-900">{currency(candidate.deal.price)}</p>
+          <div className="mt-auto flex items-center gap-2 pt-3">
+            <p className="text-lg font-black tabular-nums text-stone-900">{currency(candidate.deal.price)}</p>
+            <StoreLogoBadge store={candidate.deal.store} variant="compact" />
+          </div>
           {answered && (
-            <span className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-1 dd-type-meta dd-type-meta-strong ${isCorrect ? "bg-fair-100 text-fair-900" : isSelected ? "bg-alert-100 text-alert-900" : "bg-stone-200 text-stone-700"}`}>
+            <span className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-1 dd-type-meta dd-type-meta-strong ${verdictBadgeClass}`}>
               {isCorrect ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : isSelected ? <X className="h-3.5 w-3.5" aria-hidden="true" /> : null}
               {verdictLabel}
             </span>
@@ -149,11 +152,13 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
     <div className="relative flex flex-col">
       {correct && answered && <ConfettiBurst key={selectedSide} />}
 
-      <div className="pointer-events-none sticky top-0 z-40 h-0">
-        <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto absolute left-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-stone-600 shadow-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
-          <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-        </button>
-      </div>
+      {showBackButton && (
+        <div className="pointer-events-none sticky top-0 z-40 h-0">
+          <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto absolute left-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-stone-600 shadow-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+            <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       <div className="relative flex justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
@@ -189,12 +194,12 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
           {answered && (
             <div className={`rounded-2xl border px-4 py-3 ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}>
               <p className={`dd-type-control dd-type-control-strong ${correct ? "text-fair-900" : "text-alert-900"}`}>
-                {correct ? "Great call — you spotted it." : "Close call — the official verdict was different."}
+                {correct ? "Great call — you spotted it." : "Close call! Not quite."}
               </p>
               <p className="mt-1 dd-type-meta leading-4 text-stone-600">
                 {accessToken
                   ? scoreResult
-                    ? `${scoreResult.already_recorded ? "This case was already counted" : scoreResult.points_awarded > 0 ? "+1 detective point" : "No point this time"}. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far. Rank: ${scoreResult.detective_rank}.`
+                    ? `This case has been closed. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far. Rank: ${scoreResult.detective_rank}.`
                     : isSubmitting
                       ? "Saving your detective score…"
                       : "Your answer is being checked."

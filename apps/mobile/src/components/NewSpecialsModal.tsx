@@ -186,6 +186,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   onDone={handleClose}
                   onPlayed={onPlayed}
                   showViewDealsButton={!gameOnly}
+                  showBackButton={!gameOnly}
                 />
               ) : (
                 <>
