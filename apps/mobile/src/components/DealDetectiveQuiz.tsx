@@ -81,6 +81,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [currentRank, setCurrentRank] = useState<string | null>(null);
+  const [mascotReady, setMascotReady] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const backButtonRef = useRef<HTMLButtonElement>(null);
@@ -93,6 +94,10 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   useEffect(() => {
     backButtonRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    setMascotReady(false);
+  }, [quizCase.caseNumber]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -189,17 +194,27 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
-      <div className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl">
-        <MascotImage
-          src="/deal-detective-case-mascot.png"
-          darkSrc="/deal-detective-case-mascot.png"
-          alt="Dodgy Deal mascot comparing two deal case files at headquarters"
-          width={1254}
-          height={1254}
-          sizes="(max-width: 480px) 100vw, 432px"
-          unoptimized
-          className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
-        />
+      <div className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50">
+        <motion.div
+          initial={false}
+          animate={{ opacity: mascotReady ? 1 : 0 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="absolute inset-0"
+        >
+          <MascotImage
+            src="/deal-detective-case-mascot.png"
+            darkSrc="/deal-detective-case-mascot.png"
+            alt="Dodgy Deal mascot comparing two deal case files at headquarters"
+            width={1254}
+            height={1254}
+            sizes="(max-width: 480px) 100vw, 432px"
+            priority
+            unoptimized
+            onLoad={() => setMascotReady(true)}
+            onError={() => setMascotReady(true)}
+            className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
+          />
+        </motion.div>
       </div>
 
       <div className="flex flex-1 flex-col px-5">

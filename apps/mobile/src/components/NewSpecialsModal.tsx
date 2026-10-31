@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -160,7 +161,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   ref={closeButtonRef}
                   className={`pointer-events-auto absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-md transition-colors ${showQuiz && displayedQuizCase ? "bg-ink-900 text-white hover:bg-ink-800" : "bg-white text-stone-500 hover:bg-white hover:text-stone-900"}`}
                 >
-                  <span className="text-2xl leading-none" aria-hidden="true">×</span>
+                  <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
 
