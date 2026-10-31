@@ -232,6 +232,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.28, ease: "easeOut" }}
+            className="pt-14"
           >
             <CompactProductInfoCard
               productName={selectedCandidate.product.name}
@@ -267,17 +268,24 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
       </AnimatePresence>
 
       <div className="flex flex-1 flex-col px-5">
-        <div className="text-center">
-          <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">DETECTIVE CASE #{quizCase.caseNumber ?? 1}</p>
-          <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
-            {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
-          </h2>
-          <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
-            {questionKind === "real"
-              ? "Use your deal detective instincts and guess which deal is real"
-              : "Use your deal detective instincts and guess which deal is dodgy"}
-          </p>
-        </div>
+        {!showPriceHistory ? (
+          <div className="text-center">
+            <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">DETECTIVE CASE #{quizCase.caseNumber ?? 1}</p>
+            <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
+              {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
+            </h2>
+            <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
+              {questionKind === "real"
+                ? "Use your deal detective instincts and guess which deal is real"
+                : "Use your deal detective instincts and guess which deal is dodgy"}
+            </p>
+          </div>
+        ) : (
+          <>
+            <h2 id="new-specials-title" className="sr-only">Deal Detective price evidence</h2>
+            <p id="new-specials-description" className="sr-only">Review the selected item&apos;s current price against its 90-day price history.</p>
+          </>
+        )}
         <AnimatePresence mode="wait" initial={false}>
           {answered && !showPriceHistory ? (
             <motion.div
