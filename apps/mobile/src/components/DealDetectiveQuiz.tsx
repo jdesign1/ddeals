@@ -4,6 +4,7 @@ import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchPriceHistory90d, getAssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
+import CompactProductInfoCard from "@/components/CompactProductInfoCard";
 import MascotImage from "@/components/MascotImage";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ProductImage from "@/components/ProductImage";
@@ -103,7 +104,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const correctSide: DealDetectiveQuizSide = quizCase.left.kind === questionKind ? "left" : "right";
   const answered = selectedSide !== null;
   const correct = selectedSide === correctSide;
-  const rankLabel = scoreResult?.detective_rank ?? currentRank;
+  const rankLabel = accessToken ? scoreResult?.detective_rank ?? currentRank : null;
   const selectedCandidate = selectedSide === "left" ? quizCase.left : selectedSide === "right" ? quizCase.right : null;
   const mascotAnimationKey = `${quizCase.caseNumber ?? "case"}-${questionKind}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`;
 
@@ -116,10 +117,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   }, []);
 
   useEffect(() => {
-    if (!accessToken) {
-      setCurrentRank(null);
-      return;
-    }
+    if (!accessToken) return;
     const controller = new AbortController();
     fetchCommunityProfileSummary(accessToken, controller.signal)
       .then((summary) => {
@@ -226,27 +224,47 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
-      <div className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50">
-        <motion.div
-          key={mascotAnimationKey}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.34, ease: "easeOut" }}
-          className="absolute inset-0"
-        >
-          <MascotImage
-            src="/deal-detective-case-mascot.webp"
-            darkSrc="/deal-detective-case-mascot.webp"
-            alt="Dodgy Deal mascot comparing two deal case files at headquarters"
-            width={1254}
-            height={1254}
-            sizes="(max-width: 480px) 100vw, 432px"
-            priority
-            unoptimized
-            className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
-          />
-        </motion.div>
-      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {showPriceHistory && selectedCandidate ? (
+          <motion.div
+            key="selected-product-context"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+          >
+            <CompactProductInfoCard
+              productName={selectedCandidate.product.name}
+              productBrand={selectedCandidate.product.brand}
+              productImage={selectedCandidate.product.image}
+              productUnit={selectedCandidate.product.unit}
+              currentStore={selectedCandidate.deal.store}
+              currentPrice={selectedCandidate.deal.price}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key={mascotAnimationKey}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.34, ease: "easeOut" }}
+            className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50"
+          >
+            <MascotImage
+              src="/deal-detective-case-mascot.webp"
+              darkSrc="/deal-detective-case-mascot.webp"
+              alt="Dodgy Deal mascot comparing two deal case files at headquarters"
+              width={1254}
+              height={1254}
+              sizes="(max-width: 480px) 100vw, 432px"
+              priority
+              unoptimized
+              className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex flex-1 flex-col px-5">
         <div className="text-center">
