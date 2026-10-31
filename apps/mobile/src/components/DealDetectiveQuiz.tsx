@@ -186,14 +186,14 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
               : "Use your deal detective instincts and guess which deal is dodgy"}
           </p>
         </div>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false}>
           {answered ? (
             <motion.div
               key="answer-result"
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
               className={`mt-5 flex min-h-[13.5rem] flex-col justify-center rounded-2xl border px-5 py-6 text-center ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}
               role="status"
               aria-live="polite"
@@ -222,8 +222,8 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
               key="answer-choices"
               initial={{ opacity: 1 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
               className="mt-5 flex gap-3"
               role="group"
               aria-label="Deal Detective case choices"
