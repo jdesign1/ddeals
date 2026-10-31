@@ -170,7 +170,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   };
 
   return (
-    <div className="relative flex flex-col">
+    <div className="relative flex min-h-full flex-col">
       {correct && answered && <ConfettiBurst key={selectedSide} />}
 
       {showBackButton && (
@@ -202,7 +202,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         />
       </div>
 
-      <div className="px-5 pb-6">
+      <div className="flex flex-1 flex-col px-5">
         <div className="text-center">
           <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">DETECTIVE CASE #{quizCase.caseNumber ?? 1}</p>
           <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
@@ -222,7 +222,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
-              className={`mt-5 flex min-h-[13.5rem] flex-col justify-center rounded-2xl border px-5 py-6 text-center ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}
+              className={`mt-5 flex min-h-[8rem] flex-col justify-center rounded-2xl border px-5 py-4 text-center ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}
               role="status"
               aria-live="polite"
             >
@@ -263,13 +263,17 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </AnimatePresence>
 
         {answered ? (
-          <button type="button" onClick={onDone} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
-            Close case
-          </button>
+          <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
+            <button type="button" onClick={onDone} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
+              Close case
+            </button>
+          </div>
         ) : showViewDealsButton ? (
-          <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
-            Skip to new deals
-          </button>
+          <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
+            <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
+              Skip to new deals
+            </button>
+          </div>
         ) : null}
       </div>
     </div>
