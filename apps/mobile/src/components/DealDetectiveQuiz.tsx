@@ -144,11 +144,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
     <div className="relative flex flex-col">
       {correct && answered && <ConfettiBurst key={selectedSide} />}
 
-      <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
-        <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-      </button>
-
-      <div className="-mx-5 flex justify-center">
+      <div className="relative flex justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
           src="/deal-detective-case-mascot.png"
           darkSrc="/deal-detective-case-mascot.png"
@@ -157,61 +153,65 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
           height={1254}
           sizes="(max-width: 480px) 100vw, 432px"
           unoptimized
-          className="h-auto w-full max-w-none"
+          className="block h-auto w-full max-w-none"
         />
-      </div>
-
-      <div className="text-center">
-        <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">Deal Detective case</p>
-        <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
-          {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
-        </h2>
-        <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
-          {questionKind === "real"
-            ? "Use your deal detective instincts and guess which deal is real"
-            : "Use your deal detective instincts and guess which deal is dodgy"}
-        </p>
-      </div>
-
-      <div className="mt-5 flex gap-3" role="group" aria-label="Deal Detective case choices">
-        {renderChoice("left")}
-        {renderChoice("right")}
-      </div>
-
-      <div className="mt-4 min-h-16" aria-live="polite">
-        {answered && (
-          <div className={`rounded-2xl border px-4 py-3 ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}>
-            <p className={`dd-type-control dd-type-control-strong ${correct ? "text-fair-900" : "text-alert-900"}`}>
-              {correct ? "Great call — you spotted it." : "Close call — the official verdict was different."}
-            </p>
-            <p className="mt-1 dd-type-meta leading-4 text-stone-600">
-              {accessToken
-                ? scoreResult
-                  ? `${scoreResult.already_recorded ? "This case was already counted" : scoreResult.points_awarded > 0 ? "+1 detective point" : "No point this time"}. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far. Rank: ${scoreResult.detective_rank}.`
-                  : isSubmitting
-                    ? "Saving your detective score…"
-                    : "Your answer is being checked."
-                : <><LockKeyhole className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />Sign in to save your detective score.</>}
-            </p>
-            {saveError && <p className="mt-1 dd-type-meta text-alert-700" role="alert">{saveError}</p>}
-            {saveError && accessToken && selectedSide && (
-              <button type="button" onClick={() => saveAnswer(selectedSide)} className="mt-2 dd-type-meta dd-type-meta-strong text-ink-900 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
-                Try saving again
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {answered ? (
-        <button type="button" onClick={onDone} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
-          All done
+        <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="absolute left-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-stone-600 shadow-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+          <ChevronLeft className="h-6 w-6" aria-hidden="true" />
         </button>
-      ) : showViewDealsButton ? (
-        <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
-          Skip to new deals
-        </button>
-      ) : null}
+      </div>
+
+      <div className="px-5 pb-6">
+        <div className="text-center">
+          <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">DETECTIVE CASE #{quizCase.caseNumber ?? 1}</p>
+          <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
+            {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
+          </h2>
+          <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
+            {questionKind === "real"
+              ? "Use your deal detective instincts and guess which deal is real"
+              : "Use your deal detective instincts and guess which deal is dodgy"}
+          </p>
+        </div>
+        <div className="mt-5 flex gap-3" role="group" aria-label="Deal Detective case choices">
+          {renderChoice("left")}
+          {renderChoice("right")}
+        </div>
+
+        <div className="mt-4 min-h-16" aria-live="polite">
+          {answered && (
+            <div className={`rounded-2xl border px-4 py-3 ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}>
+              <p className={`dd-type-control dd-type-control-strong ${correct ? "text-fair-900" : "text-alert-900"}`}>
+                {correct ? "Great call — you spotted it." : "Close call — the official verdict was different."}
+              </p>
+              <p className="mt-1 dd-type-meta leading-4 text-stone-600">
+                {accessToken
+                  ? scoreResult
+                    ? `${scoreResult.already_recorded ? "This case was already counted" : scoreResult.points_awarded > 0 ? "+1 detective point" : "No point this time"}. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far. Rank: ${scoreResult.detective_rank}.`
+                    : isSubmitting
+                      ? "Saving your detective score…"
+                      : "Your answer is being checked."
+                  : <><LockKeyhole className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />Sign in to save your detective score.</>}
+              </p>
+              {saveError && <p className="mt-1 dd-type-meta text-alert-700" role="alert">{saveError}</p>}
+              {saveError && accessToken && selectedSide && (
+                <button type="button" onClick={() => saveAnswer(selectedSide)} className="mt-2 dd-type-meta dd-type-meta-strong text-ink-900 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+                  Try saving again
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {answered ? (
+          <button type="button" onClick={onDone} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
+            All done
+          </button>
+        ) : showViewDealsButton ? (
+          <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
+            Skip to new deals
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
   createStoredDealDetectiveCase,
+  nextDealDetectiveCaseNumber,
   readStoredDealDetectiveCase,
   readStoredDealDetectivePlayedState,
   writeStoredDealDetectiveCase,
@@ -140,12 +141,25 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       writeNewSpecialsPopupState(hydratedPopupState, scope);
     }
     const hydratedPlayedState = readStoredDealDetectivePlayedState(scope);
+    let hydratedDetectiveCase = readStoredDealDetectiveCase(scope);
+    // Older stored cases predate the shopper-facing case number. Assign one
+    // once during hydration so the next profile replay continues the sequence.
+    if (hydratedDetectiveCase && !hydratedDetectiveCase.quizCase.caseNumber) {
+      hydratedDetectiveCase = {
+        ...hydratedDetectiveCase,
+        quizCase: {
+          ...hydratedDetectiveCase.quizCase,
+          caseNumber: nextDealDetectiveCaseNumber(scope),
+        },
+      };
+      writeStoredDealDetectiveCase(hydratedDetectiveCase, scope);
+    }
     setStored({
       scope,
       snapshot: readNewSpecialsSnapshot(scope),
       pending: hydratedPending,
       popupState: hydratedPopupState,
-      detectiveCase: readStoredDealDetectiveCase(scope),
+      detectiveCase: hydratedDetectiveCase,
       detectiveCasePlayedPublicationKey: hydratedPlayedState?.publicationKey ?? null,
       detectiveCasePlayedQuestionKind: hydratedPlayedState?.questionKind ?? null,
     });
@@ -318,6 +332,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
         ? Date.now() + NEW_SPECIALS_PENDING_TTL_MS
         : activePending?.expiresAt ?? Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
       questionKind,
+      nextDealDetectiveCaseNumber(scope),
     );
     if (writeStoredDealDetectiveCase(nextCase, scope)) {
       clearStoredDealDetectivePlayedState(scope);
@@ -394,6 +409,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       currentQuizCase,
       Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
       detectiveCasePlayedQuestionKind ? alternateQuestionKind(detectiveCasePlayedQuestionKind) : "real",
+      nextDealDetectiveCaseNumber(scope),
     );
     if (!writeStoredDealDetectiveCase(nextCase, scope)) return;
     clearStoredDealDetectivePlayedState(scope);

@@ -6,6 +6,7 @@ export const DEAL_DETECTIVE_CASE_STORAGE_VERSION = 1;
 
 const DEAL_DETECTIVE_CASE_STORAGE_PREFIX = "dd-deal-detective-case-v1:";
 const DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX = "dd-deal-detective-played-v1:";
+const DEAL_DETECTIVE_CASE_NUMBER_STORAGE_PREFIX = "dd-deal-detective-case-number-v1:";
 
 export type DealDetectiveQuizSide = "left" | "right";
 export type DealDetectiveQuizKind = "real" | "dodgy";
@@ -22,6 +23,8 @@ export interface DealDetectiveQuizCandidate {
 
 export interface DealDetectiveQuizCase {
   category: string | null;
+  /** A shopper-facing sequence number for the current detective case. */
+  caseNumber?: number;
   /** Which verdict the current case asks the shopper to identify. */
   questionKind?: DealDetectiveQuestionKind;
   left: DealDetectiveQuizCandidate;
@@ -64,6 +67,10 @@ function scopedPlayedStorageKey(scope: string): string {
   return `${DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
 }
 
+function scopedCaseNumberStorageKey(scope: string): string {
+  return `${DEAL_DETECTIVE_CASE_NUMBER_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
 function isQuizCandidate(value: unknown): value is DealDetectiveQuizCandidate {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<DealDetectiveQuizCandidate>;
@@ -82,6 +89,7 @@ function isDealDetectiveQuizCase(value: unknown): value is DealDetectiveQuizCase
   const quizCase = value as Partial<DealDetectiveQuizCase>;
   return (
     (quizCase.category === null || typeof quizCase.category === "string")
+    && (quizCase.caseNumber === undefined || (Number.isSafeInteger(quizCase.caseNumber) && quizCase.caseNumber > 0))
     && (quizCase.questionKind === undefined || quizCase.questionKind === "real" || quizCase.questionKind === "dodgy")
     && isQuizCandidate(quizCase.left)
     && isQuizCandidate(quizCase.right)
@@ -93,13 +101,26 @@ export function createStoredDealDetectiveCase(
   quizCase: DealDetectiveQuizCase,
   expiresAt: number,
   questionKind: DealDetectiveQuestionKind = quizCase.questionKind ?? "real",
+  caseNumber = quizCase.caseNumber ?? 1,
 ): StoredDealDetectiveCase {
   return {
     version: DEAL_DETECTIVE_CASE_STORAGE_VERSION,
     publicationKey,
     expiresAt,
-    quizCase: { ...quizCase, questionKind },
+    quizCase: { ...quizCase, caseNumber, questionKind },
   };
+}
+
+export function nextDealDetectiveCaseNumber(scope = "device"): number {
+  if (typeof window === "undefined") return 1;
+  try {
+    const storedValue = Number(window.localStorage.getItem(scopedCaseNumberStorageKey(scope)));
+    const nextValue = Number.isSafeInteger(storedValue) && storedValue > 0 ? storedValue + 1 : 1;
+    window.localStorage.setItem(scopedCaseNumberStorageKey(scope), String(nextValue));
+    return nextValue;
+  } catch {
+    return 1;
+  }
 }
 
 export function readStoredDealDetectiveCase(scope = "device", now = Date.now()): StoredDealDetectiveCase | null {

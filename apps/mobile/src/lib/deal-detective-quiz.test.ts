@@ -6,6 +6,7 @@ import {
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
   createStoredDealDetectiveCase,
+  nextDealDetectiveCaseNumber,
   readStoredDealDetectiveCase,
   readStoredDealDetectivePlayedState,
   writeStoredDealDetectiveCase,
@@ -149,6 +150,8 @@ test("a detective case is scoped, expires, and records the played publication", 
   });
 
   try {
+    assert.equal(nextDealDetectiveCaseNumber("user:user-1"), 1);
+    assert.equal(nextDealDetectiveCaseNumber("user:user-1"), 2);
     const storedCase = createStoredDealDetectiveCase("publication-1", quizCase, 2_000, "dodgy");
     assert.equal(storedCase.quizCase.questionKind, "dodgy");
     assert.equal(writeStoredDealDetectiveCase(storedCase, "user:user-1"), true);

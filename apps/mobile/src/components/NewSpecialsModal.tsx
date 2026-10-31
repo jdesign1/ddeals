@@ -150,14 +150,14 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-1/2 mx-auto flex max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-stone-200 px-5 pb-6 pt-4 shadow-2xl"
+              className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-1/2 mx-auto flex max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
               <button
                 type="button"
                 onClick={handleClose}
                 aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                 ref={closeButtonRef}
-                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-md transition-colors hover:bg-white hover:text-stone-900"
               >
                 <span className="text-2xl leading-none" aria-hidden="true">×</span>
               </button>
