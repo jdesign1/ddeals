@@ -3,14 +3,18 @@
 import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { fetchPriceHistory90d, getAssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
+import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { fetchCommunityProfileSummary } from "@/lib/community-notes-api";
 import { getCommunityDetectiveRank } from "@/lib/community-reputation";
+import { supabaseConfig } from "@/lib/config";
 import {
   issueDealDetectiveChallenge,
   submitDealDetectiveQuiz,
+  type DealDetectiveQuizCandidate,
   type DealDetectiveQuizCase,
   type DealDetectiveQuizResult,
   type DealDetectiveQuizSide,
@@ -44,6 +48,14 @@ const CONFETTI_PIECES = [
   { left: 91, x: -44, y: "26rem", rotation: 50, color: "#22c55e", delay: 105 },
   { left: 97, x: 24, y: "30rem", rotation: -44, color: "#ec4899", delay: 285 },
 ] as const;
+
+const PRICE_HISTORY_REVEAL_DELAY_MS = 1_300;
+
+interface SelectedPriceHistory {
+  loading: boolean;
+  points: PriceHistoryPoint[];
+  error: string | null;
+}
 
 function ConfettiBurst() {
   return (
@@ -84,15 +96,23 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const [mascotReady, setMascotReady] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
+  const [selectedPriceHistory, setSelectedPriceHistory] = useState<SelectedPriceHistory>({ loading: false, points: [], error: null });
   const backButtonRef = useRef<HTMLButtonElement>(null);
+  const priceHistoryRevealTimeoutRef = useRef<number | null>(null);
   const questionKind = quizCase.questionKind ?? "real";
   const correctSide: DealDetectiveQuizSide = quizCase.left.kind === questionKind ? "left" : "right";
   const answered = selectedSide !== null;
   const correct = selectedSide === correctSide;
   const rankLabel = scoreResult?.detective_rank ?? currentRank;
+  const selectedCandidate = selectedSide === "left" ? quizCase.left : selectedSide === "right" ? quizCase.right : null;
 
   useEffect(() => {
     backButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => () => {
+    if (priceHistoryRevealTimeoutRef.current !== null) window.clearTimeout(priceHistoryRevealTimeoutRef.current);
   }, []);
 
   useEffect(() => {
@@ -128,11 +148,27 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
       .finally(() => setIsSubmitting(false));
   };
 
+  const loadSelectedPriceHistory = (candidate: DealDetectiveQuizCandidate) => {
+    const { sourceProductId, sourceStoreId } = candidate.deal;
+    if (!sourceProductId || !sourceStoreId) {
+      setSelectedPriceHistory({ loading: false, points: [], error: "history-unavailable" });
+      return;
+    }
+
+    setSelectedPriceHistory({ loading: true, points: [], error: null });
+    void fetchPriceHistory90d(supabaseConfig, sourceProductId, sourceStoreId)
+      .then((points) => setSelectedPriceHistory({ loading: false, points, error: null }))
+      .catch(() => setSelectedPriceHistory({ loading: false, points: [], error: "history-unavailable" }));
+  };
+
   const chooseSide = (side: DealDetectiveQuizSide) => {
     if (answered || isSubmitting) return;
+    const candidate = side === "left" ? quizCase.left : quizCase.right;
     setSelectedSide(side);
     onPlayed();
     saveAnswer(side);
+    loadSelectedPriceHistory(candidate);
+    priceHistoryRevealTimeoutRef.current = window.setTimeout(() => setShowPriceHistory(true), PRICE_HISTORY_REVEAL_DELAY_MS);
   };
 
   const renderChoice = (side: DealDetectiveQuizSide) => {
@@ -229,8 +265,8 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
               : "Use your deal detective instincts and guess which deal is dodgy"}
           </p>
         </div>
-        <AnimatePresence mode="popLayout" initial={false}>
-          {answered ? (
+        <AnimatePresence mode="wait" initial={false}>
+          {answered && !showPriceHistory ? (
             <motion.div
               key="answer-result"
               initial={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -260,6 +296,31 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
                 </button>
               )}
             </motion.div>
+          ) : answered && selectedCandidate ? (
+            <motion.section
+              key="selected-price-history"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.36, ease: "easeOut" }}
+              className="mt-5 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs"
+              aria-label={`Price history evidence for ${selectedCandidate.product.name}`}
+            >
+              <p className="px-1 pb-2 text-center dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-stone-500">
+                Price history evidence
+              </p>
+              <PriceHistoryChart
+                points={selectedPriceHistory.points}
+                currentPrice={selectedCandidate.deal.price}
+                currentStore={selectedCandidate.deal.store}
+                currentIsSpecial={selectedCandidate.deal.isOnSpecial}
+                comparisonPrice={selectedCandidate.deal.originalPrice}
+                loading={selectedPriceHistory.loading}
+                error={selectedPriceHistory.error}
+                verdict={getAssessmentVerdict(selectedCandidate.deal)}
+                animateOnMount
+              />
+            </motion.section>
           ) : (
             <motion.div
               key="answer-choices"

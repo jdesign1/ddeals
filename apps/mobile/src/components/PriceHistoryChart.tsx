@@ -18,6 +18,8 @@ interface PriceHistoryChartProps {
   onStoreChange?: (store: string) => void;
   verdict: AssessmentVerdict;
   historySeries?: PriceHistorySeries[];
+  /** Use when the chart is shown in a portal instead of the main app scroll surface. */
+  animateOnMount?: boolean;
 }
 
 interface ChartPoint extends PriceHistoryPoint {
@@ -117,15 +119,16 @@ export default function PriceHistoryChart({
   onStoreChange,
   verdict,
   historySeries = [],
+  animateOnMount = false,
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
   const [chartElement, setChartElement] = useState<HTMLDivElement | null>(null);
   const [isChartInView, setIsChartInView] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
-  const shouldShowChartAnimation = shouldReduceMotion || isChartInView || typeof IntersectionObserver === "undefined";
+  const shouldShowChartAnimation = animateOnMount || shouldReduceMotion || isChartInView || typeof IntersectionObserver === "undefined";
   useEffect(() => {
-    if (!chartElement || isChartInView || shouldReduceMotion) return;
+    if (animateOnMount || !chartElement || isChartInView || shouldReduceMotion) return;
     if (typeof IntersectionObserver === "undefined") return;
 
     const observer = new IntersectionObserver(
@@ -142,7 +145,7 @@ export default function PriceHistoryChart({
     );
     observer.observe(chartElement);
     return () => observer.disconnect();
-  }, [chartElement, isChartInView, shouldReduceMotion]);
+  }, [animateOnMount, chartElement, isChartInView, shouldReduceMotion]);
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
     <div className="flex justify-end">
