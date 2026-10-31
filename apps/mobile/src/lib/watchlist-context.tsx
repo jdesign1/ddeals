@@ -25,6 +25,7 @@ interface WatchlistContextValue {
   savedProductIds: ReadonlySet<string>;
   selectedProductIds: ReadonlySet<string>;
   loadingSavedItems: boolean;
+  savedItemsReady: boolean;
   isCommitting: boolean;
   removingProductIds: ReadonlySet<string>;
   error: string | null;
@@ -52,7 +53,8 @@ function isWatchlist(list: ListRow): boolean {
  * processor continues to work without a schema migration.
  */
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id;
   const { isPremium } = useSubscriptions();
   const {
     pushEnabled,
@@ -66,6 +68,10 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [savedProductIds, setSavedProductIds] = useState<Set<string>>(new Set());
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [loadingSavedItems, setLoadingSavedItems] = useState(false);
+  // The empty set is not a trustworthy membership result until the first
+  // account lookup has completed. Consumers use this flag to avoid showing a
+  // false "not saved" state during the app's first paint.
+  const [savedItemsReady, setSavedItemsReady] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [removingProductIds, setRemovingProductIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +107,11 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   }, [notificationPromptPending, notificationPromptStorageKey, pushAvailableOnDevice, pushEnabled, pushReady, user]);
 
   const refreshSavedItems = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setSavedProductIds(new Set());
       setSelectedProductIds(new Set());
+      setLoadingSavedItems(false);
+      setSavedItemsReady(true);
       return;
     }
 
@@ -119,13 +127,24 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       setError(describeFetchError(loadError, "We couldn't load your Watchlist."));
     } finally {
       setLoadingSavedItems(false);
+      setSavedItemsReady(true);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
+    // Wait for auth to resolve before deciding that an empty Watchlist is the
+    // correct result. This prevents a signed-in user's saved cards briefly
+    // rendering as unsaved while getSession() is still completing.
+    if (authLoading) {
+      setSavedItemsReady(false);
+      setLoadingSavedItems(true);
+      return;
+    }
+
+    setSavedItemsReady(false);
     const timer = window.setTimeout(() => void refreshSavedItems(), 0);
     return () => window.clearTimeout(timer);
-  }, [refreshSavedItems]);
+  }, [authLoading, refreshSavedItems]);
 
   useEffect(() => {
     const handleMembershipChanged = () => void refreshSavedItems();
@@ -252,6 +271,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     savedProductIds,
     selectedProductIds,
     loadingSavedItems,
+    savedItemsReady,
     isCommitting,
     removingProductIds,
     error,
@@ -274,6 +294,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     dismissSelectionBar,
     refreshSavedItems,
     savedProductIds,
+    savedItemsReady,
     selectedProductIds,
     toggleProduct,
   ]);

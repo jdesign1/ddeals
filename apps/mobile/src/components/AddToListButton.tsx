@@ -31,13 +31,14 @@ export default function AddToListButton({
   dataOnboarding?: string;
 }) {
   const { user, openAuthSheet } = useAuth();
-  const { savedProductIds, selectedProductIds, toggleProduct, removeProduct, removingProductIds, loadingSavedItems } = useWatchlist();
+  const { savedProductIds, selectedProductIds, toggleProduct, removeProduct, removingProductIds, savedItemsReady } = useWatchlist();
   const [isRemoveSheetOpen, setIsRemoveSheetOpen] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const isSaved = savedProductIds.has(productId);
   const isSelected = selectedProductIds.has(productId);
   const isCheckmarkVisible = isSaved || isSelected;
   const isRemoving = removingProductIds.has(productId);
+  const isMembershipHydrating = !savedItemsReady;
   const label = productName ? `${productName} — ` : "";
 
   const handleRemove = async () => {
@@ -59,6 +60,7 @@ export default function AddToListButton({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
+            if (isMembershipHydrating) return;
             if (!user) {
               openAuthSheet("Log in to save items to your Watchlist.");
               return;
@@ -71,18 +73,21 @@ export default function AddToListButton({
             toggleProduct(productId);
           }}
           aria-label={
-            isSaved
-              ? `${label}Remove from Watchlist`
-              : isSelected
-                ? `${label}Deselect from Watchlist`
-                : `${label}Add to Watchlist`
+            isMembershipHydrating
+              ? `${label}Watchlist status loading`
+              : isSaved
+                ? `${label}Remove from Watchlist`
+                : isSelected
+                  ? `${label}Deselect from Watchlist`
+                  : `${label}Add to Watchlist`
           }
-          aria-pressed={isSaved || isSelected}
-          aria-busy={loadingSavedItems || isRemoving}
-          className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
+          aria-pressed={isMembershipHydrating ? undefined : isSaved || isSelected}
+          aria-busy={isMembershipHydrating || isRemoving}
+          disabled={isMembershipHydrating || isRemoving}
+          className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 disabled:cursor-default"
         >
-          <span className={buttonClassName} aria-hidden="true">
-            {loadingSavedItems || isRemoving ? (
+          <span className={`${buttonClassName} ${isMembershipHydrating ? "opacity-0" : ""}`} aria-hidden="true">
+            {isRemoving ? (
               <ButtonSpinner className={iconClassName} />
             ) : isCheckmarkVisible ? (
               <Check className={`block ${iconClassName}`} strokeWidth={3} />
