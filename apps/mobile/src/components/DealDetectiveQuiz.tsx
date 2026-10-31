@@ -127,13 +127,13 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         onClick={() => chooseSide(side)}
         className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border text-left transition-[border-color,background-color,opacity,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 disabled:cursor-default ${choiceClass(isSelected, answered, isCorrect, isSelected)}`}
       >
-        <div className="relative flex h-28 items-center justify-center bg-stone-50 p-3">
-          <ProductImage src={candidate.product.image} alt="" width={112} height={112} sizes="112px" className="h-full w-full object-contain" />
+        <div className="relative flex h-24 items-center justify-center bg-stone-50 p-2.5">
+          <ProductImage src={candidate.product.image} alt="" width={96} height={96} sizes="96px" className="h-full w-full object-contain" />
           <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-1 dd-type-meta dd-type-meta-strong text-stone-700 shadow-xs">{side === "left" ? "A" : "B"}</span>
         </div>
-        <div className="flex min-h-32 flex-1 flex-col p-3">
+        <div className="flex min-h-28 flex-1 flex-col p-3">
           <p className="mt-2 line-clamp-2 dd-type-control text-stone-900">{candidate.product.name}</p>
-          <div className="mt-auto flex items-center gap-2 pt-3">
+          <div className="mt-1.5 flex items-center gap-2">
             <p className="text-lg font-black tabular-nums text-stone-900">{currency(candidate.deal.price)}</p>
             <StoreLogoBadge store={candidate.deal.store} variant="compact" />
           </div>
@@ -160,7 +160,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
-      <div className="relative flex justify-center overflow-hidden rounded-t-3xl">
+      <div className="relative flex aspect-[1.4/1] justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
           src="/deal-detective-case-mascot.png"
           darkSrc="/deal-detective-case-mascot.png"
@@ -169,7 +169,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
           height={1254}
           sizes="(max-width: 480px) 100vw, 432px"
           unoptimized
-          className="block h-auto w-full max-w-none"
+          className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
         />
       </div>
 
