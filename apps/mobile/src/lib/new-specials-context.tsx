@@ -14,6 +14,7 @@ import {
   writeStoredDealDetectiveCase,
   writeStoredDealDetectivePlayedState,
   type DealDetectiveQuizCase,
+  type DealDetectiveQuestionKind,
   type StoredDealDetectiveCase,
 } from "./deal-detective-quiz";
 import {
@@ -68,6 +69,7 @@ interface StoredNewSpecialsState {
   popupState: NewSpecialsPopupState | null;
   detectiveCase: StoredDealDetectiveCase | null;
   detectiveCasePlayedPublicationKey: string | null;
+  detectiveCasePlayedQuestionKind: DealDetectiveQuestionKind | null;
 }
 
 const NewSpecialsContext = createContext<NewSpecialsContextValue | null>(null);
@@ -99,12 +101,16 @@ function baselineAfterReview(
   return { version: currentSnapshot.version, deals };
 }
 
+function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQuestionKind {
+  return kind === "real" ? "dodgy" : "real";
+}
+
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
   const { user, profile, loading: authLoading, isAnonymousSession } = useAuth();
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
-  const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null });
+  const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null });
   const [openRequested, setOpenRequested] = useState(false);
   const [detectiveCaseOpenRequested, setDetectiveCaseOpenRequested] = useState(false);
   const lastProcessedPublicationRef = useRef<string | null>(null);
@@ -129,13 +135,15 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       hydratedPopupState = createNewSpecialsPopupState(hydratedPending.summary, hydratedPending.detectedAt);
       writeNewSpecialsPopupState(hydratedPopupState, scope);
     }
+    const hydratedPlayedState = readStoredDealDetectivePlayedState(scope);
     setStored({
       scope,
       snapshot: readNewSpecialsSnapshot(scope),
       pending: hydratedPending,
       popupState: hydratedPopupState,
       detectiveCase: readStoredDealDetectiveCase(scope),
-      detectiveCasePlayedPublicationKey: readStoredDealDetectivePlayedState(scope)?.publicationKey ?? null,
+      detectiveCasePlayedPublicationKey: hydratedPlayedState?.publicationKey ?? null,
+      detectiveCasePlayedQuestionKind: hydratedPlayedState?.questionKind ?? null,
     });
     setOpenRequested(false);
     setDetectiveCaseOpenRequested(false);
@@ -184,6 +192,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     ? stored.detectiveCase
     : null;
   const detectiveCasePlayedPublicationKey = storageReady ? stored.detectiveCasePlayedPublicationKey : null;
+  const detectiveCasePlayedQuestionKind = storageReady ? stored.detectiveCasePlayedQuestionKind : null;
   const detectiveCase = storedDetectiveCase?.quizCase ?? null;
   const currentQuizCase = useMemo(() => {
     const summaryForCase = detectedSummary?.total ? detectedSummary : activePending?.summary;
@@ -272,18 +281,22 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!hasNewPublication && storedDetectiveCase) return;
     if (storedDetectiveCase?.publicationKey === cataloguePublicationKey) return;
 
+    const previousQuestionKind = storedDetectiveCase?.quizCase.questionKind ?? detectiveCasePlayedQuestionKind;
+    const questionKind = previousQuestionKind ? alternateQuestionKind(previousQuestionKind) : "real";
+
     const nextCase = createStoredDealDetectiveCase(
       cataloguePublicationKey,
       currentQuizCase,
       hasNewPublication
         ? Date.now() + NEW_SPECIALS_PENDING_TTL_MS
         : activePending?.expiresAt ?? Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
+      questionKind,
     );
     if (writeStoredDealDetectiveCase(nextCase, scope)) {
       clearStoredDealDetectivePlayedState(scope);
-      setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null }));
+      setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     }
-  }, [activePending, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, scope, storageReady, storedDetectiveCase]);
+  }, [activePending, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, scope, storageReady, storedDetectiveCase]);
 
   useEffect(() => {
     if (!scope || !storageReady || !stored.detectiveCase) return;
@@ -340,9 +353,10 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const markDetectiveCasePlayed = useCallback(() => {
     if (!scope || !storageReady || !storedDetectiveCase) return;
     const playedPublicationKey = storedDetectiveCase.publicationKey;
-    writeStoredDealDetectivePlayedState(playedPublicationKey, scope);
+    const playedQuestionKind = storedDetectiveCase.quizCase.questionKind ?? "real";
+    writeStoredDealDetectivePlayedState(playedPublicationKey, playedQuestionKind, scope);
     clearStoredDealDetectiveCase(scope);
-    setStored((current) => ({ ...current, detectiveCase: null, detectiveCasePlayedPublicationKey: playedPublicationKey }));
+    setStored((current) => ({ ...current, detectiveCase: null, detectiveCasePlayedPublicationKey: playedPublicationKey, detectiveCasePlayedQuestionKind: playedQuestionKind }));
     setDetectiveCaseOpenRequested(false);
   }, [scope, storageReady, storedDetectiveCase]);
 

@@ -155,7 +155,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label="Close new specials message"
+                aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                 ref={closeButtonRef}
                 className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900"
               >
@@ -181,7 +181,9 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     }
                     handleSelectAllNewDeals(summary.allDealKeys);
                   }}
+                  onDone={handleClose}
                   onPlayed={onPlayed}
+                  showViewDealsButton={!gameOnly}
                 />
               ) : (
                 <>

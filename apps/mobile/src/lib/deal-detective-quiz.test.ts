@@ -149,14 +149,16 @@ test("a detective case is scoped, expires, and records the played publication", 
   });
 
   try {
-    const storedCase = createStoredDealDetectiveCase("publication-1", quizCase, 2_000);
+    const storedCase = createStoredDealDetectiveCase("publication-1", quizCase, 2_000, "dodgy");
+    assert.equal(storedCase.quizCase.questionKind, "dodgy");
     assert.equal(writeStoredDealDetectiveCase(storedCase, "user:user-1"), true);
     assert.equal(readStoredDealDetectiveCase("user:user-1", 1_999)?.publicationKey, "publication-1");
     assert.equal(readStoredDealDetectiveCase("user:user-1", 2_000), null);
     assert.equal(readStoredDealDetectiveCase("device", 1_000), null);
 
-    assert.equal(writeStoredDealDetectivePlayedState("publication-1", "user:user-1"), true);
+    assert.equal(writeStoredDealDetectivePlayedState("publication-1", "real", "user:user-1"), true);
     assert.equal(readStoredDealDetectivePlayedState("user:user-1")?.publicationKey, "publication-1");
+    assert.equal(readStoredDealDetectivePlayedState("user:user-1")?.questionKind, "real");
     assert.equal(clearStoredDealDetectiveCase("user:user-1"), true);
     assert.equal(clearStoredDealDetectivePlayedState("user:user-1"), true);
     assert.equal(readStoredDealDetectivePlayedState("user:user-1"), null);

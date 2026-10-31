@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, LockKeyhole, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -18,7 +18,43 @@ interface DealDetectiveQuizProps {
   accessToken: string | null;
   onBack: () => void;
   onViewDeals: () => void;
+  onDone: () => void;
   onPlayed: () => void;
+  showViewDealsButton?: boolean;
+}
+
+const CONFETTI_PIECES = [
+  { left: 6, x: -30, rotation: -42, color: "#22c55e", delay: 0 },
+  { left: 14, x: -18, rotation: 28, color: "#f59e0b", delay: 45 },
+  { left: 23, x: -8, rotation: -24, color: "#6366f1", delay: 85 },
+  { left: 32, x: 18, rotation: 46, color: "#ef4444", delay: 20 },
+  { left: 41, x: -12, rotation: -55, color: "#14b8a6", delay: 110 },
+  { left: 50, x: 28, rotation: 36, color: "#eab308", delay: 55 },
+  { left: 59, x: -24, rotation: -32, color: "#ec4899", delay: 95 },
+  { left: 68, x: 10, rotation: 54, color: "#22c55e", delay: 10 },
+  { left: 77, x: 24, rotation: -48, color: "#f97316", delay: 70 },
+  { left: 86, x: 12, rotation: 25, color: "#6366f1", delay: 125 },
+  { left: 94, x: 30, rotation: -36, color: "#ef4444", delay: 35 },
+] as const;
+
+function ConfettiBurst() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-28 overflow-hidden" aria-hidden="true">
+      {CONFETTI_PIECES.map((piece, index) => (
+        <span
+          key={index}
+          className="deal-detective-confetti absolute top-0 h-3 w-1.5 rounded-sm"
+          style={{
+            left: `${piece.left}%`,
+            backgroundColor: piece.color,
+            animationDelay: `${piece.delay}ms`,
+            "--confetti-x": `${piece.x}px`,
+            "--confetti-rotation": `${piece.rotation}deg`,
+          } as CSSProperties}
+        />
+      ))}
+    </div>
+  );
 }
 
 function currency(value: number): string {
@@ -32,13 +68,14 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
   return "border-stone-200 bg-stone-50 opacity-70";
 }
 
-export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onPlayed }: DealDetectiveQuizProps) {
+export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const backButtonRef = useRef<HTMLButtonElement>(null);
-  const correctSide: DealDetectiveQuizSide = quizCase.left.kind === "real" ? "left" : "right";
+  const questionKind = quizCase.questionKind ?? "real";
+  const correctSide: DealDetectiveQuizSide = quizCase.left.kind === questionKind ? "left" : "right";
   const answered = selectedSide !== null;
   const correct = selectedSide === correctSide;
 
@@ -104,30 +141,35 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   };
 
   return (
-    <div className="flex flex-col">
-      <button ref={backButtonRef} type="button" onClick={onBack} className="mb-2 inline-flex min-h-11 w-fit items-center gap-1.5 dd-type-control text-stone-600 underline decoration-stone-300 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
-        <span aria-hidden="true">←</span> Back to new deals
+    <div className="relative flex flex-col">
+      {correct && answered && <ConfettiBurst key={selectedSide} />}
+
+      <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+        <ChevronLeft className="h-6 w-6" aria-hidden="true" />
       </button>
 
-      <div className="flex justify-center">
+      <div className="-mx-5 flex justify-center">
         <MascotImage
           src="/deal-detective-case-mascot.png"
           darkSrc="/deal-detective-case-mascot.png"
           alt="Dodgy Deal mascot comparing two deal case files at headquarters"
           width={1254}
           height={1254}
-          sizes="220px"
+          sizes="(max-width: 480px) 100vw, 432px"
           unoptimized
-          className="h-auto w-full max-w-[13rem]"
+          className="h-auto w-full max-w-none"
         />
       </div>
 
       <div className="text-center">
         <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">Deal Detective case</p>
-        <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">Which one is the Real Saver?</h2>
+        <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
+          {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
+        </h2>
         <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
-          Pick the special you think has the stronger price history.
-          {quizCase.category ? ` Case file: ${quizCase.category}.` : " This is a mixed case from the latest deals."}
+          {questionKind === "real"
+            ? "Use your deal detective instincts and guess which deal is real"
+            : "Use your deal detective instincts and guess which deal is dodgy"}
         </p>
       </div>
 
@@ -161,9 +203,15 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         )}
       </div>
 
-      <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
-        {answered ? "Inspect the new deals" : "Skip to new deals"}
-      </button>
+      {answered ? (
+        <button type="button" onClick={onDone} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
+          All done
+        </button>
+      ) : showViewDealsButton ? (
+        <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
+          Skip to new deals
+        </button>
+      ) : null}
     </div>
   );
 }

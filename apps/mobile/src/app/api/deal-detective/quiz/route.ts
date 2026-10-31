@@ -3,7 +3,7 @@ import { buildCatalogueArtifact, normalizeStoreKey, type CatalogueArtifact, type
 import { getCommunityDetectiveRank } from "@/lib/community-reputation";
 import { getAuthenticatedAccount, requireAccountsAdmin } from "@/lib/accounts-server";
 import { supabaseConfig } from "@/lib/config";
-import { DEAL_DETECTIVE_QUIZ_VERSION } from "@/lib/deal-detective-quiz";
+import { DEAL_DETECTIVE_QUIZ_VERSION, type DealDetectiveQuestionKind } from "@/lib/deal-detective-quiz";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ interface QuizChallenge {
   publicationKey: string;
   leftDealKey: string;
   rightDealKey: string;
+  questionKind: DealDetectiveQuestionKind;
   correctSide: QuizSide;
   expiresAt: number;
 }
@@ -67,6 +68,7 @@ function readChallengeToken(value: unknown): QuizChallenge | null {
       || typeof parsed.publicationKey !== "string"
       || typeof parsed.leftDealKey !== "string"
       || typeof parsed.rightDealKey !== "string"
+      || !isQuestionKind(parsed.questionKind)
       || !isQuizSide(parsed.correctSide)
       || typeof parsed.expiresAt !== "number"
       || parsed.expiresAt <= Date.now()
@@ -76,6 +78,7 @@ function readChallengeToken(value: unknown): QuizChallenge | null {
       publicationKey: parsed.publicationKey,
       leftDealKey: parsed.leftDealKey,
       rightDealKey: parsed.rightDealKey,
+      questionKind: parsed.questionKind,
       correctSide: parsed.correctSide,
       expiresAt: parsed.expiresAt,
     };
@@ -86,6 +89,10 @@ function readChallengeToken(value: unknown): QuizChallenge | null {
 
 function isQuizSide(value: unknown): value is QuizSide {
   return value === "left" || value === "right";
+}
+
+function isQuestionKind(value: unknown): value is DealDetectiveQuestionKind {
+  return value === "real" || value === "dodgy";
 }
 
 function parseDealKey(value: unknown): { productId: string; storeKey: string } | null {
@@ -152,7 +159,8 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const leftDealKey = url.searchParams.get("leftDealKey");
   const rightDealKey = url.searchParams.get("rightDealKey");
-  if (!parseDealKey(leftDealKey) || !parseDealKey(rightDealKey)) {
+  const questionKind = url.searchParams.get("questionKind");
+  if (!parseDealKey(leftDealKey) || !parseDealKey(rightDealKey) || !isQuestionKind(questionKind)) {
     return jsonError("That case could not be opened.", 400);
   }
 
@@ -167,7 +175,8 @@ export async function GET(request: Request): Promise<Response> {
       publicationKey: String(artifact.sourceUpdatedAt),
       leftDealKey: String(leftDealKey),
       rightDealKey: String(rightDealKey),
-      correctSide: pair.correctSide,
+      questionKind,
+      correctSide: (pair.left.kind === questionKind ? "left" : "right") as QuizSide,
       expiresAt: Date.now() + CHALLENGE_TTL_MS,
     };
     return Response.json({ challenge_token: createChallengeToken(challenge) }, { headers: NO_STORE_HEADERS });
@@ -219,7 +228,8 @@ export async function POST(request: Request): Promise<Response> {
       return jsonError("That case has changed. Please try the next one.", 409);
     }
     const pair = validateCurrentPair(artifact, challenge.leftDealKey, challenge.rightDealKey);
-    if (!pair || pair.correctSide !== challenge.correctSide) {
+    const expectedCorrectSide = pair && (pair.left.kind === challenge.questionKind ? "left" : "right");
+    if (!pair || expectedCorrectSide !== challenge.correctSide) {
       return jsonError("That case has changed. Please try the next one.", 409);
     }
     const accounts = requireAccountsAdmin();

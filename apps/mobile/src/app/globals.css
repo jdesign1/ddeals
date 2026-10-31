@@ -1085,6 +1085,34 @@ html[data-theme="dark"] .theme-loader-surface {
   will-change: transform;
 }
 
+@keyframes dealDetectiveConfetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -0.5rem, 0) rotate(0deg);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--confetti-x), 7rem, 0) rotate(var(--confetti-rotation));
+  }
+}
+
+.deal-detective-confetti {
+  animation: dealDetectiveConfetti 900ms cubic-bezier(0.22, 0.8, 0.34, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deal-detective-confetti {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .how-it-works-mascot {
   display: block;
 }

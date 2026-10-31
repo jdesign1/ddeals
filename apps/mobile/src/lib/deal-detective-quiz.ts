@@ -9,6 +9,7 @@ const DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX = "dd-deal-detective-played-v1:";
 
 export type DealDetectiveQuizSide = "left" | "right";
 export type DealDetectiveQuizKind = "real" | "dodgy";
+export type DealDetectiveQuestionKind = "real" | "dodgy";
 
 export interface DealDetectiveQuizCandidate {
   side: DealDetectiveQuizSide;
@@ -21,6 +22,8 @@ export interface DealDetectiveQuizCandidate {
 
 export interface DealDetectiveQuizCase {
   category: string | null;
+  /** Which verdict the current case asks the shopper to identify. */
+  questionKind?: DealDetectiveQuestionKind;
   left: DealDetectiveQuizCandidate;
   right: DealDetectiveQuizCandidate;
 }
@@ -37,6 +40,7 @@ export interface StoredDealDetectiveCase {
 export interface StoredDealDetectivePlayedState {
   version: number;
   publicationKey: string;
+  questionKind: DealDetectiveQuestionKind;
 }
 
 export interface DealDetectiveQuizResult {
@@ -78,6 +82,7 @@ function isDealDetectiveQuizCase(value: unknown): value is DealDetectiveQuizCase
   const quizCase = value as Partial<DealDetectiveQuizCase>;
   return (
     (quizCase.category === null || typeof quizCase.category === "string")
+    && (quizCase.questionKind === undefined || quizCase.questionKind === "real" || quizCase.questionKind === "dodgy")
     && isQuizCandidate(quizCase.left)
     && isQuizCandidate(quizCase.right)
   );
@@ -87,12 +92,13 @@ export function createStoredDealDetectiveCase(
   publicationKey: string,
   quizCase: DealDetectiveQuizCase,
   expiresAt: number,
+  questionKind: DealDetectiveQuestionKind = quizCase.questionKind ?? "real",
 ): StoredDealDetectiveCase {
   return {
     version: DEAL_DETECTIVE_CASE_STORAGE_VERSION,
     publicationKey,
     expiresAt,
-    quizCase,
+    quizCase: { ...quizCase, questionKind },
   };
 }
 
@@ -150,7 +156,11 @@ export function readStoredDealDetectivePlayedState(scope = "device"): StoredDeal
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<StoredDealDetectivePlayedState>;
     if (parsed.version !== DEAL_DETECTIVE_CASE_STORAGE_VERSION || typeof parsed.publicationKey !== "string") return null;
-    return { version: DEAL_DETECTIVE_CASE_STORAGE_VERSION, publicationKey: parsed.publicationKey };
+    return {
+      version: DEAL_DETECTIVE_CASE_STORAGE_VERSION,
+      publicationKey: parsed.publicationKey,
+      questionKind: parsed.questionKind === "dodgy" ? "dodgy" : "real",
+    };
   } catch {
     return null;
   }
@@ -158,13 +168,14 @@ export function readStoredDealDetectivePlayedState(scope = "device"): StoredDeal
 
 export function writeStoredDealDetectivePlayedState(
   publicationKey: string,
+  questionKind: DealDetectiveQuestionKind,
   scope = "device",
 ): boolean {
   if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(
       scopedPlayedStorageKey(scope),
-      JSON.stringify({ version: DEAL_DETECTIVE_CASE_STORAGE_VERSION, publicationKey }),
+      JSON.stringify({ version: DEAL_DETECTIVE_CASE_STORAGE_VERSION, publicationKey, questionKind }),
     );
     return true;
   } catch {
@@ -189,6 +200,7 @@ export async function issueDealDetectiveChallenge(
   const params = new URLSearchParams({
     leftDealKey: quizCase.left.dealKey,
     rightDealKey: quizCase.right.dealKey,
+    questionKind: quizCase.questionKind ?? "real",
   });
   const response = await fetch(`/api/deal-detective/quiz?${params.toString()}`, { cache: "no-store", signal });
   const payload = await response.json().catch(() => null) as Partial<DealDetectiveQuizChallenge> & { error?: string } | null;
