@@ -196,8 +196,10 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const detectiveCasePlayedPublicationKey = storageReady ? stored.detectiveCasePlayedPublicationKey : null;
   const detectiveCasePlayedQuestionKind = storageReady ? stored.detectiveCasePlayedQuestionKind : null;
   const detectiveCase = storedDetectiveCase?.quizCase ?? null;
-  const testCaseSummary = useMemo(() => {
-    if (!isAnonymousSession) return null;
+  // The profile-menu game can use the current catalogue when there is no
+  // unread new-specials batch. This keeps the game discoverable for returning
+  // users without making the automatic new-deals popup reappear.
+  const catalogueCaseSummary = useMemo(() => {
     const realDealKeys: string[] = [];
     const dodgyDealKeys: string[] = [];
     for (const product of products) {
@@ -209,18 +211,18 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       }
     }
     return { realDealKeys, dodgyDealKeys };
-  }, [isAnonymousSession, products]);
+  }, [products]);
   const currentQuizCase = useMemo(() => {
     const summaries = [
       detectedSummary?.total ? detectedSummary : activePending?.summary,
-      testCaseSummary,
+      catalogueCaseSummary,
     ].filter((summary): summary is NonNullable<typeof summary> => Boolean(summary));
     for (const summary of summaries) {
       const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? []);
       if (quizCase) return quizCase;
     }
     return null;
-  }, [activePending, detectedSummary, products, profile?.preferred_categories, testCaseSummary]);
+  }, [activePending, catalogueCaseSummary, detectedSummary, products, profile?.preferred_categories]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
@@ -361,20 +363,26 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!popupSuppressedUntilHomeExit && pendingDigest?.total && popupEligible) setOpenRequested(true);
   }, [pendingDigest, popupEligible, popupSuppressedUntilHomeExit]);
 
-  const canCreateTestDetectiveCase = Boolean(isAnonymousSession && currentQuizCase && storageReady);
-  const canOpenDetectiveCase = Boolean(detectiveCase || canCreateTestDetectiveCase);
+  // A valid case can be recovered from the current catalogue even when an
+  // earlier render missed the localStorage write. Do not recreate a case that
+  // this account has already answered for the current publication.
+  const detectiveCasePlayedForCurrentPublication = Boolean(
+    cataloguePublicationKey && detectiveCasePlayedPublicationKey === cataloguePublicationKey,
+  );
+  const canCreateDetectiveCaseOnDemand = Boolean(currentQuizCase && storageReady && !detectiveCasePlayedForCurrentPublication);
+  const canOpenDetectiveCase = Boolean(detectiveCase || canCreateDetectiveCaseOnDemand);
 
   const requestDetectiveCaseOpen = useCallback(() => {
     if (detectiveCase) {
       setDetectiveCaseOpenRequested(true);
       return;
     }
-    if (!isAnonymousSession || !currentQuizCase || !scope || !storageReady) return;
+    if (!currentQuizCase || !scope || !storageReady || detectiveCasePlayedForCurrentPublication) return;
 
-    // The normal reconciliation effect persists a test case as soon as the
-    // catalogue marker is ready. This on-demand path covers a cold test-mode
-    // menu tap before that marker has arrived, and makes the menu item useful
-    // for QA even when an older build left no case in localStorage.
+    // The normal reconciliation effect persists a case as soon as the
+    // catalogue marker is ready. This on-demand path covers a cold profile
+    // menu tap before that marker has arrived, and recovers cases from older
+    // builds that left no case in localStorage.
     const nextCase = createStoredDealDetectiveCase(
       cataloguePublicationKey ?? "anonymous-test-case",
       currentQuizCase,
@@ -385,7 +393,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     clearStoredDealDetectivePlayedState(scope);
     setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     setDetectiveCaseOpenRequested(true);
-  }, [cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedQuestionKind, isAnonymousSession, scope, storageReady]);
+  }, [cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, scope, storageReady]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
