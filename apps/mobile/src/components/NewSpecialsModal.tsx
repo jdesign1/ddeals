@@ -157,7 +157,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 onClick={handleClose}
                 aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                 ref={closeButtonRef}
-                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-md transition-colors hover:bg-white hover:text-stone-900"
+                className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-md transition-colors hover:bg-white hover:text-stone-900"
               >
                 <span className="text-2xl leading-none" aria-hidden="true">×</span>
               </button>

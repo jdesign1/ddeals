@@ -1056,7 +1056,7 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 .dd-subscribe-content {
-  animation: dd-subscribe-content-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: dd-subscribe-content-in 720ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both;
 }
 
 /* Page transitions use the established side-to-side mascot turn. Keep this
@@ -1088,21 +1088,25 @@ html[data-theme="dark"] .theme-loader-surface {
 @keyframes dealDetectiveConfetti {
   0% {
     opacity: 0;
-    transform: translate3d(0, -0.5rem, 0) rotate(0deg);
+    transform: translate3d(0, -1rem, 0) rotate(0deg) scale(0.85);
   }
 
-  12% {
+  10% {
     opacity: 1;
+  }
+
+  68% {
+    opacity: 0.95;
   }
 
   100% {
     opacity: 0;
-    transform: translate3d(var(--confetti-x), 7rem, 0) rotate(var(--confetti-rotation));
+    transform: translate3d(var(--confetti-x), var(--confetti-y), 0) rotate(var(--confetti-rotation)) scale(0.8);
   }
 }
 
 .deal-detective-confetti {
-  animation: dealDetectiveConfetti 900ms cubic-bezier(0.22, 0.8, 0.34, 1) forwards;
+  animation: dealDetectiveConfetti 1750ms cubic-bezier(0.22, 0.8, 0.34, 1) forwards;
   will-change: opacity, transform;
 }
 
