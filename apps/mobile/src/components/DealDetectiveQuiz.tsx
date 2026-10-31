@@ -160,7 +160,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
-      <div className="relative flex aspect-[1.4/1] justify-center overflow-hidden rounded-t-3xl">
+      <div className="relative flex aspect-[1.2/1] justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
           src="/deal-detective-case-mascot.png"
           darkSrc="/deal-detective-case-mascot.png"
