@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { useSearch } from "./search-context";
+import { useSubscriptions } from "./subscription-context";
 import {
   buildDealDetectiveQuizCase,
   clearStoredDealDetectiveCase,
@@ -111,6 +112,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
   const { user, profile, loading: authLoading, isAnonymousSession } = useAuth();
+  const { isPremium } = useSubscriptions();
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null });
   const [openRequested, setOpenRequested] = useState(false);
@@ -370,14 +372,18 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     cataloguePublicationKey && detectiveCasePlayedPublicationKey === cataloguePublicationKey,
   );
   const canCreateDetectiveCaseOnDemand = Boolean(currentQuizCase && storageReady && !detectiveCasePlayedForCurrentPublication);
-  const canOpenDetectiveCase = Boolean(detectiveCase || canCreateDetectiveCaseOnDemand);
+  // Plus accounts retain a profile-menu replay path for QA and support. This
+  // does not recreate the automatic launch popup after a case is answered;
+  // it only lets the user explicitly start the game again from their profile.
+  const canReplayDetectiveCaseFromProfile = Boolean(isPremium && currentQuizCase && storageReady);
+  const canOpenDetectiveCase = Boolean(detectiveCase || canCreateDetectiveCaseOnDemand || canReplayDetectiveCaseFromProfile);
 
   const requestDetectiveCaseOpen = useCallback(() => {
     if (detectiveCase) {
       setDetectiveCaseOpenRequested(true);
       return;
     }
-    if (!currentQuizCase || !scope || !storageReady || detectiveCasePlayedForCurrentPublication) return;
+    if (!currentQuizCase || !scope || !storageReady || (detectiveCasePlayedForCurrentPublication && !canReplayDetectiveCaseFromProfile)) return;
 
     // The normal reconciliation effect persists a case as soon as the
     // catalogue marker is ready. This on-demand path covers a cold profile
@@ -393,7 +399,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     clearStoredDealDetectivePlayedState(scope);
     setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     setDetectiveCaseOpenRequested(true);
-  }, [cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, scope, storageReady]);
+  }, [canReplayDetectiveCaseFromProfile, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, scope, storageReady]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
