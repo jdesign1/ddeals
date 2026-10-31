@@ -2,6 +2,7 @@
 
 import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -160,7 +161,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
-      <div className="relative flex aspect-[1.2/1] justify-center overflow-hidden rounded-t-3xl">
+      <div className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
           src="/deal-detective-case-mascot.png"
           darkSrc="/deal-detective-case-mascot.png"
@@ -185,18 +186,22 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
               : "Use your deal detective instincts and guess which deal is dodgy"}
           </p>
         </div>
-        <div className="mt-5 flex gap-3" role="group" aria-label="Deal Detective case choices">
-          {renderChoice("left")}
-          {renderChoice("right")}
-        </div>
-
-        <div className="mt-4 min-h-16" aria-live="polite">
-          {answered && (
-            <div className={`rounded-2xl border px-4 py-3 ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}>
+        <AnimatePresence mode="wait" initial={false}>
+          {answered ? (
+            <motion.div
+              key="answer-result"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className={`mt-5 flex min-h-[13.5rem] flex-col justify-center rounded-2xl border px-5 py-6 text-center ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}
+              role="status"
+              aria-live="polite"
+            >
               <p className={`dd-type-control dd-type-control-strong ${correct ? "text-fair-900" : "text-alert-900"}`}>
                 {correct ? "Great call — you spotted it." : "Close call! Not quite."}
               </p>
-              <p className="mt-1 dd-type-meta leading-4 text-stone-600">
+              <p className="mt-2 dd-type-meta leading-4 text-stone-600">
                 {accessToken
                   ? scoreResult
                     ? `This case has been closed. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far. Rank: ${scoreResult.detective_rank}.`
@@ -205,15 +210,29 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
                       : "Your answer is being checked."
                   : <><LockKeyhole className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />Sign in to save your detective score.</>}
               </p>
-              {saveError && <p className="mt-1 dd-type-meta text-alert-700" role="alert">{saveError}</p>}
+              {saveError && <p className="mt-2 dd-type-meta text-alert-700" role="alert">{saveError}</p>}
               {saveError && accessToken && selectedSide && (
                 <button type="button" onClick={() => saveAnswer(selectedSide)} className="mt-2 dd-type-meta dd-type-meta-strong text-ink-900 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
                   Try saving again
                 </button>
               )}
-            </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="answer-choices"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="mt-5 flex gap-3"
+              role="group"
+              aria-label="Deal Detective case choices"
+            >
+              {renderChoice("left")}
+              {renderChoice("right")}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
 
         {answered ? (
           <button type="button" onClick={onDone} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">

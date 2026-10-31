@@ -150,7 +150,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className={`dd-bottom-sheet dd-bottom-sheet-surface mx-auto flex flex-col overflow-y-auto shadow-2xl ${gameOnly ? "fixed inset-0 h-[100dvh] max-h-[100dvh] w-full max-w-[480px] translate-y-0 rounded-none border-0" : "fixed inset-x-4 top-1/2 max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 rounded-3xl border border-stone-200"} ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
+              className={`dd-bottom-sheet dd-bottom-sheet-surface mx-auto flex flex-col overflow-y-auto shadow-2xl ${showQuiz && displayedQuizCase ? "fixed inset-0 h-[100dvh] max-h-[100dvh] w-full max-w-[480px] translate-y-0 rounded-none border-0" : "fixed inset-x-4 top-1/2 max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 rounded-3xl border border-stone-200"} ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
               <div className="pointer-events-none sticky top-0 z-40 h-0">
                 <button
