@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
+import { fetchCommunityProfileSummary } from "@/lib/community-notes-api";
+import { getCommunityDetectiveRank } from "@/lib/community-reputation";
 import {
   issueDealDetectiveChallenge,
   submitDealDetectiveQuiz,
@@ -78,6 +80,7 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
 export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
+  const [currentRank, setCurrentRank] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const backButtonRef = useRef<HTMLButtonElement>(null);
@@ -85,10 +88,27 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const correctSide: DealDetectiveQuizSide = quizCase.left.kind === questionKind ? "left" : "right";
   const answered = selectedSide !== null;
   const correct = selectedSide === correctSide;
+  const rankLabel = scoreResult?.detective_rank ?? currentRank;
 
   useEffect(() => {
     backButtonRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!accessToken) {
+      setCurrentRank(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetchCommunityProfileSummary(accessToken, controller.signal)
+      .then((summary) => {
+        setCurrentRank(getCommunityDetectiveRank(summary.tips_shared, summary.helpful_received, summary.deal_detective_quiz_correct).label);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+    return () => controller.abort();
+  }, [accessToken]);
 
   const saveAnswer = (side: DealDetectiveQuizSide) => {
     if (!accessToken || isSubmitting) return;
@@ -161,10 +181,10 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
-      {scoreResult?.detective_rank && (
+      {rankLabel && (
         <div className="pointer-events-none sticky top-0 z-40 h-0">
           <span className={`absolute left-3 ${showBackButton ? "top-16" : "top-3"} inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800 shadow-md`}>
-            Rank: {scoreResult.detective_rank}
+            Rank: {rankLabel}
           </span>
         </div>
       )}
