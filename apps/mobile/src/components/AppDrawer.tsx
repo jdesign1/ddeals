@@ -35,7 +35,7 @@ export default function AppDrawer() {
   } = useNavigationDrawer();
   const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadCount, unreadAlerts } = useNotifications();
-  const { hasUnplayedDetectiveCase, requestDetectiveCaseOpen } = useNewSpecials();
+  const { canOpenDetectiveCase, requestDetectiveCaseOpen } = useNewSpecials();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -259,7 +259,7 @@ export default function AppDrawer() {
               </span>
               How to use Dodgy Deal
             </button>
-          {hasUnplayedDetectiveCase && (
+          {canOpenDetectiveCase && (
             <button
               type="button"
               onClick={() => {
