@@ -161,6 +161,14 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
         </div>
       )}
 
+      {scoreResult?.detective_rank && (
+        <div className="pointer-events-none sticky top-0 z-40 h-0">
+          <span className={`absolute left-3 ${showBackButton ? "top-16" : "top-3"} inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800 shadow-md`}>
+            Rank: {scoreResult.detective_rank}
+          </span>
+        </div>
+      )}
+
       <div className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
           src="/deal-detective-case-mascot.png"
@@ -204,7 +212,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
               <p className="mt-2 dd-type-meta leading-4 text-stone-600">
                 {accessToken
                   ? scoreResult
-                    ? `This case has been closed. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far. Rank: ${scoreResult.detective_rank}.`
+                    ? `This case has been closed. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far.`
                     : isSubmitting
                       ? "Saving your detective score…"
                       : "Your answer is being checked."
@@ -236,7 +244,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
 
         {answered ? (
           <button type="button" onClick={onDone} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
-            All done
+            Close case
           </button>
         ) : showViewDealsButton ? (
           <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary mt-3 min-h-14 w-full cursor-pointer">
