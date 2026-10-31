@@ -265,7 +265,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!scope || !storageReady || !cataloguePublicationKey || !cataloguePublicationComplete) return;
     const hasNewPublication = Boolean(detectedSummary?.total);
-    if (detectiveCasePlayedPublicationKey === cataloguePublicationKey) {
+    const canReplayForTest = isAnonymousSession && !storedDetectiveCase;
+    if (detectiveCasePlayedPublicationKey === cataloguePublicationKey && !canReplayForTest) {
       if (storedDetectiveCase) {
         clearStoredDealDetectiveCase(scope);
         setStored((current) => ({ ...current, detectiveCase: null }));
@@ -296,7 +297,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       clearStoredDealDetectivePlayedState(scope);
       setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     }
-  }, [activePending, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, scope, storageReady, storedDetectiveCase]);
+  }, [activePending, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, isAnonymousSession, scope, storageReady, storedDetectiveCase]);
 
   useEffect(() => {
     if (!scope || !storageReady || !stored.detectiveCase) return;
@@ -352,13 +353,20 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
   const markDetectiveCasePlayed = useCallback(() => {
     if (!scope || !storageReady || !storedDetectiveCase) return;
+    // Anonymous Test mode intentionally keeps the case available so it can be
+    // replayed while the interaction is being QA-tested. Real accounts still
+    // consume the case permanently after the first answer.
+    if (isAnonymousSession) {
+      setDetectiveCaseOpenRequested(false);
+      return;
+    }
     const playedPublicationKey = storedDetectiveCase.publicationKey;
     const playedQuestionKind = storedDetectiveCase.quizCase.questionKind ?? "real";
     writeStoredDealDetectivePlayedState(playedPublicationKey, playedQuestionKind, scope);
     clearStoredDealDetectiveCase(scope);
     setStored((current) => ({ ...current, detectiveCase: null, detectiveCasePlayedPublicationKey: playedPublicationKey, detectiveCasePlayedQuestionKind: playedQuestionKind }));
     setDetectiveCaseOpenRequested(false);
-  }, [scope, storageReady, storedDetectiveCase]);
+  }, [isAnonymousSession, scope, storageReady, storedDetectiveCase]);
 
   const markPopupShown = useCallback(() => {
     if (!scope || !storageReady || !activePending) return;
