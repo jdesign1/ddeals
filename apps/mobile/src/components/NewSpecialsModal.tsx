@@ -49,18 +49,17 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   }, [onClose, onSelectAllNewDeals, onSelectFilter, onSelectTopDeals]);
 
   useEffect(() => {
-    if (!quizCase) return;
-    setDisplayedQuizCase(quizCase);
-  }, [quizCase]);
-
-  useEffect(() => {
     if (!open) {
       setShowQuiz(false);
       setDisplayedQuizCase(null);
       return;
     }
-    if (quizCase) setDisplayedQuizCase(quizCase);
-    if (gameOnly) setShowQuiz(true);
+    if (!gameOnly || !quizCase) return;
+    // A case is a short, self-contained session. Keep the first valid case
+    // that opened this sheet, even if a catalogue refresh changes the parent
+    // prop while the shopper is deciding.
+    setDisplayedQuizCase((currentCase) => currentCase ?? quizCase);
+    setShowQuiz(true);
   }, [gameOnly, open, quizCase]);
 
   const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
@@ -167,6 +166,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
 
               {showQuiz && displayedQuizCase ? (
                 <DealDetectiveQuiz
+                  key={`${displayedQuizCase.caseNumber ?? "case"}-${displayedQuizCase.questionKind ?? "real"}-${displayedQuizCase.left.dealKey}-${displayedQuizCase.right.dealKey}`}
                   quizCase={displayedQuizCase}
                   accessToken={accessToken}
                   onBack={() => {
@@ -175,6 +175,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                       return;
                     }
                     setShowQuiz(false);
+                    setDisplayedQuizCase(null);
                     window.requestAnimationFrame(() => quizTriggerRef.current?.focus());
                   }}
                   onViewDeals={() => {
@@ -233,7 +234,10 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                         <button
                           type="button"
                           ref={quizTriggerRef}
-                          onClick={() => setShowQuiz(true)}
+                          onClick={() => {
+                            setDisplayedQuizCase(quizCase);
+                            setShowQuiz(true);
+                          }}
                           className="dd-btn dd-btn-outline min-h-12 w-full cursor-pointer border-fair-700 text-fair-900 hover:bg-fair-50"
                         >
                           <span>Test your Deal Detective skills</span>

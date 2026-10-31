@@ -93,7 +93,6 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [currentRank, setCurrentRank] = useState<string | null>(null);
-  const [mascotReady, setMascotReady] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
@@ -106,6 +105,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const correct = selectedSide === correctSide;
   const rankLabel = scoreResult?.detective_rank ?? currentRank;
   const selectedCandidate = selectedSide === "left" ? quizCase.left : selectedSide === "right" ? quizCase.right : null;
+  const mascotAnimationKey = `${quizCase.caseNumber ?? "case"}-${questionKind}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`;
 
   useEffect(() => {
     backButtonRef.current?.focus();
@@ -114,10 +114,6 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   useEffect(() => () => {
     if (priceHistoryRevealTimeoutRef.current !== null) window.clearTimeout(priceHistoryRevealTimeoutRef.current);
   }, []);
-
-  useEffect(() => {
-    setMascotReady(false);
-  }, [quizCase.caseNumber]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -232,9 +228,10 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
 
       <div className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50">
         <motion.div
-          initial={false}
-          animate={{ opacity: mascotReady ? 1 : 0 }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
+          key={mascotAnimationKey}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.34, ease: "easeOut" }}
           className="absolute inset-0"
         >
           <MascotImage
@@ -246,8 +243,6 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
             sizes="(max-width: 480px) 100vw, 432px"
             priority
             unoptimized
-            onLoad={() => setMascotReady(true)}
-            onError={() => setMascotReady(true)}
             className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
           />
         </motion.div>
