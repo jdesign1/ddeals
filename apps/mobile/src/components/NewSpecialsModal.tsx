@@ -152,15 +152,17 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               onClick={(event) => event.stopPropagation()}
               className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-1/2 mx-auto flex max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
-              <button
-                type="button"
-                onClick={handleClose}
-                aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
-                ref={closeButtonRef}
-                className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-md transition-colors hover:bg-white hover:text-stone-900"
-              >
-                <span className="text-2xl leading-none" aria-hidden="true">×</span>
-              </button>
+              <div className="pointer-events-none sticky top-0 z-40 h-0">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
+                  ref={closeButtonRef}
+                  className="pointer-events-auto absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-stone-500 shadow-md transition-colors hover:bg-white hover:text-stone-900"
+                >
+                  <span className="text-2xl leading-none" aria-hidden="true">×</span>
+                </button>
+              </div>
 
               {showQuiz && displayedQuizCase ? (
                 <DealDetectiveQuiz

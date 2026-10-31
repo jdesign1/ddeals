@@ -149,6 +149,12 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
     <div className="relative flex flex-col">
       {correct && answered && <ConfettiBurst key={selectedSide} />}
 
+      <div className="pointer-events-none sticky top-0 z-40 h-0">
+        <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto absolute left-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-stone-600 shadow-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+          <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+        </button>
+      </div>
+
       <div className="relative flex justify-center overflow-hidden rounded-t-3xl">
         <MascotImage
           src="/deal-detective-case-mascot.png"
@@ -160,9 +166,6 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
           unoptimized
           className="block h-auto w-full max-w-none"
         />
-        <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="absolute left-3 top-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-stone-600 shadow-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
-          <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-        </button>
       </div>
 
       <div className="px-5 pb-6">
