@@ -202,8 +202,8 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
           className="absolute inset-0"
         >
           <MascotImage
-            src="/deal-detective-case-mascot.png"
-            darkSrc="/deal-detective-case-mascot.png"
+            src="/deal-detective-case-mascot.webp"
+            darkSrc="/deal-detective-case-mascot.webp"
             alt="Dodgy Deal mascot comparing two deal case files at headquarters"
             width={1254}
             height={1254}
