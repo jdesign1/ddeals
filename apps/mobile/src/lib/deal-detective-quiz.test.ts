@@ -125,6 +125,28 @@ test("the case never pairs two verdicts from the same product", () => {
   assert.equal(result?.right.product.id, "shared");
 });
 
+test("rotation selects different valid pairs and alternates the side carrying the real deal", () => {
+  const products = [
+    product("real-a", "Real A", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("real-b", "Real B", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("dodgy-a", "Dodgy A", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+    product("dodgy-b", "Dodgy B", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+  ];
+  const summary = {
+    realDealKeys: ["real-a::newworld", "real-b::newworld"],
+    dodgyDealKeys: ["dodgy-a::woolworths", "dodgy-b::woolworths"],
+  };
+
+  const first = buildDealDetectiveQuizCase(products, summary, [], 0);
+  const second = buildDealDetectiveQuizCase(products, summary, [], 1);
+
+  assert.ok(first);
+  assert.ok(second);
+  assert.notEqual(`${first.left.dealKey}|${first.right.dealKey}`, `${second.left.dealKey}|${second.right.dealKey}`);
+  assert.equal(first.left.kind, "real");
+  assert.equal(second.left.kind, "dodgy");
+});
+
 test("a detective case is scoped, expires, and records the played publication", () => {
   const products = [
     product("real", "Real", "Pantry", [deal({ dealType: "Real Deal" })]),

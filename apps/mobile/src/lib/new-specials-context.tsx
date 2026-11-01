@@ -228,17 +228,18 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     }
     return { realDealKeys, dodgyDealKeys };
   }, [products]);
-  const currentQuizCase = useMemo(() => {
+  const buildCurrentQuizCase = useCallback((rotationIndex = 0) => {
     const summaries = [
       detectedSummary?.total ? detectedSummary : activePending?.summary,
       catalogueCaseSummary,
     ].filter((summary): summary is NonNullable<typeof summary> => Boolean(summary));
     for (const summary of summaries) {
-      const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? []);
+      const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? [], rotationIndex);
       if (quizCase) return quizCase;
     }
     return null;
   }, [activePending, catalogueCaseSummary, detectedSummary, products, profile?.preferred_categories]);
+  const currentQuizCase = useMemo(() => buildCurrentQuizCase(), [buildCurrentQuizCase]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
@@ -325,20 +326,23 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     const previousQuestionKind = storedDetectiveCase?.quizCase.questionKind ?? detectiveCasePlayedQuestionKind;
     const questionKind = previousQuestionKind ? alternateQuestionKind(previousQuestionKind) : "real";
 
+    const nextCaseNumber = nextDealDetectiveCaseNumber(scope);
+    const nextQuizCase = buildCurrentQuizCase(nextCaseNumber - 1);
+    if (!nextQuizCase) return;
     const nextCase = createStoredDealDetectiveCase(
       cataloguePublicationKey,
-      currentQuizCase,
+      nextQuizCase,
       hasNewPublication
         ? Date.now() + NEW_SPECIALS_PENDING_TTL_MS
         : activePending?.expiresAt ?? Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
       questionKind,
-      nextDealDetectiveCaseNumber(scope),
+      nextCaseNumber,
     );
     if (writeStoredDealDetectiveCase(nextCase, scope)) {
       clearStoredDealDetectivePlayedState(scope);
       setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     }
-  }, [activePending, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, isAnonymousSession, scope, storageReady, storedDetectiveCase]);
+  }, [activePending, buildCurrentQuizCase, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, isAnonymousSession, scope, storageReady, storedDetectiveCase]);
 
   useEffect(() => {
     if (!scope || !storageReady || !stored.detectiveCase) return;
@@ -404,18 +408,21 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     // catalogue marker is ready. This on-demand path covers a cold profile
     // menu tap before that marker has arrived, and recovers cases from older
     // builds that left no case in localStorage.
+    const nextCaseNumber = nextDealDetectiveCaseNumber(scope);
+    const nextQuizCase = buildCurrentQuizCase(nextCaseNumber - 1);
+    if (!nextQuizCase) return;
     const nextCase = createStoredDealDetectiveCase(
       cataloguePublicationKey ?? "anonymous-test-case",
-      currentQuizCase,
+      nextQuizCase,
       Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
       detectiveCasePlayedQuestionKind ? alternateQuestionKind(detectiveCasePlayedQuestionKind) : "real",
-      nextDealDetectiveCaseNumber(scope),
+      nextCaseNumber,
     );
     if (!writeStoredDealDetectiveCase(nextCase, scope)) return;
     clearStoredDealDetectivePlayedState(scope);
     setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     setDetectiveCaseOpenRequested(true);
-  }, [canReplayDetectiveCaseFromProfile, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, scope, storageReady]);
+  }, [buildCurrentQuizCase, canReplayDetectiveCaseFromProfile, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, scope, storageReady]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);

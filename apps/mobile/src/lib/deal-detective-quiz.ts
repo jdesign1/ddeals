@@ -313,18 +313,53 @@ function sortedCandidates(
     .sort((left, right) => left.dealKey.localeCompare(right.dealKey));
 }
 
-function findPairInCategory(
+type DealDetectivePair = {
+  real: Omit<DealDetectiveQuizCandidate, "side">;
+  dodgy: Omit<DealDetectiveQuizCandidate, "side">;
+};
+
+function findPairsInCategory(
   realCandidates: readonly Omit<DealDetectiveQuizCandidate, "side">[],
   dodgyCandidates: readonly Omit<DealDetectiveQuizCandidate, "side">[],
   category: string,
-): { real: Omit<DealDetectiveQuizCandidate, "side">; dodgy: Omit<DealDetectiveQuizCandidate, "side"> } | null {
+): DealDetectivePair[] {
   const realCandidatesInCategory = realCandidates.filter((candidate) => candidate.category === category);
   const dodgyCandidatesInCategory = dodgyCandidates.filter((candidate) => candidate.category === category);
+  const pairs: DealDetectivePair[] = [];
   for (const real of realCandidatesInCategory) {
-    const dodgy = dodgyCandidatesInCategory.find((candidate) => candidate.product.id !== real.product.id);
-    if (dodgy) return { real, dodgy };
+    for (const dodgy of dodgyCandidatesInCategory) {
+      if (dodgy.product.id !== real.product.id) pairs.push({ real, dodgy });
+    }
   }
-  return null;
+  return pairs;
+}
+
+function allDealDetectivePairs(
+  realCandidates: readonly Omit<DealDetectiveQuizCandidate, "side">[],
+  dodgyCandidates: readonly Omit<DealDetectiveQuizCandidate, "side">[],
+  preferredCategories: readonly string[],
+): DealDetectivePair[] {
+  const categories = preferredCategories.filter((category, index, values) => values.indexOf(category) === index);
+  const pairs: DealDetectivePair[] = [];
+  const seen = new Set<string>();
+  for (const category of categories) {
+    for (const pair of findPairsInCategory(realCandidates, dodgyCandidates, category)) {
+      const pairKey = `${pair.real.dealKey}|${pair.dodgy.dealKey}`;
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+      pairs.push(pair);
+    }
+  }
+  if (pairs.length > 0) return pairs;
+
+  // Preserve the original safety fallback: when no preferred category has a
+  // same-category pair, any valid cross-category pair is still usable.
+  for (const real of realCandidates) {
+    for (const dodgy of dodgyCandidates) {
+      if (dodgy.product.id !== real.product.id) pairs.push({ real, dodgy });
+    }
+  }
+  return pairs;
 }
 
 /**
@@ -336,22 +371,22 @@ export function buildDealDetectiveQuizCase(
   products: readonly ProductCard[],
   summary: Pick<NewSpecialsSummary, "realDealKeys" | "dodgyDealKeys">,
   preferredCategories: readonly string[] = [],
+  rotationIndex = 0,
 ): DealDetectiveQuizCase | null {
   const realCandidates = sortedCandidates(products, summary.realDealKeys, "real");
   const dodgyCandidates = sortedCandidates(products, summary.dodgyDealKeys, "dodgy");
   if (realCandidates.length === 0 || dodgyCandidates.length === 0) return null;
 
-  const preferredPair = preferredCategories
-    .map((category) => findPairInCategory(realCandidates, dodgyCandidates, category))
-    .find((pair): pair is { real: Omit<DealDetectiveQuizCandidate, "side">; dodgy: Omit<DealDetectiveQuizCandidate, "side"> } => pair !== null);
-  const pair = preferredPair ?? realCandidates
-    .map((real) => ({ real, dodgy: dodgyCandidates.find((candidate) => candidate.product.id !== real.product.id) ?? null }))
-    .find((candidate): candidate is { real: Omit<DealDetectiveQuizCandidate, "side">; dodgy: Omit<DealDetectiveQuizCandidate, "side"> } => candidate.dodgy !== null);
-  if (!pair || !pair.real || !pair.dodgy) return null;
+  const pairs = allDealDetectivePairs(realCandidates, dodgyCandidates, preferredCategories);
+  if (pairs.length === 0) return null;
+  const safeRotationIndex = Number.isSafeInteger(rotationIndex) && rotationIndex >= 0 ? rotationIndex : 0;
+  const pair = pairs[safeRotationIndex % pairs.length];
+  const realOnLeft = safeRotationIndex % 2 === 0;
+  const preferredCategory = preferredCategories.includes(pair.real.category) ? pair.real.category : null;
 
   return {
-    category: preferredPair ? pair.real.category : null,
-    left: { ...pair.real, side: "left" },
-    right: { ...pair.dodgy, side: "right" },
+    category: preferredCategory,
+    left: { ...(realOnLeft ? pair.real : pair.dodgy), side: "left" },
+    right: { ...(realOnLeft ? pair.dodgy : pair.real), side: "right" },
   };
 }
