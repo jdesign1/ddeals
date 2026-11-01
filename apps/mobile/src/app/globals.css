@@ -1386,12 +1386,14 @@ html[data-theme="dark"] .theme-loader-surface {
 
 /* Keep the nav mounted while a sheet is open. WKWebView can take a visible
    moment to recreate a fixed element after `display: none` is removed, which
-   makes the nav appear late when the sheet closes. Opacity keeps its layout
-   and composited layer warm, while the short transition makes its return
-   imperceptible as the sheet finishes dismissing. */
+   makes the nav appear late when the sheet closes. Opacity and a small upward
+   settle keep its composited layer warm while making the return feel tied to
+   the sheet's exit instead of popping in abruptly. */
 .app-bottom-nav,
 .app-bottom-nav-backdrop {
-  transition: opacity 220ms ease-out, visibility 0s linear;
+  will-change: opacity, translate;
+  translate: 0 0;
+  transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1), translate 380ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear;
 }
 
 /* Keep the nav mounted across routes that intentionally do not show it. That
@@ -1409,13 +1411,14 @@ html[data-theme="dark"] .theme-loader-surface {
 
 .app-drawer-shiftable.app-bottom-nav,
 .app-drawer-shiftable.app-bottom-nav-backdrop {
-  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), opacity 220ms ease-out, visibility 0s linear;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), opacity 380ms cubic-bezier(0.22, 1, 0.36, 1), translate 380ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .app-drawer-shiftable.app-bottom-nav,
   .app-drawer-shiftable.app-bottom-nav-backdrop {
     transition: none;
+    translate: 0 0;
   }
 
   .app-bottom-nav.bottom-nav-route-hidden,
@@ -1508,10 +1511,9 @@ body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .mobile-scroll-surface 
    sheet despite the sheet's stacking layer. Hide the global nav while a
    sheet is open so it cannot cover the sheet or receive its touches.
    `data-sheet-open` changes as soon as the close action runs, before
-   AnimatePresence finishes the panel's exit animation, so the nav returns
-   almost immediately instead of waiting for the exit animation to unmount
-   the panel. The second selector preserves the same behavior for legacy
-   non-portal sheets. */
+   AnimatePresence finishes the panel's exit animation, so the nav can fade
+   and settle back in while the panel leaves. The second selector preserves
+   the same behavior for legacy non-portal sheets. */
 body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav,
 body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bottom-nav,
 body:has(.dd-bottom-sheet-layer[data-sheet-open="true"]) .app-bottom-nav-backdrop,
@@ -1519,6 +1521,7 @@ body:has(.dd-bottom-sheet:not(.dd-bottom-sheet-layer .dd-bottom-sheet)) .app-bot
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  translate: 0 8px !important;
 }
 /* Remove Safari's default tap highlight from custom segmented controls so
    the selected segment uses the app's dark ink state consistently on iOS. */
