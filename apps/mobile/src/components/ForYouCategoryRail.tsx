@@ -24,8 +24,8 @@ export default function ForYouCategoryRail({
     <section className="flex flex-col gap-3 bg-fair-50 px-5 py-5" aria-labelledby="for-you-title">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="for-you-title" className="dd-type-section text-fair-800">For you</h2>
-          <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Best specials from your favourite categories</p>
+          <h2 id="for-you-title" className="dd-type-section text-fair-800">Your saved categories</h2>
+          <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Deals from your chosen categories</p>
         </div>
         <button
           type="button"

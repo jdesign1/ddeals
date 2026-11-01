@@ -17,6 +17,7 @@ import {
 } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
 import CheckDealsSummary from "@/components/CheckDealsSummary";
+import CheckDealsBeltOrderSheet from "@/components/CheckDealsBeltOrderSheet";
 import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
@@ -24,7 +25,13 @@ import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearch } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
-import { getNewSpecialDealKey } from "@/lib/new-specials";
+import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
+import {
+  DEFAULT_CHECK_DEALS_BELT_ORDER,
+  readCheckDealsBeltOrder,
+  writeCheckDealsBeltOrder,
+  type CheckDealsBeltId,
+} from "@/lib/check-deals-belt-order";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
@@ -274,6 +281,7 @@ export default function HomePage() {
   const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
   const [dismissedWorthAnotherLookKeys, setDismissedWorthAnotherLookKeys] = useState<Set<string>>(() => new Set());
   const [isWorthAnotherLookSheetOpen, setIsWorthAnotherLookSheetOpen] = useState(false);
+  const [isBeltOrderSheetOpen, setIsBeltOrderSheetOpen] = useState(false);
   const [isCategoryInterestsSheetOpen, setIsCategoryInterestsSheetOpen] = useState(false);
   const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
   const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
@@ -297,10 +305,25 @@ export default function HomePage() {
   const forYouCategoryStorageKey = session?.user?.id && !isAnonymousSession
     ? `${FOR_YOU_CATEGORY_STORAGE_PREFIX}:${session.user.id}`
     : null;
+  const beltOrderScope = getNewSpecialsStorageScope(user?.id, isAnonymousSession);
+  const [checkDealsBeltOrder, setCheckDealsBeltOrder] = useState<CheckDealsBeltId[]>(() => [...DEFAULT_CHECK_DEALS_BELT_ORDER]);
   const preferredCategories = useMemo(
     () => normalizeCategoryInterests(profile?.preferred_categories),
     [profile?.preferred_categories],
   );
+
+  useEffect(() => {
+    const loadTimer = window.setTimeout(() => {
+      setCheckDealsBeltOrder(readCheckDealsBeltOrder(beltOrderScope));
+    }, 0);
+    return () => window.clearTimeout(loadTimer);
+  }, [beltOrderScope]);
+
+  const handleBeltOrderChange = (order: CheckDealsBeltId[]) => {
+    setCheckDealsBeltOrder(order);
+    writeCheckDealsBeltOrder(order, beltOrderScope);
+  };
+  const closeBeltOrderSheet = useCallback(() => setIsBeltOrderSheetOpen(false), []);
 
   useEffect(() => {
     if (!user || isAnonymousSession || !profile?.onboarding_complete || profile.category_interests_prompted_at) {
@@ -613,21 +636,8 @@ export default function HomePage() {
           updatedText={updatedText}
           updatedLabel={updatedLabel}
           onOpenStoreDeals={handleSummaryStoreSelect}
+          onOpenBeltOrder={() => setIsBeltOrderSheetOpen(true)}
         />
-      )}
-      {!isSearchActive && !loadingProducts && !error && dealFilter === "all" && (
-        <>
-          {preferredCategories.length > 0 && visibleForYouCategory && (
-            <ForYouCategoryRail
-              categories={preferredCategories}
-              activeCategory={visibleForYouCategory}
-              deals={visibleForYouDeals}
-              onSelectCategory={handleForYouCategorySelect}
-              onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
-              onSeeAll={handleForYouSeeAll}
-            />
-          )}
-        </>
       )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
@@ -852,26 +862,35 @@ export default function HomePage() {
                 tone="history"
                 onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
               />
-              <DealSnapshotRail
-                kind="savings"
-                deals={topSavingsDeals}
-                selectedCategories={topDealsCategories}
-                refreshKey={selectedStores.join(",")}
-                showingNewOnly={newForYouFilterActive}
-                updatedText={updatedText}
-                onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions)}
-                onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions)}
-              />
-              <DealSnapshotRail
-                kind="dodgy"
-                deals={worstDodgyDeals}
-                selectedCategories={topDealsCategories}
-                refreshKey={selectedStores.join(",")}
-                showingNewOnly={newForYouFilterActive}
-                updatedText={updatedText}
-                onSeeAll={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
-                onSeeMore={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
-              />
+              {checkDealsBeltOrder.map((belt) => {
+                if (belt === "for-you") {
+                  if (preferredCategories.length === 0 || !visibleForYouCategory) return null;
+                  return (
+                    <ForYouCategoryRail
+                      key={belt}
+                      categories={preferredCategories}
+                      activeCategory={visibleForYouCategory}
+                      deals={visibleForYouDeals}
+                      onSelectCategory={handleForYouCategorySelect}
+                      onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
+                      onSeeAll={handleForYouSeeAll}
+                    />
+                  );
+                }
+                return (
+                  <DealSnapshotRail
+                    key={belt}
+                    kind={belt === "top-savers" ? "savings" : "dodgy"}
+                    deals={belt === "top-savers" ? topSavingsDeals : worstDodgyDeals}
+                    selectedCategories={topDealsCategories}
+                    refreshKey={selectedStores.join(",")}
+                    showingNewOnly={newForYouFilterActive}
+                    updatedText={updatedText}
+                    onSeeAll={() => openRailSearch(belt === "top-savers" ? "real" : "dodgy", belt === "top-savers" ? newDealsRealSearchOptions : newDealsDodgySearchOptions)}
+                    onSeeMore={() => openRailSearch(belt === "top-savers" ? "real" : "dodgy", belt === "top-savers" ? newDealsRealSearchOptions : newDealsDodgySearchOptions)}
+                  />
+                );
+              })}
               <div className="px-5 pb-2 pt-1">
                 <button
                   type="button"
@@ -900,6 +919,12 @@ export default function HomePage() {
         open={isWorthAnotherLookSheetOpen}
         onClose={() => setIsWorthAnotherLookSheetOpen(false)}
         onRemove={dismissWorthAnotherLook}
+      />
+      <CheckDealsBeltOrderSheet
+        open={isBeltOrderSheetOpen}
+        order={checkDealsBeltOrder}
+        onChange={handleBeltOrderChange}
+        onClose={closeBeltOrderSheet}
       />
       <CategoryInterestsSheet
         open={isCategoryInterestsSheetOpen}

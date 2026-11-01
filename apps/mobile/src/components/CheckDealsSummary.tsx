@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LayoutGrid } from "lucide-react";
 import type { CheckDealsSummaryStore } from "@/lib/check-deals-home";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
@@ -41,11 +42,13 @@ export default function CheckDealsSummary({
   updatedText,
   updatedLabel,
   onOpenStoreDeals,
+  onOpenBeltOrder,
 }: {
   counts: Record<CheckDealsSummaryStore, number>;
   updatedText: string | null;
   updatedLabel: string;
   onOpenStoreDeals: (store: CheckDealsSummaryStore) => void;
+  onOpenBeltOrder: () => void;
 }) {
   const [shouldAnimate] = useState(() => !hasPlayedCountAnimation);
   const initialCountsRef = useRef(counts);
@@ -92,14 +95,26 @@ export default function CheckDealsSummary({
   return (
     <section className="mt-2 bg-white py-5" aria-labelledby="current-specials-title">
       <div className="mx-5">
-        <div className="flex flex-col items-start gap-1.5">
-          <div className="flex items-center gap-2" aria-label={updatedLabel}>
-            <span className="rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-fair-500">
-              LIVE
-            </span>
-            {updatedText && <span className="dd-type-meta dd-type-meta-strong text-stone-500">{updatedText}</span>}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col items-start gap-1.5">
+            <div className="flex items-center gap-2" aria-label={updatedLabel}>
+              <span className="rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-fair-500">
+                LIVE
+              </span>
+              {updatedText && <span className="dd-type-meta dd-type-meta-strong text-stone-500">{updatedText}</span>}
+            </div>
+            <h1 id="current-specials-title" className="dd-type-section leading-tight text-stone-900">Current specials by supermarket</h1>
           </div>
-          <h1 id="current-specials-title" className="dd-type-section whitespace-nowrap text-stone-900">Current specials by supermarket</h1>
+          <button
+            type="button"
+            onClick={onOpenBeltOrder}
+            aria-label="Arrange deal belts"
+            aria-haspopup="dialog"
+            title="Arrange deal belts"
+            className="-mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-fair-800 transition-colors hover:bg-fair-50 hover:text-fair-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+          >
+            <LayoutGrid className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+          </button>
         </div>
         <div className="mt-4 grid w-full grid-cols-3 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs" role="group" aria-label="Current special counts by supermarket">
           {SUMMARY_STORES.map(({ key, label }) => {
