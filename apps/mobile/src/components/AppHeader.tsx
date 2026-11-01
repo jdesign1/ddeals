@@ -12,7 +12,7 @@ import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
-import { publishCheckDealsScrollToTop, subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
+import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearch } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
@@ -45,7 +45,7 @@ export default function AppHeader({
   const { isAnonymousSession, user, profile, profileLoading, session } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { query, setQuery, openSearch, openSearchForFilter, setDealFilter, closeSearch } = useSearch();
+  const { query, setQuery, openSearch, openSearchForFilter } = useSearch();
   const {
     digest,
     popupEligible,
@@ -123,12 +123,6 @@ export default function AppHeader({
   const handleNewSpecialsClose = () => {
     setIsNewSpecialsModalOpen(false);
     setNewSpecialsModalGameOnly(false);
-  };
-  const handleShowTopDeals = () => {
-    setIsNewSpecialsModalOpen(false);
-    closeSearch();
-    setDealFilter("all");
-    publishCheckDealsScrollToTop();
   };
   const handleShowAllNewDeals = (dealKeys: string[]) => {
     setIsNewSpecialsModalOpen(false);
@@ -217,7 +211,6 @@ export default function AppHeader({
             openSearchForFilter(filter, { focus: false, dealKeys });
           }}
           onSelectAllNewDeals={handleShowAllNewDeals}
-          onSelectTopDeals={handleShowTopDeals}
           quizCase={detectiveCase}
           accessToken={session?.access_token ?? null}
           onPlayed={markDetectiveCasePlayed}

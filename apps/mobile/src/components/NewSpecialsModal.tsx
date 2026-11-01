@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { X } from "lucide-react";
+import { Gamepad2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -16,14 +16,13 @@ interface NewSpecialsModalProps {
   onClose: () => void;
   onSelectFilter: (filter: DealFilter, dealKeys: string[]) => void;
   onSelectAllNewDeals: (dealKeys: string[]) => void;
-  onSelectTopDeals: () => void;
   quizCase: DealDetectiveQuizCase | null;
   accessToken: string | null;
   onPlayed: () => void;
   gameOnly?: boolean;
 }
 
-export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, onSelectTopDeals, quizCase, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
+export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
   // Keep the shared viewport lock active until the exit animation finishes.
   // Otherwise the underlying page/nav becomes visible during the modal's
   // fade-and-scale exit, which reads as a flicker on iOS cold starts.
@@ -39,27 +38,28 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const onCloseRef = useRef(onClose);
   const onSelectFilterRef = useRef(onSelectFilter);
   const onSelectAllNewDealsRef = useRef(onSelectAllNewDeals);
-  const onSelectTopDealsRef = useRef(onSelectTopDeals);
 
   useEffect(() => {
     onCloseRef.current = onClose;
     onSelectFilterRef.current = onSelectFilter;
     onSelectAllNewDealsRef.current = onSelectAllNewDeals;
-    onSelectTopDealsRef.current = onSelectTopDeals;
-  }, [onClose, onSelectAllNewDeals, onSelectFilter, onSelectTopDeals]);
+  }, [onClose, onSelectAllNewDeals, onSelectFilter]);
 
   useEffect(() => {
-    if (!open) {
-      setShowQuiz(false);
-      setDisplayedQuizCase(null);
-      return;
-    }
-    if (!gameOnly || !quizCase) return;
-    // A case is a short, self-contained session. Keep the first valid case
-    // that opened this sheet, even if a catalogue refresh changes the parent
-    // prop while the shopper is deciding.
-    setDisplayedQuizCase((currentCase) => currentCase ?? quizCase);
-    setShowQuiz(true);
+    const syncTimer = window.setTimeout(() => {
+      if (!open) {
+        setShowQuiz(false);
+        setDisplayedQuizCase(null);
+        return;
+      }
+      if (!gameOnly || !quizCase) return;
+      // A case is a short, self-contained session. Keep the first valid case
+      // that opened this sheet, even if a catalogue refresh changes the parent
+      // prop while the shopper is deciding.
+      setDisplayedQuizCase((currentCase) => currentCase ?? quizCase);
+      setShowQuiz(true);
+    }, 0);
+    return () => window.clearTimeout(syncTimer);
   }, [gameOnly, open, quizCase]);
 
   const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
@@ -77,11 +77,6 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const handleSelectAllNewDeals = useCallback((dealKeys: string[]) => {
     setIsClosing(true);
     onSelectAllNewDealsRef.current(dealKeys);
-  }, []);
-
-  const handleSelectTopDeals = useCallback(() => {
-    setIsClosing(true);
-    onSelectTopDealsRef.current();
   }, []);
 
   useEffect(() => {
@@ -192,7 +187,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 />
               ) : (
                 <>
-                  <div className="flex justify-center px-1">
+                  <div className="flex h-[10rem] justify-center px-1 sm:h-[13rem]">
                     <MascotImage
                       src="/new-specials-mascot.webp"
                       darkSrc="/new-specials-mascot.webp"
@@ -201,7 +196,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                       height={1024}
                       sizes="(max-width: 480px) calc(100vw - 72px), 320px"
                       unoptimized
-                      className="h-auto w-full max-w-[20rem]"
+                      className="h-full w-full max-w-[16rem] object-contain"
                     />
                   </div>
 
@@ -222,14 +217,40 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   </div>
 
                   {hasNewSpecials && summary && (
-                    <div className="mt-6 flex flex-col gap-3">
+                    <div className="mt-5 flex flex-col gap-3">
                       <button
                         type="button"
                         onClick={() => handleSelectAllNewDeals(summary.allDealKeys)}
                         className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
                       >
-                        <span>See all {pluralLabel(summary.total, "new deal")}</span>
+                        <span>Review all {pluralLabel(summary.total, "new deal")}</span>
                       </button>
+                      {hasRatedSpecials && (
+                        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter new deals by verdict">
+                          {summary.realDeals > 0 && (
+                            <button
+                              type="button"
+                              aria-label={`See ${summary.realDeals} new Real Savers`}
+                              onClick={() => handleSelectFilter("real", summary.realDealKeys)}
+                              className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl border border-fair-300 bg-fair-50 px-3 py-2 text-left text-sm font-bold text-fair-900 transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
+                            >
+                              <span>Real Savers</span>
+                              <span className="rounded-full bg-white/80 px-2 py-1 text-xs tabular-nums">{summary.realDeals}</span>
+                            </button>
+                          )}
+                          {summary.dodgyDeals > 0 && (
+                            <button
+                              type="button"
+                              aria-label={`See ${summary.dodgyDeals} new Dodgy Deals`}
+                              onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
+                              className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl border border-alert-300 bg-alert-50 px-3 py-2 text-left text-sm font-bold text-alert-900 transition-colors hover:bg-alert-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-700 focus-visible:ring-offset-2"
+                            >
+                              <span>Dodgy Deals</span>
+                              <span className="rounded-full bg-white/80 px-2 py-1 text-xs tabular-nums">{summary.dodgyDeals}</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                       {quizCase && (
                         <button
                           type="button"
@@ -238,40 +259,19 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                             setDisplayedQuizCase(quizCase);
                             setShowQuiz(true);
                           }}
-                          className="dd-btn dd-btn-outline min-h-12 w-full cursor-pointer border-fair-700 text-fair-900 hover:bg-fair-50"
+                          aria-label="Play Deal Detective"
+                          className="flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 rounded-2xl border border-fair-200 bg-fair-50 px-3 py-3 text-left transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
                         >
-                          <span>Test your Deal Detective skills</span>
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-fair-800 shadow-xs" aria-hidden="true">
+                            <Gamepad2 className="h-5 w-5" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block dd-type-control dd-type-control-strong text-fair-900">Deal Detective</span>
+                            <span className="mt-0.5 block dd-type-meta text-stone-600">Earn points to rank up</span>
+                          </span>
+                          <span className="shrink-0 rounded-full bg-fair-800 px-3 py-2 text-xs font-bold text-white">Play</span>
                         </button>
                       )}
-                      {hasRatedSpecials && (
-                        <div className="flex flex-col gap-3">
-                          {summary.realDeals > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectFilter("real", summary.realDealKeys)}
-                              className="dd-btn dd-btn-outline new-specials-real-button min-h-12 w-full cursor-pointer"
-                            >
-                              <span>See {pluralLabel(summary.realDeals, "Real Saver")}</span>
-                            </button>
-                          )}
-                          {summary.dodgyDeals > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
-                              className="dd-btn dd-btn-outline new-specials-dodgy-button min-h-12 w-full cursor-pointer"
-                            >
-                              <span>See {pluralLabel(summary.dodgyDeals, "Dodgy Deal")}</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleSelectTopDeals}
-                        className="dd-btn dd-btn-outline min-h-12 w-full cursor-pointer"
-                      >
-                        <span>See the Top 20</span>
-                      </button>
                     </div>
                   )}
                   {!hasNewSpecials && (
