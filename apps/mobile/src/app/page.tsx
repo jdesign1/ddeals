@@ -178,6 +178,147 @@ function persistSnapshotCategories(kind: DealSnapshotKind, categories: string[])
   return nextCategories;
 }
 
+interface CheckDealsToolbarProps {
+  dealFilter: DealFilter;
+  surfaceClassName: string;
+  newDealsCount: number;
+  newForYouFilterActive: boolean;
+  onToggleNewForYouFilter: () => void;
+  availableStoreKeys: string[];
+  selectedStores: string[];
+  onToggleStore: (storeId: string) => void;
+  topDealsCategories: string[];
+  onTopDealsCategoriesChange: (categories: string[]) => void;
+  topDealsAvailableCategories: string[];
+  topDealsCategoryCounts: Map<string, number>;
+  dealCategoryFilter: string[];
+  onDealCategoryFilterChange: (categories: string[]) => void;
+  availableCategories: string[];
+  categoryCounts: Map<string, number>;
+  onDealFilterChange: (filter: DealFilter) => void;
+  dealSortBy: DealSortBy;
+  onDealSortChange: (sortBy: DealSortBy) => void;
+  toolbarVisible: boolean;
+  toolbarHeaderHidden: boolean;
+}
+
+function CheckDealsToolbar({
+  dealFilter,
+  surfaceClassName,
+  newDealsCount,
+  newForYouFilterActive,
+  onToggleNewForYouFilter,
+  availableStoreKeys,
+  selectedStores,
+  onToggleStore,
+  topDealsCategories,
+  onTopDealsCategoriesChange,
+  topDealsAvailableCategories,
+  topDealsCategoryCounts,
+  dealCategoryFilter,
+  onDealCategoryFilterChange,
+  availableCategories,
+  categoryCounts,
+  onDealFilterChange,
+  dealSortBy,
+  onDealSortChange,
+  toolbarVisible,
+  toolbarHeaderHidden,
+}: CheckDealsToolbarProps) {
+  return (
+    <>
+      <div className={`px-5 pb-0 pt-4 ${surfaceClassName}`}>
+        <h2 className="dd-type-section text-stone-900">Standout specials</h2>
+      </div>
+      <div
+        className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${surfaceClassName} ${toolbarVisible ? "pt-1" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
+          toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
+        }`}
+        style={{
+          top: "var(--check-deals-chrome-height, 64px)",
+          gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
+        }}
+      >
+        {/* The heading scrolls naturally; this sticky surface keeps only
+            the deal filters available while the catalogue is browsed. */}
+        <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
+          <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
+            {dealFilter === "all" && newDealsCount > 0 && (
+              <div className="flex h-11 min-w-max shrink-0 items-center">
+                <button
+                  type="button"
+                  onClick={onToggleNewForYouFilter}
+                  aria-pressed={newForYouFilterActive}
+                  className={`dd-type-control flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-0 shadow-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
+                    newForYouFilterActive
+                      ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
+                      : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
+                  }`}
+                  aria-label={`Filter to new deals since your last visit, ${newDealsCount} available`}
+                >
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
+                    {newDealsCount}
+                  </span>
+                  New to you
+                </button>
+              </div>
+            )}
+            <div className="min-w-[8.75rem] shrink-0">
+              <SupermarketPicker
+                stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
+                selectedStoreIds={selectedStores}
+                onToggleStore={onToggleStore}
+              />
+            </div>
+            {dealFilter === "all" ? (
+              <div className="min-w-[7.5rem] shrink-0">
+                <CategoryPicker
+                  label="Category"
+                  selectedCategories={topDealsCategories}
+                  onChange={onTopDealsCategoriesChange}
+                  availableCategories={topDealsAvailableCategories}
+                  categoryCounts={topDealsCategoryCounts}
+                  emptyMessage="No Top Deals in this category right now."
+                  singleCategoryLabel="1 category"
+                  align="left"
+                />
+              </div>
+            ) : (
+              <div className="min-w-[7.5rem] shrink-0">
+                <CategoryPicker
+                  selectedCategories={dealCategoryFilter}
+                  onChange={onDealCategoryFilterChange}
+                  availableCategories={availableCategories}
+                  categoryCounts={categoryCounts}
+                  emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
+                  align="left"
+                />
+              </div>
+            )}
+          </div>
+          {dealFilter !== "all" && (
+            <DealFilterTabs
+              value={dealFilter}
+              onChange={onDealFilterChange}
+              allLabel="Top Deals"
+            />
+          )}
+          {dealFilter !== "all" && (
+            <NativeSelectFilter
+              value={dealSortBy}
+              defaultValue={getDefaultDealSort(dealFilter)}
+              onChange={onDealSortChange}
+              options={TRENDING_SORT_OPTIONS}
+              ariaLabel="Sort deals"
+              fill
+            />
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 /** The home deal rail keeps the same lightweight sort controls across all
  * three deal assessment filters. */
 function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
@@ -674,101 +815,30 @@ export default function HomePage() {
           use, per Jay's ask for visual parity between the two. Multi-select
           (2026-08-21) brings that parity to BEHAVIOR too, not just look --
           see `selectedStores`'s own doc comment above for the full "why". */}
-      {!isSearchActive && !loadingProducts && !error && (
-        <>
-          <div className={`px-5 pb-0 pt-4 ${dealFilterTintClass || "bg-stone-100"}`}>
-            <h2 className="dd-type-section text-stone-900">Standout specials</h2>
-          </div>
-          <div
-            className={`check-deals-toolbar sticky z-20 grid overflow-hidden px-5 ${
-              dealFilterTintClass || "bg-stone-100"
-            } ${toolbarVisible ? "pt-1" : "pt-0"} ${toolbarVisible ? "" : "check-deals-toolbar-hidden"} ${
-              toolbarHeaderHidden ? "check-deals-toolbar-header-hidden" : ""
-            }`}
-            style={{
-              top: "var(--check-deals-chrome-height, 64px)",
-              gridTemplateRows: toolbarVisible ? "1fr" : "0fr",
-            }}
-          >
-            {/* The heading scrolls naturally; this sticky surface keeps only
-                the deal filters available while the catalogue is browsed. */}
-            <div className={`check-deals-toolbar-content min-h-0 min-w-0 space-y-4 ${toolbarVisible ? "pb-2" : "pb-0"}`}>
-              <div className="hide-scrollbar -mx-5 flex min-w-0 gap-1.5 overflow-x-auto px-5">
-                {dealFilter === "all" && newDealsCount > 0 && (
-                  <div className="flex h-11 min-w-max shrink-0 items-center">
-                    <button
-                      type="button"
-                      onClick={() => setIsNewForYouFilter((active) => !active)}
-                      aria-pressed={newForYouFilterActive}
-                      className={`dd-type-control flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-0 shadow-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 ${
-                        newForYouFilterActive
-                          ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-800"
-                          : "border-stone-300 bg-white text-stone-900 hover:bg-stone-50"
-                      }`}
-                      aria-label={`Filter to new deals since your last visit, ${newDealsCount} available`}
-                    >
-                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
-                        {newDealsCount}
-                      </span>
-                      New to you
-                    </button>
-                  </div>
-                )}
-              <div className="min-w-[8.75rem] shrink-0">
-                <SupermarketPicker
-                  stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
-                  selectedStoreIds={selectedStores}
-                  onToggleStore={toggleStore}
-                />
-              </div>
-              {dealFilter === "all" ? (
-                <div className="min-w-[7.5rem] shrink-0">
-                  <CategoryPicker
-                    label="Category"
-                    selectedCategories={topDealsCategories}
-                    onChange={setTopDealsCategories}
-                    availableCategories={topDealsAvailableCategories}
-                    categoryCounts={topDealsCategoryCounts}
-                    emptyMessage="No Top Deals in this category right now."
-                    singleCategoryLabel="1 category"
-                    align="left"
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="min-w-[7.5rem] shrink-0">
-                    <CategoryPicker
-                      selectedCategories={dealCategoryFilter}
-                      onChange={setDealCategoryFilter}
-                      availableCategories={availableCategories}
-                      categoryCounts={categoryCounts}
-                      emptyMessage={dealFilter === "dodgy" ? "No Dodgy Deals in this category right now." : "No real deals in this category right now."}
-                      align="left"
-                    />
-                  </div>
-                </>
-              )}
-              </div>
-              {dealFilter !== "all" && (
-                <DealFilterTabs
-                  value={dealFilter}
-                  onChange={handleDealFilterChange}
-                  allLabel="Top Deals"
-                />
-              )}
-              {dealFilter !== "all" && (
-                <NativeSelectFilter
-                  value={dealSortBy}
-                  defaultValue={getDefaultDealSort(dealFilter)}
-                  onChange={handleDealSortChange}
-                  options={TRENDING_SORT_OPTIONS}
-                  ariaLabel="Sort deals"
-                  fill
-                />
-              )}
-            </div>
-          </div>
-        </>
+      {!isSearchActive && !loadingProducts && !error && dealFilter !== "all" && (
+        <CheckDealsToolbar
+          dealFilter={dealFilter}
+          surfaceClassName={dealFilterTintClass || "bg-stone-100"}
+          newDealsCount={newDealsCount}
+          newForYouFilterActive={newForYouFilterActive}
+          onToggleNewForYouFilter={() => setIsNewForYouFilter((active) => !active)}
+          availableStoreKeys={availableStoreKeys}
+          selectedStores={selectedStores}
+          onToggleStore={toggleStore}
+          topDealsCategories={topDealsCategories}
+          onTopDealsCategoriesChange={setTopDealsCategories}
+          topDealsAvailableCategories={topDealsAvailableCategories}
+          topDealsCategoryCounts={topDealsCategoryCounts}
+          dealCategoryFilter={dealCategoryFilter}
+          onDealCategoryFilterChange={setDealCategoryFilter}
+          availableCategories={availableCategories}
+          categoryCounts={categoryCounts}
+          onDealFilterChange={handleDealFilterChange}
+          dealSortBy={dealSortBy}
+          onDealSortChange={handleDealSortChange}
+          toolbarVisible={toolbarVisible}
+          toolbarHeaderHidden={toolbarHeaderHidden}
+        />
       )}
 
       {!isSearchActive && error && (
@@ -878,17 +948,51 @@ export default function HomePage() {
                   );
                 }
                 return (
-                  <DealSnapshotRail
-                    key={belt}
-                    kind={belt === "top-savers" ? "savings" : "dodgy"}
-                    deals={belt === "top-savers" ? topSavingsDeals : worstDodgyDeals}
-                    selectedCategories={topDealsCategories}
-                    refreshKey={selectedStores.join(",")}
-                    showingNewOnly={newForYouFilterActive}
-                    updatedText={updatedText}
-                    onSeeAll={() => openRailSearch(belt === "top-savers" ? "real" : "dodgy", belt === "top-savers" ? newDealsRealSearchOptions : newDealsDodgySearchOptions)}
-                    onSeeMore={() => openRailSearch(belt === "top-savers" ? "real" : "dodgy", belt === "top-savers" ? newDealsRealSearchOptions : newDealsDodgySearchOptions)}
-                  />
+                  <section key={belt} className="flex flex-col gap-2">
+                    <CheckDealsToolbar
+                      dealFilter="all"
+                      surfaceClassName="bg-stone-100"
+                      newDealsCount={newDealsCount}
+                      newForYouFilterActive={newForYouFilterActive}
+                      onToggleNewForYouFilter={() => setIsNewForYouFilter((active) => !active)}
+                      availableStoreKeys={availableStoreKeys}
+                      selectedStores={selectedStores}
+                      onToggleStore={toggleStore}
+                      topDealsCategories={topDealsCategories}
+                      onTopDealsCategoriesChange={setTopDealsCategories}
+                      topDealsAvailableCategories={topDealsAvailableCategories}
+                      topDealsCategoryCounts={topDealsCategoryCounts}
+                      dealCategoryFilter={dealCategoryFilter}
+                      onDealCategoryFilterChange={setDealCategoryFilter}
+                      availableCategories={availableCategories}
+                      categoryCounts={categoryCounts}
+                      onDealFilterChange={handleDealFilterChange}
+                      dealSortBy={dealSortBy}
+                      onDealSortChange={handleDealSortChange}
+                      toolbarVisible={toolbarVisible}
+                      toolbarHeaderHidden={toolbarHeaderHidden}
+                    />
+                    <DealSnapshotRail
+                      kind="savings"
+                      deals={topSavingsDeals}
+                      selectedCategories={topDealsCategories}
+                      refreshKey={selectedStores.join(",")}
+                      showingNewOnly={newForYouFilterActive}
+                      updatedText={updatedText}
+                      onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions)}
+                      onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions)}
+                    />
+                    <DealSnapshotRail
+                      kind="dodgy"
+                      deals={worstDodgyDeals}
+                      selectedCategories={topDealsCategories}
+                      refreshKey={selectedStores.join(",")}
+                      showingNewOnly={newForYouFilterActive}
+                      updatedText={updatedText}
+                      onSeeAll={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
+                      onSeeMore={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
+                    />
+                  </section>
                 );
               })}
               <div className="px-5 pb-2 pt-1">
@@ -927,6 +1031,7 @@ export default function HomePage() {
         onClose={closeBeltOrderSheet}
       />
       <CategoryInterestsSheet
+        key={`category-interests-${preferredCategories.join("\u0000")}`}
         open={isCategoryInterestsSheetOpen}
         mode="onboarding"
         initialCategories={preferredCategories}

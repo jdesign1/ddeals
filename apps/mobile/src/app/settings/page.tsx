@@ -1034,6 +1034,7 @@ export default function SettingsPage() {
       />
 
       <CategoryInterestsSheet
+        key={`category-interests-${preferredCategories.join("\u0000")}`}
         open={isCategoryInterestsSheetOpen}
         mode="settings"
         initialCategories={preferredCategories}

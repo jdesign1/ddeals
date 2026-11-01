@@ -1,6 +1,5 @@
 export const CHECK_DEALS_BELT_IDS = [
-  "top-savers",
-  "dodgiest-deals",
+  "top-deals",
   "for-you",
 ] as const;
 
@@ -9,8 +8,7 @@ export type CheckDealsBeltId = (typeof CHECK_DEALS_BELT_IDS)[number];
 export const DEFAULT_CHECK_DEALS_BELT_ORDER: readonly CheckDealsBeltId[] = CHECK_DEALS_BELT_IDS;
 
 export const CHECK_DEALS_BELT_LABELS: Record<CheckDealsBeltId, string> = {
-  "top-savers": "Top Savers",
-  "dodgiest-deals": "Dodgiest Deals",
+  "top-deals": "Top Savers & Dodgiest Deals",
   "for-you": "Your saved categories",
 };
 
@@ -21,6 +19,21 @@ export function normalizeCheckDealsBeltOrder(value: unknown): CheckDealsBeltId[]
   const normalized: CheckDealsBeltId[] = [];
 
   if (Array.isArray(value)) {
+    // Migrate the previous three-belt preference without losing the one
+    // meaningful choice: whether saved categories appeared before or after
+    // the combined Top Savers/Dodgiest Deals group.
+    const legacyValues = value.filter((candidate): candidate is string => typeof candidate === "string");
+    const legacyForYouIndex = legacyValues.indexOf("for-you");
+    const legacyTopDealsIndex = legacyValues.findIndex(
+      (candidate) => candidate === "top-savers" || candidate === "dodgiest-deals",
+    );
+    if (legacyTopDealsIndex >= 0) {
+      if (legacyForYouIndex >= 0 && (legacyTopDealsIndex < 0 || legacyForYouIndex < legacyTopDealsIndex)) {
+        return ["for-you", "top-deals"];
+      }
+      return [...DEFAULT_CHECK_DEALS_BELT_ORDER];
+    }
+
     for (const candidate of value) {
       if (typeof candidate !== "string" || !CHECK_DEALS_BELT_IDS.includes(candidate as CheckDealsBeltId)) continue;
       const belt = candidate as CheckDealsBeltId;

@@ -5,10 +5,21 @@ import {
   normalizeCheckDealsBeltOrder,
 } from "./check-deals-belt-order.ts";
 
-test("normalizes a saved order and appends missing belts", () => {
+test("normalizes a saved group order and appends missing groups", () => {
   assert.deepEqual(
-    normalizeCheckDealsBeltOrder(["for-you", "for-you", "dodgiest-deals"]),
-    ["for-you", "dodgiest-deals", "top-savers"],
+    normalizeCheckDealsBeltOrder(["for-you", "for-you", "top-deals"]),
+    ["for-you", "top-deals"],
+  );
+});
+
+test("migrates the previous three-belt order into the two supported groups", () => {
+  assert.deepEqual(
+    normalizeCheckDealsBeltOrder(["top-savers", "dodgiest-deals", "for-you"]),
+    ["top-deals", "for-you"],
+  );
+  assert.deepEqual(
+    normalizeCheckDealsBeltOrder(["for-you", "top-savers", "dodgiest-deals"]),
+    ["for-you", "top-deals"],
   );
 });
 
