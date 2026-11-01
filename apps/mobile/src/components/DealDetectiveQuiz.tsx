@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
+import { Check, ChevronLeft, LockKeyhole, Star, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { fetchPriceHistory90d, getAssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import CompactProductInfoCard from "@/components/CompactProductInfoCard";
 import MascotImage from "@/components/MascotImage";
@@ -15,15 +15,18 @@ import { supabaseConfig } from "@/lib/config";
 import {
   issueDealDetectiveChallenge,
   submitDealDetectiveQuiz,
+  dealDetectivePairKeyForCase,
   type DealDetectiveQuizCandidate,
   type DealDetectiveQuizCase,
   type DealDetectiveQuizResult,
   type DealDetectiveQuizSide,
 } from "@/lib/deal-detective-quiz";
+import { recordDealDetectiveStreak } from "@/lib/deal-detective-streak";
 
 interface DealDetectiveQuizProps {
   quizCase: DealDetectiveQuizCase;
   accessToken: string | null;
+  streakScope: string;
   onBack: () => void;
   onViewDeals: () => void;
   onDone: () => void;
@@ -52,6 +55,15 @@ const CONFETTI_PIECES = [
 
 const PRICE_HISTORY_REVEAL_DELAY_MS = 1_300;
 
+const STREAK_STARS = [
+  { left: 10, x: -18, y: -18, rotate: -18, delay: 0 },
+  { left: 24, x: -8, y: -28, rotate: 14, delay: 80 },
+  { left: 38, x: 8, y: -20, rotate: -10, delay: 150 },
+  { left: 52, x: -4, y: -34, rotate: 22, delay: 50 },
+  { left: 66, x: 10, y: -22, rotate: -16, delay: 130 },
+  { left: 80, x: 20, y: -30, rotate: 16, delay: 210 },
+] as const;
+
 interface SelectedPriceHistory {
   loading: boolean;
   points: PriceHistoryPoint[];
@@ -79,6 +91,26 @@ function ConfettiBurst() {
   );
 }
 
+function StreakStarBurst() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-10 overflow-visible" aria-hidden="true">
+      {STREAK_STARS.map((star, index) => (
+        <Star
+          key={index}
+          className="deal-detective-streak-star absolute top-5 h-4 w-4 fill-amber-400 text-amber-500"
+          style={{
+            left: `${star.left}%`,
+            "--streak-x": `${star.x}px`,
+            "--streak-y": `${star.y}px`,
+            "--streak-rotate": `${star.rotate}deg`,
+            animationDelay: `${star.delay}ms`,
+          } as CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
 function currency(value: number): string {
   return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(value);
 }
@@ -90,7 +122,7 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
   return "border-stone-200 bg-stone-50 opacity-70";
 }
 
-export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
+export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [currentRank, setCurrentRank] = useState<string | null>(null);
@@ -98,6 +130,8 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
   const [selectedPriceHistory, setSelectedPriceHistory] = useState<SelectedPriceHistory>({ loading: false, points: [], error: null });
+  const [streakLength, setStreakLength] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const priceHistoryRevealTimeoutRef = useRef<number | null>(null);
   const questionKind = quizCase.questionKind ?? "real";
@@ -107,6 +141,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
   const rankLabel = accessToken ? scoreResult?.detective_rank ?? currentRank : null;
   const selectedCandidate = selectedSide === "left" ? quizCase.left : selectedSide === "right" ? quizCase.right : null;
   const mascotAnimationKey = `${quizCase.caseNumber ?? "case"}-${questionKind}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`;
+  const streakCaseKey = `${dealDetectivePairKeyForCase(quizCase)}::${questionKind}`;
 
   useEffect(() => {
     backButtonRef.current?.focus();
@@ -129,13 +164,22 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
     return () => controller.abort();
   }, [accessToken]);
 
+  const recordStreak = (won: boolean) => {
+    const streak = recordDealDetectiveStreak(streakScope, streakCaseKey, won);
+    setStreakLength(streak.streak);
+  };
+
   const saveAnswer = (side: DealDetectiveQuizSide) => {
     if (!accessToken || isSubmitting) return;
     setIsSubmitting(true);
     setSaveError(null);
     void issueDealDetectiveChallenge(quizCase)
       .then(({ challenge_token }) => submitDealDetectiveQuiz(quizCase, side, accessToken, challenge_token))
-      .then(setScoreResult)
+      .then((result) => {
+        setScoreResult(result);
+        recordStreak(result.correct);
+        onPlayed();
+      })
       .catch((error: unknown) => {
         setSaveError(error instanceof Error ? error.message : "We couldn't save your score right now.");
       })
@@ -159,8 +203,12 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
     if (answered || isSubmitting) return;
     const candidate = side === "left" ? quizCase.left : quizCase.right;
     setSelectedSide(side);
-    onPlayed();
-    saveAnswer(side);
+    if (accessToken) {
+      saveAnswer(side);
+    } else {
+      onPlayed();
+      recordStreak(side === correctSide);
+    }
     loadSelectedPriceHistory(candidate);
     priceHistoryRevealTimeoutRef.current = window.setTimeout(() => setShowPriceHistory(true), PRICE_HISTORY_REVEAL_DELAY_MS);
   };
@@ -270,7 +318,6 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
       <div className="flex flex-1 flex-col px-5">
         {!showPriceHistory ? (
           <div className="text-center">
-            <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">DETECTIVE CASE #{quizCase.caseNumber ?? 1}</p>
             <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
               {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
             </h2>
@@ -341,6 +388,19 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
                 verdict={getAssessmentVerdict(selectedCandidate.deal)}
                 animateOnMount
               />
+              {streakLength >= 2 && (
+                <motion.div
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.32, ease: "easeOut" }}
+                  className="relative mt-3 overflow-visible rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <StreakStarBurst />
+                  <p className="relative dd-type-control dd-type-control-strong text-amber-900">You&apos;re on a streak</p>
+                </motion.div>
+              )}
             </motion.section>
           ) : (
             <motion.div
@@ -364,14 +424,20 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, onBack, onVie
             <button type="button" onClick={onDone} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
               Close case
             </button>
+            {!showPriceHistory && <p className="mt-2 text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>}
           </div>
         ) : showViewDealsButton ? (
           <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
             <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
               Skip to new deals
             </button>
+            <p className="mt-2 text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>
           </div>
-        ) : null}
+        ) : (
+          <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
+            <p className="text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>
+          </div>
+        )}
       </div>
     </div>
   );

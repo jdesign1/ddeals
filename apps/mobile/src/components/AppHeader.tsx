@@ -111,6 +111,7 @@ export default function AppHeader({
 
   const isContextHeader = Boolean(override) || CONTEXT_HEADER_ROUTES.includes(pathname) || pathname.startsWith("/deal/");
   const isWatchlist = pathname === "/lists";
+  const detectiveStreakScope = user?.id && !isAnonymousSession ? `user:${user.id}` : "device";
   // Settings animates above the previous route at z-[47]. Keep its global
   // header above that page surface so the sticky navigation remains visible
   // while the settings content scrolls underneath it.
@@ -212,6 +213,7 @@ export default function AppHeader({
           }}
           onSelectAllNewDeals={handleShowAllNewDeals}
           quizCase={detectiveCase}
+          detectiveStreakScope={detectiveStreakScope}
           accessToken={session?.access_token ?? null}
           onPlayed={markDetectiveCasePlayed}
           gameOnly={newSpecialsModalGameOnly}

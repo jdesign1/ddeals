@@ -17,12 +17,13 @@ interface NewSpecialsModalProps {
   onSelectFilter: (filter: DealFilter, dealKeys: string[]) => void;
   onSelectAllNewDeals: (dealKeys: string[]) => void;
   quizCase: DealDetectiveQuizCase | null;
+  detectiveStreakScope: string;
   accessToken: string | null;
   onPlayed: () => void;
   gameOnly?: boolean;
 }
 
-export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
+export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, detectiveStreakScope, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
   // Keep the shared viewport lock active until the exit animation finishes.
   // Otherwise the underlying page/nav becomes visible during the modal's
   // fade-and-scale exit, which reads as a flicker on iOS cold starts.
@@ -164,6 +165,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   key={`${displayedQuizCase.caseNumber ?? "case"}-${displayedQuizCase.questionKind ?? "real"}-${displayedQuizCase.left.dealKey}-${displayedQuizCase.right.dealKey}`}
                   quizCase={displayedQuizCase}
                   accessToken={accessToken}
+                  streakScope={detectiveStreakScope}
                   onBack={() => {
                     if (gameOnly) {
                       handleClose();

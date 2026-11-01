@@ -1110,6 +1110,31 @@ html[data-theme="dark"] .theme-loader-surface {
   will-change: opacity, transform;
 }
 
+@keyframes deal-detective-streak-star {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.45) rotate(0deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translate3d(var(--streak-x), var(--streak-y), 0) scale(1.08) rotate(var(--streak-rotate));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--streak-x), calc(var(--streak-y) - 10px), 0) scale(0.8) rotate(var(--streak-rotate));
+  }
+}
+
+.deal-detective-streak-star {
+  animation: deal-detective-streak-star 900ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deal-detective-streak-star {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .deal-detective-confetti {
     animation: none;
