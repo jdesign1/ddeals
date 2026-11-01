@@ -236,8 +236,12 @@ export default function BottomNav() {
   const { hasUnreadWatchlistUpdates } = useNotifications();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest, requestOpen } = useNewSpecials();
-
-  if (pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/subscribe" || CONTACT_ROUTES.includes(pathname)) return null;
+  const hasBottomNav = pathname !== null
+    && !pathname.startsWith("/deal/")
+    && pathname !== "/settings"
+    && pathname !== "/subscribe"
+    && !CONTACT_ROUTES.includes(pathname);
+  const routeVisibilityClass = hasBottomNav ? "" : "bottom-nav-route-hidden";
 
   const prefetchRoute = (href: string) => {
     if (prefetchedRoutesRef.current.has(href)) return;
@@ -252,11 +256,11 @@ export default function BottomNav() {
       {/* Extend the frosted layer behind the floating pill so catalogue
           content scrolling underneath the bottom edge is blurred on both
           mobile browsers and iOS WKWebView. */}
-      <div className={`app-drawer-shiftable app-bottom-nav-backdrop ${isDrawerOpen ? "is-drawer-open" : ""}`} aria-hidden="true" />
+      <div className={`app-drawer-shiftable app-bottom-nav-backdrop ${routeVisibilityClass} ${isDrawerOpen ? "is-drawer-open" : ""}`} aria-hidden="true" />
       <nav
-        aria-hidden={isDrawerOpen || undefined}
-        inert={isDrawerOpen ? true : undefined}
-        className={`app-drawer-shiftable app-bottom-nav fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${isDrawerOpen ? "is-drawer-open" : ""} ${
+        aria-hidden={!hasBottomNav || isDrawerOpen || undefined}
+        inert={!hasBottomNav || isDrawerOpen ? true : undefined}
+        className={`app-drawer-shiftable app-bottom-nav ${routeVisibilityClass} fixed inset-x-3 bottom-safe-nav mx-auto flex w-auto max-w-[456px] items-stretch justify-around overflow-hidden rounded-full bg-white/80 backdrop-blur-md shadow-lg shadow-black/10 ${isDrawerOpen ? "is-drawer-open" : ""} ${
           isSearchActive ? "z-[55]" : "z-40"
         }`}
       >

@@ -1405,17 +1405,35 @@ html[data-theme="dark"] .theme-loader-surface {
    imperceptible as the sheet finishes dismissing. */
 .app-bottom-nav,
 .app-bottom-nav-backdrop {
-  transition: opacity 100ms ease-out, visibility 0s linear;
+  transition: opacity 220ms ease-out, visibility 0s linear;
+}
+
+/* Keep the nav mounted across routes that intentionally do not show it. That
+   lets the returning route use the same composited layer and fade the nav
+   back in instead of recreating it in a single paint. Delay visibility only
+   while hiding so the opacity transition remains visible; when the class is
+   removed, visibility becomes immediate and opacity fades in. */
+.app-bottom-nav.bottom-nav-route-hidden,
+.app-bottom-nav-backdrop.bottom-nav-route-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 220ms;
 }
 
 .app-drawer-shiftable.app-bottom-nav,
 .app-drawer-shiftable.app-bottom-nav-backdrop {
-  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), opacity 100ms ease-out, visibility 0s linear;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), opacity 220ms ease-out, visibility 0s linear;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .app-drawer-shiftable.app-bottom-nav,
   .app-drawer-shiftable.app-bottom-nav-backdrop {
+    transition: none;
+  }
+
+  .app-bottom-nav.bottom-nav-route-hidden,
+  .app-bottom-nav-backdrop.bottom-nav-route-hidden {
     transition: none;
   }
 }
