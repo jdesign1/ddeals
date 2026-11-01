@@ -52,7 +52,7 @@ export default function ForYouCategoryRail({
               aria-selected={isActive}
               aria-controls="for-you-deals"
               onClick={() => onSelectCategory(category)}
-              className={`min-h-10 shrink-0 rounded-full px-3.5 py-2 dd-type-control transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700 ${
+              className={`h-11 shrink-0 rounded-full px-3.5 py-2 dd-type-control transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700 ${
                 isActive
                   ? "bg-fair-700 text-white shadow-sm"
                   : "bg-white text-stone-700 ring-1 ring-fair-200 hover:bg-fair-100"
