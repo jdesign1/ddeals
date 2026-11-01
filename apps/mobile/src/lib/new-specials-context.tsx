@@ -10,10 +10,14 @@ import {
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
   createStoredDealDetectiveCase,
+  dealDetectivePairKeyForCase,
+  loadStoredDealDetectivePairKeys,
   nextDealDetectiveCaseNumber,
   readStoredDealDetectiveCase,
+  readStoredDealDetectivePairKeys,
   readStoredDealDetectivePlayedState,
   writeStoredDealDetectiveCase,
+  writeStoredDealDetectivePairKeys,
   writeStoredDealDetectivePlayedState,
   type DealDetectiveQuizCase,
   type DealDetectiveQuestionKind,
@@ -112,10 +116,14 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
-  const { user, profile, loading: authLoading, isAnonymousSession } = useAuth();
+  const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuth();
   const { isPremium } = useSubscriptions();
+  const detectiveAccessToken = session?.access_token ?? null;
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null });
+  const [playedPairKeys, setPlayedPairKeys] = useState<string[]>([]);
+  const [playedPairHistoryReady, setPlayedPairHistoryReady] = useState(false);
+  const [now] = useState(() => Date.now());
   const [openRequested, setOpenRequested] = useState(false);
   const [detectiveCaseOpenRequested, setDetectiveCaseOpenRequested] = useState(false);
   const lastProcessedPublicationRef = useRef<string | null>(null);
@@ -141,6 +149,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       writeNewSpecialsPopupState(hydratedPopupState, scope);
     }
     const hydratedPlayedState = readStoredDealDetectivePlayedState(scope);
+    const hydratedPairKeys = readStoredDealDetectivePairKeys(scope);
     let hydratedDetectiveCase = readStoredDealDetectiveCase(scope);
     // Older stored cases predate the shopper-facing case number. Assign one
     // once during hydration so the next profile replay continues the sequence.
@@ -163,9 +172,39 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       detectiveCasePlayedPublicationKey: hydratedPlayedState?.publicationKey ?? null,
       detectiveCasePlayedQuestionKind: hydratedPlayedState?.questionKind ?? null,
     });
+    setPlayedPairKeys(hydratedPairKeys);
+    setPlayedPairHistoryReady(isAnonymousSession);
     setOpenRequested(false);
     setDetectiveCaseOpenRequested(false);
-  }, [scope]);
+  }, [isAnonymousSession, scope]);
+
+  const storageReady = scope !== null && stored.scope === scope;
+
+  useEffect(() => {
+    if (!scope || !storageReady) return;
+    if (isAnonymousSession || !detectiveAccessToken) {
+      setPlayedPairHistoryReady(true);
+      return;
+    }
+    const controller = new AbortController();
+    setPlayedPairHistoryReady(false);
+    loadStoredDealDetectivePairKeys(detectiveAccessToken, controller.signal)
+      .then((remotePairKeys) => {
+        setPlayedPairKeys((currentPairKeys) => {
+          const mergedPairKeys = [...new Set([...currentPairKeys, ...remotePairKeys])];
+          writeStoredDealDetectivePairKeys(mergedPairKeys, scope);
+          return mergedPairKeys;
+        });
+        setPlayedPairHistoryReady(true);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        // Local history remains a safe fallback if the optional history read is
+        // temporarily unavailable; the scoring RPC still rejects duplicates.
+        setPlayedPairHistoryReady(true);
+      });
+    return () => controller.abort();
+  }, [detectiveAccessToken, isAnonymousSession, scope, storageReady]);
 
   useEffect(() => {
     const suppressPopup = () => {
@@ -188,7 +227,6 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname, popupSuppressedUntilHomeExit]);
 
-  const storageReady = scope !== null && stored.scope === scope;
   const previousSnapshot = storageReady ? stored.snapshot : null;
   const pending = storageReady ? stored.pending : null;
   const persistedPopupState = storageReady ? stored.popupState : null;
@@ -206,7 +244,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // launch popup from racing the storage write on a cold load.
   const digest = activePending?.summary ?? null;
   const pendingDigest = activePending?.summary ?? null;
-  const storedDetectiveCase = storageReady && stored.detectiveCase && stored.detectiveCase.expiresAt > Date.now()
+  const storedDetectiveCase = storageReady && stored.detectiveCase && (now === 0 || stored.detectiveCase.expiresAt > now)
     ? stored.detectiveCase
     : null;
   const detectiveCasePlayedPublicationKey = storageReady ? stored.detectiveCasePlayedPublicationKey : null;
@@ -234,11 +272,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       catalogueCaseSummary,
     ].filter((summary): summary is NonNullable<typeof summary> => Boolean(summary));
     for (const summary of summaries) {
-      const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? [], rotationIndex);
+      const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? [], rotationIndex, playedPairKeys);
       if (quizCase) return quizCase;
     }
     return null;
-  }, [activePending, catalogueCaseSummary, detectedSummary, products, profile?.preferred_categories]);
+  }, [activePending, catalogueCaseSummary, detectedSummary, playedPairKeys, products, profile?.preferred_categories]);
   const currentQuizCase = useMemo(() => buildCurrentQuizCase(), [buildCurrentQuizCase]);
 
   useEffect(() => {
@@ -304,7 +342,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // Reviewing or dismissing the batch must not make an unanswered case
   // disappear, while a genuinely newer publication must replace the old case.
   useEffect(() => {
-    if (!scope || !storageReady || !cataloguePublicationKey || !cataloguePublicationComplete) return;
+    if (!scope || !storageReady || !cataloguePublicationKey || !cataloguePublicationComplete || !playedPairHistoryReady) return;
     const hasNewPublication = Boolean(detectedSummary?.total);
     const canReplayForTest = isAnonymousSession && !storedDetectiveCase;
     if (detectiveCasePlayedPublicationKey === cataloguePublicationKey && !canReplayForTest) {
@@ -342,7 +380,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       clearStoredDealDetectivePlayedState(scope);
       setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     }
-  }, [activePending, buildCurrentQuizCase, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, isAnonymousSession, scope, storageReady, storedDetectiveCase]);
+  }, [activePending, buildCurrentQuizCase, cataloguePublicationComplete, cataloguePublicationKey, currentQuizCase, detectedSummary, detectiveCasePlayedPublicationKey, detectiveCasePlayedQuestionKind, isAnonymousSession, playedPairHistoryReady, scope, storageReady, storedDetectiveCase]);
 
   useEffect(() => {
     if (!scope || !storageReady || !stored.detectiveCase) return;
@@ -390,11 +428,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const detectiveCasePlayedForCurrentPublication = Boolean(
     cataloguePublicationKey && detectiveCasePlayedPublicationKey === cataloguePublicationKey,
   );
-  const canCreateDetectiveCaseOnDemand = Boolean(currentQuizCase && storageReady && !detectiveCasePlayedForCurrentPublication);
+  const canCreateDetectiveCaseOnDemand = Boolean(currentQuizCase && playedPairHistoryReady && storageReady && !detectiveCasePlayedForCurrentPublication);
   // Plus accounts retain a profile-menu replay path for QA and support. This
   // does not recreate the automatic launch popup after a case is answered;
   // it only lets the user explicitly start the game again from their profile.
-  const canReplayDetectiveCaseFromProfile = Boolean(isPremium && currentQuizCase && storageReady);
+  const canReplayDetectiveCaseFromProfile = Boolean(isPremium && currentQuizCase && playedPairHistoryReady && storageReady);
   const canOpenDetectiveCase = Boolean(detectiveCase || canCreateDetectiveCaseOnDemand || canReplayDetectiveCaseFromProfile);
 
   const requestDetectiveCaseOpen = useCallback(() => {
@@ -402,7 +440,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       setDetectiveCaseOpenRequested(true);
       return;
     }
-    if (!currentQuizCase || !scope || !storageReady || (detectiveCasePlayedForCurrentPublication && !canReplayDetectiveCaseFromProfile)) return;
+    if (!currentQuizCase || !playedPairHistoryReady || !scope || !storageReady || (detectiveCasePlayedForCurrentPublication && !canReplayDetectiveCaseFromProfile)) return;
 
     // The normal reconciliation effect persists a case as soon as the
     // catalogue marker is ready. This on-demand path covers a cold profile
@@ -422,7 +460,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     clearStoredDealDetectivePlayedState(scope);
     setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     setDetectiveCaseOpenRequested(true);
-  }, [buildCurrentQuizCase, canReplayDetectiveCaseFromProfile, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, scope, storageReady]);
+  }, [buildCurrentQuizCase, canReplayDetectiveCaseFromProfile, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, playedPairHistoryReady, scope, storageReady]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
@@ -443,11 +481,15 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     }
     const playedPublicationKey = storedDetectiveCase.publicationKey;
     const playedQuestionKind = storedDetectiveCase.quizCase.questionKind ?? "real";
+    const playedPairKey = dealDetectivePairKeyForCase(storedDetectiveCase.quizCase);
+    const nextPlayedPairKeys = [...new Set([...playedPairKeys, playedPairKey])];
+    writeStoredDealDetectivePairKeys(nextPlayedPairKeys, scope);
+    setPlayedPairKeys(nextPlayedPairKeys);
     writeStoredDealDetectivePlayedState(playedPublicationKey, playedQuestionKind, scope);
     clearStoredDealDetectiveCase(scope);
     setStored((current) => ({ ...current, detectiveCase: null, detectiveCasePlayedPublicationKey: playedPublicationKey, detectiveCasePlayedQuestionKind: playedQuestionKind }));
     setDetectiveCaseOpenRequested(false);
-  }, [isAnonymousSession, scope, storageReady, storedDetectiveCase]);
+  }, [isAnonymousSession, playedPairKeys, scope, storageReady, storedDetectiveCase]);
 
   const markPopupShown = useCallback(() => {
     if (!scope || !storageReady || !activePending) return;

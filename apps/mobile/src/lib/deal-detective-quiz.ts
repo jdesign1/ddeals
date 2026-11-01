@@ -7,6 +7,7 @@ export const DEAL_DETECTIVE_CASE_STORAGE_VERSION = 1;
 const DEAL_DETECTIVE_CASE_STORAGE_PREFIX = "dd-deal-detective-case-v1:";
 const DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX = "dd-deal-detective-played-v1:";
 const DEAL_DETECTIVE_CASE_NUMBER_STORAGE_PREFIX = "dd-deal-detective-case-number-v1:";
+const DEAL_DETECTIVE_PAIR_HISTORY_STORAGE_PREFIX = "dd-deal-detective-pairs-v1:";
 
 export type DealDetectiveQuizSide = "left" | "right";
 export type DealDetectiveQuizKind = "real" | "dodgy";
@@ -214,6 +215,57 @@ export function clearStoredDealDetectivePlayedState(scope = "device"): boolean {
   }
 }
 
+export function dealDetectivePairKey(leftDealKey: string, rightDealKey: string): string {
+  return [leftDealKey, rightDealKey].sort((left, right) => left.localeCompare(right)).join("|");
+}
+
+export function dealDetectivePairKeyForCase(quizCase: DealDetectiveQuizCase): string {
+  return dealDetectivePairKey(quizCase.left.dealKey, quizCase.right.dealKey);
+}
+
+function scopedPairHistoryStorageKey(scope: string): string {
+  return `${DEAL_DETECTIVE_PAIR_HISTORY_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+export function readStoredDealDetectivePairKeys(scope = "device"): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(scopedPairHistoryStorageKey(scope));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.filter((value): value is string => typeof value === "string" && value.length > 0))];
+  } catch {
+    return [];
+  }
+}
+
+export function writeStoredDealDetectivePairKeys(pairKeys: readonly string[], scope = "device"): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(scopedPairHistoryStorageKey(scope), JSON.stringify([...new Set(pairKeys)]));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function loadStoredDealDetectivePairKeys(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const response = await fetch("/api/deal-detective/history", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+    signal,
+  });
+  const payload = await response.json().catch(() => null) as { pair_keys?: unknown; error?: string } | null;
+  if (!response.ok) throw new Error(payload?.error ?? "Deal Detective history is unavailable.");
+  return Array.isArray(payload?.pair_keys)
+    ? [...new Set(payload.pair_keys.filter((value): value is string => typeof value === "string" && value.length > 0))]
+    : [];
+}
+
 export async function issueDealDetectiveChallenge(
   quizCase: DealDetectiveQuizCase,
   signal?: AbortSignal,
@@ -372,12 +424,15 @@ export function buildDealDetectiveQuizCase(
   summary: Pick<NewSpecialsSummary, "realDealKeys" | "dodgyDealKeys">,
   preferredCategories: readonly string[] = [],
   rotationIndex = 0,
+  excludedPairKeys: readonly string[] = [],
 ): DealDetectiveQuizCase | null {
   const realCandidates = sortedCandidates(products, summary.realDealKeys, "real");
   const dodgyCandidates = sortedCandidates(products, summary.dodgyDealKeys, "dodgy");
   if (realCandidates.length === 0 || dodgyCandidates.length === 0) return null;
 
-  const pairs = allDealDetectivePairs(realCandidates, dodgyCandidates, preferredCategories);
+  const excludedPairs = new Set(excludedPairKeys);
+  const pairs = allDealDetectivePairs(realCandidates, dodgyCandidates, preferredCategories)
+    .filter((pair) => !excludedPairs.has(dealDetectivePairKey(pair.real.dealKey, pair.dodgy.dealKey)));
   if (pairs.length === 0) return null;
   const safeRotationIndex = Number.isSafeInteger(rotationIndex) && rotationIndex >= 0 ? rotationIndex : 0;
   const pair = pairs[safeRotationIndex % pairs.length];

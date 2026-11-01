@@ -6,6 +6,7 @@ import {
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
   createStoredDealDetectiveCase,
+  dealDetectivePairKeyForCase,
   nextDealDetectiveCaseNumber,
   readStoredDealDetectiveCase,
   readStoredDealDetectivePlayedState,
@@ -145,6 +146,32 @@ test("rotation selects different valid pairs and alternates the side carrying th
   assert.notEqual(`${first.left.dealKey}|${first.right.dealKey}`, `${second.left.dealKey}|${second.right.dealKey}`);
   assert.equal(first.left.kind, "real");
   assert.equal(second.left.kind, "dodgy");
+});
+
+test("rotation skips previously played unordered pairs", () => {
+  const products = [
+    product("real-a", "Real A", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("real-b", "Real B", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("dodgy-a", "Dodgy A", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+    product("dodgy-b", "Dodgy B", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+  ];
+  const summary = {
+    realDealKeys: ["real-a::newworld", "real-b::newworld"],
+    dodgyDealKeys: ["dodgy-a::woolworths", "dodgy-b::woolworths"],
+  };
+  const first = buildDealDetectiveQuizCase(products, summary, [], 0);
+  assert.ok(first);
+
+  const second = buildDealDetectiveQuizCase(
+    products,
+    summary,
+    [],
+    0,
+    [dealDetectivePairKeyForCase(first)],
+  );
+
+  assert.ok(second);
+  assert.notEqual(dealDetectivePairKeyForCase(second), dealDetectivePairKeyForCase(first));
 });
 
 test("a detective case is scoped, expires, and records the played publication", () => {
