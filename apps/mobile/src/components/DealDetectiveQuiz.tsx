@@ -419,23 +419,44 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
           )}
         </AnimatePresence>
 
-        {answered ? (
+        {showViewDealsButton ? (
           <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
-            <button type="button" onClick={onDone} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
-              Close case
+            <button type="button" onClick={answered ? onDone : onViewDeals} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
+              {answered ? "Close case" : "Skip to new deals"}
             </button>
             {!showPriceHistory && <p className="mt-2 text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>}
           </div>
-        ) : showViewDealsButton ? (
-          <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
-            <button type="button" onClick={onViewDeals} className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer">
-              Skip to new deals
-            </button>
-            <p className="mt-2 text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>
-          </div>
         ) : (
           <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
-            <p className="text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>
+            <div className="relative h-14">
+              <AnimatePresence initial={false} mode="sync">
+                {answered ? (
+                  <motion.button
+                    key="close-case"
+                    type="button"
+                    onClick={onDone}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="dd-btn dd-btn-primary absolute inset-0 w-full cursor-pointer"
+                  >
+                    Close case
+                  </motion.button>
+                ) : (
+                  <motion.p
+                    key="case-label"
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    className="absolute inset-0 flex items-center justify-center dd-type-meta dd-type-meta-strong text-stone-500"
+                  >
+                    Case #{quizCase.caseNumber ?? 1}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </div>
