@@ -17,6 +17,13 @@ function priceChange(previousPrice: string | null, previousPriceValue: number | 
   return "";
 }
 
+function verdictLabel(verdict: UnreadListAlert["verdict"] | null): string {
+  if (verdict === "GENUINE") return "Real Deal";
+  if (verdict === "DODGY") return "Dodgy Deal";
+  if (verdict === "MARGINAL") return "Fair Price";
+  return "Unverified Deal";
+}
+
 export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdateCopy {
   const price = formatPrice(update.price);
   const previousPrice = formatPrice(update.previous_price);
@@ -34,6 +41,21 @@ export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdate
       title: "Price dropped",
       description: `${priceDescription}${priceChange(previousPrice, update.previous_price, update.price)}`,
       toneClass: "text-fair-700",
+    };
+  }
+  if (update.event_type === "price_changed") {
+    const priceWentUp = update.previous_price != null && update.price > update.previous_price;
+    return {
+      title: priceWentUp ? "Price increased" : "Price changed",
+      description: `${priceDescription}${priceChange(previousPrice, update.previous_price, update.price)}`,
+      toneClass: priceWentUp ? "text-alert-700" : "text-fair-700",
+    };
+  }
+  if (update.event_type === "verdict_changed") {
+    return {
+      title: "Deal verdict changed",
+      description: `${verdictLabel(update.previous_verdict)} → ${verdictLabel(update.verdict)} at ${update.store_name}.`,
+      toneClass: update.verdict === "DODGY" ? "text-alert-700" : "text-stone-700",
     };
   }
   if (update.event_type === "became_real_saver") {

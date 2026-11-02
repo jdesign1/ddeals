@@ -9,11 +9,22 @@ function formatPrice(value: number | null): string | null {
   return typeof value === "number" && Number.isFinite(value) ? `$${value.toFixed(2)}` : null;
 }
 
+function verdictLabel(verdict: UnreadListAlert["verdict"] | null): string {
+  if (verdict === "GENUINE") return "Real Deal";
+  if (verdict === "DODGY") return "Dodgy Deal";
+  if (verdict === "MARGINAL") return "Fair Price";
+  return "Unverified Deal";
+}
+
 function updateCopy(update: UnreadListAlert): { title: string; description: string; tone: string } {
   const price = formatPrice(update.price) ?? "the current price";
   const previousPrice = formatPrice(update.previous_price);
-  const priceChange = typeof update.previous_price === "number" && update.price < update.previous_price && previousPrice
-    ? ` Down from ${previousPrice}.`
+  const priceChange = typeof update.previous_price === "number" && previousPrice
+    ? update.price < update.previous_price
+      ? ` Down from ${previousPrice}.`
+      : update.price > update.previous_price
+        ? ` Up from ${previousPrice}.`
+        : ""
     : "";
 
   if (update.event_type === "returned_to_special") {
@@ -21,6 +32,17 @@ function updateCopy(update: UnreadListAlert): { title: string; description: stri
   }
   if (update.event_type === "better_special_price") {
     return { title: "Price dropped", description: `${price} at ${update.store_name}.${priceChange}`, tone: "text-fair-700" };
+  }
+  if (update.event_type === "price_changed") {
+    const priceWentUp = typeof update.previous_price === "number" && update.price > update.previous_price;
+    return { title: priceWentUp ? "Price increased" : "Price changed", description: `${price} at ${update.store_name}.${priceChange}`, tone: priceWentUp ? "text-alert-700" : "text-fair-700" };
+  }
+  if (update.event_type === "verdict_changed") {
+    return {
+      title: "Deal verdict changed",
+      description: `${verdictLabel(update.previous_verdict)} → ${verdictLabel(update.verdict)} at ${update.store_name}.`,
+      tone: update.verdict === "DODGY" ? "text-alert-700" : "text-stone-700",
+    };
   }
   if (update.event_type === "became_real_saver") {
     return { title: "Now a Real Saver", description: `${price} at ${update.store_name}.`, tone: "text-fair-700" };

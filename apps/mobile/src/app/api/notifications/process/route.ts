@@ -1,6 +1,6 @@
 import {
   createSupabaseClient,
-  detectWatchlistPriceAlert,
+  detectWatchlistAlerts,
   isWatchlistObservationFresh,
   type WatchlistVerdict,
 } from "@dodgey-deals/shared";
@@ -32,6 +32,16 @@ interface CurrentPriceRow {
   price: number;
   is_special: boolean | null;
   updated_at: string;
+}
+
+interface ProductNameRow {
+  id: string;
+  name: string | null;
+}
+
+interface StoreNameRow {
+  id: string;
+  name: string | null;
 }
 
 interface PublishedSpecialRow {
@@ -76,10 +86,11 @@ interface AlertEventRow {
   product_name: string;
   store_id: string;
   store_name: string;
-  event_type: "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
+  event_type: "price_changed" | "verdict_changed" | "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
   price: number;
   previous_price: number;
   verdict: WatchlistVerdict;
+  previous_verdict: WatchlistVerdict | null;
   event_key: string;
   created_at: string;
   viewed_at: string | null;
@@ -115,39 +126,62 @@ function buildAlertCopy(events: AlertEventRow[], list: ListRow): {
   body: string;
   productId: string;
 } {
-  const bestByProduct = new Map<string, AlertEventRow>();
+  const eventsByProduct = new Map<string, AlertEventRow[]>();
   for (const event of events) {
-    const current = bestByProduct.get(event.product_id);
-    if (!current || event.price < current.price) bestByProduct.set(event.product_id, event);
+    const productEvents = eventsByProduct.get(event.product_id) ?? [];
+    productEvents.push(event);
+    eventsByProduct.set(event.product_id, productEvents);
   }
-  const products = [...bestByProduct.values()];
+  const products = [...eventsByProduct.values()].map((productEvents) => (
+    productEvents.reduce((best, event) => event.price < best.price ? event : best)
+  ));
+  const isPriceEvent = (event: AlertEventRow) => ["price_changed", "returned_to_special", "better_special_price"].includes(event.event_type);
+  const isVerdictEvent = (event: AlertEventRow) => ["verdict_changed", "became_real_saver", "became_dodgy", "dodgy_special"].includes(event.event_type);
 
   if (products.length > 1) {
-    const dodgyCount = products.filter((event) => event.event_type === "became_dodgy" || event.event_type === "dodgy_special").length;
-    const realSaverCount = products.filter((event) => event.event_type === "became_real_saver").length;
+    const productGroups = [...eventsByProduct.values()];
+    const dodgyCount = productGroups.filter((group) => group.some((event) => event.event_type === "became_dodgy" || event.event_type === "dodgy_special")).length;
+    const realSaverCount = productGroups.filter((group) => group.some((event) => event.event_type === "became_real_saver")).length;
+    const verdictChangeCount = productGroups.filter((group) => group.some((event) => isVerdictEvent(event))).length;
     return {
       title: `${list.name} Watchlist update`,
       body: dodgyCount > 0
         ? `${dodgyCount === 1 ? "One watched item is" : `${dodgyCount} watched items are`} now Dodgy. Don’t buy. Tap to review.`
         : realSaverCount > 0
           ? `${realSaverCount === 1 ? "One watched item is" : `${realSaverCount} watched items are`} now Real Savers. Tap to review.`
-          : `${products.length} watched items have new special-price updates. Tap to review.`,
+          : verdictChangeCount > 0
+            ? `${verdictChangeCount === 1 ? "One watched item has" : `${verdictChangeCount} watched items have`} a new deal verdict. Tap to review.`
+            : `${products.length} watched items have new price updates. Tap to review.`,
       productId: products[0].product_id,
     };
   }
 
   const event = products[0];
+  const productEvents = eventsByProduct.get(event.product_id) ?? [event];
+  const priceEvent = productEvents.find((candidate) => isPriceEvent(candidate));
+  const verdictEvent = productEvents.find((candidate) => isVerdictEvent(candidate));
   const price = `$${Number(event.price).toFixed(2)}`;
   const savings = `$${Math.max(0, Number(event.previous_price) - Number(event.price)).toFixed(2)}`;
   let body: string;
-  if (event.event_type === "became_dodgy" || event.event_type === "dodgy_special") {
+  if (priceEvent && verdictEvent) {
+    body = `${event.product_name} at ${event.store_name} is now ${price}, and its deal verdict changed. Tap to review.`;
+  } else if (event.event_type === "became_dodgy" || event.event_type === "dodgy_special") {
     body = `${event.product_name} at ${event.store_name} is now Dodgy at ${price}. Don’t buy it. Tap to review.`;
   } else if (event.event_type === "became_real_saver") {
     body = `${event.product_name} at ${event.store_name} is now a Real Saver at ${price}. Safe to buy. Tap to review.`;
-  } else if (event.verdict !== "GENUINE") {
-    body = `Price update: ${event.product_name} is ${price} at ${event.store_name}. Tap to view ${list.name}.`;
+  } else if (event.event_type === "verdict_changed") {
+    body = `${event.product_name} at ${event.store_name} has a new deal verdict at ${price}. Tap to review.`;
   } else if (event.event_type === "returned_to_special") {
     body = `${event.product_name} is back on special at ${event.store_name} for ${price}, down ${savings}. Tap to view ${list.name}.`;
+  } else if (event.event_type === "price_changed") {
+    const direction = Number(event.price) < Number(event.previous_price)
+      ? `down ${savings}`
+      : Number(event.price) > Number(event.previous_price)
+        ? `up $${(Number(event.price) - Number(event.previous_price)).toFixed(2)}`
+        : "changed";
+    body = `${event.product_name} is now ${price} at ${event.store_name}, ${direction}. Tap to view ${list.name}.`;
+  } else if (event.verdict !== "GENUINE") {
+    body = `Price update: ${event.product_name} is ${price} at ${event.store_name}. Tap to view ${list.name}.`;
   } else {
     body = `${event.product_name} is now ${price} at ${event.store_name}, ${savings} less. Tap to view ${list.name}.`;
   }
@@ -181,9 +215,10 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
   const itemIds = listItems.map((item) => item.id);
   const priceRows: CurrentPriceRow[] = [];
   const specialRows: PublishedSpecialRow[] = [];
+  const productNameById = new Map<string, string>();
 
   for (const productChunk of chunks(productIds, 100)) {
-    const [pricesResult, specialsResult] = await Promise.all([
+    const [pricesResult, specialsResult, productsResult] = await Promise.all([
       catalogue
         .from("current_prices")
         .select("product_id,store_id,price,is_special,updated_at")
@@ -192,11 +227,38 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
         .from("published_dodgy_deals_cache")
         .select("product_id,store_id,product_name,store_name,sale_price,verdict")
         .in("product_id", productChunk),
+      catalogue
+        .from("products")
+        .select("id,name")
+        .in("id", productChunk),
     ]);
     if (pricesResult.error) throw new Error(`Could not read current prices: ${pricesResult.error.message}`);
     if (specialsResult.error) throw new Error(`Could not read verified specials: ${specialsResult.error.message}`);
     priceRows.push(...((pricesResult.data ?? []) as CurrentPriceRow[]));
     specialRows.push(...((specialsResult.data ?? []) as PublishedSpecialRow[]));
+    if (productsResult.error) {
+      console.warn("Could not read product names for Watchlist alerts; using available fallbacks.", productsResult.error.message);
+    } else {
+      for (const product of (productsResult.data ?? []) as ProductNameRow[]) {
+        if (product.name?.trim()) productNameById.set(product.id, product.name.trim());
+      }
+    }
+  }
+
+  const storeNameById = new Map<string, string>();
+  for (const storeChunk of chunks([...new Set(priceRows.map((price) => price.store_id))], 100)) {
+    if (!storeChunk.length) continue;
+    const { data, error } = await catalogue
+      .from("stores")
+      .select("id,name")
+      .in("id", storeChunk);
+    if (error) {
+      console.warn("Could not read store names for Watchlist alerts; using store IDs as fallbacks.", error.message);
+    } else {
+      for (const store of (data ?? []) as StoreNameRow[]) {
+        if (store.name?.trim()) storeNameById.set(store.id, store.name.trim());
+      }
+    }
   }
 
   const stateRows: AlertStateRow[] = [];
@@ -224,8 +286,8 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
   for (const price of priceRows) {
     const linkedSpecial = specialByPriceKey.get(priceKey(price.product_id, price.store_id));
     const observationIsFresh = isWatchlistObservationFresh(price.updated_at, now);
+    if (!observationIsFresh || !Number.isFinite(Number(price.price)) || Number(price.price) < 0) continue;
     const isVerifiedSpecial = Boolean(
-      observationIsFresh &&
       price.is_special &&
       linkedSpecial &&
       Math.abs(Number(linkedSpecial.sale_price) - Number(price.price)) < 0.01
@@ -235,47 +297,62 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
     for (const item of listProductItems) {
       const key = `${item.id}:${price.store_id}`;
       const previous = stateByKey.get(key);
+      const currentObservationIsNewer = !previous
+        || Date.parse(price.updated_at) > Date.parse(previous.last_observed_at);
+      if (!currentObservationIsNewer) continue;
       const previousIsFresh = previous && isWatchlistObservationFresh(previous.last_observed_at, now);
-      let eventType: AlertEventRow["event_type"] | null = null;
       const currentPrice = Number(price.price);
-
-      eventType = detectWatchlistPriceAlert({
+      const currentVerdict = isVerifiedSpecial ? linkedSpecial?.verdict ?? null : null;
+      const alertTypes = detectWatchlistAlerts({
         previous,
         previousIsFresh: Boolean(previousIsFresh),
+        currentIsFresh: currentObservationIsNewer,
         currentPrice,
-        isVerifiedSpecial,
-        verdict: linkedSpecial?.verdict,
+        currentVerdict,
       });
 
       const list = listById.get(item.list_id);
-      if (eventType && linkedSpecial && list) {
-        const previousPrice = eventType === "better_special_price"
-          ? Number(previous?.last_notified_price ?? previous?.last_price ?? currentPrice)
-          : Number(previous?.last_price ?? currentPrice);
-        const eventKey = [item.id, price.store_id, eventType, currentPrice.toFixed(2), previous?.last_observed_at ?? "baseline", price.updated_at].join(":");
-        newEvents.push({
-          user_id: list.user_id,
-          list_id: list.id,
-          list_item_id: item.id,
-          product_id: item.product_id,
-          product_name: linkedSpecial.product_name,
-          store_id: price.store_id,
-          store_name: linkedSpecial.store_name,
-          event_type: eventType,
-          price: currentPrice,
-          previous_price: previousPrice,
-          verdict: linkedSpecial.verdict,
-          event_key: eventKey,
-        });
+      if (alertTypes.length && list) {
+        const productName = linkedSpecial?.product_name?.trim() || productNameById.get(item.product_id) || "Watched item";
+        const storeName = linkedSpecial?.store_name?.trim() || storeNameById.get(price.store_id) || price.store_id;
+        for (const eventType of alertTypes) {
+          const previousPrice = Number(previous?.last_price ?? currentPrice);
+          const eventKey = [
+            item.id,
+            price.store_id,
+            eventType,
+            currentPrice.toFixed(2),
+            previousPrice.toFixed(2),
+            previous?.last_verdict ?? "none",
+            currentVerdict ?? "none",
+            previous?.last_observed_at ?? "baseline",
+            price.updated_at,
+          ].join(":");
+          newEvents.push({
+            user_id: list.user_id,
+            list_id: list.id,
+            list_item_id: item.id,
+            product_id: item.product_id,
+            product_name: productName,
+            store_id: price.store_id,
+            store_name: storeName,
+            event_type: eventType,
+            price: currentPrice,
+            previous_price: previousPrice,
+            verdict: currentVerdict ?? "UNKNOWN",
+            previous_verdict: previous?.last_verdict ?? null,
+            event_key: eventKey,
+          });
+        }
       }
 
-      const didNotify = Boolean(eventType && linkedSpecial && list);
+      const didNotify = alertTypes.length > 0 && Boolean(list);
       nextStates.push({
         list_item_id: item.id,
         store_id: price.store_id,
         last_price: currentPrice,
         last_is_special: isVerifiedSpecial,
-        last_verdict: isVerifiedSpecial ? linkedSpecial?.verdict ?? null : previous?.last_verdict ?? null,
+        last_verdict: currentVerdict,
         last_observed_at: price.updated_at,
         last_notified_price: didNotify ? currentPrice : previous?.last_notified_price ?? null,
         last_notified_at: didNotify ? new Date(now).toISOString() : previous?.last_notified_at ?? null,
@@ -342,7 +419,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
           fetchPages<AlertEventRow>((from, to) =>
             accounts
               .from("list_price_alert_events")
-              .select("id,user_id,list_id,list_item_id,product_id,product_name,store_id,store_name,event_type,price,previous_price,verdict,event_key,created_at,viewed_at,push_sent_at,push_claimed_at")
+              .select("id,user_id,list_id,list_item_id,product_id,product_name,store_id,store_name,event_type,price,previous_price,verdict,previous_verdict,event_key,created_at,viewed_at,push_sent_at,push_claimed_at")
               .in("user_id", userIdChunk)
               .is("push_sent_at", null)
               .is("viewed_at", null)

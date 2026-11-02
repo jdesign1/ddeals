@@ -18,8 +18,9 @@ export interface UnreadListAlert {
   product_id: string;
   product_name: string;
   store_name: string;
-  event_type: "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
+  event_type: "price_changed" | "verdict_changed" | "returned_to_special" | "better_special_price" | "became_real_saver" | "became_dodgy" | "dodgy_special";
   verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
+  previous_verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN" | null;
   price: number;
   previous_price: number | null;
   created_at: string;
@@ -49,7 +50,7 @@ const watchlistNavSeenAtKey = (userId: string) => `dodgey-deals:watchlist-nav-se
 // Verdict changes have a separate derived set for callers that need to style
 // assessment changes differently. The Watchlist unread dot is broader: it
 // represents any unread price or verdict update for a saved item.
-const verdictChangeEventTypes = new Set<UnreadListAlert["event_type"]>(["became_real_saver", "became_dodgy"]);
+const verdictChangeEventTypes = new Set<UnreadListAlert["event_type"]>(["verdict_changed", "became_real_saver", "became_dodgy"]);
 
 function isNativeIos(): boolean {
   return typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
@@ -144,7 +145,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     for (let offset = 0; ; offset += 500) {
       const unreadResult = await client
         .from("list_price_alert_events")
-        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,price,previous_price,created_at")
+        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,previous_verdict,price,previous_price,created_at")
         .is("viewed_at", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + 499);

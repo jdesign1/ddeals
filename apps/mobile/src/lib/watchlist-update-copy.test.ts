@@ -13,6 +13,7 @@ function update(overrides: Partial<UnreadListAlert> = {}): UnreadListAlert {
     store_name: "New World",
     event_type: "better_special_price",
     verdict: "GENUINE",
+    previous_verdict: "GENUINE",
     price: 7.99,
     previous_price: 8.99,
     created_at: "2026-10-28T00:00:00.000Z",
@@ -33,5 +34,26 @@ test("watchlist update copy explains verdict changes", () => {
     title: "Now a Dodgy Deal",
     description: "$7.99 at New World.",
     toneClass: "text-alert-700",
+  });
+});
+
+test("watchlist update copy explains any price direction", () => {
+  assert.deepEqual(getWatchlistUpdateCopy(update({ event_type: "price_changed", price: 9.99, previous_price: 8.99 })), {
+    title: "Price increased",
+    description: "$9.99 at New World. Up from $8.99.",
+    toneClass: "text-alert-700",
+  });
+});
+
+test("watchlist update copy explains all verdict transitions", () => {
+  assert.deepEqual(getWatchlistUpdateCopy(update({
+    event_type: "verdict_changed",
+    previous_verdict: "GENUINE",
+    verdict: "MARGINAL",
+    previous_price: 7.99,
+  })), {
+    title: "Deal verdict changed",
+    description: "Real Deal → Fair Price at New World.",
+    toneClass: "text-stone-700",
   });
 });

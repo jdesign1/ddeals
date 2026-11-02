@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  detectWatchlistPriceAlert,
+  detectWatchlistAlerts,
   isWatchlistObservationFresh,
-  WATCHLIST_MIN_PERCENT_DROP,
-  WATCHLIST_MIN_PRICE_DROP,
 } from "./watchlist-price-alert.ts";
 
 const state = {
@@ -15,63 +13,73 @@ const state = {
 };
 
 test("does not alert on the first observation", () => {
-  assert.equal(detectWatchlistPriceAlert({
+  assert.deepEqual(detectWatchlistAlerts({
     previous: undefined,
     previousIsFresh: false,
+    currentIsFresh: true,
     currentPrice: 8,
-    isVerifiedSpecial: true,
-    verdict: "GENUINE",
-  }), null);
+    currentVerdict: "GENUINE",
+  }), []);
 });
 
-test("alerts when a special price becomes meaningfully cheaper", () => {
-  assert.equal(detectWatchlistPriceAlert({
+test("alerts when any confirmed price changes", () => {
+  assert.deepEqual(detectWatchlistAlerts({
     previous: state,
     previousIsFresh: true,
+    currentIsFresh: true,
     currentPrice: 9.25,
-    isVerifiedSpecial: true,
-    verdict: "GENUINE",
-  }), "better_special_price");
+    currentVerdict: "GENUINE",
+  }), ["price_changed"]);
 });
 
-test("alerts when a watched special becomes a Real Saver without a price drop", () => {
-  assert.equal(detectWatchlistPriceAlert({
+test("alerts when a watched verdict changes without a price change", () => {
+  assert.deepEqual(detectWatchlistAlerts({
     previous: { ...state, last_verdict: "MARGINAL" },
     previousIsFresh: true,
+    currentIsFresh: true,
     currentPrice: 10,
-    isVerifiedSpecial: true,
-    verdict: "GENUINE",
-  }), "became_real_saver");
+    currentVerdict: "GENUINE",
+  }), ["verdict_changed"]);
 });
 
-test("alerts when a watched special turns Dodgy", () => {
-  assert.equal(detectWatchlistPriceAlert({
+test("alerts for every known verdict transition", () => {
+  assert.deepEqual(detectWatchlistAlerts({
     previous: { ...state, last_verdict: "GENUINE" },
     previousIsFresh: true,
+    currentIsFresh: true,
     currentPrice: 10,
-    isVerifiedSpecial: true,
-    verdict: "DODGY",
-  }), "became_dodgy");
+    currentVerdict: "MARGINAL",
+  }), ["verdict_changed"]);
 });
 
-test("does not repeatedly alert for an unchanged verdict", () => {
-  assert.equal(detectWatchlistPriceAlert({
+test("keeps simultaneous price and verdict changes as two signals", () => {
+  assert.deepEqual(detectWatchlistAlerts({
     previous: { ...state, last_verdict: "GENUINE" },
     previousIsFresh: true,
+    currentIsFresh: true,
+    currentPrice: 9,
+    currentVerdict: "DODGY",
+  }), ["price_changed", "verdict_changed"]);
+});
+
+test("does not repeatedly alert for unchanged price and verdict", () => {
+  assert.deepEqual(detectWatchlistAlerts({
+    previous: { ...state, last_verdict: "GENUINE" },
+    previousIsFresh: true,
+    currentIsFresh: true,
     currentPrice: 10,
-    isVerifiedSpecial: true,
-    verdict: "GENUINE",
-  }), null);
+    currentVerdict: "GENUINE",
+  }), []);
 });
 
 test("establishes a verdict baseline for pre-migration state rows", () => {
-  assert.equal(detectWatchlistPriceAlert({
+  assert.deepEqual(detectWatchlistAlerts({
     previous: { ...state, last_verdict: null },
     previousIsFresh: true,
+    currentIsFresh: true,
     currentPrice: 10,
-    isVerifiedSpecial: true,
-    verdict: "DODGY",
-  }), null);
+    currentVerdict: "DODGY",
+  }), []);
 });
 
 test("accepts a delayed scrape within the two-cycle freshness window", () => {
@@ -80,40 +88,33 @@ test("accepts a delayed scrape within the two-cycle freshness window", () => {
   assert.equal(isWatchlistObservationFresh("2026-09-25T23:59:59.999Z", now), false);
 });
 
-test("requires both the dollar and percentage thresholds", () => {
-  assert.equal(detectWatchlistPriceAlert({
+test("ignores sub-cent floating-point noise", () => {
+  assert.deepEqual(detectWatchlistAlerts({
     previous: state,
     previousIsFresh: true,
-    currentPrice: 10 - WATCHLIST_MIN_PRICE_DROP,
-    isVerifiedSpecial: true,
-    verdict: "GENUINE",
-  }), null);
-  assert.equal(detectWatchlistPriceAlert({
-    previous: { ...state, last_price: 100 },
-    previousIsFresh: true,
-    currentPrice: 100 - WATCHLIST_MIN_PRICE_DROP,
-    isVerifiedSpecial: true,
-    verdict: "GENUINE",
-  }), null);
+    currentIsFresh: true,
+    currentPrice: 10.004,
+    currentVerdict: "GENUINE",
+  }), []);
 });
 
-test("alerts when a regular item returns to a verified special", () => {
-  assert.equal(detectWatchlistPriceAlert({
+test("alerts when a regular price changes", () => {
+  assert.deepEqual(detectWatchlistAlerts({
     previous: { last_price: 10, last_is_special: false, last_notified_price: null },
     previousIsFresh: true,
+    currentIsFresh: true,
     currentPrice: 8.5,
-    isVerifiedSpecial: true,
-    verdict: "MARGINAL",
-  }), "returned_to_special");
+    currentVerdict: null,
+  }), ["price_changed"]);
 });
 
-test("never alerts for a dodgy special or stale baseline", () => {
+test("never alerts for a stale or invalid observation", () => {
   const input = {
-    previous: { ...state, last_verdict: "DODGY" as const },
+    previous: { ...state },
     currentPrice: 8,
-    isVerifiedSpecial: true,
-    verdict: "DODGY",
+    currentVerdict: "DODGY" as const,
   };
-  assert.equal(detectWatchlistPriceAlert({ ...input, previousIsFresh: true }), null);
-  assert.equal(detectWatchlistPriceAlert({ ...input, previousIsFresh: false, verdict: "GENUINE" }), null);
+  assert.deepEqual(detectWatchlistAlerts({ ...input, previousIsFresh: true, currentIsFresh: false }), []);
+  assert.deepEqual(detectWatchlistAlerts({ ...input, previousIsFresh: false, currentIsFresh: true }), []);
+  assert.deepEqual(detectWatchlistAlerts({ ...input, previousIsFresh: true, currentIsFresh: true, currentPrice: Number.NaN }), []);
 });

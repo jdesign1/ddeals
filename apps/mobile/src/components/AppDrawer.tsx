@@ -213,20 +213,24 @@ export default function AppDrawer() {
               className="flex min-h-12 w-full items-center gap-2 px-4 text-left dd-type-control font-semibold text-alert-800"
             >
               <Bell className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1">Watchlist updates ({unreadCount})</span>
+                  <span className="min-w-0 flex-1">Watchlist updates ({unreadCount})</span>
               <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-alert-600" aria-hidden="true" />
               <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isNotificationsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
             </button>
             {isNotificationsOpen && (
               <div className="border-t border-alert-100 px-4 pb-3 pt-2">
                 <p className="dd-type-meta leading-4 text-alert-800">
-                  {unreadCount === 1 ? "One watched item has a new deal update." : `${unreadCount} watched items have new deal updates.`}
+                  {unreadCount === 1 ? "One new Watchlist update." : `${unreadCount} new Watchlist updates.`}
                 </p>
                 <ul className="mt-2 space-y-1.5" aria-label="Unread Watchlist updates">
                   {unreadAlerts.slice(0, 3).map((alert) => {
                     const freshness = alertFreshnessLabel(alert.created_at);
                     const message = alert.event_type === "dodgy_special"
                       ? `${alert.product_name} now looks dodgy at ${alert.store_name}`
+                      : alert.event_type === "verdict_changed"
+                        ? `${alert.product_name} has a new deal verdict at ${alert.store_name}`
+                        : alert.event_type === "price_changed"
+                          ? `${alert.product_name} has a price update at ${alert.store_name}`
                       : alert.verdict === "GENUINE"
                         ? `${alert.product_name} is a verified special at ${alert.store_name}`
                         : `${alert.product_name} has a better price at ${alert.store_name}`;

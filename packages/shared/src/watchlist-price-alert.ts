@@ -1,9 +1,7 @@
 export type WatchlistVerdict = "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
 export type WatchlistAlertType =
-  | "returned_to_special"
-  | "better_special_price"
-  | "became_real_saver"
-  | "became_dodgy";
+  | "price_changed"
+  | "verdict_changed";
 
 export interface WatchlistPriceState {
   last_price: number;
@@ -14,8 +12,6 @@ export interface WatchlistPriceState {
   last_notified_price: number | null;
 }
 
-export const WATCHLIST_MIN_PRICE_DROP = 0.25;
-export const WATCHLIST_MIN_PERCENT_DROP = 0.05;
 // Catalogue observations normally arrive every few days. Keep two full
 // cycles of tolerance so a delayed scrape does not erase a useful baseline.
 export const WATCHLIST_MAX_OBSERVATION_AGE_MS = 8 * 24 * 60 * 60 * 1000;
@@ -31,43 +27,44 @@ export function isWatchlistObservationFresh(
 }
 
 /**
- * Decide whether a fresh catalogue observation is a meaningful Watchlist
- * alert. A first observation establishes a baseline and never alerts. Verdict
- * transitions are emitted independently of price movement so a product that
- * becomes safe to buy (or becomes Dodgy) is not missed when its price is flat.
- * Price alerts still require both the dollar and percentage thresholds.
+ * Decide which confirmed Watchlist changes should create alerts. A first
+ * observation establishes a baseline and never alerts. Prices are compared
+ * to the cent to avoid floating-point noise, while verdict changes require a
+ * known previous and current verdict. The caller supplies freshness for both
+ * observations so stale catalogue rows cannot create alerts.
  */
-export function detectWatchlistPriceAlert({
+export function detectWatchlistAlerts({
   previous,
   previousIsFresh,
+  currentIsFresh,
   currentPrice,
-  isVerifiedSpecial,
-  verdict,
+  currentVerdict,
 }: {
   previous: WatchlistPriceState | undefined;
   previousIsFresh: boolean;
+  currentIsFresh: boolean;
   currentPrice: number;
-  isVerifiedSpecial: boolean;
-  verdict: WatchlistVerdict | undefined;
-}): WatchlistAlertType | null {
-  if (!previous || !previousIsFresh || !isVerifiedSpecial || !verdict) return null;
+  currentVerdict: WatchlistVerdict | null;
+}): WatchlistAlertType[] {
+  if (!previous || !previousIsFresh || !currentIsFresh) return [];
+  if (!Number.isFinite(currentPrice) || currentPrice < 0) return [];
+  if (!Number.isFinite(Number(previous.last_price)) || Number(previous.last_price) < 0) return [];
 
-  // Do not alert on rows created before verdict tracking was introduced. The
-  // first post-migration observation fills the new baseline instead of
-  // notifying every existing Watchlist item at once.
-  if (previous.last_verdict && verdict !== previous.last_verdict) {
-    if (verdict === "GENUINE") return "became_real_saver";
-    if (verdict === "DODGY") return "became_dodgy";
+  const previousPriceCents = Math.round(Number(previous.last_price) * 100);
+  const currentPriceCents = Math.round(currentPrice * 100);
+  const alerts: WatchlistAlertType[] = [];
+  if (previousPriceCents !== currentPriceCents) alerts.push("price_changed");
+
+  // A null previous verdict is the migration/baseline state. Do not notify
+  // when verdict tracking is first populated for an existing item.
+  if (previous.last_verdict && currentVerdict && previous.last_verdict !== currentVerdict) {
+    alerts.push("verdict_changed");
   }
 
-  if (verdict === "DODGY") return null;
+  return alerts;
+}
 
-  const referencePrice = previous.last_is_special
-    ? Number(previous.last_notified_price ?? previous.last_price)
-    : Number(previous.last_price);
-  const absoluteDrop = referencePrice - currentPrice;
-  const percentageDrop = referencePrice > 0 ? absoluteDrop / referencePrice : 0;
-  if (absoluteDrop < WATCHLIST_MIN_PRICE_DROP || percentageDrop < WATCHLIST_MIN_PERCENT_DROP) return null;
-
-  return previous.last_is_special ? "better_special_price" : "returned_to_special";
+/** Backwards-compatible single-signal helper for callers that only need one. */
+export function detectWatchlistPriceAlert(args: Parameters<typeof detectWatchlistAlerts>[0]): WatchlistAlertType | null {
+  return detectWatchlistAlerts(args)[0] ?? null;
 }
