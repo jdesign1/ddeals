@@ -53,7 +53,9 @@ const CONFETTI_PIECES = [
   { left: 97, x: 24, y: "30rem", rotation: -44, color: "#ec4899", delay: 285 },
 ] as const;
 
-const PRICE_HISTORY_REVEAL_DELAY_MS = 1_300;
+// Give the answer result a little more room to land before the evidence chart
+// replaces it. The history request still starts immediately after selection.
+const PRICE_HISTORY_REVEAL_DELAY_MS = 1_700;
 
 const STREAK_STARS = [
   { left: 10, x: -18, y: -18, rotate: -18, delay: 0 },
@@ -210,6 +212,9 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
       recordStreak(side === correctSide);
     }
     loadSelectedPriceHistory(candidate);
+    if (priceHistoryRevealTimeoutRef.current !== null) {
+      window.clearTimeout(priceHistoryRevealTimeoutRef.current);
+    }
     priceHistoryRevealTimeoutRef.current = window.setTimeout(() => setShowPriceHistory(true), PRICE_HISTORY_REVEAL_DELAY_MS);
   };
 
