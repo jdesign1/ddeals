@@ -995,7 +995,7 @@ export default function HomePage() {
                 tone="history"
                 onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
               />
-              <div className="px-5 pb-2 pt-1">
+              <div className="px-5 pb-24 pt-1">
                 <button
                   type="button"
                   onClick={() => openSearchForFilter("all", newDealsAllSearchOptions)}
