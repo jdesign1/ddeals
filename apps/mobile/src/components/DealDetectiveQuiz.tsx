@@ -271,7 +271,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
 
       {rankLabel && (
         <div className="pointer-events-none sticky top-0 z-40 h-0">
-          <span className={`absolute left-3 ${showBackButton ? "top-16" : "top-3"} inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800 shadow-md`}>
+          <span className={`absolute left-3 ${showBackButton ? "top-16" : "top-3"} inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800`}>
             Rank: {rankLabel}
           </span>
         </div>
