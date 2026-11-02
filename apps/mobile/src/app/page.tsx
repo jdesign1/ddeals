@@ -924,14 +924,6 @@ export default function HomePage() {
               language app-wide instead of border outlines. */}
           {dealFilter === "all" && (
             <>
-              <PersonalDealRail
-                id="previously-checked-rail"
-                title="Worth another look"
-                description="Deals you checked before whose price or assessment has changed."
-                deals={visiblePreviouslyCheckedDeals}
-                tone="history"
-                onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
-              />
               {checkDealsBeltOrder.map((belt) => {
                 if (belt === "for-you") {
                   if (preferredCategories.length === 0 || !visibleForYouCategory) return null;
@@ -995,6 +987,14 @@ export default function HomePage() {
                   </section>
                 );
               })}
+              <PersonalDealRail
+                id="previously-checked-rail"
+                title="Deals you might have missed"
+                description="Deals you checked before whose price or assessment has changed."
+                deals={visiblePreviouslyCheckedDeals}
+                tone="history"
+                onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
+              />
               <div className="px-5 pb-2 pt-1">
                 <button
                   type="button"

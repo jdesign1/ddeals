@@ -20,7 +20,7 @@ export default function DismissWorthAnotherLookSheet({
           <>
             <motion.button
               type="button"
-              aria-label="Close Worth another look confirmation"
+              aria-label="Close missed deals confirmation"
               onClick={onClose}
               className="dd-bottom-sheet-backdrop fixed inset-0 z-[60] mx-auto w-full max-w-[480px] bg-stone-900/40"
               initial={{ opacity: 0 }}

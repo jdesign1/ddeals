@@ -52,7 +52,7 @@ export function buildForYouCategoryDeals(
 }
 
 /**
- * Stable per-change key for the dismissible "Worth another look" belt.
+ * Stable per-change key for the dismissible "Deals you might have missed" belt.
  * Including the current observed state means a later price or assessment
  * change can surface again after the user dismisses an older reminder.
  */
