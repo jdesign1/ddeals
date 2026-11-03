@@ -158,7 +158,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className={`dd-bottom-sheet dd-bottom-sheet-surface mx-auto flex flex-col overflow-y-auto shadow-2xl ${showQuiz && displayedQuizCase ? "fixed inset-x-2 top-2 bottom-2 h-auto max-h-none w-auto max-w-[27rem] translate-y-0 rounded-3xl border border-stone-200" : "fixed inset-x-2 top-1/2 max-h-[calc(100dvh-1rem)] w-auto max-w-[30rem] -translate-y-1/2 rounded-3xl border border-stone-200"} ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
+              className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-2 top-2 bottom-2 mx-auto flex h-auto max-h-none w-auto max-w-[27rem] translate-y-0 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
               <div className="pointer-events-none sticky top-0 z-40 h-0">
                 <button
@@ -166,7 +166,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   onClick={handleClose}
                   aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                   ref={closeButtonRef}
-                  className="pointer-events-auto absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800"
+                  className={`pointer-events-auto absolute right-3 ${gameOnly || (showQuiz && displayedQuizCase) ? "top-3" : "-top-1"} flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800`}
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
