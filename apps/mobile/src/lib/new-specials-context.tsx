@@ -432,8 +432,27 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
   const requestPreviewOpen = useCallback(() => {
     if (!storageReady || loadingProducts) return;
+
+    // The test preview should include the game card even when the normal
+    // publication-driven reconciliation has not persisted a case yet.
+    if (!detectiveCase && currentQuizCase && playedPairHistoryReady && scope) {
+      const nextCaseNumber = nextDealDetectiveCaseNumber(scope);
+      const nextQuizCase = buildCurrentQuizCase(nextCaseNumber - 1) ?? currentQuizCase;
+      const nextCase = createStoredDealDetectiveCase(
+        cataloguePublicationKey ?? "anonymous-test-case",
+        nextQuizCase,
+        Date.now() + NEW_SPECIALS_PENDING_TTL_MS,
+        detectiveCasePlayedQuestionKind ? alternateQuestionKind(detectiveCasePlayedQuestionKind) : "real",
+        nextCaseNumber,
+      );
+      if (writeStoredDealDetectiveCase(nextCase, scope)) {
+        clearStoredDealDetectivePlayedState(scope);
+        setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
+      }
+    }
+
     setPreviewOpenRequested(true);
-  }, [loadingProducts, storageReady]);
+  }, [buildCurrentQuizCase, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedQuestionKind, loadingProducts, playedPairHistoryReady, scope, storageReady]);
 
   // A valid case can be recovered from the current catalogue even when an
   // earlier render missed the localStorage write. Do not recreate a case that

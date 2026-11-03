@@ -36,6 +36,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const quizTriggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const pendingCloseActionRef = useRef<(() => void) | null>(null);
   const onCloseRef = useRef(onClose);
   const onSelectFilterRef = useRef(onSelectFilter);
   const onSelectAllNewDealsRef = useRef(onSelectAllNewDeals);
@@ -63,21 +64,22 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
     return () => window.clearTimeout(syncTimer);
   }, [gameOnly, open, quizCase]);
 
-  const pluralLabel = (count: number, singular: string) => `${count} ${singular}${count === 1 ? "" : "s"}`;
-
   const handleClose = useCallback(() => {
     setIsClosing(true);
+    pendingCloseActionRef.current = null;
     onCloseRef.current();
   }, []);
 
   const handleSelectFilter = useCallback((filter: DealFilter, dealKeys: string[]) => {
     setIsClosing(true);
-    onSelectFilterRef.current(filter, dealKeys);
+    pendingCloseActionRef.current = () => onSelectFilterRef.current(filter, dealKeys);
+    onCloseRef.current();
   }, []);
 
   const handleSelectAllNewDeals = useCallback((dealKeys: string[]) => {
     setIsClosing(true);
-    onSelectAllNewDealsRef.current(dealKeys);
+    pendingCloseActionRef.current = () => onSelectAllNewDealsRef.current(dealKeys);
+    onCloseRef.current();
   }, []);
 
   useEffect(() => {
@@ -119,7 +121,12 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
     <BottomSheetPortal open={open || isClosing}>
       <AnimatePresence
         onExitComplete={() => {
-          if (!open) setIsClosing(false);
+          if (!open) {
+            setIsClosing(false);
+            const pendingCloseAction = pendingCloseActionRef.current;
+            pendingCloseActionRef.current = null;
+            pendingCloseAction?.();
+          }
         }}
       >
         {open && (
@@ -146,7 +153,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className={`dd-bottom-sheet dd-bottom-sheet-surface mx-auto flex flex-col overflow-y-auto shadow-2xl ${showQuiz && displayedQuizCase ? "fixed inset-x-2 top-2 bottom-2 h-auto max-h-none w-auto max-w-[27rem] translate-y-0 rounded-3xl border border-stone-200" : "fixed inset-x-4 top-1/2 max-h-[calc(100dvh-1rem)] w-auto max-w-[27rem] -translate-y-1/2 rounded-3xl border border-stone-200"} ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
+              className={`dd-bottom-sheet dd-bottom-sheet-surface mx-auto flex flex-col overflow-y-auto shadow-2xl ${showQuiz && displayedQuizCase ? "fixed inset-x-2 top-2 bottom-2 h-auto max-h-none w-auto max-w-[27rem] translate-y-0 rounded-3xl border border-stone-200" : "fixed inset-x-2 top-1/2 max-h-[calc(100dvh-1rem)] w-auto max-w-[30rem] -translate-y-1/2 rounded-3xl border border-stone-200"} ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
               <div className="pointer-events-none sticky top-0 z-40 h-0">
                 <button
@@ -189,20 +196,20 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                 />
               ) : (
                 <>
-                  <div className="flex h-[10rem] justify-center px-1 sm:h-[13rem]">
+                  <div className="-mx-5 -mt-4 aspect-square w-[calc(100%+2.5rem)] overflow-hidden rounded-t-3xl bg-stone-100">
                     <MascotImage
                       src="/new-specials-mascot.webp"
                       darkSrc="/new-specials-mascot.webp"
                       alt="Dodgy Deal mascot investigating new supermarket specials"
                       width={1024}
                       height={1024}
-                      sizes="(max-width: 480px) calc(100vw - 72px), 320px"
+                      sizes="(max-width: 480px) calc(100vw - 16px), 480px"
                       unoptimized
-                      className="h-full w-full max-w-[16rem] object-contain"
+                      className="h-full w-full max-w-none object-cover"
                     />
                   </div>
 
-                  <div className="text-center">
+                  <div className="mt-5 text-center">
                     <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                       {!hasNewSpecials
                         ? "All caught up"
@@ -220,24 +227,17 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
 
                   {hasNewSpecials && summary && (
                     <div className="mt-5 flex flex-col gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAllNewDeals(summary.allDealKeys)}
-                        className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
-                      >
-                        <span>Review all {pluralLabel(summary.total, "new deal")}</span>
-                      </button>
                       {hasRatedSpecials && (
-                        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter new deals by verdict">
+                        <div className="grid grid-cols-2 gap-3" role="group" aria-label="Filter new deals by verdict">
                           {summary.realDeals > 0 && (
                             <button
                               type="button"
                               aria-label={`See ${summary.realDeals} new Real Savers`}
                               onClick={() => handleSelectFilter("real", summary.realDealKeys)}
-                              className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl border border-fair-300 bg-fair-50 px-3 py-2 text-left text-sm font-bold text-fair-900 transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
+                              className="flex min-h-28 min-w-0 cursor-pointer flex-col items-center justify-center rounded-2xl border border-fair-300 bg-fair-50 px-3 py-3 text-center text-sm font-bold text-fair-900 transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
                             >
                               <span>Real Savers</span>
-                              <span className="rounded-full bg-white/80 px-2 py-1 text-xs tabular-nums">{summary.realDeals}</span>
+                              <span className="mt-1 text-3xl font-black leading-none tabular-nums">{summary.realDeals}</span>
                             </button>
                           )}
                           {summary.dodgyDeals > 0 && (
@@ -245,14 +245,21 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                               type="button"
                               aria-label={`See ${summary.dodgyDeals} new Dodgy Deals`}
                               onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
-                              className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl border border-alert-300 bg-alert-50 px-3 py-2 text-left text-sm font-bold text-alert-900 transition-colors hover:bg-alert-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-700 focus-visible:ring-offset-2"
+                              className="flex min-h-28 min-w-0 cursor-pointer flex-col items-center justify-center rounded-2xl border border-alert-300 bg-alert-50 px-3 py-3 text-center text-sm font-bold text-alert-900 transition-colors hover:bg-alert-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-700 focus-visible:ring-offset-2"
                             >
                               <span>Dodgy Deals</span>
-                              <span className="rounded-full bg-white/80 px-2 py-1 text-xs tabular-nums">{summary.dodgyDeals}</span>
+                              <span className="mt-1 text-3xl font-black leading-none tabular-nums">{summary.dodgyDeals}</span>
                             </button>
                           )}
                         </div>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllNewDeals(summary.allDealKeys)}
+                        className="dd-btn dd-btn-primary min-h-14 w-full cursor-pointer"
+                      >
+                        <span>See all {summary.total} new specials</span>
+                      </button>
                       {quizCase && (
                         <button
                           type="button"
