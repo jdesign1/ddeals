@@ -190,7 +190,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   onClick={handleClose}
                   aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                   ref={closeButtonRef}
-                  className={`pointer-events-auto absolute right-3 ${gameOnly || (showQuiz && displayedQuizCase) ? "top-3" : "-top-1"} flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800`}
+                  className={`pointer-events-auto absolute ${gameOnly || (showQuiz && displayedQuizCase) ? "right-3" : "-right-2"} top-3 flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800`}
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -302,7 +302,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                             setShowQuiz(true);
                           }}
                           aria-label="Play Deal Detective"
-                          className="flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 rounded-2xl border border-fair-200 bg-fair-50 px-3 py-3 text-left transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
+                          className="mt-2 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 rounded-2xl border border-fair-200 bg-fair-50 px-3 py-3 text-left transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
                         >
                           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-fair-800 shadow-xs" aria-hidden="true">
                             <Gamepad2 className="h-5 w-5" />
