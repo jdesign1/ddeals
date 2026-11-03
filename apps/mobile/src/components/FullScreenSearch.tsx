@@ -465,6 +465,23 @@ export default function FullScreenSearch() {
     setResultsSortBy(getDefaultDealSort(filter));
   };
 
+  const resetSearchScrollForCategoryChange = () => {
+    const element = scrollContainerRef.current;
+    if (element) {
+      element.scrollTop = 0;
+      element.scrollTo({ top: 0, behavior: "auto" });
+    }
+    lastScrollTopRef.current = 0;
+    toolbarScrollAnchorRef.current = 0;
+    setToolbarVisible(true);
+  };
+
+  const updateCategoryFilter = (target: "popular" | "results", next: string[]) => {
+    if (target === "results") setResultsCategoryFilter(next);
+    else setPopularCategoryFilter(next);
+    resetSearchScrollForCategoryChange();
+  };
+
   const handleSortChange = (sortBy: CheckDealsSortBy, setSortBy: (value: CheckDealsSortBy) => void) => {
     setSortBy(sortBy);
     const linkedFilter = getDealFilterForSort(sortBy);
@@ -473,9 +490,13 @@ export default function FullScreenSearch() {
 
   const [categorySheetTarget, setCategorySheetTarget] = useState<"popular" | "results" | null>(null);
   const activeCategoryFilter = categorySheetTarget === "results" ? resultsCategoryFilter : popularCategoryFilter;
-  const setActiveCategoryFilter = categorySheetTarget === "results" ? setResultsCategoryFilter : setPopularCategoryFilter;
-  const toggleActiveCategory = (cat: string) =>
-    setActiveCategoryFilter((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+  const activeCategoryTarget = categorySheetTarget === "results" ? "results" : "popular";
+  const toggleActiveCategory = (cat: string) => {
+    const next = activeCategoryFilter.includes(cat)
+      ? activeCategoryFilter.filter((currentCategory) => currentCategory !== cat)
+      : [...activeCategoryFilter, cat];
+    updateCategoryFilter(activeCategoryTarget, next);
+  };
 
   const trimmedQuery = query.trim();
 
@@ -728,7 +749,7 @@ export default function FullScreenSearch() {
           label="Category"
           active={categoryFilter.length > 0}
           onOpen={() => setCategorySheetTarget(target)}
-          onClear={() => (target === "results" ? setResultsCategoryFilter([]) : setPopularCategoryFilter([]))}
+          onClear={() => updateCategoryFilter(target, [])}
           ariaLabel="Filter by category"
           fill
         />
@@ -1513,7 +1534,7 @@ export default function FullScreenSearch() {
                       {activeCategoryFilter.length > 0 && (
                         <button
                           type="button"
-                          onClick={() => setActiveCategoryFilter([])}
+                          onClick={() => updateCategoryFilter(activeCategoryTarget, [])}
                           className="inline-flex min-h-11 cursor-pointer items-center px-2 py-2 dd-type-control text-ink-600 hover:text-ink-800 hover:underline"
                         >
                           Clear all
@@ -1532,7 +1553,7 @@ export default function FullScreenSearch() {
                   <div className="space-y-6 overflow-y-auto px-5 py-4">
                     <button
                       type="button"
-                      onClick={() => setActiveCategoryFilter([])}
+                      onClick={() => updateCategoryFilter(activeCategoryTarget, [])}
                       className={`dd-category-sheet-pill rounded-full px-3 py-2 dd-type-control transition-colors ${
                         activeCategoryFilter.length === 0
                           ? "dd-category-sheet-pill-selected cursor-pointer bg-ink-600 text-white"
