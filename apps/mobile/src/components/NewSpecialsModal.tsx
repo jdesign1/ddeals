@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Gamepad2, X } from "lucide-react";
+import { ArrowRight, Gamepad2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -166,7 +166,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                   onClick={handleClose}
                   aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                   ref={closeButtonRef}
-                  className={`pointer-events-auto absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-md transition-colors ${showQuiz && displayedQuizCase ? "bg-ink-900 text-white hover:bg-ink-800" : "bg-white text-stone-500 hover:bg-white hover:text-stone-900"}`}
+                  className="pointer-events-auto absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -219,31 +219,31 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">
                       {!hasNewSpecials
                         ? "All caught up"
-                        : `${summary?.total ?? 0} new deal${summary?.total === 1 ? "" : "s"} to inspect`}
+                        : `${summary?.total ?? 0} new deals to inspect`}
                     </h2>
                     {!hasNewSpecials ? (
                       <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">No fresh deals just yet.</p>
                     ) : (
-                      <>
-                        <p id="new-specials-description" className="mt-3 text-sm leading-6 text-stone-600">Are they real or dodgy?</p>
-                        <p className="mt-2 dd-type-meta dd-type-meta-strong text-stone-500">{summary?.realDeals ?? 0} Real Savers · {summary?.dodgyDeals ?? 0} Dodgy Deals</p>
-                      </>
+                      <span id="new-specials-description" className="sr-only">Choose Real Savers or Dodgy Deals to inspect.</span>
                     )}
                   </div>
 
                   {hasNewSpecials && summary && (
-                    <div className="mt-5 flex flex-col gap-3">
+                    <div className="mt-5 flex flex-col gap-5">
                       {hasRatedSpecials && (
-                        <div className="grid grid-cols-2 gap-3" role="group" aria-label="Filter new deals by verdict">
+                        <div className="grid grid-cols-2 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs" role="group" aria-label="Filter new deals by verdict">
                           {summary.realDeals > 0 && (
                             <button
                               type="button"
                               aria-label={`See ${summary.realDeals} new Real Savers`}
                               onClick={() => handleSelectFilter("real", summary.realDealKeys)}
-                              className="flex min-h-28 min-w-0 cursor-pointer flex-col items-center justify-center rounded-2xl border border-fair-300 bg-fair-50 px-3 py-3 text-center text-sm font-bold text-fair-900 transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
+                              className="group flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-inset"
                             >
-                              <span>Real Savers</span>
-                              <span className="mt-1 text-3xl font-black leading-none tabular-nums">{summary.realDeals}</span>
+                              <span className="dd-type-meta dd-type-meta-strong text-fair-700">Real Savers</span>
+                              <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-fair-800">
+                                {summary.realDeals}
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                              </span>
                             </button>
                           )}
                           {summary.dodgyDeals > 0 && (
@@ -251,10 +251,13 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                               type="button"
                               aria-label={`See ${summary.dodgyDeals} new Dodgy Deals`}
                               onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
-                              className="flex min-h-28 min-w-0 cursor-pointer flex-col items-center justify-center rounded-2xl border border-alert-300 bg-alert-50 px-3 py-3 text-center text-sm font-bold text-alert-900 transition-colors hover:bg-alert-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-700 focus-visible:ring-offset-2"
+                              className="group flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-700 focus-visible:ring-inset"
                             >
-                              <span>Dodgy Deals</span>
-                              <span className="mt-1 text-3xl font-black leading-none tabular-nums">{summary.dodgyDeals}</span>
+                              <span className="dd-type-meta dd-type-meta-strong text-alert-600">Dodgy Deals</span>
+                              <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-alert-600">
+                                {summary.dodgyDeals}
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                              </span>
                             </button>
                           )}
                         </div>
