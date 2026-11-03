@@ -662,10 +662,19 @@ export default function HomePage() {
       : { focus: false },
     [newDealKeys, newForYouFilterActive],
   );
-  const openRailSearch = (filter: DealFilter, options: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy }) => {
+  const openRailSearch = (
+    filter: DealFilter,
+    options: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy },
+    allowNewToYou = false,
+  ) => {
+    // New to you is an intentional continuation of the Top Savers rail only.
+    // Other rail actions strip the digest keys so they cannot inherit a
+    // hidden new-only scope just because the New to you pill is active.
+    const useNewToYou = allowNewToYou && newForYouFilterActive && Boolean(options.dealKeys?.length);
+    const allDealsOptions = { focus: options.focus, sortBy: options.sortBy };
     openSearchForFilter(
-      newForYouFilterActive && options.dealKeys?.length ? "all" : filter,
-      newForYouFilterActive && options.dealKeys?.length ? newDealsAllSearchOptions : options,
+      useNewToYou ? "all" : filter,
+      useNewToYou ? newDealsAllSearchOptions : allDealsOptions,
     );
   };
   const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
@@ -971,8 +980,8 @@ export default function HomePage() {
                       refreshKey={selectedStores.join(",")}
                       showingNewOnly={newForYouFilterActive}
                       updatedText={updatedText}
-                      onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions)}
-                      onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions)}
+                      onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions, true)}
+                      onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions, true)}
                     />
                     <DealSnapshotRail
                       kind="dodgy"
@@ -998,10 +1007,10 @@ export default function HomePage() {
               <div className="px-5 pb-24 pt-1">
                 <button
                   type="button"
-                  onClick={() => openSearchForFilter("all", newDealsAllSearchOptions)}
+                  onClick={() => openSearchForFilter("all", { focus: false })}
                   className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
                 >
-                  {newForYouFilterActive ? "See all new deals" : "See all deals"}
+                  See all deals
                 </button>
               </div>
             </>

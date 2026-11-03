@@ -270,7 +270,7 @@ export default function FullScreenSearch() {
     searchSortOverride,
     searchCategoryOverride,
   } = useSearch();
-  const { digest, markReviewed } = useNewSpecials();
+  const { markReviewed } = useNewSpecials();
   const { isGridLayout } = useCardLayout();
   const pathname = usePathname();
 
@@ -445,9 +445,7 @@ export default function FullScreenSearch() {
     if (isOpen && !preserveSearchStateOnOpen) {
       const freshNewDealKeys = newSpecialsSearchMode === "keys"
         ? newSpecialDealKeys
-        : newSpecialsSearchMode === "auto"
-          ? digest?.allDealKeys ?? null
-          : null;
+        : null;
       setSessionNewSpecialDealKeys(freshNewDealKeys?.length ? [...freshNewDealKeys] : null);
       const initialSort = searchSortOverride ?? getDefaultDealSort(dealFilter);
       setPopularSortBy(initialSort);

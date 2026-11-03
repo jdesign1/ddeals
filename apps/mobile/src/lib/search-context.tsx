@@ -50,7 +50,7 @@ interface PendingDealReturn {
   store: string;
 }
 
-type NewSpecialsSearchMode = "auto" | "all" | "keys";
+type NewSpecialsSearchMode = "all" | "keys";
 
 interface SearchContextValue {
   products: ProductCard[];
@@ -205,7 +205,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [hasOpenedSearch, setHasOpenedSearch] = useState(false);
   const [focusSearchOnOpen, setFocusSearchOnOpen] = useState(true);
   const [newSpecialDealKeys, setNewSpecialDealKeys] = useState<string[] | null>(null);
-  const [newSpecialsSearchMode, setNewSpecialsSearchMode] = useState<NewSpecialsSearchMode>("auto");
+  const [newSpecialsSearchMode, setNewSpecialsSearchMode] = useState<NewSpecialsSearchMode>("all");
   const [cataloguePublicationKey, setCataloguePublicationKey] = useState<string | null>(null);
   const [cataloguePublicationComplete, setCataloguePublicationComplete] = useState(false);
   const [searchSortOverride, setSearchSortOverride] = useState<CheckDealsSortBy | null>(null);
@@ -425,7 +425,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openSearch: () => {
         setHasOpenedSearch(true);
         setNewSpecialDealKeys(null);
-        setNewSpecialsSearchMode("auto");
+        // Opening the global search bar is a neutral browse action. A pending
+        // new-specials digest must not silently narrow the catalogue; the
+        // shopper can still enter New to you from the explicit Check Deals
+        // Top Savers entry point.
+        setNewSpecialsSearchMode("all");
         setSearchSortOverride(null);
         setSearchCategoryOverride(null);
         setPreserveSearchStateOnOpen(false);
@@ -457,7 +461,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       closeSearch: () => {
         setQuery("");
         setNewSpecialDealKeys(null);
-        setNewSpecialsSearchMode("auto");
+        setNewSpecialsSearchMode("all");
         setSearchSortOverride(null);
         setSearchCategoryOverride(null);
         setSelectedStores(["all"]);
