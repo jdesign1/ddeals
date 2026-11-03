@@ -27,6 +27,7 @@ import {
   clearNewSpecialsPending,
   createNewSpecialsPending,
   createNewSpecialsSnapshot,
+  createNewSpecialsPreviewSummary,
   canShowNewSpecialsPopup,
   getNewSpecialDealKey,
   getNewSpecialsStorageScope,
@@ -60,10 +61,14 @@ interface NewSpecialsContextValue {
   popupEligible: boolean;
   popupSuppressedUntilHomeExit: boolean;
   openRequested: boolean;
+  previewSummary: NewSpecialsSummary;
+  previewOpenRequested: boolean;
   detectiveCaseOpenRequested: boolean;
   requestOpen: () => void;
+  requestPreviewOpen: () => void;
   requestDetectiveCaseOpen: () => void;
   consumeOpenRequest: () => void;
+  consumePreviewOpenRequest: () => void;
   consumeDetectiveCaseOpenRequest: () => void;
   markPopupShown: () => void;
   markDetectiveCasePlayed: () => void;
@@ -125,6 +130,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const [playedPairHistoryReady, setPlayedPairHistoryReady] = useState(false);
   const [now] = useState(() => Date.now());
   const [openRequested, setOpenRequested] = useState(false);
+  const [previewOpenRequested, setPreviewOpenRequested] = useState(false);
   const [detectiveCaseOpenRequested, setDetectiveCaseOpenRequested] = useState(false);
   const lastProcessedPublicationRef = useRef<string | null>(null);
   const [sessionPopupState, setSessionPopupState] = useState<NewSpecialsPopupState | null>(null);
@@ -175,6 +181,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     setPlayedPairKeys(hydratedPairKeys);
     setPlayedPairHistoryReady(isAnonymousSession);
     setOpenRequested(false);
+    setPreviewOpenRequested(false);
     setDetectiveCaseOpenRequested(false);
   }, [isAnonymousSession, scope]);
 
@@ -240,6 +247,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     () => (previousSnapshot ? summarizeNewSpecials(products, previousSnapshot) : null),
     [previousSnapshot, products],
   );
+  const previewSummary = useMemo(() => createNewSpecialsPreviewSummary(products), [products]);
   // Only expose a summary once its persisted batch exists. This prevents the
   // launch popup from racing the storage write on a cold load.
   const digest = activePending?.summary ?? null;
@@ -422,6 +430,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!popupSuppressedUntilHomeExit && pendingDigest?.total && popupEligible) setOpenRequested(true);
   }, [pendingDigest, popupEligible, popupSuppressedUntilHomeExit]);
 
+  const requestPreviewOpen = useCallback(() => {
+    if (!storageReady || loadingProducts) return;
+    setPreviewOpenRequested(true);
+  }, [loadingProducts, storageReady]);
+
   // A valid case can be recovered from the current catalogue even when an
   // earlier render missed the localStorage write. Do not recreate a case that
   // this account has already answered for the current publication.
@@ -464,6 +477,10 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
+  }, []);
+
+  const consumePreviewOpenRequest = useCallback(() => {
+    setPreviewOpenRequested(false);
   }, []);
 
   const consumeDetectiveCaseOpenRequest = useCallback(() => {
@@ -562,16 +579,20 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       popupEligible,
       popupSuppressedUntilHomeExit,
       openRequested,
+      previewSummary,
+      previewOpenRequested,
       detectiveCaseOpenRequested,
       requestOpen,
+      requestPreviewOpen,
       requestDetectiveCaseOpen,
       consumeOpenRequest,
+      consumePreviewOpenRequest,
       consumeDetectiveCaseOpenRequest,
       markPopupShown,
       markReviewed,
       markDetectiveCasePlayed,
     }),
-    [canOpenDetectiveCase, consumeDetectiveCaseOpenRequest, consumeOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, requestDetectiveCaseOpen, requestOpen],
+    [canOpenDetectiveCase, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
   );
 
   return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;

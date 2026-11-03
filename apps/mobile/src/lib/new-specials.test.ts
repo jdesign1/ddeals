@@ -4,6 +4,7 @@ import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import {
   canShowNewSpecialsPopup,
   createNewSpecialsPending,
+  createNewSpecialsPreviewSummary,
   createNewSpecialsPopupState,
   createNewSpecialsSnapshot,
   getNewSpecialDealKey,
@@ -115,6 +116,19 @@ test("all new deals are counted and account scopes stay separate", () => {
   assert.equal(getNewSpecialsStorageScope("user-1"), "user:user-1");
   assert.equal(getNewSpecialsStorageScope("user-1", true), "device");
   assert.equal(getNewSpecialsStorageScope(null), "device");
+});
+
+test("the profile-menu preview summarizes current specials without needing a stored baseline", () => {
+  const summary = createNewSpecialsPreviewSummary([
+    product("p1", [deal()]),
+    product("p2", [deal({ store: "newworld", dealType: "Dodgy Deal" })]),
+  ]);
+
+  assert.equal(summary.total, 2);
+  assert.equal(summary.newlyStarted, 2);
+  assert.equal(summary.priceDrops, 0);
+  assert.deepEqual(summary.realDealKeys, [getNewSpecialDealKey("p1", "woolworths")]);
+  assert.deepEqual(summary.dodgyDealKeys, [getNewSpecialDealKey("p2", "newworld")]);
 });
 
 test("new batches keep the popup state separate from the unread deal state", () => {

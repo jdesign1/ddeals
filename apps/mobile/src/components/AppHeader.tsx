@@ -54,15 +54,19 @@ export default function AppHeader({
     detectiveCase,
     detectiveCaseOpenRequested,
     consumeOpenRequest,
+    consumePreviewOpenRequest,
     consumeDetectiveCaseOpenRequest,
     markPopupShown,
     markDetectiveCasePlayed,
+    previewSummary,
+    previewOpenRequested,
   } = useNewSpecials();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
   const [newSpecialsModalGameOnly, setNewSpecialsModalGameOnly] = useState(false);
+  const [newSpecialsModalPreview, setNewSpecialsModalPreview] = useState(false);
 
   useEffect(() => {
     const syncSplashState = (isComplete = false) => setIsLaunchSplashFinished(isComplete || !document.querySelector(".launch-splash"));
@@ -81,25 +85,32 @@ export default function AppHeader({
   const shouldPresentDetectiveCaseModal = isLaunchSplashFinished
     && detectiveCaseOpenRequested
     && Boolean(detectiveCase);
+  const shouldPresentNewSpecialsPreview = isLaunchSplashFinished
+    && previewOpenRequested
+    && !popupSuppressedUntilHomeExit;
   useEffect(() => {
     const shouldPresentAutomatically = shouldPresentNewSpecialsModal && (openRequested || popupEligible);
-    if (!shouldPresentAutomatically && !shouldPresentDetectiveCaseModal) return;
+    if (!shouldPresentAutomatically && !shouldPresentDetectiveCaseModal && !shouldPresentNewSpecialsPreview) return;
     const presentationTimer = window.setTimeout(() => {
       const openGameOnly = shouldPresentDetectiveCaseModal;
-      if (!openGameOnly && (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible))) return;
+      const openPreview = !openGameOnly && shouldPresentNewSpecialsPreview;
+      if (!openGameOnly && !openPreview && (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible))) return;
       consumeOpenRequest();
+      consumePreviewOpenRequest();
       consumeDetectiveCaseOpenRequest();
-      if (!openGameOnly && !digest) return;
-      setNewSpecialsModalSummary(digest);
+      const nextSummary = openPreview ? previewSummary : digest;
+      if (!openGameOnly && !nextSummary) return;
+      setNewSpecialsModalSummary(openGameOnly ? null : nextSummary);
       setNewSpecialsModalGameOnly(openGameOnly);
+      setNewSpecialsModalPreview(openPreview);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [consumeDetectiveCaseOpenRequest, consumeOpenRequest, detectiveCase, digest, openRequested, popupEligible, shouldPresentDetectiveCaseModal, shouldPresentNewSpecialsModal]);
+  }, [consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, digest, openRequested, popupEligible, previewOpenRequested, previewSummary, shouldPresentDetectiveCaseModal, shouldPresentNewSpecialsModal, shouldPresentNewSpecialsPreview]);
 
   useEffect(() => {
-    if (isNewSpecialsModalOpen && newSpecialsModalSummary) markPopupShown();
-  }, [isNewSpecialsModalOpen, markPopupShown, newSpecialsModalSummary]);
+    if (isNewSpecialsModalOpen && newSpecialsModalSummary && !newSpecialsModalPreview) markPopupShown();
+  }, [isNewSpecialsModalOpen, markPopupShown, newSpecialsModalPreview, newSpecialsModalSummary]);
 
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
@@ -107,6 +118,7 @@ export default function AppHeader({
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);
     setNewSpecialsModalGameOnly(false);
+    setNewSpecialsModalPreview(false);
   }
 
   const isContextHeader = Boolean(override) || CONTEXT_HEADER_ROUTES.includes(pathname) || pathname.startsWith("/deal/");
@@ -124,6 +136,7 @@ export default function AppHeader({
   const handleNewSpecialsClose = () => {
     setIsNewSpecialsModalOpen(false);
     setNewSpecialsModalGameOnly(false);
+    setNewSpecialsModalPreview(false);
   };
   const handleShowAllNewDeals = (dealKeys: string[]) => {
     setIsNewSpecialsModalOpen(false);
@@ -202,9 +215,9 @@ export default function AppHeader({
         </header>
       </div>
 
-      {(newSpecialsModalSummary || (isNewSpecialsModalOpen && newSpecialsModalGameOnly)) && (
+      {(newSpecialsModalSummary || (isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalPreview))) && (
         <NewSpecialsModal
-          open={isNewSpecialsModalOpen && (newSpecialsModalGameOnly || pathname === "/") && !popupSuppressedUntilHomeExit}
+          open={isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalPreview || pathname === "/") && !popupSuppressedUntilHomeExit}
           summary={newSpecialsModalSummary}
           onClose={handleNewSpecialsClose}
           onSelectFilter={(filter, dealKeys) => {

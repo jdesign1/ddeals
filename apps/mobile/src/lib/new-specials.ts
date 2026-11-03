@@ -67,6 +67,15 @@ export type NewSpecialsPopupState = {
 };
 
 /**
+ * Build a non-persisted summary for the profile-menu UI preview. The empty
+ * baseline makes every currently active special visible without changing the
+ * user's unread batch, snapshot, or popup cooldown state.
+ */
+export function createNewSpecialsPreviewSummary(products: ProductCard[]): NewSpecialsSummary {
+  return summarizeNewSpecials(products, { version: SNAPSHOT_VERSION, deals: {} });
+}
+
+/**
  * Suppress the automatic popup during the route transition caused by logout.
  * This is intentionally an in-memory event rather than persisted state so a
  * later app launch can still surface the unread batch.
