@@ -30,6 +30,7 @@ interface DealDetectiveQuizProps {
   onBack: () => void;
   onViewDeals: () => void;
   onDone: () => void;
+  onAnswered: () => void;
   onPlayed: () => void;
   showViewDealsButton?: boolean;
   showBackButton?: boolean;
@@ -124,7 +125,7 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
   return "border-stone-200 bg-stone-50 opacity-70";
 }
 
-export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, onBack, onViewDeals, onDone, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
+export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, onBack, onViewDeals, onDone, onAnswered, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [currentRank, setCurrentRank] = useState<string | null>(null);
@@ -205,6 +206,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
     if (answered || isSubmitting) return;
     const candidate = side === "left" ? quizCase.left : quizCase.right;
     setSelectedSide(side);
+    onAnswered();
     if (accessToken) {
       saveAnswer(side);
     } else {
@@ -269,7 +271,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
         </div>
       )}
 
-      {rankLabel && (
+      {rankLabel && !showPriceHistory && (
         <div className="pointer-events-none sticky top-0 z-40 h-0">
           <span className={`absolute left-3 ${showBackButton ? "top-16" : "top-3"} inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800`}>
             Rank: {rankLabel}

@@ -30,6 +30,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const [isClosing, setIsClosing] = useState(false);
   const [showQuiz, setShowQuiz] = useState(gameOnly);
   const [displayedQuizCase, setDisplayedQuizCase] = useState<DealDetectiveQuizCase | null>(quizCase);
+  const [consumedQuizCaseKey, setConsumedQuizCaseKey] = useState<string | null>(null);
   const hasNewSpecials = (summary?.total ?? 0) > 0;
   const hasRatedSpecials = (summary?.realDeals ?? 0) > 0 || (summary?.dodgyDeals ?? 0) > 0;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -40,6 +41,9 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const onCloseRef = useRef(onClose);
   const onSelectFilterRef = useRef(onSelectFilter);
   const onSelectAllNewDealsRef = useRef(onSelectAllNewDeals);
+  const quizCaseKey = quizCase
+    ? `${quizCase.caseNumber ?? "case"}-${quizCase.questionKind ?? "real"}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`
+    : null;
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -52,6 +56,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
       if (!open) {
         setShowQuiz(false);
         setDisplayedQuizCase(null);
+        setConsumedQuizCaseKey(null);
         return;
       }
       if (!gameOnly || !quizCase) return;
@@ -190,6 +195,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                     handleSelectAllNewDeals(summary.allDealKeys);
                   }}
                   onDone={handleClose}
+                  onAnswered={() => setConsumedQuizCaseKey(quizCaseKey)}
                   onPlayed={onPlayed}
                   showViewDealsButton={!gameOnly}
                   showBackButton={!gameOnly}
@@ -260,7 +266,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                       >
                         <span>See all {summary.total} new specials</span>
                       </button>
-                      {quizCase && (
+                      {quizCase && consumedQuizCaseKey !== quizCaseKey && (
                         <button
                           type="button"
                           ref={quizTriggerRef}
