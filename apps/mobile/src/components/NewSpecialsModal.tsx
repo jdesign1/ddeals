@@ -10,6 +10,8 @@ import MascotImage from "@/components/MascotImage";
 import type { DealDetectiveQuizCase } from "@/lib/deal-detective-quiz";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
+const CLOSE_COMPLETION_FALLBACK_MS = 650;
+
 interface NewSpecialsModalProps {
   open: boolean;
   summary: NewSpecialsSummary | null;
@@ -24,10 +26,9 @@ interface NewSpecialsModalProps {
 }
 
 export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, detectiveStreakScope, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
-  // Keep the shared viewport lock active until the exit animation finishes.
-  // Otherwise the underlying page/nav becomes visible during the modal's
-  // fade-and-scale exit, which reads as a flicker on iOS cold starts.
-  const [isClosing, setIsClosing] = useState(false);
+  // The portal unlocks as soon as `open` flips false. The exiting backdrop and
+  // panel still cover the page visually, while the pending navigation action
+  // waits for the animation to finish (or the fallback timer below).
   const [showQuiz, setShowQuiz] = useState(gameOnly);
   const [displayedQuizCase, setDisplayedQuizCase] = useState<DealDetectiveQuizCase | null>(quizCase);
   const [consumedQuizCaseKey, setConsumedQuizCaseKey] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const pendingCloseActionRef = useRef<(() => void) | null>(null);
+  const closeCompletionTimerRef = useRef<number | null>(null);
   const onCloseRef = useRef(onClose);
   const onSelectFilterRef = useRef(onSelectFilter);
   const onSelectAllNewDealsRef = useRef(onSelectAllNewDeals);
@@ -69,23 +71,47 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
     return () => window.clearTimeout(syncTimer);
   }, [gameOnly, open, quizCase]);
 
-  const handleClose = useCallback(() => {
-    setIsClosing(true);
+  const completeClose = useCallback(() => {
+    if (closeCompletionTimerRef.current !== null) {
+      window.clearTimeout(closeCompletionTimerRef.current);
+      closeCompletionTimerRef.current = null;
+    }
+    const pendingCloseAction = pendingCloseActionRef.current;
     pendingCloseActionRef.current = null;
-    onCloseRef.current();
+    pendingCloseAction?.();
   }, []);
+
+  const beginClose = useCallback((pendingCloseAction: (() => void) | null = null) => {
+    pendingCloseActionRef.current = pendingCloseAction;
+    onCloseRef.current();
+    if (closeCompletionTimerRef.current !== null) window.clearTimeout(closeCompletionTimerRef.current);
+    closeCompletionTimerRef.current = window.setTimeout(completeClose, CLOSE_COMPLETION_FALLBACK_MS);
+  }, [completeClose]);
+
+  const handleClose = useCallback(() => {
+    beginClose();
+  }, [beginClose]);
 
   const handleSelectFilter = useCallback((filter: DealFilter, dealKeys: string[]) => {
-    setIsClosing(true);
-    pendingCloseActionRef.current = () => onSelectFilterRef.current(filter, dealKeys);
-    onCloseRef.current();
-  }, []);
+    beginClose(() => onSelectFilterRef.current(filter, dealKeys));
+  }, [beginClose]);
 
   const handleSelectAllNewDeals = useCallback((dealKeys: string[]) => {
-    setIsClosing(true);
-    pendingCloseActionRef.current = () => onSelectAllNewDealsRef.current(dealKeys);
-    onCloseRef.current();
+    beginClose(() => onSelectAllNewDealsRef.current(dealKeys));
+  }, [beginClose]);
+
+  useEffect(() => () => {
+    if (closeCompletionTimerRef.current !== null) window.clearTimeout(closeCompletionTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    if (closeCompletionTimerRef.current !== null) {
+      window.clearTimeout(closeCompletionTimerRef.current);
+      closeCompletionTimerRef.current = null;
+    }
+    pendingCloseActionRef.current = null;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -123,15 +149,13 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
   };
 
   return (
-    <BottomSheetPortal open={open || isClosing}>
+    /* The modal remains mounted through its exit animation, but the portal
+       lock follows the visible/open state. Keeping the lock active during
+       exit would leave the whole app inert if the callback is interrupted. */
+    <BottomSheetPortal open={open}>
       <AnimatePresence
         onExitComplete={() => {
-          if (!open) {
-            setIsClosing(false);
-            const pendingCloseAction = pendingCloseActionRef.current;
-            pendingCloseActionRef.current = null;
-            pendingCloseAction?.();
-          }
+          if (!open) completeClose();
         }}
       >
         {open && (
@@ -239,7 +263,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                               onClick={() => handleSelectFilter("real", summary.realDealKeys)}
                               className="group flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-inset"
                             >
-                              <span className="dd-type-meta dd-type-meta-strong text-fair-700">Real Savers</span>
+                              <span className="dd-type-control dd-type-control-strong text-fair-700">Real Savers</span>
                               <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-fair-800">
                                 {summary.realDeals}
                                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -253,7 +277,7 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
                               onClick={() => handleSelectFilter("dodgy", summary.dodgyDealKeys)}
                               className="group flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-700 focus-visible:ring-inset"
                             >
-                              <span className="dd-type-meta dd-type-meta-strong text-alert-600">Dodgy Deals</span>
+                              <span className="dd-type-control dd-type-control-strong text-alert-600">Dodgy Deals</span>
                               <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-alert-600">
                                 {summary.dodgyDeals}
                                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
