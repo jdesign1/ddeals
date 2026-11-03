@@ -262,6 +262,7 @@ export default function FullScreenSearch() {
     preserveSearchStateOnOpen,
     clearNewSpecialsFilter,
     newSpecialsSearchMode,
+    newSpecialsShowTab,
     selectedStores,
     toggleStore,
     dealFilter,
@@ -539,6 +540,7 @@ export default function FullScreenSearch() {
     [sessionNewSpecialDealKeys],
   );
   const isNewToYouMode = newSpecialDealKeySet !== null;
+  const showNewToYouTab = isNewToYouMode && newSpecialsShowTab;
 
   // Popular specials -- the same filtered, cheapest deal per product used by
   // Check Deals. Shown before the user has typed 3+ characters.
@@ -1149,7 +1151,7 @@ export default function FullScreenSearch() {
                     <DealFilterTabs
                       value={dealFilter}
                       onChange={handleDealFilterChange}
-                      allLabel={isNewToYouMode ? "New to you" : undefined}
+                      allLabel={showNewToYouTab ? "New to you" : undefined}
                     />
 
                     {renderToolbarFilters("popular")}
@@ -1379,7 +1381,7 @@ export default function FullScreenSearch() {
                         value={dealFilter}
                         onChange={handleDealFilterChange}
                         buttonIdPrefix="price-filter"
-                        allLabel={isNewToYouMode ? "New to you" : undefined}
+                        allLabel={showNewToYouTab ? "New to you" : undefined}
                       />
 
                       {renderToolbarFilters("results")}

@@ -667,14 +667,14 @@ export default function HomePage() {
     options: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy },
     allowNewToYou = false,
   ) => {
-    // New to you is an intentional continuation of the Top Savers rail only.
-    // Other rail actions strip the digest keys so they cannot inherit a
-    // hidden new-only scope just because the New to you pill is active.
+    // Only the Top Savers "See all" action intentionally carries the New to
+    // you scope into Search. Other rail actions strip the digest keys so they
+    // cannot inherit a hidden new-only scope just because the pill is active.
     const useNewToYou = allowNewToYou && newForYouFilterActive && Boolean(options.dealKeys?.length);
     const allDealsOptions = { focus: options.focus, sortBy: options.sortBy };
     openSearchForFilter(
       useNewToYou ? "all" : filter,
-      useNewToYou ? newDealsAllSearchOptions : allDealsOptions,
+      useNewToYou ? { ...newDealsAllSearchOptions, showNewToYouTab: true } : allDealsOptions,
     );
   };
   const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
@@ -981,7 +981,7 @@ export default function HomePage() {
                       showingNewOnly={newForYouFilterActive}
                       updatedText={updatedText}
                       onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions, true)}
-                      onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions, true)}
+                      onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions)}
                     />
                     <DealSnapshotRail
                       kind="dodgy"

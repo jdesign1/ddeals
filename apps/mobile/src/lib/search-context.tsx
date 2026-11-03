@@ -88,7 +88,7 @@ interface SearchContextValue {
    * destination opens ready to browse without summoning the keyboard. */
   openSearchForFilter: (
     filter: DealFilter,
-    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy; category?: string },
+    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy; category?: string; showNewToYouTab?: boolean },
   ) => void;
   /** Clears the temporary new-specials scope while keeping the search open. */
   clearNewSpecialsFilter: () => void;
@@ -96,6 +96,8 @@ interface SearchContextValue {
   newSpecialDealKeys: string[] | null;
   /** Whether a fresh search should use pending new specials, all deals, or exact keys. */
   newSpecialsSearchMode: NewSpecialsSearchMode;
+  /** Shows the New to you label only for the explicit Standout Specials See all entry point. */
+  newSpecialsShowTab: boolean;
   /** Publication identity for the last validated catalogue snapshot. */
   cataloguePublicationKey: string | null;
   /** True only when the publication marker was available for that snapshot. */
@@ -206,6 +208,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [focusSearchOnOpen, setFocusSearchOnOpen] = useState(true);
   const [newSpecialDealKeys, setNewSpecialDealKeys] = useState<string[] | null>(null);
   const [newSpecialsSearchMode, setNewSpecialsSearchMode] = useState<NewSpecialsSearchMode>("all");
+  const [newSpecialsShowTab, setNewSpecialsShowTab] = useState(false);
   const [cataloguePublicationKey, setCataloguePublicationKey] = useState<string | null>(null);
   const [cataloguePublicationComplete, setCataloguePublicationComplete] = useState(false);
   const [searchSortOverride, setSearchSortOverride] = useState<CheckDealsSortBy | null>(null);
@@ -399,6 +402,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       setDealFilter,
       newSpecialDealKeys,
       newSpecialsSearchMode,
+      newSpecialsShowTab,
       cataloguePublicationKey,
       cataloguePublicationComplete,
       searchSortOverride,
@@ -430,6 +434,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         // shopper can still enter New to you from the explicit Check Deals
         // Top Savers entry point.
         setNewSpecialsSearchMode("all");
+        setNewSpecialsShowTab(false);
         setSearchSortOverride(null);
         setSearchCategoryOverride(null);
         setPreserveSearchStateOnOpen(false);
@@ -442,6 +447,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setDealFilter(filter);
         const hasDealKeys = Boolean(options?.dealKeys?.length);
         setNewSpecialsSearchMode(hasDealKeys ? "keys" : "all");
+        setNewSpecialsShowTab(hasDealKeys && options?.showNewToYouTab === true);
         setNewSpecialDealKeys(hasDealKeys ? options?.dealKeys ?? null : null);
         setSearchSortOverride(options?.sortBy ?? null);
         setSearchCategoryOverride(options?.category ?? null);
@@ -456,12 +462,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       clearNewSpecialsFilter: () => {
         setNewSpecialsSearchMode("all");
         setNewSpecialDealKeys(null);
+        setNewSpecialsShowTab(false);
         setSearchSortOverride(null);
       },
       closeSearch: () => {
         setQuery("");
         setNewSpecialDealKeys(null);
         setNewSpecialsSearchMode("all");
+        setNewSpecialsShowTab(false);
         setSearchSortOverride(null);
         setSearchCategoryOverride(null);
         setSelectedStores(["all"]);
@@ -494,7 +502,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       },
       closeScanner: () => setIsScannerOpen(false),
     }),
-    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
+    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
