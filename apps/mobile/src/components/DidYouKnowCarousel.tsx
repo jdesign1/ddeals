@@ -1,25 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Apple,
-  ArrowRight,
-  Baby,
-  Boxes,
-  Croissant,
-  CupSoda,
-  Drumstick,
-  Fish,
-  HeartPulse,
-  Milk,
-  Package,
-  PawPrint,
-  Refrigerator,
-  Snowflake,
-  SprayCan,
-  Wine,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import InsightCarousel from "@/components/InsightCarousel";
 import {
   getDidYouKnowFingerprint,
@@ -31,21 +14,21 @@ import {
 
 const SEEN_VIEW_DELAY_MS = 850;
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  "Fruit & Veg": Apple,
-  "Meat & Poultry": Drumstick,
-  "Fish & Seafood": Fish,
-  "Fridge & Deli": Refrigerator,
-  "Dairy & Eggs": Milk,
-  Bakery: Croissant,
-  Frozen: Snowflake,
-  Pantry: Package,
-  "Beer & Wine": Wine,
-  Drinks: CupSoda,
-  "Health & Body": HeartPulse,
-  "Household & Cleaning": SprayCan,
-  "Baby & Child": Baby,
-  Pets: PawPrint,
+const CATEGORY_IMAGES: Record<string, string> = {
+  "Fruit & Veg": "/did-you-know/fruit-veg.webp",
+  "Meat & Poultry": "/did-you-know/meat-poultry.webp",
+  "Fish & Seafood": "/did-you-know/fish-seafood.webp",
+  "Fridge & Deli": "/did-you-know/fridge-deli.webp",
+  "Dairy & Eggs": "/did-you-know/dairy-eggs.webp",
+  Bakery: "/did-you-know/bakery.webp",
+  Frozen: "/did-you-know/frozen.webp",
+  Pantry: "/did-you-know/pantry.webp",
+  "Beer & Wine": "/did-you-know/beer-wine.webp",
+  Drinks: "/did-you-know/drinks.webp",
+  "Health & Body": "/did-you-know/health-body.webp",
+  "Household & Cleaning": "/did-you-know/household-cleaning.webp",
+  "Baby & Child": "/did-you-know/baby-child.webp",
+  Pets: "/did-you-know/pets.webp",
 };
 
 interface DidYouKnowCarouselProps {
@@ -87,7 +70,7 @@ function formatMetric(card: DidYouKnowCard): string {
 
 function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse: () => void }) {
   const styles = ACCENT_STYLES[card.accent];
-  const CategoryIcon = CATEGORY_ICONS[card.category] ?? Boxes;
+  const categoryImage = CATEGORY_IMAGES[card.category] ?? CATEGORY_IMAGES.Pantry;
 
   return (
     <button
@@ -96,8 +79,15 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
       aria-label={`${card.supportingText} Explore ${card.category} deals.`}
       className={`group flex h-[10.5rem] w-full cursor-pointer flex-col rounded-3xl border p-5 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
-      <span className={`mt-1 ${styles.detail}`}>
-        <CategoryIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+      <span className="mt-1 flex h-12 w-12 items-center">
+        <Image
+          src={categoryImage}
+          alt=""
+          width={56}
+          height={56}
+          className="h-12 w-12 object-contain"
+          aria-hidden="true"
+        />
       </span>
 
       <span className="mt-1 line-clamp-2 dd-type-control text-stone-900">
