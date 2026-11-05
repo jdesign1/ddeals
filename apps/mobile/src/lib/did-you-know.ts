@@ -41,7 +41,6 @@ export interface DidYouKnowCard {
   metricFormat: "count" | "percentage";
   metricLabel: string;
   supportingText: string;
-  progress: number | null;
   search: DidYouKnowSearchTarget;
 }
 
@@ -106,10 +105,6 @@ function median(values: number[]): number | null {
   return sorted.length % 2 === 0
     ? (sorted[middle - 1] + sorted[middle]) / 2
     : sorted[middle];
-}
-
-function clampPercentage(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value * 10) / 10));
 }
 
 function createBuckets(
@@ -194,7 +189,6 @@ function realSaverLeader(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       metricFormat: "count" as const,
       metricLabel: "Real Savers",
       supportingText: `${bucket.category} has the most Real Savers right now.`,
-      progress: clampPercentage((bucket.realProducts.size / bucket.assessedProducts.size) * 100),
       search: { filter: "real" as const, category: bucket.category, sortBy: "biggest-saver" as const },
     }));
 }
@@ -224,7 +218,6 @@ function historicalValueCards(buckets: readonly CategoryBucket[]): DidYouKnowCar
       metricFormat: "percentage" as const,
       metricLabel: "below usual price",
       supportingText: `Specials in ${bucket.category} are below their usual price.`,
-      progress: clampPercentage(medianDiscount * 2),
       search: { filter: "real" as const, category: bucket.category, sortBy: "biggest-saver" as const },
     }));
 }
@@ -246,7 +239,6 @@ function freshDealCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       metricFormat: "count" as const,
       metricLabel: "new specials",
       supportingText: `${bucket.category} has the most new specials this week.`,
-      progress: null,
       search: { filter: "all" as const, category: bucket.category, sortBy: "latest" as const },
     }));
 }
@@ -265,7 +257,7 @@ function priceMovementCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[
       || right.changed - left.changed
       || left.bucket.category.localeCompare(right.bucket.category)
     ))
-    .map(({ bucket, changed, changeRate }) => ({
+    .map(({ bucket, changed }) => ({
       id: "price-movement",
       kind: "price-movement" as const,
       category: bucket.category,
@@ -274,7 +266,6 @@ function priceMovementCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[
       metricFormat: "count" as const,
       metricLabel: "price changes",
       supportingText: `${bucket.category} has had the most price changes lately.`,
-      progress: clampPercentage(changeRate * 100),
       search: { filter: "all" as const, category: bucket.category, sortBy: "latest" as const },
     }));
 }
@@ -299,7 +290,6 @@ function dodgyAlertCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       metricFormat: "count" as const,
       metricLabel: bucket.dodgyProducts.size === 1 ? "Dodgy Deal" : "Dodgy Deals",
       supportingText: `Check ${bucket.category} for Dodgy Deals.`,
-      progress: clampPercentage((bucket.dodgyProducts.size / bucket.assessedProducts.size) * 100),
       search: { filter: "dodgy" as const, category: bucket.category, sortBy: "worst-dodgy" as const },
     }));
 }
@@ -351,7 +341,6 @@ export function getDidYouKnowFingerprint(cards: readonly DidYouKnowCard[]): stri
       card.category,
       card.metricFormat,
       card.metric.toFixed(1),
-      card.progress === null ? "" : card.progress.toFixed(1),
     ].join(":"))
     .join("|");
 }
