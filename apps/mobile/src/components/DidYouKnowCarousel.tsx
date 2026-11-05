@@ -67,11 +67,11 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
     <button
       type="button"
       onClick={onBrowse}
-      aria-label={`${card.supportingText} ${card.detailText} Explore ${card.category} deals.`}
+      aria-label={`${card.supportingText} Explore ${card.category} deals.`}
       className={`group flex h-[10.5rem] w-full cursor-pointer flex-col rounded-3xl border p-5 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
       <span className="flex items-center justify-between gap-3">
-        <span className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] ${styles.eyebrow}`}>
+        <span className={`flex items-center gap-2 dd-type-badge font-bold uppercase tracking-[0.08em] ${styles.eyebrow}`}>
           <Icon className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
           Did you know?
         </span>
@@ -79,15 +79,15 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
       </span>
 
       <span className="mt-3 flex items-end gap-2">
-        <span className={`font-display text-4xl font-black leading-none tabular-nums ${styles.metric}`}>{formatMetric(card)}</span>
-        <span className={`pb-0.5 text-xs font-bold leading-tight ${styles.detail}`}>{card.metricLabel}</span>
+        <span className={`dd-type-display leading-none tabular-nums ${styles.metric}`}>{formatMetric(card)}</span>
+        <span className={`pb-0.5 dd-type-meta dd-type-meta-strong leading-tight ${styles.detail}`}>{card.metricLabel}</span>
       </span>
 
-      <span className={`mt-2 line-clamp-2 text-sm font-bold leading-5 ${isDark ? "text-white" : "text-stone-900"}`}>
+      <span className={`mt-2 line-clamp-2 dd-type-control ${isDark ? "text-white" : "text-stone-900"}`}>
         {card.supportingText}
       </span>
-      <span className={`mt-auto flex items-center justify-between gap-3 text-xs font-semibold leading-4 ${styles.detail}`}>
-        <span className="line-clamp-1">{card.category} · {card.detailText}</span>
+      <span className={`mt-auto flex items-center justify-between gap-3 dd-type-meta dd-type-meta-strong ${styles.detail}`}>
+        <span className="line-clamp-1">{card.category}</span>
         {card.progress !== null && (
           <span className={`h-1.5 w-12 shrink-0 overflow-hidden rounded-full ${isDark ? "bg-white/20" : "bg-black/10"}`} aria-hidden="true">
             <span className={`block h-full rounded-full ${card.accent === "alert" ? "bg-alert-600" : "bg-fair-600"}`} style={{ width: `${card.progress}%` }} />
@@ -163,7 +163,7 @@ export default function DidYouKnowCarousel({ cards, publicationKey, publicationC
 
   return (
     <section ref={sectionRef} className="flex flex-col gap-3 bg-white py-4" aria-labelledby="did-you-know-title">
-      <div className="mx-5 flex items-center justify-between gap-3">
+      <div className="mx-5 flex items-center gap-3">
         <h2 id="did-you-know-title" className="flex items-center gap-2 dd-type-section text-stone-900">
           Did you know?
           {hasNewInsight && (
@@ -173,7 +173,6 @@ export default function DidYouKnowCarousel({ cards, publicationKey, publicationC
             </span>
           )}
         </h2>
-        <span className="dd-type-meta dd-type-meta-strong text-stone-500">Tap to explore</span>
       </div>
       <InsightCarousel
         ariaLabel="Did you know discovery cards"

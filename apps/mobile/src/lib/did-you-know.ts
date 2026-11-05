@@ -41,7 +41,6 @@ export interface DidYouKnowCard {
   metricFormat: "count" | "percentage";
   metricLabel: string;
   supportingText: string;
-  detailText: string;
   progress: number | null;
   search: DidYouKnowSearchTarget;
 }
@@ -194,8 +193,7 @@ function realSaverLeader(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       metric: bucket.realProducts.size,
       metricFormat: "count" as const,
       metricLabel: "Real Savers",
-      supportingText: `${bucket.category} has the most confirmed Real Saver items right now.`,
-      detailText: `${bucket.realProducts.size} of ${bucket.assessedProducts.size} assessed items in this category are Real Savers.`,
+      supportingText: `${bucket.category} has the most Real Savers right now.`,
       progress: clampPercentage((bucket.realProducts.size / bucket.assessedProducts.size) * 100),
       search: { filter: "real" as const, category: bucket.category, sortBy: "biggest-saver" as const },
     }));
@@ -217,16 +215,15 @@ function historicalValueCards(buckets: readonly CategoryBucket[]): DidYouKnowCar
       || right.sampleCount - left.sampleCount
       || left.bucket.category.localeCompare(right.bucket.category)
     ))
-    .map(({ bucket, medianDiscount, sampleCount }) => ({
+    .map(({ bucket, medianDiscount }) => ({
       id: "historical-value",
       kind: "historical-value" as const,
       category: bucket.category,
       accent: "fair" as const,
       metric: Math.round(medianDiscount * 10) / 10,
       metricFormat: "percentage" as const,
-      metricLabel: "below 90-day average",
-      supportingText: `${bucket.category} is showing the strongest typical value against its recent history.`,
-      detailText: `Based on ${sampleCount} Real Saver items with established 90-day history.`,
+      metricLabel: "below usual price",
+      supportingText: `Specials in ${bucket.category} are below their usual price.`,
       progress: clampPercentage(medianDiscount * 2),
       search: { filter: "real" as const, category: bucket.category, sortBy: "biggest-saver" as const },
     }));
@@ -247,9 +244,8 @@ function freshDealCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       accent: "ink" as const,
       metric: bucket.freshProducts.size,
       metricFormat: "count" as const,
-      metricLabel: "fresh specials",
-      supportingText: `${bucket.category} has the biggest wave of recently started specials.`,
-      detailText: `${bucket.freshProducts.size} assessed items started a special in the last 7 days.`,
+      metricLabel: "new specials",
+      supportingText: `${bucket.category} has the most new specials this week.`,
       progress: null,
       search: { filter: "all" as const, category: bucket.category, sortBy: "latest" as const },
     }));
@@ -261,24 +257,23 @@ function priceMovementCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[
       const tracked = bucket.trackedHistoryProducts.size;
       const changed = bucket.movementProducts.size;
       if (tracked < DID_YOU_KNOW_MIN_HISTORY_PRODUCTS || changed === 0) return null;
-      return { bucket, tracked, changed, changeRate: changed / tracked };
+      return { bucket, changed, changeRate: changed / tracked };
     })
-    .filter((candidate): candidate is { bucket: CategoryBucket; tracked: number; changed: number; changeRate: number } => candidate !== null)
+    .filter((candidate): candidate is { bucket: CategoryBucket; changed: number; changeRate: number } => candidate !== null)
     .sort((left, right) => (
       right.changeRate - left.changeRate
       || right.changed - left.changed
       || left.bucket.category.localeCompare(right.bucket.category)
     ))
-    .map(({ bucket, tracked, changed, changeRate }) => ({
+    .map(({ bucket, changed, changeRate }) => ({
       id: "price-movement",
       kind: "price-movement" as const,
       category: bucket.category,
       accent: "ink" as const,
       metric: changed,
       metricFormat: "count" as const,
-      metricLabel: "items changed price",
-      supportingText: `${bucket.category} has been one of the most active price lanes lately.`,
-      detailText: `${changed} of ${tracked} history-ready items changed price in the last 90 days.`,
+      metricLabel: "price changes",
+      supportingText: `${bucket.category} has had the most price changes lately.`,
       progress: clampPercentage(changeRate * 100),
       search: { filter: "all" as const, category: bucket.category, sortBy: "latest" as const },
     }));
@@ -303,8 +298,7 @@ function dodgyAlertCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       metric: bucket.dodgyProducts.size,
       metricFormat: "count" as const,
       metricLabel: bucket.dodgyProducts.size === 1 ? "Dodgy Deal" : "Dodgy Deals",
-      supportingText: `${bucket.category} has Dodgy Deals worth checking before you buy.`,
-      detailText: `${bucket.dodgyProducts.size} of ${bucket.assessedProducts.size} assessed items are currently flagged Dodgy.`,
+      supportingText: `Check ${bucket.category} for Dodgy Deals.`,
       progress: clampPercentage((bucket.dodgyProducts.size / bucket.assessedProducts.size) * 100),
       search: { filter: "dodgy" as const, category: bucket.category, sortBy: "worst-dodgy" as const },
     }));
