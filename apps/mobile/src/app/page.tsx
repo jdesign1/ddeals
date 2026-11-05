@@ -46,6 +46,7 @@ import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import ProductListCard from "@/components/ProductListCard";
 import CategoryPicker from "@/components/CategoryPicker";
 import DealSnapshotRail from "@/components/DealSnapshotRail";
+import DidYouKnowCarousel from "@/components/DidYouKnowCarousel";
 import LoadingMascot from "@/components/LoadingMascot";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
@@ -68,6 +69,7 @@ import {
 import { useCardLayout } from "@/lib/card-layout-context";
 import { compareLatestSpecials } from "@/lib/special-freshness";
 import { normalizeCategoryInterests } from "@/lib/category-interests";
+import { buildDidYouKnowCards, getDidYouKnowScope, type DidYouKnowCard } from "@/lib/did-you-know";
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 const FOR_YOU_CATEGORY_STORAGE_PREFIX = "dodgey-deals:for-you-category:v1";
@@ -396,6 +398,8 @@ export default function HomePage() {
     products,
     loadingProducts,
     catalogueLiveLoaded,
+    cataloguePublicationKey,
+    cataloguePublicationComplete,
     error,
     retry: retryProducts,
     isActive: isSearchActive,
@@ -447,6 +451,7 @@ export default function HomePage() {
     ? `${FOR_YOU_CATEGORY_STORAGE_PREFIX}:${session.user.id}`
     : null;
   const beltOrderScope = getNewSpecialsStorageScope(user?.id, isAnonymousSession);
+  const didYouKnowStorageScope = getDidYouKnowScope(beltOrderScope, selectedStores);
   const [checkDealsBeltOrder, setCheckDealsBeltOrder] = useState<CheckDealsBeltId[]>(() => [...DEFAULT_CHECK_DEALS_BELT_ORDER]);
   const preferredCategories = useMemo(
     () => normalizeCategoryInterests(profile?.preferred_categories),
@@ -585,6 +590,10 @@ export default function HomePage() {
   );
 
   const currentSpecialCounts = useMemo(() => buildCurrentSpecialCounts(products), [products]);
+  const didYouKnowCards = useMemo(
+    () => buildDidYouKnowCards(products, selectedStores),
+    [products, selectedStores],
+  );
   const latestPublishedAt = useMemo(() => getLatestPublishedAt(products), [products]);
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
   const updatedLabel = latestPublishedAt
@@ -737,6 +746,14 @@ export default function HomePage() {
     openSearchForFilter("all", { focus: false });
   };
 
+  const handleDidYouKnowBrowse = (card: DidYouKnowCard) => {
+    openSearchForFilter(card.search.filter, {
+      focus: false,
+      category: card.search.category,
+      sortBy: card.search.sortBy,
+    });
+  };
+
   const saveCategoryInterests = async (categories: string[]) => {
     setCategoryInterestsError(null);
     setIsSavingCategoryInterests(true);
@@ -787,6 +804,15 @@ export default function HomePage() {
           updatedLabel={updatedLabel}
           onOpenStoreDeals={handleSummaryStoreSelect}
           onOpenBeltOrder={() => setIsBeltOrderSheetOpen(true)}
+        />
+      )}
+      {!isSearchActive && !loadingProducts && !error && dealFilter === "all" && didYouKnowCards.length > 0 && (
+        <DidYouKnowCarousel
+          cards={didYouKnowCards}
+          publicationKey={cataloguePublicationKey}
+          publicationComplete={cataloguePublicationComplete}
+          storageScope={didYouKnowStorageScope}
+          onBrowse={handleDidYouKnowBrowse}
         />
       )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +
