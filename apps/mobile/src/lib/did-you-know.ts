@@ -24,7 +24,7 @@ export type DidYouKnowCardKind =
   | "price-movement"
   | "dodgy-alert";
 
-export type DidYouKnowAccent = "fair" | "ink" | "alert";
+export type DidYouKnowAccent = "fair" | "neutral" | "alert";
 
 export interface DidYouKnowSearchTarget {
   filter: DealFilter;
@@ -234,7 +234,7 @@ function freshDealCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       id: "fresh-deal-wave",
       kind: "fresh-deal-wave" as const,
       category: bucket.category,
-      accent: "ink" as const,
+      accent: "neutral" as const,
       metric: bucket.freshProducts.size,
       metricFormat: "count" as const,
       metricLabel: "new specials",
@@ -261,7 +261,7 @@ function priceMovementCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[
       id: "price-movement",
       kind: "price-movement" as const,
       category: bucket.category,
-      accent: "ink" as const,
+      accent: "neutral" as const,
       metric: changed,
       metricFormat: "count" as const,
       metricLabel: "price changes",

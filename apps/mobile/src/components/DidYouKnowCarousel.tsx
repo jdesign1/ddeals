@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BadgePercent, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
 import InsightCarousel from "@/components/InsightCarousel";
 import {
   getDidYouKnowFingerprint,
@@ -9,9 +9,18 @@ import {
   writeDidYouKnowSeenState,
   type DidYouKnowAccent,
   type DidYouKnowCard,
+  type DidYouKnowCardKind,
 } from "@/lib/did-you-know";
 
 const SEEN_VIEW_DELAY_MS = 850;
+
+const CARD_ICONS: Record<DidYouKnowCardKind, LucideIcon> = {
+  "real-saver-leader": Trophy,
+  "historical-value": BadgePercent,
+  "fresh-deal-wave": Sparkles,
+  "price-movement": TrendingUp,
+  "dodgy-alert": ShieldAlert,
+};
 
 interface DidYouKnowCarouselProps {
   cards: readonly DidYouKnowCard[];
@@ -31,10 +40,10 @@ const ACCENT_STYLES: Record<DidYouKnowAccent, {
     metric: "text-fair-900",
     detail: "text-fair-900/75",
   },
-  ink: {
-    card: "border-ink-800 bg-ink-900",
-    metric: "text-white",
-    detail: "text-white/75",
+  neutral: {
+    card: "border-stone-200 bg-stone-100",
+    metric: "text-stone-900",
+    detail: "text-stone-700",
   },
   alert: {
     card: "border-alert-200 bg-alert-50",
@@ -52,7 +61,7 @@ function formatMetric(card: DidYouKnowCard): string {
 
 function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse: () => void }) {
   const styles = ACCENT_STYLES[card.accent];
-  const isDark = card.accent === "ink";
+  const InsightIcon = CARD_ICONS[card.kind];
 
   return (
     <button
@@ -61,17 +70,20 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
       aria-label={`${card.supportingText} Explore ${card.category} deals.`}
       className={`group flex h-[10.5rem] w-full cursor-pointer flex-col rounded-3xl border p-5 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
-      <span className="flex justify-end">
-        <ArrowRight className={`h-6 w-6 shrink-0 transition-transform group-active:translate-x-0.5 ${isDark ? "text-white/80" : styles.detail}`} strokeWidth={2.5} aria-hidden="true" />
+      <span className={`mt-1 ${styles.detail}`}>
+        <InsightIcon className="h-5 w-5" strokeWidth={2.2} aria-hidden="true" />
       </span>
 
-      <span className={`mt-2 line-clamp-2 dd-type-control ${isDark ? "text-white" : "text-stone-900"}`}>
+      <span className="mt-1 line-clamp-2 dd-type-control text-stone-900">
         {card.supportingText}
       </span>
 
-      <span className="mt-auto flex items-end gap-2">
-        <span className={`dd-type-display leading-none tabular-nums ${styles.metric}`}>{formatMetric(card)}</span>
-        <span className={`pb-0.5 dd-type-meta dd-type-meta-strong leading-tight ${styles.detail}`}>{card.metricLabel}</span>
+      <span className="mt-auto flex items-end justify-between gap-3">
+        <span className="flex min-w-0 items-end gap-2">
+          <span className={`dd-type-display leading-none tabular-nums ${styles.metric}`}>{formatMetric(card)}</span>
+          <span className={`pb-0.5 dd-type-control font-extrabold leading-tight ${styles.detail}`}>{card.metricLabel}</span>
+        </span>
+        <ArrowRight className={`h-6 w-6 shrink-0 transition-transform group-active:translate-x-0.5 ${styles.detail}`} strokeWidth={2.5} aria-hidden="true" />
       </span>
     </button>
   );
