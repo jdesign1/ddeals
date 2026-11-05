@@ -872,16 +872,16 @@ function WatchlistSummaryCard({
         <h1 id="watchlist-intro-title" className="mb-3 text-center text-base font-extrabold leading-6 text-stone-900">You&apos;re watching {itemCount} {itemCount === 1 ? "product" : "products"}</h1>
         {!isEmpty && (
           <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white" aria-label="Watchlist specials summary">
-            <div className="overflow-hidden rounded-2xl" aria-label="Filter specials by deal type">
+            <div className="overflow-hidden rounded-2xl" aria-label="Filter Watchlist by deal type">
               <div className="border-b border-stone-200 px-3 py-3 text-center" aria-label={`${onSpecialCount} on special now`}>
                 <p className="text-sm font-bold leading-5 text-stone-900">{onSpecialCount} on special now</p>
               </div>
-              <div className="grid grid-cols-3 divide-x divide-stone-200 bg-stone-50 py-2">
+              <div className="grid grid-cols-3 gap-1.5 bg-fair-50 p-2" role="group" aria-label="Filter Watchlist by deal type">
                 {([
-                  ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700"],
-                  ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700"],
-                  ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700"],
-                ] as const).map(([filter, label, count, tone]) => {
+                  ["Real Saver", "Real Savers", dealTypeCounts.realSavers, "text-fair-700", "border-fair-300 bg-white ring-fair-200"],
+                  ["Fair Price", "Fair Deals", dealTypeCounts.fairDeals, "text-amber-700", "border-amber-300 bg-white ring-amber-200"],
+                  ["Dodgy Deal", "Dodgy Deals", dealTypeCounts.dodgyDeals, "text-alert-700", "border-alert-300 bg-white ring-alert-200"],
+                ] as const).map(([filter, label, count, tone, selectedSurface]) => {
                   const isSelected = selectedDealType === filter;
                   const isDisabled = count === 0;
                   return (
@@ -894,10 +894,10 @@ function WatchlistSummaryCard({
                       onClick={() => {
                         if (!isDisabled) onDealTypeChange(isSelected ? "all" : filter);
                       }}
-                      className="flex min-w-0 flex-col items-center gap-0.5 px-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset disabled:cursor-default disabled:opacity-100"
+                      className={`flex min-h-[4.75rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-2.5 text-center transition-[background-color,border-color,box-shadow,transform] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1 disabled:cursor-default disabled:opacity-45 ${isSelected ? `${selectedSurface} shadow-sm ring-1` : "border-transparent hover:bg-white/65"}`}
                     >
-                      <span className={`text-xl font-black leading-7 ${tone}`}>{count}</span>
-                      <span className="dd-type-meta dd-type-meta-strong text-stone-600">{label}</span>
+                      <span className={`text-xl font-black leading-7 tabular-nums ${tone}`}>{count}</span>
+                      <span className={`dd-type-meta dd-type-meta-strong ${isSelected ? tone : "text-stone-600"}`}>{label}</span>
                     </button>
                   );
                 })}

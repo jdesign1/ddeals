@@ -258,7 +258,7 @@ function CheckDealsToolbar({
                   }`}
                   aria-label={`Filter to new deals since your last visit, ${newDealsCount} available`}
                 >
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${newForYouFilterActive ? "bg-white text-ink-900" : "bg-ink-900 text-white"}`}>
+                  <span className="rounded-full bg-alert-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
                     {newDealsCount}
                   </span>
                   New to you
