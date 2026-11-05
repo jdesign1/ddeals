@@ -1,4 +1,5 @@
 export const CHECK_DEALS_BELT_IDS = [
+  "did-you-know",
   "top-deals",
   "for-you",
 ] as const;
@@ -10,6 +11,7 @@ export const DEFAULT_CHECK_DEALS_BELT_ORDER: readonly CheckDealsBeltId[] = CHECK
 export const CHECK_DEALS_BELT_LABELS: Record<CheckDealsBeltId, string> = {
   "top-deals": "Top Savers & Dodgiest Deals",
   "for-you": "Your saved categories",
+  "did-you-know": "Did you know?",
 };
 
 const STORAGE_PREFIX = "dodgey-deals:check-deals-belt-order:v1:";
@@ -29,7 +31,7 @@ export function normalizeCheckDealsBeltOrder(value: unknown): CheckDealsBeltId[]
     );
     if (legacyTopDealsIndex >= 0) {
       if (legacyForYouIndex >= 0 && (legacyTopDealsIndex < 0 || legacyForYouIndex < legacyTopDealsIndex)) {
-        return ["for-you", "top-deals"];
+        return ["did-you-know", "for-you", "top-deals"];
       }
       return [...DEFAULT_CHECK_DEALS_BELT_ORDER];
     }
@@ -41,6 +43,14 @@ export function normalizeCheckDealsBeltOrder(value: unknown): CheckDealsBeltId[]
       seen.add(belt);
       normalized.push(belt);
     }
+  }
+
+  // Did you know? was added after the original two-group preference. Keep it
+  // at the established top-of-page position for existing saved arrangements
+  // while preserving the user's relative order for the original groups.
+  if (!seen.has("did-you-know")) {
+    normalized.unshift("did-you-know");
+    seen.add("did-you-know");
   }
 
   for (const belt of DEFAULT_CHECK_DEALS_BELT_ORDER) {

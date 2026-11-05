@@ -183,9 +183,7 @@ export default function DealSnapshotRail({
         <button
           type="button"
           onClick={isShortRail ? onSeeMore : onSeeAll}
-          className={`shrink-0 cursor-pointer dd-type-control underline underline-offset-4 transition-colors ${
-            isSavings ? "text-fair-800 hover:text-fair-950" : "text-alert-700 hover:text-alert-950"
-          }`}
+          className="shrink-0 cursor-pointer dd-type-control text-stone-900 underline underline-offset-4 transition-colors hover:text-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-700"
         >
           {isShortRail ? "See more" : "See all"}
         </button>
@@ -261,11 +259,7 @@ function SnapshotSeeAllCard({
       type="button"
       onClick={onSeeAll}
       aria-label={`${label} ${label === "See all" ? "in" : "from"} ${beltTitle.toLowerCase()}`}
-      className={`flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
-        isSavings
-          ? "text-fair-800 focus-visible:outline-fair-700"
-          : "text-alert-700 focus-visible:outline-alert-700"
-      }`}
+      className="flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch rounded-[1.5rem] p-4 text-stone-900 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-700"
     >
       <span className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
         <ArrowRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />

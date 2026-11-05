@@ -111,7 +111,7 @@ export default function CheckDealsSummary({
             aria-label="Arrange deal belts"
             aria-haspopup="dialog"
             title="Arrange deal belts"
-            className="-mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-fair-800 transition-colors hover:bg-fair-50 hover:text-fair-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+            className="-mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-start justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
           >
             <LayoutGrid className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </button>

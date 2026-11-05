@@ -806,15 +806,6 @@ export default function HomePage() {
           onOpenBeltOrder={() => setIsBeltOrderSheetOpen(true)}
         />
       )}
-      {!isSearchActive && !loadingProducts && !error && dealFilter === "all" && didYouKnowCards.length > 0 && (
-        <DidYouKnowCarousel
-          cards={didYouKnowCards}
-          publicationKey={cataloguePublicationKey}
-          publicationComplete={cataloguePublicationComplete}
-          storageScope={didYouKnowStorageScope}
-          onBrowse={handleDidYouKnowBrowse}
-        />
-      )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +
           `renderSearchBar` (see project.md's "Dodgy Deal · Mobile UI Kit"
           restyle session).
@@ -960,6 +951,19 @@ export default function HomePage() {
           {dealFilter === "all" && (
             <>
               {checkDealsBeltOrder.map((belt) => {
+                if (belt === "did-you-know") {
+                  if (didYouKnowCards.length === 0) return null;
+                  return (
+                    <DidYouKnowCarousel
+                      key={belt}
+                      cards={didYouKnowCards}
+                      publicationKey={cataloguePublicationKey}
+                      publicationComplete={cataloguePublicationComplete}
+                      storageScope={didYouKnowStorageScope}
+                      onBrowse={handleDidYouKnowBrowse}
+                    />
+                  );
+                }
                 if (belt === "for-you") {
                   if (preferredCategories.length === 0 || !visibleForYouCategory) return null;
                   return (

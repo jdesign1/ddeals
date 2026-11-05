@@ -8,18 +8,18 @@ import {
 test("normalizes a saved group order and appends missing groups", () => {
   assert.deepEqual(
     normalizeCheckDealsBeltOrder(["for-you", "for-you", "top-deals"]),
-    ["for-you", "top-deals"],
+    ["did-you-know", "for-you", "top-deals"],
   );
 });
 
-test("migrates the previous three-belt order into the two supported groups", () => {
+test("migrates the previous belt order while retaining the new discovery section", () => {
   assert.deepEqual(
     normalizeCheckDealsBeltOrder(["top-savers", "dodgiest-deals", "for-you"]),
-    ["top-deals", "for-you"],
+    ["did-you-know", "top-deals", "for-you"],
   );
   assert.deepEqual(
     normalizeCheckDealsBeltOrder(["for-you", "top-savers", "dodgiest-deals"]),
-    ["for-you", "top-deals"],
+    ["did-you-know", "for-you", "top-deals"],
   );
 });
 
