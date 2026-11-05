@@ -751,6 +751,8 @@ export default function HomePage() {
       focus: false,
       category: card.search.category,
       sortBy: card.search.sortBy,
+      dealKeys: card.search.dealKeys,
+      preserveSelectedStores: card.search.preserveSelectedStores,
     });
   };
 

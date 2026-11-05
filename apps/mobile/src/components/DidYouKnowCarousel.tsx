@@ -1,7 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BadgePercent, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
+import {
+  Apple,
+  ArrowRight,
+  Baby,
+  Boxes,
+  Croissant,
+  CupSoda,
+  Drumstick,
+  Fish,
+  HeartPulse,
+  Milk,
+  Package,
+  PawPrint,
+  Refrigerator,
+  Snowflake,
+  SprayCan,
+  Wine,
+  type LucideIcon,
+} from "lucide-react";
 import InsightCarousel from "@/components/InsightCarousel";
 import {
   getDidYouKnowFingerprint,
@@ -9,17 +27,25 @@ import {
   writeDidYouKnowSeenState,
   type DidYouKnowAccent,
   type DidYouKnowCard,
-  type DidYouKnowCardKind,
 } from "@/lib/did-you-know";
 
 const SEEN_VIEW_DELAY_MS = 850;
 
-const CARD_ICONS: Record<DidYouKnowCardKind, LucideIcon> = {
-  "real-saver-leader": Trophy,
-  "historical-value": BadgePercent,
-  "fresh-deal-wave": Sparkles,
-  "price-movement": TrendingUp,
-  "dodgy-alert": ShieldAlert,
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "Fruit & Veg": Apple,
+  "Meat & Poultry": Drumstick,
+  "Fish & Seafood": Fish,
+  "Fridge & Deli": Refrigerator,
+  "Dairy & Eggs": Milk,
+  Bakery: Croissant,
+  Frozen: Snowflake,
+  Pantry: Package,
+  "Beer & Wine": Wine,
+  Drinks: CupSoda,
+  "Health & Body": HeartPulse,
+  "Household & Cleaning": SprayCan,
+  "Baby & Child": Baby,
+  Pets: PawPrint,
 };
 
 interface DidYouKnowCarouselProps {
@@ -61,7 +87,7 @@ function formatMetric(card: DidYouKnowCard): string {
 
 function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse: () => void }) {
   const styles = ACCENT_STYLES[card.accent];
-  const InsightIcon = CARD_ICONS[card.kind];
+  const CategoryIcon = CATEGORY_ICONS[card.category] ?? Boxes;
 
   return (
     <button
@@ -71,14 +97,14 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
       className={`group flex h-[10.5rem] w-full cursor-pointer flex-col rounded-3xl border p-5 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
       <span className={`mt-1 ${styles.detail}`}>
-        <InsightIcon className="h-5 w-5" strokeWidth={2.2} aria-hidden="true" />
+        <CategoryIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
       </span>
 
       <span className="mt-1 line-clamp-2 dd-type-control text-stone-900">
         {card.supportingText}
       </span>
 
-      <span className="mt-auto flex items-end justify-between gap-3">
+      <span className="mt-3 flex items-end justify-between gap-3">
         <span className="flex min-w-0 items-end gap-2">
           <span className={`dd-type-display leading-none tabular-nums ${styles.metric}`}>{formatMetric(card)}</span>
           <span className={`pb-0.5 dd-type-control font-extrabold leading-tight ${styles.detail}`}>{card.metricLabel}</span>

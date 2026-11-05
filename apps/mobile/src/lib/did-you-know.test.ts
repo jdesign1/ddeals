@@ -68,7 +68,10 @@ test("buildDidYouKnowCards creates a stable discovery set from qualified product
   assert.equal(cards[0].category, "Pantry");
   assert.equal(cards[0].metric, 20);
   assert.ok(cards.some((card) => card.kind === "historical-value"));
-  assert.ok(cards.some((card) => card.kind === "fresh-deal-wave"));
+  const freshCard = cards.find((card) => card.kind === "fresh-deal-wave");
+  assert.ok(freshCard);
+  assert.equal(freshCard.search.dealKeys?.length, freshCard.metric);
+  assert.equal(freshCard.search.preserveSelectedStores, true);
   assert.equal(new Set(cards.map((card) => card.category)).size, cards.length);
   assert.equal(getDidYouKnowFingerprint(cards), getDidYouKnowFingerprint(cards));
 });

@@ -88,7 +88,7 @@ interface SearchContextValue {
    * destination opens ready to browse without summoning the keyboard. */
   openSearchForFilter: (
     filter: DealFilter,
-    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy; category?: string; showNewToYouTab?: boolean },
+    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy; category?: string; showNewToYouTab?: boolean; preserveSelectedStores?: boolean },
   ) => void;
   /** Clears the temporary new-specials scope while keeping the search open. */
   clearNewSpecialsFilter: () => void;
@@ -454,7 +454,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         // The digest count spans every supermarket. Reset a previous search
         // preference here so its "View all" promise cannot land on a
         // smaller, hidden subset of the selected deals.
-        if (options?.dealKeys?.length) setSelectedStores(["all"]);
+        if (options?.dealKeys?.length && options.preserveSelectedStores !== true) setSelectedStores(["all"]);
         setPreserveSearchStateOnOpen(false);
         setFocusSearchOnOpen(options?.focus !== false);
         setIsActive(true);

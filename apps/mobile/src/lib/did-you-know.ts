@@ -6,11 +6,12 @@ import {
 } from "@dodgey-deals/shared";
 import type { DealFilter } from "./deal-filters.ts";
 import type { CheckDealsSortBy } from "./deal-sorting.ts";
+import { getNewSpecialDealKey } from "./new-specials.ts";
 
 export const DID_YOU_KNOW_MIN_ASSESSED_PRODUCTS = 20;
 export const DID_YOU_KNOW_MIN_REAL_PRODUCTS = 10;
 export const DID_YOU_KNOW_MIN_HISTORY_PRODUCTS = 10;
-export const DID_YOU_KNOW_MIN_FRESH_PRODUCTS = 8;
+export const DID_YOU_KNOW_MIN_FRESH_DEALS = 8;
 export const DID_YOU_KNOW_MIN_DODGY_PRODUCTS = 2;
 export const DID_YOU_KNOW_MIN_HISTORY_SAMPLES = 6;
 export const DID_YOU_KNOW_MIN_HISTORY_DAYS = 45;
@@ -30,6 +31,8 @@ export interface DidYouKnowSearchTarget {
   filter: DealFilter;
   category: string;
   sortBy: CheckDealsSortBy;
+  dealKeys?: string[];
+  preserveSelectedStores?: boolean;
 }
 
 export interface DidYouKnowCard {
@@ -54,7 +57,7 @@ interface CategoryBucket {
   assessedProducts: Set<string>;
   realProducts: Set<string>;
   dodgyProducts: Set<string>;
-  freshProducts: Set<string>;
+  freshDealKeys: Set<string>;
   historyEntries: HistoryEntry[];
   movementProducts: Set<string>;
   trackedHistoryProducts: Set<string>;
@@ -121,7 +124,7 @@ function createBuckets(
       assessedProducts: new Set<string>(),
       realProducts: new Set<string>(),
       dodgyProducts: new Set<string>(),
-      freshProducts: new Set<string>(),
+      freshDealKeys: new Set<string>(),
       historyEntries: [],
       movementProducts: new Set<string>(),
       trackedHistoryProducts: new Set<string>(),
@@ -137,7 +140,9 @@ function createBuckets(
     bucket.assessedProducts.add(product.id);
     if (assessedDeals.some((deal) => deal.dealType === "Real Deal")) bucket.realProducts.add(product.id);
     if (assessedDeals.some((deal) => deal.dealType === "Dodgy Deal")) bucket.dodgyProducts.add(product.id);
-    if (assessedDeals.some((deal) => freshDeal(deal, now))) bucket.freshProducts.add(product.id);
+    for (const deal of assessedDeals) {
+      if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
+    }
 
     const historyDeals = assessedDeals.filter(isHistoryReady);
     if (historyDeals.length > 0) bucket.trackedHistoryProducts.add(product.id);
@@ -224,9 +229,9 @@ function historicalValueCards(buckets: readonly CategoryBucket[]): DidYouKnowCar
 
 function freshDealCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
   return buckets
-    .filter((bucket) => bucket.freshProducts.size >= DID_YOU_KNOW_MIN_FRESH_PRODUCTS)
+    .filter((bucket) => bucket.freshDealKeys.size >= DID_YOU_KNOW_MIN_FRESH_DEALS)
     .sort((left, right) => (
-      right.freshProducts.size - left.freshProducts.size
+      right.freshDealKeys.size - left.freshDealKeys.size
       || right.assessedProducts.size - left.assessedProducts.size
       || left.category.localeCompare(right.category)
     ))
@@ -235,11 +240,17 @@ function freshDealCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
       kind: "fresh-deal-wave" as const,
       category: bucket.category,
       accent: "neutral" as const,
-      metric: bucket.freshProducts.size,
+      metric: bucket.freshDealKeys.size,
       metricFormat: "count" as const,
       metricLabel: "new specials",
       supportingText: `${bucket.category} has the most new specials this week.`,
-      search: { filter: "all" as const, category: bucket.category, sortBy: "latest" as const },
+      search: {
+        filter: "all" as const,
+        category: bucket.category,
+        sortBy: "latest" as const,
+        dealKeys: [...bucket.freshDealKeys],
+        preserveSelectedStores: true,
+      },
     }));
 }
 

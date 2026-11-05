@@ -560,8 +560,11 @@ export default function FullScreenSearch() {
     () => (sessionNewSpecialDealKeys?.length ? new Set(sessionNewSpecialDealKeys) : null),
     [sessionNewSpecialDealKeys],
   );
-  const isNewToYouMode = newSpecialDealKeySet !== null;
-  const showNewToYouTab = isNewToYouMode && newSpecialsShowTab;
+  // Exact-key searches can also come from discovery cards. Only the explicit
+  // New to you entry point should show unread labels/badges or mark the batch
+  // reviewed; other exact scopes should behave like ordinary filtered search.
+  const isNewToYouMode = newSpecialDealKeySet !== null && newSpecialsShowTab;
+  const showNewToYouTab = isNewToYouMode;
 
   // Popular specials -- the same filtered, cheapest deal per product used by
   // Check Deals. Shown before the user has typed 3+ characters.
@@ -705,10 +708,10 @@ export default function FullScreenSearch() {
   // exact-key search has actually produced a result, so a failed load or a
   // deal that ended between detection and navigation can be retried.
   useEffect(() => {
-    if (!isOpen || loading || !newSpecialDealKeySet) return;
+    if (!isOpen || loading || !newSpecialDealKeySet || !isNewToYouMode) return;
     if (displayedNewDealKeys.length === 0) return;
     markReviewed(displayedNewDealKeys, dealFilter);
-  }, [dealFilter, displayedNewDealKeys, isOpen, loading, markReviewed, newSpecialDealKeySet]);
+  }, [dealFilter, displayedNewDealKeys, isNewToYouMode, isOpen, loading, markReviewed, newSpecialDealKeySet]);
 
   const handleClearText = () => setQuery("");
   const fullSearchInputRef = useRef<HTMLInputElement>(null);
@@ -1229,7 +1232,7 @@ export default function FullScreenSearch() {
                           for "normal" specifically, not just "less wide." */}
                       <div className="flex items-center justify-center gap-3">
                         <h3 className="dd-type-control text-stone-600">
-                          {newSpecialDealKeySet ? `${sortedPopularSpecials.length} new since your last visit` : `${sortedPopularSpecials.length} deals`}
+                          {isNewToYouMode ? `${sortedPopularSpecials.length} new since your last visit` : `${sortedPopularSpecials.length} deals`}
                         </h3>
                         {isNewToYouMode && (
                           <button
@@ -1251,7 +1254,7 @@ export default function FullScreenSearch() {
                           imageLoading={index < 2 ? "eager" : "lazy"}
                           storeLinePrefix={null}
                             alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal, newSpecialDealKeySet)}
-                          isNew={newSpecialDealKeySet !== null}
+                          isNew={isNewToYouMode}
                           onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                         />
                       ))}
@@ -1441,7 +1444,7 @@ export default function FullScreenSearch() {
                             imageLoading={index < 2 ? "eager" : "lazy"}
                             storeLinePrefix={null}
                             alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet)}
-                            isNew={newSpecialDealKeySet !== null}
+                            isNew={isNewToYouMode}
                             onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                           />
                         );
