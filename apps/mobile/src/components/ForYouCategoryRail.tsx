@@ -33,7 +33,7 @@ export default function ForYouCategoryRail({
           aria-label="Edit deal categories"
           aria-haspopup="dialog"
           title="Edit deal categories"
-          className="-mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-white/70 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+          className="-mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-start justify-center rounded-full pt-0.5 text-stone-900 transition-colors hover:bg-white/70 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
         >
           <Settings className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
         </button>
@@ -55,7 +55,7 @@ export default function ForYouCategoryRail({
               className={`h-9 shrink-0 rounded-full px-3.5 py-2 dd-type-control transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-700 ${
                 isActive
                   ? "bg-stone-900 text-white shadow-sm"
-                  : "bg-white text-stone-700 ring-1 ring-fair-200 hover:bg-fair-100"
+                  : "bg-white text-stone-700 ring-1 ring-stone-200 hover:bg-stone-50"
               }`}
             >
               {category}

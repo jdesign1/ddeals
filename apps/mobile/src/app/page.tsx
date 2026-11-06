@@ -962,6 +962,7 @@ export default function HomePage() {
                       publicationKey={cataloguePublicationKey}
                       publicationComplete={cataloguePublicationComplete}
                       storageScope={didYouKnowStorageScope}
+                      flushTop={checkDealsBeltOrder[0] === "did-you-know"}
                       onBrowse={handleDidYouKnowBrowse}
                     />
                   );
