@@ -484,6 +484,37 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     };
   }, [shouldLoadCatalogue]);
 
+  const retry = useCallback(() => {
+    setError(null);
+    setLoadingProducts(true);
+    setCatalogueLiveLoaded(false);
+    catalogueLoadSucceededRef.current = false;
+    setRetryTick((t) => t + 1);
+  }, []);
+
+  const clearNewSpecialsFilter = useCallback(() => {
+    setNewSpecialsSearchMode("all");
+    setNewSpecialDealKeys(null);
+    setNewSpecialsShowTab(false);
+    setSearchSortOverride(null);
+  }, []);
+
+  const pauseForDealNavigation = useCallback((productId: string, store: string) => {
+    setReturnToSearch({ productId, store });
+    setPreserveSearchStateOnOpen(false);
+  }, []);
+
+  const finishDealNavigation = useCallback(() => {
+    setIsActive(false);
+  }, []);
+
+  const resumeAfterDealBack = useCallback(() => {
+    setHasOpenedSearch(true);
+    setPreserveSearchStateOnOpen(true);
+    setIsActive(true);
+    setReturnToSearch(null);
+  }, []);
+
   const value = useMemo<SearchContextValue>(
     () => ({
       products,
@@ -506,55 +537,23 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       isActive,
       hasOpenedSearch,
       focusSearchOnOpen,
-      // Resets `loadingProducts`/`error` here (an event handler, not the
-      // effect body -- setting state synchronously inside the effect itself
-      // trips this project's react-hooks/set-state-in-effect rule, see
-      // TrendingSection/specials/page.tsx's own doc comments for the same
-      // rule elsewhere in this app) before bumping `retryTick`, so the
-      // ErrorState/LoadingMascot swap the instant Try Again is tapped
-      // rather than waiting a frame for the effect to notice.
-      retry: () => {
-        setError(null);
-        setLoadingProducts(true);
-        setCatalogueLiveLoaded(false);
-        catalogueLoadSucceededRef.current = false;
-        setRetryTick((t) => t + 1);
-      },
+      retry,
       refreshCatalogue,
       openSearch,
       openSearchForFilter,
-      clearNewSpecialsFilter: () => {
-        setNewSpecialsSearchMode("all");
-        setNewSpecialDealKeys(null);
-        setNewSpecialsShowTab(false);
-        setSearchSortOverride(null);
-      },
+      clearNewSpecialsFilter,
       closeSearch,
       returnToSearch,
-      pauseForDealNavigation: (productId, store) => {
-        setReturnToSearch({ productId, store });
-        setPreserveSearchStateOnOpen(false);
-      },
-      finishDealNavigation: () => {
-        setIsActive(false);
-      },
-      resumeAfterDealBack: () => {
-        setHasOpenedSearch(true);
-        setPreserveSearchStateOnOpen(true);
-        setIsActive(true);
-        setReturnToSearch(null);
-      },
+      pauseForDealNavigation,
+      finishDealNavigation,
+      resumeAfterDealBack,
       preserveSearchStateOnOpen,
       isScannerOpen,
       hasOpenedScanner,
       openScanner,
       closeScanner,
     }),
-    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue, closeSearch, openSearch, openSearchForFilter, openScanner, closeScanner]
-    // Note: `retry` and `openSearch`/etc. are stable closures (no external
-    // deps beyond the setters, which React guarantees are stable), so they
-    // don't need to be listed here -- same convention this array already
-    // followed before `retry` was added.
+    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, retry, refreshCatalogue, openSearch, openSearchForFilter, clearNewSpecialsFilter, closeSearch, pauseForDealNavigation, finishDealNavigation, resumeAfterDealBack, openScanner, closeScanner]
   );
 
   const navigationValue = useMemo<SearchNavigationContextValue>(
