@@ -165,6 +165,8 @@ type ResultsSortBy = CheckDealsSortBy;
 const POPULAR_PAGE_SIZE_SPECIALS = 6;
 const POPULAR_PAGE_SIZE_DODGY = 24;
 const SEARCH_RESULTS_PAGE_SIZE = 30;
+const EMPTY_SEARCH_CATEGORIES: string[] = [];
+const EMPTY_CATEGORY_DEAL_COUNTS = new Map<string, number>();
 
 // Scroll-direction toolbar show/hide tuning -- see `isToolbarVisible`'s own
 // comment below for what these gate.
@@ -564,37 +566,29 @@ export default function FullScreenSearch() {
     () => availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key })),
     [availableStoreKeys],
   );
-  const homeCategories = useMemo(
-    () => {
-      if (!shouldRenderOverlay) return [];
-      const categories = new Set<string>();
-      for (const product of products) {
-        const category = groupCategory(product.category, product.name);
-        if (category) categories.add(category);
-      }
-      return [...categories].sort();
-    },
-    [products, shouldRenderOverlay]
-  );
-
-  // Per-category deal counts for the active three-tab filter. A category is
-  // enabled only when at least one product in it has a matching on-special
-  // deal for the selected supermarkets, so the Categories sheet cannot lead
-  // to an empty result set.
+  // Build the category sheet's labels and enabled counts in one catalogue
+  // pass. Both values use the same shopper-category normalization, so doing
+  // this together avoids repeating the full product walk whenever the live
+  // catalogue refreshes or a store/deal filter changes.
   const categoryDealFilter = dealFilter;
-  const categoryDealCounts = useMemo(() => {
-    if (!shouldRenderOverlay) return new Map<string, number>();
-    const counts = new Map<string, number>();
+  const searchFilterData = useMemo(() => {
+    if (!shouldRenderOverlay) {
+      return { homeCategories: EMPTY_SEARCH_CATEGORIES, categoryDealCounts: EMPTY_CATEGORY_DEAL_COUNTS };
+    }
+    const categories = new Set<string>();
+    const categoryDealCounts = new Map<string, number>();
     for (const product of products) {
       const cat = groupCategory(product.category, product.name);
       if (!cat) continue;
+      categories.add(cat);
       const hasMatchingDeal = product.currentDeals.some(
         (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)
       );
-      if (hasMatchingDeal) counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      if (hasMatchingDeal) categoryDealCounts.set(cat, (categoryDealCounts.get(cat) ?? 0) + 1);
     }
-    return counts;
+    return { homeCategories: [...categories].sort(), categoryDealCounts };
   }, [products, selectedStores, categoryDealFilter, shouldRenderOverlay]);
+  const { homeCategories, categoryDealCounts } = searchFilterData;
 
   const handleStoreToggle = useCallback((storeId: string) => {
     const currentScrollTop = scrollContainerRef.current?.scrollTop ?? lastScrollTopRef.current;
