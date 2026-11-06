@@ -1,4 +1,5 @@
 import type { DealFilter } from "@/lib/deal-filters";
+import { memo } from "react";
 
 const DEAL_FILTER_SUMMARY: Record<DealFilter, { label: string; textClass: string; description: string }> = {
   all: {
@@ -18,7 +19,7 @@ const DEAL_FILTER_SUMMARY: Record<DealFilter, { label: string; textClass: string
   },
 };
 
-export default function DealFilterSummary({ filter }: { filter: DealFilter }) {
+function DealFilterSummary({ filter }: { filter: DealFilter }) {
   const summary = DEAL_FILTER_SUMMARY[filter];
 
   return (
@@ -28,3 +29,5 @@ export default function DealFilterSummary({ filter }: { filter: DealFilter }) {
     </div>
   );
 }
+
+export default memo(DealFilterSummary);
