@@ -157,6 +157,7 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
     [entry.sourceItems, unreadAlertsByListItem],
   );
   const isUnread = unreadUpdates.length > 0;
+  const isOnSpecial = deal?.isOnSpecial === true;
   const onDealAssessmentOpen = useCallback(
     () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id))),
     [entry.sourceItems, markListItemViewed],
@@ -180,10 +181,10 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
       <UnreadListItem
         listId={sourceItem.list_id}
         productId={entry.productId}
-        isUnread={!isLocked && isUnread}
+        isUnread={!isLocked && isOnSpecial && isUnread}
         updates={unreadUpdates}
         updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
-        onUpdateClick={isLocked ? undefined : onDealAssessmentOpen}
+        onUpdateClick={isLocked || !isOnSpecial ? undefined : onDealAssessmentOpen}
       >
         {card && deal ? (
           <ListItemProductCard
@@ -472,6 +473,7 @@ export default function ListsPage() {
     }
     return [...labels.entries()].sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB));
   }, [itemCards, watchlistItems]);
+  const supermarketOptions = useMemo(() => supermarkets.map(([id, label]) => ({ id, label })), [supermarkets]);
 
   const viewStatusDescription = useMemo(() => {
     const supermarketScope = selectedSupermarkets.includes("all")
@@ -626,7 +628,7 @@ export default function ListsPage() {
             </div>
             <div className="shrink-0">
               <SupermarketPicker
-                stores={supermarkets.map(([id, label]) => ({ id, label }))}
+                stores={supermarketOptions}
                 selectedStoreIds={selectedSupermarkets}
                 onToggleStore={toggleSupermarket}
               />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,7 +11,9 @@ import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
+import { useSearch } from "@/lib/search-context";
 import { useSubscriptions } from "@/lib/subscription-context";
+import { useWatchlist } from "@/lib/watchlist-context";
 
 const SETTINGS_ROUTE_FALLBACK_MS = 1600;
 
@@ -26,15 +28,31 @@ export default function AppDrawer() {
     closeDrawer,
   } = useNavigationDrawer();
   const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { unreadAlerts } = useNotifications();
   const { canOpenDetectiveCase, requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecials();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
+  const { products, catalogueLiveLoaded } = useSearch();
+  const { savedProductIds, savedItemsReady } = useWatchlist();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
   const settingsNavigationStartedRef = useRef(false);
   const settingsNavigationFrameRef = useRef<number | null>(null);
   const settingsNavigationSecondFrameRef = useRef<number | null>(null);
   const prefersReducedMotion = useReducedMotion();
+
+  const currentSpecialUnreadItemCount = useMemo(() => {
+    if (!catalogueLiveLoaded || !savedItemsReady) return 0;
+    const currentSpecialProductIds = new Set(
+      products
+        .filter((product) => savedProductIds.has(product.id) && product.currentDeals.some((deal) => deal.isOnSpecial === true))
+        .map((product) => product.id),
+    );
+    return new Set(
+      unreadAlerts
+        .filter((alert) => currentSpecialProductIds.has(alert.product_id))
+        .map((alert) => alert.product_id),
+    ).size;
+  }, [catalogueLiveLoaded, products, savedItemsReady, savedProductIds, unreadAlerts]);
 
   useEffect(() => {
     settingsNavigationStartedRef.current = false;
@@ -195,15 +213,15 @@ export default function AppDrawer() {
           )}
         </div>
 
-        {user && unreadCount > 0 && (
+        {user && currentSpecialUnreadItemCount > 0 && (
           <Link
             href="/lists?updates=1"
             onClick={closeDrawer}
-            aria-label={`Open Watchlist with ${unreadCount} ${unreadCount === 1 ? "update" : "updates"}`}
+            aria-label={`Open Watchlist with ${currentSpecialUnreadItemCount} ${currentSpecialUnreadItemCount === 1 ? "update" : "updates"}`}
             className="mx-4 mb-3 flex min-h-12 items-center gap-2 rounded-2xl border border-alert-100 bg-alert-50 px-4 dd-type-control font-semibold text-alert-800 transition-colors hover:bg-alert-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-alert-600"
           >
               <Bell className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1">Watchlist updates ({unreadCount})</span>
+              <span className="min-w-0 flex-1">Watchlist updates ({currentSpecialUnreadItemCount})</span>
               <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-alert-600" aria-hidden="true" />
           </Link>
         )}
