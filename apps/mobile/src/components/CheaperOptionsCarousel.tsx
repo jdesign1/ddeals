@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { type CheaperAlternative, type CurrentDeal, type ProductCard as ProductCardData } from "@dodgey-deals/shared";
 import ProductImage from "@/components/ProductImage";
 
@@ -24,7 +25,11 @@ export default function CheaperOptionsCarousel({
   loading?: boolean;
   error?: string | null;
 }) {
-  const visibleAlternatives = alternatives.slice(0, MAX_CHEAPER_OPTIONS);
+  const visibleAlternatives = useMemo(() => alternatives.slice(0, MAX_CHEAPER_OPTIONS), [alternatives]);
+  const alternativesFingerprint = useMemo(
+    () => visibleAlternatives.map(({ product, store }) => `${product.id}-${store}`).join("|"),
+    [visibleAlternatives],
+  );
 
   return (
     <div
@@ -46,7 +51,7 @@ export default function CheaperOptionsCarousel({
         </p>
       ) : (
         <CheaperOptionsThumbnailBelt
-          key={`${originalProduct.id}-${originalDeal.store}-${visibleAlternatives.map(({ product, store }) => `${product.id}-${store}`).join("|")}`}
+          key={`${originalProduct.id}-${originalDeal.store}-${alternativesFingerprint}`}
           alternatives={visibleAlternatives}
           selectedAlternative={selectedAlternative}
           onSelectAlternative={onSelectAlternative}
