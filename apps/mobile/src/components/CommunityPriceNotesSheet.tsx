@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -32,7 +32,7 @@ function formatObservedDate(value: string): string {
   return new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
-function NoteDetail({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
+const NoteDetail = memo(function NoteDetail({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
   note: CommunityPriceNote;
   onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
@@ -69,7 +69,7 @@ function NoteDetail({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
       )}
     </article>
   );
-}
+});
 
 export default function CommunityPriceNotesSheet({
   productId,
@@ -214,17 +214,17 @@ export default function CommunityPriceNotesSheet({
     return session.access_token;
   }
 
-  function startEdit(note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) {
+  const startEdit = useCallback((note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => {
     if (!note.is_own_note) return;
     skipReturnFocusRef.current = true;
     onEdit(note, returnFocusRef.current ?? returnFocusTarget);
-  }
+  }, [onEdit, returnFocusRef]);
 
-  function startProfile(note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) {
+  const startProfile = useCallback((note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => {
     if (note.status !== "approved") return;
     skipReturnFocusRef.current = true;
     onOpenProfile(note, returnFocusRef.current ?? returnFocusTarget);
-  }
+  }, [onOpenProfile, returnFocusRef]);
 
   function toggleActionMenu(noteId: string) {
     setActionMenuNoteId((current) => current === noteId ? null : noteId);
@@ -292,12 +292,12 @@ export default function CommunityPriceNotesSheet({
   }
 
 
-  function handleHelpfulChanged(noteId: string, helpful: boolean, helpfulCount: number) {
+  const handleHelpfulChanged = useCallback((noteId: string, helpful: boolean, helpfulCount: number) => {
     setNotes((currentNotes) => currentNotes.map((note) => note.id === noteId
       ? { ...note, viewer_has_helpful_vote: helpful, helpful_count: helpfulCount }
       : note));
     onHelpfulChanged(noteId, helpful, helpfulCount);
-  }
+  }, [onHelpfulChanged]);
 
   return (
     <BottomSheetPortal open={isOpen}>
