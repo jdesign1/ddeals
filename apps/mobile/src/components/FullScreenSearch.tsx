@@ -552,13 +552,21 @@ export default function FullScreenSearch() {
   // from this EXACT same dep list (query/store/sort/price/category), so
   // this effect was fully subsumed, not just broken.
 
-  const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
+  // This overlay stays mounted globally so its input state survives route
+  // changes. Avoid doing catalogue-wide derivation while it is hidden; the
+  // first visible render will recompute these values from the current shared
+  // catalogue without competing with Check Deals or background refreshes.
+  const availableStoreKeys = useMemo(
+    () => (shouldRenderOverlay ? deriveAvailableStoreKeys(products) : []),
+    [products, shouldRenderOverlay],
+  );
   const availableStores = useMemo(
     () => availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key })),
     [availableStoreKeys],
   );
   const homeCategories = useMemo(
     () => {
+      if (!shouldRenderOverlay) return [];
       const categories = new Set<string>();
       for (const product of products) {
         const category = groupCategory(product.category, product.name);
@@ -566,7 +574,7 @@ export default function FullScreenSearch() {
       }
       return [...categories].sort();
     },
-    [products]
+    [products, shouldRenderOverlay]
   );
 
   // Per-category deal counts for the active three-tab filter. A category is
@@ -575,6 +583,7 @@ export default function FullScreenSearch() {
   // to an empty result set.
   const categoryDealFilter = dealFilter;
   const categoryDealCounts = useMemo(() => {
+    if (!shouldRenderOverlay) return new Map<string, number>();
     const counts = new Map<string, number>();
     for (const product of products) {
       const cat = groupCategory(product.category, product.name);
@@ -585,7 +594,7 @@ export default function FullScreenSearch() {
       if (hasMatchingDeal) counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return counts;
-  }, [products, selectedStores, categoryDealFilter]);
+  }, [products, selectedStores, categoryDealFilter, shouldRenderOverlay]);
 
   const handleStoreToggle = useCallback((storeId: string) => {
     const currentScrollTop = scrollContainerRef.current?.scrollTop ?? lastScrollTopRef.current;
@@ -617,6 +626,7 @@ export default function FullScreenSearch() {
   // Popular specials -- the same filtered, cheapest deal per product used by
   // Check Deals. Shown before the user has typed 3+ characters.
   const popularSpecials = useMemo<PopularEntry[]>(() => {
+    if (!shouldRenderOverlay) return [];
     const out: PopularEntry[] = [];
     for (const product of products) {
       const qualifyingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
@@ -629,7 +639,7 @@ export default function FullScreenSearch() {
       out.push({ product, bestDeal });
     }
     return out;
-  }, [products, selectedStores, dealFilter, newSpecialDealKeySet]);
+  }, [products, selectedStores, dealFilter, newSpecialDealKeySet, shouldRenderOverlay]);
 
   const popularCategoryFilterSet = useMemo(() => new Set(popularCategoryFilter), [popularCategoryFilter]);
   const sortedPopularSpecials = useMemo(() => {
@@ -654,10 +664,24 @@ export default function FullScreenSearch() {
   }, [popularSpecials, popularSortBy, popularCategoryFilterSet]);
 
   const popularPageSize = dealFilter === "dodgy" ? POPULAR_PAGE_SIZE_DODGY : POPULAR_PAGE_SIZE_SPECIALS;
+  const popularRevealPersistenceKey = useMemo(
+    () => [
+      "full-search:popular",
+      dealFilter,
+      selectedStores.join(","),
+      popularSortBy,
+      popularCategoryFilter.join(","),
+      sessionNewSpecialDealKeys?.join(",") ?? "all",
+    ].join("|"),
+    [dealFilter, popularCategoryFilter, popularSortBy, selectedStores, sessionNewSpecialDealKeys],
+  );
   // Infinite-scroll reveal replaced the old "Show all N deals" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
   // sortedPopularSpecials` restarts the reveal at the top whenever the tab,
   // filters, or sort change (it's already recomputed from all of those).
+  // The persistence key keeps that reveal count across the overlay's hidden
+  // transition, so returning from a deal does not restore a deep scroll
+  // position against only the first result chunk.
   const {
     visibleCount: visiblePopularCount,
     sentinelRef: popularSentinelRef,
@@ -667,6 +691,7 @@ export default function FullScreenSearch() {
     chunkSize: popularPageSize,
     maxItems: INFINITE_REVEAL_MAX_ITEMS,
     resetKey: sortedPopularSpecials,
+    persistenceKey: popularRevealPersistenceKey,
   });
   const visiblePopularSpecials = useMemo(
     () => sortedPopularSpecials.slice(0, visiblePopularCount),
@@ -676,7 +701,7 @@ export default function FullScreenSearch() {
   // followed by store/deal filters and relevance sorting. The matcher lives
   // in shared code so browser and mobile surfaces cannot drift apart.
   const sortedProducts = useMemo<ProductCardData[]>(() => {
-    if (deferredTrimmedQuery.length < 3) return [];
+    if (!shouldRenderOverlay || deferredTrimmedQuery.length < 3) return [];
     const resultCategorySet = new Set(resultsCategoryFilter);
     const now = Date.now();
     const matched: Array<{
@@ -735,12 +760,24 @@ export default function FullScreenSearch() {
         return b.latestStart - a.latestStart;
       })
       .map((x) => x.product);
-  }, [products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet]);
+  }, [products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet, shouldRenderOverlay]);
 
   // Infinite-scroll reveal replaced the old "Show all N items" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
   // sortedProducts` restarts the reveal at the top whenever the query,
   // store/category/price filter, or sort changes.
+  const searchResultsRevealPersistenceKey = useMemo(
+    () => [
+      "full-search:results",
+      deferredTrimmedQuery,
+      dealFilter,
+      selectedStores.join(","),
+      resultsSortBy,
+      resultsCategoryFilter.join(","),
+      sessionNewSpecialDealKeys?.join(",") ?? "all",
+    ].join("|"),
+    [dealFilter, deferredTrimmedQuery, resultsCategoryFilter, resultsSortBy, selectedStores, sessionNewSpecialDealKeys],
+  );
   const {
     visibleCount: visibleSearchResultsCount,
     sentinelRef: searchResultsSentinelRef,
@@ -750,6 +787,7 @@ export default function FullScreenSearch() {
     chunkSize: SEARCH_RESULTS_PAGE_SIZE,
     maxItems: INFINITE_REVEAL_MAX_ITEMS,
     resetKey: sortedProducts,
+    persistenceKey: searchResultsRevealPersistenceKey,
   });
   const visibleSearchResults = useMemo(
     () => sortedProducts.slice(0, visibleSearchResultsCount),
@@ -781,7 +819,7 @@ export default function FullScreenSearch() {
     [dealFilter, newSpecialDealKeySet, pauseForDealNavigation, resultsSortBy, selectedStores, visibleSearchResults],
   );
   const displayedNewDealKeys = useMemo(() => {
-    if (!newSpecialDealKeySet) return [];
+    if (!shouldRenderOverlay || !newSpecialDealKeySet) return [];
     const keys = new Set<string>();
     if (deferredTrimmedQuery.length >= 3) {
       for (const { product, matchingDeals } of visibleSearchCards) {
@@ -795,7 +833,7 @@ export default function FullScreenSearch() {
       }
     }
     return [...keys];
-  }, [dealFilter, newSpecialDealKeySet, selectedStores, deferredTrimmedQuery, visiblePopularSpecials, visibleSearchCards]);
+  }, [dealFilter, newSpecialDealKeySet, selectedStores, deferredTrimmedQuery, visiblePopularSpecials, visibleSearchCards, shouldRenderOverlay]);
 
   // Do not clear the unread cue when navigation starts. Keep it until the
   // exact-key search has actually produced a result, so a failed load or a
