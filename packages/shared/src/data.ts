@@ -2041,8 +2041,11 @@ export const storeMatchesFilter = (storeName: string, filter: string): boolean =
  * pointed both call sites at it -- `FullScreenSearch.tsx`'s local copy
  * removed, its import list extended instead.
  */
-export const matchesAnySelectedStore = (storeName: string, selectedStores: string[]): boolean =>
-  selectedStores.includes("all") || selectedStores.some((filter) => storeMatchesFilter(storeName, filter));
+export const matchesAnySelectedStore = (storeName: string, selectedStores: string[]): boolean => {
+  if (selectedStores.includes("all")) return true;
+  const normalizedStoreName = normalizeStoreKey(storeName);
+  return selectedStores.some((filter) => normalizedStoreName.includes(filter));
+};
 
 /**
  * Canonical store-pill order + "which of these are actually present in this
