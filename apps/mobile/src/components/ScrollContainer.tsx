@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
-import { useSearch } from "@/lib/search-context";
+import { useSearchShell } from "@/lib/search-context";
 import {
   isNearScrollBottom,
   CHECK_DEALS_SCROLL_TO_TOP_EVENT,
@@ -51,7 +51,7 @@ const CONTACT_ROUTES = ["/support", "/report-deal"];
 export default function ScrollContainer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hasBottomNav = !pathname.startsWith("/deal/") && pathname !== "/settings" && pathname !== "/subscribe" && !CONTACT_ROUTES.includes(pathname);
-  const { refreshCatalogue, dealFilter } = useSearch();
+  const { refreshCatalogue, dealFilter } = useSearchShell();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);

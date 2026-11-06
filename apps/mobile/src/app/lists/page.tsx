@@ -303,34 +303,39 @@ export default function ListsPage() {
     [lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
   );
 
-  const categories = useMemo(() => {
-    const values = new Set<string>();
-    for (const item of watchlistItems) {
-      const category = watchlistCategory(productMeta.get(item.productId));
-      if (category) values.add(category);
-    }
-    return [...values].sort((a, b) => a.localeCompare(b));
-  }, [productMeta, watchlistItems]);
-
   const filterSupermarkets = selectedSupermarkets;
 
-  const dealTypeCounts = useMemo<WatchlistDealTypeCounts>(() => {
+  const watchlistSummary = useMemo(() => {
+    const categoryValues = new Set<string>();
+    const categoryCounts = new Map<string, number>();
     const counts: WatchlistDealTypeCounts = { realSavers: 0, fairDeals: 0, dodgyDeals: 0 };
+    let onSpecialCount = 0;
+
     for (const item of watchlistItems) {
+      const category = watchlistCategory(productMeta.get(item.productId));
+      if (category) {
+        categoryValues.add(category);
+        categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+      }
+
       const deal = watchlistItemDeal(item, itemCards, ["all"], undefined, "best");
       if (!deal || deal.isOnSpecial !== true) continue;
+      onSpecialCount += 1;
       const verdict = getAssessmentVerdict(deal);
       if (verdict === "Real Saver") counts.realSavers += 1;
       else if (verdict === "Fair Price") counts.fairDeals += 1;
       else if (verdict === "Dodgy Deal") counts.dodgyDeals += 1;
     }
-    return counts;
-  }, [itemCards, watchlistItems]);
 
-  const onSpecialCount = useMemo(
-    () => watchlistItems.reduce((count, item) => count + (watchlistItemDeal(item, itemCards, ["all"], undefined, "best")?.isOnSpecial === true ? 1 : 0), 0),
-    [itemCards, watchlistItems],
-  );
+    return {
+      categories: [...categoryValues].sort((a, b) => a.localeCompare(b)),
+      categoryCounts,
+      dealTypeCounts: counts,
+      onSpecialCount,
+    };
+  }, [itemCards, productMeta, watchlistItems]);
+
+  const { categories, categoryCounts, dealTypeCounts, onSpecialCount } = watchlistSummary;
 
   const filteredItems = useMemo(
     () => sortWatchlistItems(
@@ -388,15 +393,6 @@ export default function ListsPage() {
     const dealTypeScope = selectedDealType === "all" ? "all deal types" : dealTypeFilterLabel(selectedDealType);
     return `showing ${supermarketScope} and ${dealTypeScope}`;
   }, [selectedDealType, selectedSupermarkets, supermarkets]);
-
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of watchlistItems) {
-      const category = watchlistCategory(productMeta.get(item.productId));
-      if (category) counts.set(category, (counts.get(category) ?? 0) + 1);
-    }
-    return counts;
-  }, [productMeta, watchlistItems]);
 
   const toggleSupermarket = useCallback((key: string) => {
     setSelectedSupermarkets((current) => {

@@ -33,19 +33,24 @@ export default function MePage() {
   const [isSavingsOpen, setIsSavingsOpen] = useState(false);
   const [activeStatsTab, setActiveStatsTab] = useState<"watchlist" | "market">("watchlist");
   const deferredStatsTab = useDeferredValue(activeStatsTab);
+  const deferredProducts = useDeferredValue(products);
+  // Only block the first non-empty render while the deferred catalogue catches
+  // up. During a background refresh, keep the previous stats visible rather
+  // than replacing valid figures with a loading mascot for one render.
+  const statsWaitingForCatalogue = products.length > 0 && deferredProducts.length === 0;
   const [watchlistTopMode, setWatchlistTopMode] = useState<WatchlistTopMode>("most-often");
   const watchlistStats = useMemo(
-    () => (activeStatsTab === "watchlist" ? buildWatchlistStats(products, savedProductIds, watchlistTopMode) : null),
-    [activeStatsTab, products, savedProductIds, watchlistTopMode],
+    () => (activeStatsTab === "watchlist" ? buildWatchlistStats(deferredProducts, savedProductIds, watchlistTopMode) : null),
+    [activeStatsTab, deferredProducts, savedProductIds, watchlistTopMode],
   );
   const watchlistStatsLocked = !subscriptionLoading && !isPremium;
   const watchlistProductCount = useMemo(
-    () => (activeStatsTab === "watchlist" ? products.filter((product) => savedProductIds.has(product.id)).length : 0),
-    [activeStatsTab, products, savedProductIds],
+    () => (activeStatsTab === "watchlist" ? deferredProducts.filter((product) => savedProductIds.has(product.id)).length : 0),
+    [activeStatsTab, deferredProducts, savedProductIds],
   );
   const marketWatchStats = useMemo(
-    () => activeStatsTab === "market" && deferredStatsTab === "market" ? buildMarketWatchStats(products) : null,
-    [activeStatsTab, deferredStatsTab, products],
+    () => activeStatsTab === "market" && deferredStatsTab === "market" ? buildMarketWatchStats(deferredProducts) : null,
+    [activeStatsTab, deferredStatsTab, deferredProducts],
   );
   const openMarketDeals = useCallback((filter: Extract<DealFilter, "real" | "dodgy">) => {
     openSearchForFilter(filter, { focus: false });
@@ -79,13 +84,13 @@ export default function MePage() {
       {isAnonymousSession && <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3"><p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p><p className="dd-type-secondary text-amber-700">You&rsquo;re using a test account. These stats are real, but you can&rsquo;t sign in to this account on another device.</p></div>}
       {activeStatsTab === "watchlist" ? (
         watchlistStats ? (
-          <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems} productCount={watchlistProductCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionPage} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} />
+          <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems || statsWaitingForCatalogue} productCount={watchlistProductCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionPage} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} />
         ) : (
           <section id="deal-stats-panel-watchlist" role="tabpanel" aria-labelledby="deal-stats-tab-watchlist" className="relative min-h-[180px]"><LoadingMascot loading /></section>
         )
       ) : (
         <section id="deal-stats-panel-market" role="tabpanel" aria-labelledby="deal-stats-tab-market" className="flex flex-col gap-6 px-5">
-          {marketWatchStats && !loadingProducts ? <MarketWatchPanel stats={marketWatchStats} onBrowse={openMarketDeals} /> : <LoadingMascot loading />}
+          {marketWatchStats && !loadingProducts && !statsWaitingForCatalogue ? <MarketWatchPanel stats={marketWatchStats} onBrowse={openMarketDeals} /> : <LoadingMascot loading />}
         </section>
       )}
     </main>

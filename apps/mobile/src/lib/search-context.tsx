@@ -163,6 +163,12 @@ interface SearchInputContextValue {
 }
 
 const SearchInputContext = createContext<SearchInputContextValue | null>(null);
+interface SearchShellContextValue {
+  dealFilter: DealFilter;
+  refreshCatalogue: () => Promise<RefreshLiveProductsResult>;
+}
+
+const SearchShellContext = createContext<SearchShellContextValue | null>(null);
 
 const INITIAL_CATALOGUE_RETRY_DELAYS_MS = [500, 1500];
 
@@ -559,12 +565,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     () => ({ query, setQuery, isActive, openSearch, openSearchForFilter }),
     [query, setQuery, isActive, openSearch, openSearchForFilter],
   );
+  const shellValue = useMemo<SearchShellContextValue>(
+    () => ({ dealFilter, refreshCatalogue }),
+    [dealFilter, refreshCatalogue],
+  );
 
   return (
     <SearchContext.Provider value={value}>
       <SearchNavigationContext.Provider value={navigationValue}>
         <SearchInputContext.Provider value={inputValue}>
-          {children}
+          <SearchShellContext.Provider value={shellValue}>
+            {children}
+          </SearchShellContext.Provider>
         </SearchInputContext.Provider>
       </SearchNavigationContext.Provider>
     </SearchContext.Provider>
@@ -586,5 +598,11 @@ export function useSearchNavigation(): SearchNavigationContextValue {
 export function useSearchInput(): SearchInputContextValue {
   const ctx = useContext(SearchInputContext);
   if (!ctx) throw new Error("useSearchInput must be used within a SearchProvider");
+  return ctx;
+}
+
+export function useSearchShell(): SearchShellContextValue {
+  const ctx = useContext(SearchShellContext);
+  if (!ctx) throw new Error("useSearchShell must be used within a SearchProvider");
   return ctx;
 }
