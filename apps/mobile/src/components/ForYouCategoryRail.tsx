@@ -1,12 +1,12 @@
 "use client";
 
 import { Settings } from "lucide-react";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { getDealSnapshotAmount } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
 
-export default function ForYouCategoryRail({
+function ForYouCategoryRail({
   categories,
   activeCategory,
   deals,
@@ -117,3 +117,5 @@ export default function ForYouCategoryRail({
     </section>
   );
 }
+
+export default memo(ForYouCategoryRail);

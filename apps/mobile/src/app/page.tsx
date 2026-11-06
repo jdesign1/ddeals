@@ -737,12 +737,12 @@ export default function HomePage() {
     if (filter !== "all") setIsNewForYouFilter(false);
   };
 
-  const handleForYouSeeAll = () => {
+  const handleForYouSeeAll = useCallback(() => {
     if (!visibleForYouCategory) return;
     openSearchForFilter("real", { focus: false, category: visibleForYouCategory });
-  };
+  }, [openSearchForFilter, visibleForYouCategory]);
 
-  const handleForYouCategorySelect = (category: string) => {
+  const handleForYouCategorySelect = useCallback((category: string) => {
     if (!preferredCategories.includes(category)) return;
     setActiveForYouCategory(category);
     if (!forYouCategoryStorageKey) return;
@@ -752,7 +752,11 @@ export default function HomePage() {
     } catch {
       // The in-memory selection still lasts for this visit when storage is unavailable.
     }
-  };
+  }, [forYouCategoryStorageKey, preferredCategories]);
+
+  const handleOpenCategoryInterestsSheet = useCallback(() => {
+    setIsCategoryInterestsSheetOpen(true);
+  }, []);
 
   const handleDealSortChange = (sortBy: DealSortBy) => {
     setDealSortBy(sortBy);
@@ -996,7 +1000,7 @@ export default function HomePage() {
                       activeCategory={visibleForYouCategory}
                       deals={visibleForYouDeals}
                       onSelectCategory={handleForYouCategorySelect}
-                      onEditCategories={() => setIsCategoryInterestsSheetOpen(true)}
+                      onEditCategories={handleOpenCategoryInterestsSheet}
                       onSeeAll={handleForYouSeeAll}
                     />
                   );
