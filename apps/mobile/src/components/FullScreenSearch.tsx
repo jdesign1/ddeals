@@ -548,7 +548,14 @@ export default function FullScreenSearch() {
 
   const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
   const homeCategories = useMemo(
-    () => [...new Set(products.map((p) => groupCategory(p.category, p.name)).filter(Boolean))].sort(),
+    () => {
+      const categories = new Set<string>();
+      for (const product of products) {
+        const category = groupCategory(product.category, product.name);
+        if (category) categories.add(category);
+      }
+      return [...categories].sort();
+    },
     [products]
   );
 
