@@ -658,7 +658,6 @@ export default function FullScreenSearch() {
   // in shared code so browser and mobile surfaces cannot drift apart.
   const sortedProducts = useMemo<ProductCardData[]>(() => {
     if (trimmedQuery.length < 3) return [];
-    const textMatched = products.filter((p) => productMatchesSearch(p, trimmedQuery));
     const resultCategorySet = new Set(resultsCategoryFilter);
     const now = Date.now();
     const matched: Array<{
@@ -670,7 +669,8 @@ export default function FullScreenSearch() {
       hasNewSpecial: boolean;
     }> = [];
 
-    for (const product of textMatched) {
+    for (const product of products) {
+      if (!productMatchesSearch(product, trimmedQuery)) continue;
       const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
       if (matchingDeals.length === 0) continue;
       if (resultCategorySet.size > 0 && !resultCategorySet.has(groupCategory(product.category, product.name))) continue;
