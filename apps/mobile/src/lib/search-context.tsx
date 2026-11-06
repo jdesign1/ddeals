@@ -168,6 +168,8 @@ interface SearchNavigationContextValue {
   closeSearch: () => void;
   openSearch: () => void;
   openSearchForFilter: SearchContextValue["openSearchForFilter"];
+  returnToSearch: PendingDealReturn | null;
+  resumeAfterDealBack: () => void;
   isScannerOpen: boolean;
   hasOpenedScanner: boolean;
   openScanner: () => void;
@@ -596,8 +598,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   );
 
   const navigationValue = useMemo<SearchNavigationContextValue>(
-    () => ({ isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner }),
-    [isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner],
+    () => ({ isActive, closeSearch, openSearch, openSearchForFilter, returnToSearch, resumeAfterDealBack, isScannerOpen, hasOpenedScanner, openScanner, closeScanner }),
+    [isActive, closeSearch, openSearch, openSearchForFilter, returnToSearch, resumeAfterDealBack, isScannerOpen, hasOpenedScanner, openScanner, closeScanner],
   );
   const inputValue = useMemo<SearchInputContextValue>(
     () => ({ query, setQuery, isActive, openSearch, openSearchForFilter }),

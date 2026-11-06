@@ -38,7 +38,7 @@ import {
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
-import { useSearch } from "@/lib/search-context";
+import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -86,8 +86,8 @@ import { getVerdictTitle, VERDICT_BADGE } from "@/lib/assessment-verdict";
  *    real, shared `SearchBar.tsx` component earlier the same day (replacing
  *    an old hand-rolled lookalike -- see project.md for that history), but
  *    Jay's next ask removed it outright rather than reverting to the
- *    lookalike. `useSearch()` is still imported/used below for the
- *    "return to search results after Back" behaviour (`returnToSearch`/
+ *    lookalike. The split search hooks are still used below for the
+ *    catalogue and "return to search results after Back" behaviour (`returnToSearch`/
  *    `resumeAfterDealBack`), which is unrelated to rendering a search bar
  *    on this page itself.
  *  - "Add to List" is always shown (no `isTracked`-based hide) and IS
@@ -224,7 +224,8 @@ export default function DealAssessmentPage() {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const { user } = useAuth();
-  const { products: catalogueProducts, returnToSearch, resumeAfterDealBack } = useSearch();
+  const { products: catalogueProducts } = useSearchCatalogue();
+  const { returnToSearch, resumeAfterDealBack } = useSearchNavigation();
 
   const productId = decodeURIComponent(params.id);
   const dealStore = decodeURIComponent(params.store);
@@ -392,22 +393,32 @@ export default function DealAssessmentPage() {
   useEffect(() => {
     const section = priceHistorySectionRef.current;
     if (!section) return;
+    // The section can mount after the first render while the catalogue loads;
+    // retry when that data arrives instead of leaving the All-store view gated.
     if (typeof IntersectionObserver === "undefined") {
       const fallbackFrame = window.requestAnimationFrame(() => setIsPriceHistoryNearViewport(true));
       return () => window.cancelAnimationFrame(fallbackFrame);
     }
     const scrollRoot = section.closest(".mobile-scroll-surface");
+    let fallbackTimer: number | null = window.setTimeout(() => {
+      setIsPriceHistoryNearViewport(true);
+    }, 2000);
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         setIsPriceHistoryNearViewport(true);
         observer.disconnect();
+        if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+        fallbackTimer = null;
       },
       { root: scrollRoot, rootMargin: "240px 0px" },
     );
     observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      observer.disconnect();
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+    };
+  }, [historyRouteKey, historyStoreDeals.length, isCatalogueReady]);
 
   // The catalogue carries summary history statistics only. The detail page
   // fetches the small, exact product/store transition series on demand,
