@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -12,7 +12,7 @@ function authorInitial(value: string): string {
   return value.trim().charAt(0).toUpperCase() || "S";
 }
 
-export default function CommunityPublicProfileSheet({
+function CommunityPublicProfileSheet({
   isOpen,
   noteId,
   displayName,
@@ -175,3 +175,5 @@ export default function CommunityPublicProfileSheet({
     </BottomSheetPortal>
   );
 }
+
+export default memo(CommunityPublicProfileSheet);
