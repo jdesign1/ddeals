@@ -216,10 +216,12 @@ function compareDealsForSort(a: CurrentDeal, b: CurrentDeal, sortBy: CheckDealsS
 }
 
 function representativeDeal(deals: CurrentDeal[], sortBy: CheckDealsSortBy): CurrentDeal {
-  return deals.reduce(
-    (best, candidate) => compareDealsForSort(candidate, best, sortBy) < 0 ? candidate : best,
-    deals[0],
-  );
+  let best = deals[0]!;
+  for (let index = 1; index < deals.length; index += 1) {
+    const candidate = deals[index]!;
+    if (compareDealsForSort(candidate, best, sortBy) < 0) best = candidate;
+  }
+  return best;
 }
 
 /** Other applicable stores also on special right now, excluding `shownDeal`'s
