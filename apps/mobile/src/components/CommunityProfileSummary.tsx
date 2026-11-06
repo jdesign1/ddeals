@@ -2,14 +2,14 @@
 
 import { BadgeCheck, Lightbulb, LoaderCircle, Medal, ThumbsUp, Trophy } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { fetchCommunityProfileSummary, type CommunityProfileSummary as CommunityProfileSummaryData } from "@/lib/community-notes-api";
 import { getCommunityDetectiveRank } from "@/lib/community-reputation";
 
 export type CommunityProfileSummaryVariant = "light" | "dark";
 
-export function CommunityProfileStats({
+export const CommunityProfileStats = memo(function CommunityProfileStats({
   summary,
   loading,
   error,
@@ -98,7 +98,7 @@ export function CommunityProfileStats({
       </div>
     </>
   );
-}
+});
 
 export default function CommunityProfileSummary({ variant = "light" }: { variant?: CommunityProfileSummaryVariant } = {}) {
   const { user, session, isAnonymousSession } = useAuth();
