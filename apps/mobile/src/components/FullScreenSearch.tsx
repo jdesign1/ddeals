@@ -762,6 +762,7 @@ export default function FullScreenSearch() {
       return {
         product,
         bestDeal,
+        matchingDeals,
         relatedStores: alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet),
       };
     }),
@@ -771,8 +772,8 @@ export default function FullScreenSearch() {
     if (!newSpecialDealKeySet) return [];
     const keys = new Set<string>();
     if (trimmedQuery.length >= 3) {
-      for (const product of visibleSearchResults) {
-        for (const deal of applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet)) {
+      for (const { product, matchingDeals } of visibleSearchCards) {
+        for (const deal of matchingDeals) {
           keys.add(getNewSpecialDealKey(product.id, deal.store));
         }
       }
@@ -782,7 +783,7 @@ export default function FullScreenSearch() {
       }
     }
     return [...keys];
-  }, [dealFilter, newSpecialDealKeySet, selectedStores, trimmedQuery, visiblePopularSpecials, visibleSearchResults]);
+  }, [dealFilter, newSpecialDealKeySet, selectedStores, trimmedQuery, visiblePopularSpecials, visibleSearchCards]);
 
   // Do not clear the unread cue when navigation starts. Keep it until the
   // exact-key search has actually produced a result, so a failed load or a
