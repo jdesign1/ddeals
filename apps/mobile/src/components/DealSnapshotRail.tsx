@@ -71,15 +71,16 @@ export default function DealSnapshotRail({
   const isSavings = kind === "savings";
   const title = isSavings ? "Top Savers" : "Dodgiest Deals";
 
+  const selectedCategorySet = useMemo(() => new Set(selectedCategories), [selectedCategories]);
   const rankedDeals = useMemo(() => {
-    const filtered = selectedCategories.length === 0
+    const filtered = selectedCategorySet.size === 0
       ? deals
-      : deals.filter(({ product }) => selectedCategories.includes(groupCategory(product.category, product.name)));
+      : deals.filter(({ product }) => selectedCategorySet.has(groupCategory(product.category, product.name)));
 
     return [...filtered]
       .sort((a, b) => compareDealSnapshotEntries(a, b, kind) || a.product.name.localeCompare(b.product.name))
       .slice(0, 20);
-  }, [deals, kind, selectedCategories]);
+  }, [deals, kind, selectedCategorySet]);
 
   const railRef = useRef<HTMLDivElement>(null);
   const hasMountedRef = useRef(false);
