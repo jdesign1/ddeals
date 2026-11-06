@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, X } from "lucide-react";
@@ -180,7 +180,7 @@ function freshnessLabel(verifiedAt: string | null | undefined): string | null {
   return null;
 }
 
-export default function ListItemProductCard({
+function ListItemProductCard({
   product,
   deal,
   otherSpecialStores = [],
@@ -501,6 +501,8 @@ export default function ListItemProductCard({
     </>
   );
 }
+
+export default memo(ListItemProductCard);
 
 /**
  * Explanation sheet for tapping a greyed-out, not-on-special list item --
