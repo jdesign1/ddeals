@@ -228,6 +228,7 @@ const TABS: {
 ];
 
 const CONTACT_ROUTES = ["/support", "/report-deal"];
+const NOOP_REQUEST_OPEN = () => {};
 
 const BottomNavTab = memo(function BottomNavTab({
   href,
@@ -402,7 +403,7 @@ export default function BottomNav() {
             prefetchRoute={prefetchRoute}
             isSearchActive={isSearchActive}
             closeSearch={closeSearch}
-            requestOpen={requestOpen}
+            requestOpen={href === "/" ? requestOpen : NOOP_REQUEST_OPEN}
           />
         ))}
       </nav>
