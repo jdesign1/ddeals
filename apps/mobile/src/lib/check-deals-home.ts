@@ -257,15 +257,14 @@ function historyKey(row: DealCheckRow): string {
 
 function findCurrentCheckedDeal(product: ProductCard, row: DealCheckRow, selectedStores: string[]): CurrentDeal | undefined {
   const checkedStoreKey = normalizeStoreKey(row.store);
-  const candidates = product.currentDeals.filter(
-    (deal) => deal.isOnSpecial
-      && matchesAnySelectedStore(deal.store, selectedStores)
-      && (normalizeStoreKey(deal.store).includes(checkedStoreKey) || checkedStoreKey.includes(normalizeStoreKey(deal.store))),
-  );
-  return candidates.reduce<CurrentDeal | undefined>(
-    (best, candidate) => (best ? bestSpecialDeal(best, candidate) : candidate),
-    undefined,
-  );
+  let best: CurrentDeal | undefined;
+  for (const deal of product.currentDeals) {
+    if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, selectedStores)) continue;
+    const dealStoreKey = normalizeStoreKey(deal.store);
+    if (!dealStoreKey.includes(checkedStoreKey) && !checkedStoreKey.includes(dealStoreKey)) continue;
+    best = best ? bestSpecialDeal(best, deal) : deal;
+  }
+  return best;
 }
 
 export function buildPreviouslyCheckedChangedDeals(
