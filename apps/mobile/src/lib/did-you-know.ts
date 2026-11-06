@@ -332,20 +332,21 @@ export function buildDidYouKnowCards(
   if (products.length === 0 || maxCards <= 0) return [];
 
   const buckets = createBuckets(products, selectedStores, now);
-  const candidateSets = [
-    realSaverLeader(buckets),
+  const candidateBuilders = [
+    () => realSaverLeader(buckets),
     // Keep a qualified Dodgy discovery card ahead of secondary discovery
     // facts when both would otherwise choose the same category. A red alert
     // should not disappear merely because that category is also fresh.
-    dodgyAlertCards(buckets),
-    historicalValueCards(buckets),
-    freshDealCards(buckets),
-    priceMovementCards(buckets),
+    () => dodgyAlertCards(buckets),
+    () => historicalValueCards(buckets),
+    () => freshDealCards(buckets),
+    () => priceMovementCards(buckets),
   ];
   const cards: DidYouKnowCard[] = [];
   const usedCategories = new Set<string>();
 
-  for (const candidates of candidateSets) {
+  for (const buildCandidates of candidateBuilders) {
+    const candidates = buildCandidates();
     const next = candidates.find((candidate) => !usedCategories.has(candidate.category));
     if (!next) continue;
     cards.push(next);
