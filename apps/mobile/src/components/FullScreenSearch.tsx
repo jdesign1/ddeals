@@ -197,7 +197,12 @@ function applicableDigestDeals(
 }
 
 function cheapestDeal(deals: CurrentDeal[]): CurrentDeal {
-  return deals.reduce((lowest, current) => (current.price < lowest.price ? current : lowest), deals[0]);
+  let lowest = deals[0]!;
+  for (let index = 1; index < deals.length; index += 1) {
+    const current = deals[index]!;
+    if (current.price < lowest.price) lowest = current;
+  }
+  return lowest;
 }
 
 function compareDealsForSort(a: CurrentDeal, b: CurrentDeal, sortBy: CheckDealsSortBy): number {
