@@ -27,6 +27,40 @@ interface FlatDeal {
   deal: CurrentDeal;
 }
 
+const SNAPSHOT_RAIL_LIMIT = 20;
+
+function compareRankedDeals(left: FlatDeal, right: FlatDeal, kind: DealSnapshotKind): number {
+  return compareDealSnapshotEntries(left, right, kind) || left.product.name.localeCompare(right.product.name);
+}
+
+function buildRankedDeals(
+  deals: readonly FlatDeal[],
+  selectedCategorySet: ReadonlySet<string>,
+  kind: DealSnapshotKind,
+): FlatDeal[] {
+  const ranked: FlatDeal[] = [];
+
+  for (const candidate of deals) {
+    if (
+      selectedCategorySet.size > 0
+      && !selectedCategorySet.has(groupCategory(candidate.product.category, candidate.product.name))
+    ) {
+      continue;
+    }
+
+    let insertAt = 0;
+    while (insertAt < ranked.length && compareRankedDeals(candidate, ranked[insertAt]!, kind) >= 0) {
+      insertAt += 1;
+    }
+    if (insertAt >= SNAPSHOT_RAIL_LIMIT) continue;
+
+    ranked.splice(insertAt, 0, candidate);
+    if (ranked.length > SNAPSHOT_RAIL_LIMIT) ranked.pop();
+  }
+
+  return ranked;
+}
+
 function getLatestPublishedAt(deals: readonly FlatDeal[]): string | null {
   let latestTimestamp = Number.NEGATIVE_INFINITY;
   let latestPublishedAt: string | null = null;
@@ -73,13 +107,7 @@ export default function DealSnapshotRail({
 
   const selectedCategorySet = useMemo(() => new Set(selectedCategories), [selectedCategories]);
   const rankedDeals = useMemo(() => {
-    const filtered = selectedCategorySet.size === 0
-      ? deals
-      : deals.filter(({ product }) => selectedCategorySet.has(groupCategory(product.category, product.name)));
-
-    return [...filtered]
-      .sort((a, b) => compareDealSnapshotEntries(a, b, kind) || a.product.name.localeCompare(b.product.name))
-      .slice(0, 20);
+    return buildRankedDeals(deals, selectedCategorySet, kind);
   }, [deals, kind, selectedCategorySet]);
 
   const railRef = useRef<HTMLDivElement>(null);
