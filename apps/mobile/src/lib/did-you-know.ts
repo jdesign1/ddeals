@@ -132,27 +132,19 @@ function createBuckets(
     } satisfies CategoryBucket;
     buckets.set(category, bucket);
 
-    const assessedDeals: CurrentDeal[] = [];
+    let hasAssessedDeal = false;
     let hasRealDeal = false;
     let hasDodgyDeal = false;
-    for (const deal of product.currentDeals) {
-      if (!isCurrentSpecial(deal) || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
-      if (!isAssessedDeal(deal)) continue;
-      assessedDeals.push(deal);
-      if (deal.dealType === "Real Deal") hasRealDeal = true;
-      if (deal.dealType === "Dodgy Deal") hasDodgyDeal = true;
-      if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
-    }
-    if (assessedDeals.length === 0) continue;
-
-    bucket.assessedProducts.add(product.id);
-    if (hasRealDeal) bucket.realProducts.add(product.id);
-    if (hasDodgyDeal) bucket.dodgyProducts.add(product.id);
-
     let hasHistory = false;
     let bestHistoricalValue: number | null = null;
     let bestPriceChangeCount: number | null = null;
-    for (const deal of assessedDeals) {
+    for (const deal of product.currentDeals) {
+      if (!isCurrentSpecial(deal) || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
+      if (!isAssessedDeal(deal)) continue;
+      hasAssessedDeal = true;
+      if (deal.dealType === "Real Deal") hasRealDeal = true;
+      if (deal.dealType === "Dodgy Deal") hasDodgyDeal = true;
+      if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
       if (!isHistoryReady(deal)) continue;
       hasHistory = true;
 
@@ -168,6 +160,11 @@ function createBuckets(
         bestPriceChangeCount = changes;
       }
     }
+    if (!hasAssessedDeal) continue;
+
+    bucket.assessedProducts.add(product.id);
+    if (hasRealDeal) bucket.realProducts.add(product.id);
+    if (hasDodgyDeal) bucket.dodgyProducts.add(product.id);
     if (hasHistory) bucket.trackedHistoryProducts.add(product.id);
 
     if (bestHistoricalValue !== null) {
