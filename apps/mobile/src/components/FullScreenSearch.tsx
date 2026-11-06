@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -426,7 +426,7 @@ export default function FullScreenSearch() {
   // supermarket does not immediately undo the user's scroll-up reveal.
   const toolbarStoreSelectionGuardRef = useRef(false);
   const toolbarStoreSelectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const setToolbarVisible = (visible: boolean) => {
+  const setToolbarVisible = useCallback((visible: boolean) => {
     // No-op, guard untouched, if the toolbar is already in the requested
     // state (peer review catch, 2026-08-17) -- without this check, every
     // single `onScroll` event while sitting at/near the top of the list
@@ -445,7 +445,7 @@ export default function FullScreenSearch() {
     toolbarAnimationTimeoutRef.current = setTimeout(() => {
       toolbarAnimationGuardRef.current = false;
     }, TOOLBAR_TRANSITION_MS + 50);
-  };
+  }, [isToolbarVisible]);
   useEffect(() => {
     return () => {
       if (toolbarAnimationTimeoutRef.current) clearTimeout(toolbarAnimationTimeoutRef.current);
@@ -547,6 +547,10 @@ export default function FullScreenSearch() {
   // this effect was fully subsumed, not just broken.
 
   const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
+  const availableStores = useMemo(
+    () => availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key })),
+    [availableStoreKeys],
+  );
   const homeCategories = useMemo(
     () => {
       const categories = new Set<string>();
@@ -577,7 +581,7 @@ export default function FullScreenSearch() {
     return counts;
   }, [products, selectedStores, categoryDealFilter]);
 
-  const handleStoreToggle = (storeId: string) => {
+  const handleStoreToggle = useCallback((storeId: string) => {
     const currentScrollTop = scrollContainerRef.current?.scrollTop ?? lastScrollTopRef.current;
     toolbarScrollAnchorRef.current = currentScrollTop;
     lastScrollTopRef.current = currentScrollTop;
@@ -592,7 +596,7 @@ export default function FullScreenSearch() {
     setToolbarVisible(true);
 
     toggleStore(storeId);
-  };
+  }, [setToolbarVisible, toggleStore]);
 
   const newSpecialDealKeySet = useMemo(
     () => (sessionNewSpecialDealKeys?.length ? new Set(sessionNewSpecialDealKeys) : null),
@@ -828,7 +832,7 @@ export default function FullScreenSearch() {
       <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
         <SupermarketPicker
           selectedStoreIds={selectedStores}
-          stores={availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key }))}
+          stores={availableStores}
           onToggleStore={handleStoreToggle}
         />
         <FilterTrigger

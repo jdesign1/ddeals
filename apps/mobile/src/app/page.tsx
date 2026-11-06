@@ -225,6 +225,11 @@ function CheckDealsToolbar({
   toolbarVisible,
   toolbarHeaderHidden,
 }: CheckDealsToolbarProps) {
+  const availableStores = useMemo(
+    () => availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id })),
+    [availableStoreKeys],
+  );
+
   return (
     <>
       <div className={`px-5 pb-0 pt-4 ${surfaceClassName}`}>
@@ -265,7 +270,7 @@ function CheckDealsToolbar({
             )}
             <div className="min-w-[8.75rem] shrink-0">
               <SupermarketPicker
-                stores={availableStoreKeys.map((id) => ({ id, label: STORE_DISPLAY_FALLBACK[id] || id }))}
+                stores={availableStores}
                 selectedStoreIds={selectedStores}
                 onToggleStore={onToggleStore}
               />

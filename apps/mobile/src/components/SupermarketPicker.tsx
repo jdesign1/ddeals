@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -10,7 +10,7 @@ import StoreLogoBadge from "@/components/StoreLogoBadge";
 type StoreOption = { id: string; label: string };
 
 /** Shared supermarket selector for Check Deals and full-screen search. */
-export default function SupermarketPicker({
+function SupermarketPicker({
   selectedStoreIds,
   stores,
   onToggleStore,
@@ -132,3 +132,5 @@ export default function SupermarketPicker({
     </>
   );
 }
+
+export default memo(SupermarketPicker);
