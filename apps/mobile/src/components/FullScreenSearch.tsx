@@ -750,8 +750,9 @@ export default function FullScreenSearch() {
       product,
       bestDeal,
       relatedStores: alsoSpecialStoresForPopular(product, bestDeal, newSpecialDealKeySet),
+      onNavigate: () => pauseForDealNavigation(product.id, bestDeal.store),
     })),
-    [newSpecialDealKeySet, visiblePopularSpecials],
+    [newSpecialDealKeySet, pauseForDealNavigation, visiblePopularSpecials],
   );
   const visibleSearchCards = useMemo(
     () => visibleSearchResults.map((product) => {
@@ -764,9 +765,10 @@ export default function FullScreenSearch() {
         bestDeal,
         matchingDeals,
         relatedStores: alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet),
+        onNavigate: () => pauseForDealNavigation(product.id, bestDeal.store),
       };
     }),
-    [dealFilter, newSpecialDealKeySet, resultsSortBy, selectedStores, visibleSearchResults],
+    [dealFilter, newSpecialDealKeySet, pauseForDealNavigation, resultsSortBy, selectedStores, visibleSearchResults],
   );
   const displayedNewDealKeys = useMemo(() => {
     if (!newSpecialDealKeySet) return [];
@@ -1327,7 +1329,7 @@ export default function FullScreenSearch() {
                       </div>
                     </div>
                     <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
-                      {visiblePopularCards.map(({ product, bestDeal, relatedStores }, index) => (
+                      {visiblePopularCards.map(({ product, bestDeal, relatedStores, onNavigate }, index) => (
                         <ProductListCard
                           key={`${product.id}-${bestDeal.store}`}
                           product={product}
@@ -1336,7 +1338,7 @@ export default function FullScreenSearch() {
                           storeLinePrefix={null}
                           alsoSpecialStores={relatedStores}
                           isNew={isNewToYouMode}
-                          onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
+                          onNavigate={onNavigate}
                         />
                       ))}
                     </div>
@@ -1512,7 +1514,7 @@ export default function FullScreenSearch() {
 
                   <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                     {sortedProducts.length > 0 ? (
-                      visibleSearchCards.map(({ product, bestDeal, relatedStores }, index) => (
+                      visibleSearchCards.map(({ product, bestDeal, relatedStores, onNavigate }, index) => (
                           <ProductListCard
                             key={product.id}
                             product={product}
@@ -1521,7 +1523,7 @@ export default function FullScreenSearch() {
                             storeLinePrefix={null}
                             alsoSpecialStores={relatedStores}
                             isNew={isNewToYouMode}
-                            onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
+                            onNavigate={onNavigate}
                           />
                       ))
                     ) : (
