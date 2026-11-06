@@ -21,7 +21,7 @@ import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
-import { useSearch } from "@/lib/search-context";
+import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
@@ -422,13 +422,9 @@ export default function HomePage() {
     cataloguePublicationComplete,
     error,
     retry: retryProducts,
-    isActive: isSearchActive,
-    selectedStores,
-    toggleStore,
-    dealFilter,
-    setDealFilter,
-    openSearchForFilter,
-  } = useSearch();
+  } = useSearchCatalogue();
+  const { isActive: isSearchActive, openSearchForFilter } = useSearchNavigation();
+  const { selectedStores, toggleStore, dealFilter, setDealFilter } = useSearchBrowse();
   const {
     session,
     user,

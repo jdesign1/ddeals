@@ -152,8 +152,17 @@ export interface SearchCatalogueContextValue {
   cataloguePublicationComplete: boolean;
 }
 
+/** Shared browse filters used by Check Deals and full-screen search. */
+export interface SearchBrowseContextValue {
+  selectedStores: string[];
+  toggleStore: (storeId: string) => void;
+  dealFilter: DealFilter;
+  setDealFilter: (filter: DealFilter) => void;
+}
+
 const SearchContext = createContext<SearchContextValue | null>(null);
 const SearchCatalogueContext = createContext<SearchCatalogueContextValue | null>(null);
+const SearchBrowseContext = createContext<SearchBrowseContextValue | null>(null);
 interface SearchNavigationContextValue {
   isActive: boolean;
   closeSearch: () => void;
@@ -581,6 +590,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     [catalogueLiveLoaded, cataloguePublicationComplete, cataloguePublicationKey, error, loadingProducts, products, retry],
   );
 
+  const browseValue = useMemo<SearchBrowseContextValue>(
+    () => ({ selectedStores, toggleStore, dealFilter, setDealFilter }),
+    [selectedStores, toggleStore, dealFilter, setDealFilter],
+  );
+
   const navigationValue = useMemo<SearchNavigationContextValue>(
     () => ({ isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner }),
     [isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner],
@@ -597,13 +611,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   return (
     <SearchContext.Provider value={value}>
       <SearchCatalogueContext.Provider value={catalogueValue}>
-        <SearchNavigationContext.Provider value={navigationValue}>
-          <SearchInputContext.Provider value={inputValue}>
-            <SearchShellContext.Provider value={shellValue}>
-              {children}
-            </SearchShellContext.Provider>
-          </SearchInputContext.Provider>
-        </SearchNavigationContext.Provider>
+        <SearchBrowseContext.Provider value={browseValue}>
+          <SearchNavigationContext.Provider value={navigationValue}>
+            <SearchInputContext.Provider value={inputValue}>
+              <SearchShellContext.Provider value={shellValue}>
+                {children}
+              </SearchShellContext.Provider>
+            </SearchInputContext.Provider>
+          </SearchNavigationContext.Provider>
+        </SearchBrowseContext.Provider>
       </SearchCatalogueContext.Provider>
     </SearchContext.Provider>
   );
@@ -618,6 +634,12 @@ export function useSearch(): SearchContextValue {
 export function useSearchCatalogue(): SearchCatalogueContextValue {
   const ctx = useContext(SearchCatalogueContext);
   if (!ctx) throw new Error("useSearchCatalogue must be used within SearchProvider");
+  return ctx;
+}
+
+export function useSearchBrowse(): SearchBrowseContextValue {
+  const ctx = useContext(SearchBrowseContext);
+  if (!ctx) throw new Error("useSearchBrowse must be used within SearchProvider");
   return ctx;
 }
 
