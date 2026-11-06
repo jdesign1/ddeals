@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { CheaperAlternative } from "@dodgey-deals/shared";
@@ -22,6 +23,15 @@ export default function CheaperAlternativesSection({
   verdictButtonBorderClass,
   onToggle,
 }: CheaperAlternativesSectionProps) {
+  const visibleAlternatives = useMemo(() => {
+    if (!showCarousel) return [];
+    return alternatives.map((alternative) => ({
+      ...alternative,
+      productUrl: findDealForStore(alternative.product.currentDeals, alternative.store)?.productUrl
+        || getStoreProductUrl(alternative.store, alternative.product.name),
+    }));
+  }, [alternatives, showCarousel]);
+
   if (alternatives.length === 0) return null;
 
   return (
@@ -61,7 +71,7 @@ export default function CheaperAlternativesSection({
           >
             <div className="pt-3">
               <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
-                {alternatives.map(({ product: alternativeProduct, store, price, saving }) => {
+                {visibleAlternatives.map(({ product: alternativeProduct, store, price, saving, productUrl }) => {
                   return (
                     <div key={`${alternativeProduct.id}-${store}`}>
                       <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-300 bg-white px-5 pb-5 pt-7 shadow-xs">
@@ -95,7 +105,7 @@ export default function CheaperAlternativesSection({
                           Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
                         </span>
                         <a
-                          href={findDealForStore(alternativeProduct.currentDeals, store)?.productUrl || getStoreProductUrl(store, alternativeProduct.name)}
+                          href={productUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="dd-type-control mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-stone-400 bg-white py-2.5 text-center text-stone-700 transition-all hover:bg-stone-50"
