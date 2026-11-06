@@ -591,11 +591,12 @@ export default function HomePage() {
     const counts = new Map<string, number>();
     const categories = new Set<string>();
     for (const product of products) {
-      const qualifying = product.currentDeals.filter(
-        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, dealFilter)
-      );
-      if (!qualifying.length) continue;
-      const best = qualifying.reduce((a, b) => (b.price < a.price ? b : a));
+      let best: CurrentDeal | undefined;
+      for (const deal of product.currentDeals) {
+        if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, dealFilter)) continue;
+        if (!best || deal.price < best.price) best = deal;
+      }
+      if (!best) continue;
       all.push({ product, deal: best });
 
       const category = groupCategory(product.category, product.name);
