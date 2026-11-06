@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { DEAL_FILTER_OPTIONS, type DealFilter } from "@/lib/deal-filters";
 
 /**
@@ -8,7 +9,7 @@ import { DEAL_FILTER_OPTIONS, type DealFilter } from "@/lib/deal-filters";
  * so they follow Apple's iOS guidance for segmented controls rather than
  * behaving like the app-level bottom tab bar.
  */
-export default function DealFilterTabs({
+function DealFilterTabs({
   value,
   onChange,
   buttonIdPrefix,
@@ -48,3 +49,5 @@ export default function DealFilterTabs({
     </div>
   );
 }
+
+export default memo(DealFilterTabs);
