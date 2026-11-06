@@ -1,8 +1,9 @@
 "use client";
 
 import { MapPin, Quote, Store } from "lucide-react";
+import { memo } from "react";
 
-export default function CommunityProfileDetails({
+function CommunityProfileDetails({
   city,
   favoriteStoreBranch,
   quote,
@@ -50,3 +51,5 @@ export default function CommunityProfileDetails({
     </div>
   );
 }
+
+export default memo(CommunityProfileDetails);
