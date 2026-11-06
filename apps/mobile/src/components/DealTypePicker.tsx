@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { memo, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -15,7 +15,7 @@ const OPTIONS: ReadonlyArray<{ value: WatchlistDealTypeFilter; label: string }> 
   { value: "Dodgy Deal", label: "Dodgy Deals" },
 ];
 
-export default function DealTypePicker({
+function DealTypePicker({
   value,
   onChange,
 }: {
@@ -167,3 +167,5 @@ export default function DealTypePicker({
     </>
   );
 }
+
+export default memo(DealTypePicker);
