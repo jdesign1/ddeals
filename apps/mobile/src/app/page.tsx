@@ -352,18 +352,25 @@ function buildSnapshotDealGroups(
     for (const deal of product.currentDeals) {
       if (!matchesAnySelectedStore(deal.store, selectedStores)) continue;
       const isNewDeal = Boolean(newDealKeys?.has(getNewSpecialDealKey(product.id, deal.store)));
-      if (isEligibleForDealSnapshot(deal, "savings") && (!bestSavings || compareDealSnapshotEntries({ deal }, { deal: bestSavings }, "savings") < 0)) {
-        bestSavings = deal;
+      const snapshotEntry = { deal };
+      const isSavingsEligible = isEligibleForDealSnapshot(deal, "savings");
+      if (isSavingsEligible) {
+        if (!bestSavings || compareDealSnapshotEntries(snapshotEntry, { deal: bestSavings }, "savings") < 0) {
+          bestSavings = deal;
+        }
+        if (isNewDeal && (!bestNewSavings || compareDealSnapshotEntries(snapshotEntry, { deal: bestNewSavings }, "savings") < 0)) {
+          bestNewSavings = deal;
+        }
       }
-      if (isEligibleForDealSnapshot(deal, "dodgy") && (!bestDodgy || compareDealSnapshotEntries({ deal }, { deal: bestDodgy }, "dodgy") < 0)) {
-        bestDodgy = deal;
-      }
-      if (!isNewDeal) continue;
-      if (isEligibleForDealSnapshot(deal, "savings") && (!bestNewSavings || compareDealSnapshotEntries({ deal }, { deal: bestNewSavings }, "savings") < 0)) {
-        bestNewSavings = deal;
-      }
-      if (isEligibleForDealSnapshot(deal, "dodgy") && (!bestNewDodgy || compareDealSnapshotEntries({ deal }, { deal: bestNewDodgy }, "dodgy") < 0)) {
-        bestNewDodgy = deal;
+
+      const isDodgyEligible = isEligibleForDealSnapshot(deal, "dodgy");
+      if (isDodgyEligible) {
+        if (!bestDodgy || compareDealSnapshotEntries(snapshotEntry, { deal: bestDodgy }, "dodgy") < 0) {
+          bestDodgy = deal;
+        }
+        if (isNewDeal && (!bestNewDodgy || compareDealSnapshotEntries(snapshotEntry, { deal: bestNewDodgy }, "dodgy") < 0)) {
+          bestNewDodgy = deal;
+        }
       }
     }
     if (bestSavings) savings.push({ product, deal: bestSavings });
