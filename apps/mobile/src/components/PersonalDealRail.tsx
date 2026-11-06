@@ -36,6 +36,17 @@ export default function PersonalDealRail({
 }) {
   const railRef = useRef<HTMLDivElement>(null);
   const visibleDeals = useMemo(() => deals.slice(0, 20), [deals]);
+  const visibleCards = useMemo(
+    () => visibleDeals.map((item) => {
+      const kind = snapshotKindForDeal(item);
+      return {
+        item,
+        kind,
+        amount: getDealSnapshotAmount(item.deal, kind),
+      };
+    }),
+    [visibleDeals],
+  );
   const styles = toneStyles[tone];
 
   if (visibleDeals.length === 0) return null;
@@ -74,9 +85,7 @@ export default function PersonalDealRail({
         role="region"
         aria-label={`${title} products`}
       >
-        {visibleDeals.map((item, index) => {
-          const kind = snapshotKindForDeal(item);
-          const amount = getDealSnapshotAmount(item.deal, kind);
+        {visibleCards.map(({ item, kind, amount }, index) => {
           return (
             <ProductListCard
               key={`${id}-${item.product.id}-${item.deal.store}`}
