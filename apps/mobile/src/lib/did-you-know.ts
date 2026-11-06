@@ -132,18 +132,22 @@ function createBuckets(
     } satisfies CategoryBucket;
     buckets.set(category, bucket);
 
-    const deals = product.currentDeals.filter(
-      (deal) => isCurrentSpecial(deal) && matchesAnySelectedStore(deal.store, storeFilters),
-    );
-    const assessedDeals = deals.filter(isAssessedDeal);
+    const assessedDeals: CurrentDeal[] = [];
+    let hasRealDeal = false;
+    let hasDodgyDeal = false;
+    for (const deal of product.currentDeals) {
+      if (!isCurrentSpecial(deal) || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
+      if (!isAssessedDeal(deal)) continue;
+      assessedDeals.push(deal);
+      if (deal.dealType === "Real Deal") hasRealDeal = true;
+      if (deal.dealType === "Dodgy Deal") hasDodgyDeal = true;
+      if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
+    }
     if (assessedDeals.length === 0) continue;
 
     bucket.assessedProducts.add(product.id);
-    if (assessedDeals.some((deal) => deal.dealType === "Real Deal")) bucket.realProducts.add(product.id);
-    if (assessedDeals.some((deal) => deal.dealType === "Dodgy Deal")) bucket.dodgyProducts.add(product.id);
-    for (const deal of assessedDeals) {
-      if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
-    }
+    if (hasRealDeal) bucket.realProducts.add(product.id);
+    if (hasDodgyDeal) bucket.dodgyProducts.add(product.id);
 
     let hasHistory = false;
     let bestHistoricalValue: number | null = null;
