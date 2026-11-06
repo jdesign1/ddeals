@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Info, X } from "lucide-react";
 import ButtonSpinner from "@/components/ButtonSpinner";
 import {
@@ -20,6 +20,7 @@ import {
   type ListItemProductMeta,
   type ListItemRow,
   type ListRow,
+  type CurrentDeal,
   type ProductCard as ProductCardData,
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
@@ -127,6 +128,86 @@ function otherSpecialStores(product: ProductCardData, displayedStore: string): s
   }
   return [...stores.values()];
 }
+
+const WatchlistProductRow = memo(function WatchlistProductRow({
+  entry,
+  card,
+  meta,
+  deal,
+  isLocked,
+  unreadAlertsByListItem,
+  markListItemViewed,
+  removeProduct,
+  reload,
+}: {
+  entry: WatchlistItem;
+  card?: ProductCardData;
+  meta?: ListItemProductMeta;
+  deal?: CurrentDeal;
+  isLocked: boolean;
+  unreadAlertsByListItem: ReadonlyMap<string, ReadonlyArray<UnreadListAlert>>;
+  markListItemViewed: (listId: string, listItemId: string) => Promise<void>;
+  removeProduct: (productId: string) => Promise<void>;
+  reload: (showLoading?: boolean) => Promise<void>;
+}) {
+  const sourceItem = entry.sourceItems[0]!;
+
+  const unreadUpdates = useMemo(
+    () => entry.sourceItems.flatMap((item) => unreadAlertsByListItem.get(`${item.list_id}:${item.id}`) ?? []),
+    [entry.sourceItems, unreadAlertsByListItem],
+  );
+  const isUnread = unreadUpdates.length > 0;
+  const onDealAssessmentOpen = useCallback(
+    () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id))),
+    [entry.sourceItems, markListItemViewed],
+  );
+  const onRemove = useCallback(() => void removeProduct(entry.productId), [entry.productId, removeProduct]);
+  const onAfterNotOnSpecial = useCallback(() => void reload(false), [reload]);
+  const relatedStores = useMemo(
+    () => card && deal?.isOnSpecial ? otherSpecialStores(card, deal.store) : [],
+    [card, deal],
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{ duration: 0.24, ease: "easeOut" }}
+      data-watchlist-product-id={entry.productId}
+      className={`dd-deferred-card${isLocked ? " grayscale" : ""}`}
+    >
+      <UnreadListItem
+        listId={sourceItem.list_id}
+        productId={entry.productId}
+        isUnread={!isLocked && isUnread}
+        updates={unreadUpdates}
+        updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
+        onUpdateClick={isLocked ? undefined : onDealAssessmentOpen}
+      >
+        {card && deal ? (
+          <ListItemProductCard
+            product={card}
+            deal={deal}
+            isLocked={isLocked}
+            otherSpecialStores={relatedStores}
+            quantity={entry.item.quantity}
+            onRemove={onRemove}
+            removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
+            onDealAssessmentOpen={isLocked ? undefined : onDealAssessmentOpen}
+            onAfterNotOnSpecial={onAfterNotOnSpecial}
+          />
+        ) : (
+          <FallbackWatchlistRow
+            label={meta?.name ?? "Product"}
+            image={card?.image ?? meta?.image_url}
+            onRemove={onRemove}
+          />
+        )}
+      </UnreadListItem>
+    </motion.div>
+  );
+});
 
 export default function ListsPage() {
   const { user, loading: authLoading, openAuthSheet } = useAuth();
@@ -466,45 +547,19 @@ export default function ListsPage() {
     const card = itemCards.get(entry.productId);
     const meta = productMeta.get(entry.productId);
     const deal = card ? watchlistItemDealForFilter(entry, itemCards, filterSupermarkets, selectedDealType) : undefined;
-    const sourceItem = entry.sourceItems[0];
-    const unreadUpdates = entry.sourceItems.flatMap((item) => unreadAlertsByListItem.get(`${item.list_id}:${item.id}`) ?? []);
-    const isUnread = unreadUpdates.length > 0;
-    const onDealAssessmentOpen = () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
     return (
-      <motion.div
+      <WatchlistProductRow
         key={entry.productId}
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -8, scale: 0.98 }}
-        transition={{ duration: 0.24, ease: "easeOut" }}
-        data-watchlist-product-id={entry.productId}
-        className={`dd-deferred-card${isLocked ? " grayscale" : ""}`}
-      >
-        <UnreadListItem
-          listId={sourceItem.list_id}
-          productId={entry.productId}
-          isUnread={!isLocked && isUnread}
-          updates={unreadUpdates}
-          updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
-          onUpdateClick={isLocked ? undefined : onDealAssessmentOpen}
-        >
-          {card && deal ? (
-            <ListItemProductCard
-              product={card}
-              deal={deal}
-              isLocked={isLocked}
-              otherSpecialStores={deal.isOnSpecial ? otherSpecialStores(card, deal.store) : []}
-              quantity={entry.item.quantity}
-              onRemove={() => void removeProduct(entry.productId)}
-              removeLabel={`Remove ${meta?.name ?? "product"} from Watchlist`}
-              onDealAssessmentOpen={isLocked ? undefined : onDealAssessmentOpen}
-              onAfterNotOnSpecial={() => void reload(false)}
-            />
-          ) : (
-            <FallbackWatchlistRow label={meta?.name ?? "Product"} image={card?.image ?? meta?.image_url} onRemove={() => void removeProduct(entry.productId)} />
-          )}
-        </UnreadListItem>
-      </motion.div>
+        entry={entry}
+        card={card}
+        meta={meta}
+        deal={deal}
+        isLocked={isLocked}
+        unreadAlertsByListItem={unreadAlertsByListItem}
+        markListItemViewed={markListItemViewed}
+        removeProduct={removeProduct}
+        reload={reload}
+      />
     );
   };
 
