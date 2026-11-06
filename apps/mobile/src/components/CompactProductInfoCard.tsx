@@ -1,5 +1,6 @@
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
+import { memo } from "react";
 
 interface CompactProductInfoCardProps {
   productName: string;
@@ -11,7 +12,7 @@ interface CompactProductInfoCardProps {
 }
 
 /** Compact product context shared by shopper-tip and evidence sheets. */
-export default function CompactProductInfoCard({
+function CompactProductInfoCard({
   productName,
   productBrand,
   productImage,
@@ -43,3 +44,5 @@ export default function CompactProductInfoCard({
     </div>
   );
 }
+
+export default memo(CompactProductInfoCard);
