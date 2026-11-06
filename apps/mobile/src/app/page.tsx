@@ -714,12 +714,13 @@ export default function HomePage() {
   const topDealsAvailableCategories = topDealsCategorySummary.availableCategories;
   const topDealsCategoryCounts = topDealsCategorySummary.categoryCounts;
 
+  const dealCategoryFilterSet = useMemo(() => new Set(dealCategoryFilter), [dealCategoryFilter]);
   const filteredDeals = useMemo<FlatDeal[]>(() => {
-    const categoryFiltered = dealCategoryFilter.length === 0
+    const categoryFiltered = dealCategoryFilterSet.size === 0
       ? dealsAllCategories
-      : dealsAllCategories.filter(({ product }) => dealCategoryFilter.includes(groupCategory(product.category, product.name)));
+      : dealsAllCategories.filter(({ product }) => dealCategoryFilterSet.has(groupCategory(product.category, product.name)));
     return categoryFiltered;
-  }, [dealCategoryFilter, dealsAllCategories]);
+  }, [dealCategoryFilterSet, dealsAllCategories]);
 
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
