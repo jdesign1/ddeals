@@ -335,26 +335,43 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
   return sorted;
 }
 
-function buildSnapshotDeals(
+function buildSnapshotDealGroups(
   products: ProductCard[],
   selectedStores: string[],
-  kind: DealSnapshotKind,
   newDealKeys?: ReadonlySet<string>,
-): FlatDeal[] {
-  const snapshotDeals: FlatDeal[] = [];
+): { savings: FlatDeal[]; dodgy: FlatDeal[]; newSavings: FlatDeal[]; newDodgy: FlatDeal[] } {
+  const savings: FlatDeal[] = [];
+  const dodgy: FlatDeal[] = [];
+  const newSavings: FlatDeal[] = [];
+  const newDodgy: FlatDeal[] = [];
   for (const product of products) {
-    const qualifying = product.currentDeals.filter(
-      (deal) => matchesAnySelectedStore(deal.store, selectedStores)
-        && isEligibleForDealSnapshot(deal, kind)
-        && (!newDealKeys || newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
-    );
-    if (!qualifying.length) continue;
-    const best = qualifying.reduce((currentBest, candidate) =>
-      compareDealSnapshotEntries({ deal: candidate }, { deal: currentBest }, kind) < 0 ? candidate : currentBest
-    );
-    snapshotDeals.push({ product, deal: best });
+    let bestSavings: CurrentDeal | undefined;
+    let bestDodgy: CurrentDeal | undefined;
+    let bestNewSavings: CurrentDeal | undefined;
+    let bestNewDodgy: CurrentDeal | undefined;
+    for (const deal of product.currentDeals) {
+      if (!matchesAnySelectedStore(deal.store, selectedStores)) continue;
+      const isNewDeal = Boolean(newDealKeys?.has(getNewSpecialDealKey(product.id, deal.store)));
+      if (isEligibleForDealSnapshot(deal, "savings") && (!bestSavings || compareDealSnapshotEntries({ deal }, { deal: bestSavings }, "savings") < 0)) {
+        bestSavings = deal;
+      }
+      if (isEligibleForDealSnapshot(deal, "dodgy") && (!bestDodgy || compareDealSnapshotEntries({ deal }, { deal: bestDodgy }, "dodgy") < 0)) {
+        bestDodgy = deal;
+      }
+      if (!isNewDeal) continue;
+      if (isEligibleForDealSnapshot(deal, "savings") && (!bestNewSavings || compareDealSnapshotEntries({ deal }, { deal: bestNewSavings }, "savings") < 0)) {
+        bestNewSavings = deal;
+      }
+      if (isEligibleForDealSnapshot(deal, "dodgy") && (!bestNewDodgy || compareDealSnapshotEntries({ deal }, { deal: bestNewDodgy }, "dodgy") < 0)) {
+        bestNewDodgy = deal;
+      }
+    }
+    if (bestSavings) savings.push({ product, deal: bestSavings });
+    if (bestDodgy) dodgy.push({ product, deal: bestDodgy });
+    if (bestNewSavings) newSavings.push({ product, deal: bestNewSavings });
+    if (bestNewDodgy) newDodgy.push({ product, deal: bestNewDodgy });
   }
-  return snapshotDeals;
+  return { savings, dodgy, newSavings, newDodgy };
 }
 
 function getSnapshotCategoryCounts(deals: FlatDeal[]): Map<string, number> {
@@ -625,10 +642,12 @@ export default function HomePage() {
     });
     setIsWorthAnotherLookSheetOpen(false);
   }, [visiblePreviouslyCheckedDeals, worthAnotherLookStorageKey]);
-  const allTopSavingsDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "savings"),
-    [products, selectedStores]
+  const activeSnapshotNewDealKeys = newForYouFilterActive ? newDealKeySet : undefined;
+  const snapshotDealGroups = useMemo(
+    () => buildSnapshotDealGroups(products, selectedStores, activeSnapshotNewDealKeys),
+    [activeSnapshotNewDealKeys, products, selectedStores],
   );
+  const allTopSavingsDeals = snapshotDealGroups.savings;
   const forYouCategoryDeals = useMemo(
     () => preferredCategories.map((category) => ({
       category,
@@ -640,18 +659,9 @@ export default function HomePage() {
     ? activeForYouCategory
     : preferredCategories[0] ?? null;
   const visibleForYouDeals = forYouCategoryDeals.find(({ category }) => category === visibleForYouCategory)?.deals ?? [];
-  const allWorstDodgyDeals = useMemo(
-    () => buildSnapshotDeals(products, selectedStores, "dodgy"),
-    [products, selectedStores]
-  );
-  const newTopSavingsDeals = useMemo(
-    () => newForYouFilterActive ? buildSnapshotDeals(products, selectedStores, "savings", newDealKeySet) : [],
-    [newDealKeySet, newForYouFilterActive, products, selectedStores]
-  );
-  const newWorstDodgyDeals = useMemo(
-    () => newForYouFilterActive ? buildSnapshotDeals(products, selectedStores, "dodgy", newDealKeySet) : [],
-    [newDealKeySet, newForYouFilterActive, products, selectedStores]
-  );
+  const allWorstDodgyDeals = snapshotDealGroups.dodgy;
+  const newTopSavingsDeals = newForYouFilterActive ? snapshotDealGroups.newSavings : [];
+  const newWorstDodgyDeals = newForYouFilterActive ? snapshotDealGroups.newDodgy : [];
   const newDealsRealSearchOptions = useMemo(
     () => newForYouFilterActive && newDealKeys.length > 0
       ? { focus: false, dealKeys: newDealKeys, sortBy: "biggest-saver" as const }
