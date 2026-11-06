@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   matchesAnySelectedStore,
@@ -319,6 +319,8 @@ function CheckDealsToolbar({
   );
 }
 
+const MemoizedCheckDealsToolbar = memo(CheckDealsToolbar);
+
 /** The home deal rail keeps the same lightweight sort controls across all
  * three deal assessment filters. */
 function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
@@ -448,11 +450,11 @@ export default function HomePage() {
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
-  const setTopDealsCategories = (categories: string[]) => {
+  const setTopDealsCategories = useCallback((categories: string[]) => {
     const nextCategories = persistSnapshotCategories("savings", categories);
     persistSnapshotCategories("dodgy", nextCategories);
     setTopDealsCategoriesState(nextCategories);
-  };
+  }, []);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [isCheckDealsHeaderHidden, setIsCheckDealsHeaderHidden] = useState(false);
   const newDealKeys = useMemo(() => digest?.allDealKeys ?? [], [digest]);
@@ -740,11 +742,11 @@ export default function HomePage() {
   const toolbarVisible = keepTopDealsToolbarVisible || isToolbarVisible;
   const toolbarHeaderHidden = !keepTopDealsToolbarVisible && isCheckDealsHeaderHidden;
 
-  const handleDealFilterChange = (filter: DealFilter) => {
+  const handleDealFilterChange = useCallback((filter: DealFilter) => {
     setDealFilter(filter);
     setDealSortBy(getDefaultDealSort(filter));
     if (filter !== "all") setIsNewForYouFilter(false);
-  };
+  }, [setDealFilter]);
 
   const handleForYouSeeAll = useCallback(() => {
     if (!visibleForYouCategory) return;
@@ -767,11 +769,15 @@ export default function HomePage() {
     setIsCategoryInterestsSheetOpen(true);
   }, []);
 
-  const handleDealSortChange = (sortBy: DealSortBy) => {
+  const handleDealSortChange = useCallback((sortBy: DealSortBy) => {
     setDealSortBy(sortBy);
     const linkedFilter = getDealFilterForSort(sortBy);
     if (linkedFilter) setDealFilter(linkedFilter);
-  };
+  }, [setDealFilter]);
+
+  const handleToggleNewForYouFilter = useCallback(() => {
+    setIsNewForYouFilter((active) => !active);
+  }, []);
 
   const handleSummaryStoreSelect = useCallback((store: CheckDealsSummaryStore) => {
     toggleStore("all");
@@ -877,12 +883,12 @@ export default function HomePage() {
           (2026-08-21) brings that parity to BEHAVIOR too, not just look --
           see `selectedStores`'s own doc comment above for the full "why". */}
       {!isSearchActive && !loadingProducts && !error && dealFilter !== "all" && (
-        <CheckDealsToolbar
+        <MemoizedCheckDealsToolbar
           dealFilter={dealFilter}
           surfaceClassName={dealFilterTintClass || "bg-stone-100"}
           newDealsCount={newDealsCount}
           newForYouFilterActive={newForYouFilterActive}
-          onToggleNewForYouFilter={() => setIsNewForYouFilter((active) => !active)}
+          onToggleNewForYouFilter={handleToggleNewForYouFilter}
           availableStoreKeys={availableStoreKeys}
           selectedStores={selectedStores}
           onToggleStore={toggleStore}
@@ -1016,12 +1022,12 @@ export default function HomePage() {
                 }
                 return (
                   <section key={belt} className="flex flex-col gap-2">
-                    <CheckDealsToolbar
+                    <MemoizedCheckDealsToolbar
                       dealFilter="all"
                       surfaceClassName="bg-stone-100"
                       newDealsCount={newDealsCount}
                       newForYouFilterActive={newForYouFilterActive}
-                      onToggleNewForYouFilter={() => setIsNewForYouFilter((active) => !active)}
+                      onToggleNewForYouFilter={handleToggleNewForYouFilter}
                       availableStoreKeys={availableStoreKeys}
                       selectedStores={selectedStores}
                       onToggleStore={toggleStore}
