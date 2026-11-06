@@ -756,6 +756,15 @@ select {
   display: none;
 }
 
+/* Long Watchlist/All Checks rails can contain many cards. Let the browser
+   skip layout and paint work for cards well outside the viewport while
+   reserving a realistic amount of scroll space for each card. Browsers that
+   do not support content-visibility simply ignore this hint. */
+.dd-deferred-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
+}
+
 /* Keep vertical result drags responsive when they begin on a tappable card.
    The momentum hint is still useful on iOS WebViews where the scroll surface
    can otherwise feel sticky during a slow swipe. */

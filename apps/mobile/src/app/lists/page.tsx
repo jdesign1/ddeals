@@ -478,7 +478,7 @@ export default function ListsPage() {
         exit={{ opacity: 0, y: -8, scale: 0.98 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
         data-watchlist-product-id={entry.productId}
-        className={isLocked ? "grayscale" : undefined}
+        className={`dd-deferred-card${isLocked ? " grayscale" : ""}`}
       >
         <UnreadListItem
           listId={sourceItem.list_id}
