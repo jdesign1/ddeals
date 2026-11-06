@@ -79,7 +79,7 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
       type="button"
       onClick={onBrowse}
       aria-label={`${card.supportingText} Explore ${card.category} deals.`}
-      className={`group flex h-[10.5rem] w-full cursor-pointer flex-col rounded-3xl border px-5 py-4 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
+      className={`group flex h-[11rem] w-full cursor-pointer flex-col rounded-3xl border px-5 py-4 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
       <span className="flex h-14 w-14 shrink-0 items-center">
         <Image

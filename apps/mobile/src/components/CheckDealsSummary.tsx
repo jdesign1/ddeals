@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LayoutGrid } from "lucide-react";
+import { ChevronRight, LayoutGrid } from "lucide-react";
 import type { CheckDealsSummaryStore } from "@/lib/check-deals-home";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
@@ -127,7 +127,10 @@ export default function CheckDealsSummary({
                 className="flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
               >
                 <StoreLogoBadge store={key} variant="ranking" decorative />
-                <span className="text-xl font-black leading-none tabular-nums text-fair-800">{visibleCounts[key]}</span>
+                <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-fair-800">
+                  <span>{visibleCounts[key]}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
+                </span>
               </button>
             );
           })}
