@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { BarChartRow } from "@dodgey-deals/shared";
@@ -62,7 +62,7 @@ import StoreLogoBadge from "@/components/StoreLogoBadge";
  *    (the green best-price ring) — that indicator was deliberately removed
  *    2026-08-1x per Jay's own ask; not this session's call to reverse.
  */
-export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
+function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -216,3 +216,5 @@ export default function StoreCompareChart({ rows }: { rows: BarChartRow[] }) {
     </div>
   );
 }
+
+export default memo(StoreCompareChart);
