@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, type PointerEvent } from "react";
+import { memo, useEffect, useRef, type PointerEvent } from "react";
 import type {
   DealSnapshotKind,
   ProductCard as ProductCardData,
@@ -92,7 +92,7 @@ export interface ProductListCardProps {
   dataOnboarding?: string;
 }
 
-export default function ProductListCard({
+function ProductListCard({
   product,
   deal,
   imageLoading = "lazy",
@@ -397,3 +397,5 @@ export default function ProductListCard({
     </div>
   );
 }
+
+export default memo(ProductListCard);
