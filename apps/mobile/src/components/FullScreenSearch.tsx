@@ -167,6 +167,7 @@ const POPULAR_PAGE_SIZE_DODGY = 24;
 const SEARCH_RESULTS_PAGE_SIZE = 30;
 const EMPTY_SEARCH_CATEGORIES: string[] = [];
 const EMPTY_CATEGORY_DEAL_COUNTS = new Map<string, number>();
+const EMPTY_POPULAR_ENTRIES: PopularEntry[] = [];
 
 // Scroll-direction toolbar show/hide tuning -- see `isToolbarVisible`'s own
 // comment below for what these gate.
@@ -572,7 +573,7 @@ export default function FullScreenSearch() {
   // catalogue refreshes or a store/deal filter changes.
   const categoryDealFilter = dealFilter;
   const searchFilterData = useMemo(() => {
-    if (!shouldRenderOverlay) {
+    if (!shouldRenderOverlay || categorySheetTarget === null) {
       return { homeCategories: EMPTY_SEARCH_CATEGORIES, categoryDealCounts: EMPTY_CATEGORY_DEAL_COUNTS };
     }
     const categories = new Set<string>();
@@ -587,7 +588,7 @@ export default function FullScreenSearch() {
       if (hasMatchingDeal) categoryDealCounts.set(cat, (categoryDealCounts.get(cat) ?? 0) + 1);
     }
     return { homeCategories: [...categories].sort(), categoryDealCounts };
-  }, [products, selectedStores, categoryDealFilter, shouldRenderOverlay]);
+  }, [products, selectedStores, categoryDealFilter, shouldRenderOverlay, categorySheetTarget]);
   const { homeCategories, categoryDealCounts } = searchFilterData;
 
   const handleStoreToggle = useCallback((storeId: string) => {
@@ -620,7 +621,7 @@ export default function FullScreenSearch() {
   // Popular specials -- the same filtered, cheapest deal per product used by
   // Check Deals. Shown before the user has typed 3+ characters.
   const popularSpecials = useMemo<PopularEntry[]>(() => {
-    if (!shouldRenderOverlay) return [];
+    if (!shouldRenderOverlay || deferredTrimmedQuery.length >= 3) return EMPTY_POPULAR_ENTRIES;
     const out: PopularEntry[] = [];
     for (const product of products) {
       const qualifyingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
@@ -633,7 +634,7 @@ export default function FullScreenSearch() {
       out.push({ product, bestDeal });
     }
     return out;
-  }, [products, selectedStores, dealFilter, newSpecialDealKeySet, shouldRenderOverlay]);
+  }, [products, selectedStores, dealFilter, newSpecialDealKeySet, shouldRenderOverlay, deferredTrimmedQuery]);
 
   const popularCategoryFilterSet = useMemo(() => new Set(popularCategoryFilter), [popularCategoryFilter]);
   const sortedPopularSpecials = useMemo(() => {
