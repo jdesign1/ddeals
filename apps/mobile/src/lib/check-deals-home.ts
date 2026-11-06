@@ -266,12 +266,12 @@ export function buildWatchlistSpecialDeals(
 
   for (const product of products) {
     if (!savedProductIds.has(product.id)) continue;
-    const candidates = product.currentDeals.filter(
-      (deal) => deal.isOnSpecial && matchesAnySelectedStore(deal.store, storeFilters),
-    );
-    if (candidates.length === 0) continue;
-    const best = candidates.reduce(bestSpecialDeal);
-    items.push({ product, deal: best });
+    let best: CurrentDeal | undefined;
+    for (const deal of product.currentDeals) {
+      if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
+      best = best ? bestSpecialDeal(best, deal) : deal;
+    }
+    if (best) items.push({ product, deal: best });
   }
 
   return items
