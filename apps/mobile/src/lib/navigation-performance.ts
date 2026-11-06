@@ -32,6 +32,20 @@ export function markNavigationCommit(pathname: string): void {
   performance.clearMeasures(measure);
   performance.mark(commit);
   performance.measure(measure, start, commit);
-  performance.clearMarks(start);
   performance.clearMarks(commit);
+}
+
+/** Measure when the first post-navigation frame has been scheduled. */
+export function markNavigationFirstFrame(pathname: string): void {
+  if (typeof performance === "undefined") return;
+  const start = markName("start", pathname);
+  if (performance.getEntriesByName(start).length === 0) return;
+
+  const frame = markName("first-frame", pathname);
+  const measure = `${NAVIGATION_MARK_PREFIX}:tap-to-first-frame:${encodeURIComponent(pathname)}`;
+  performance.clearMeasures(measure);
+  performance.mark(frame);
+  performance.measure(measure, start, frame);
+  performance.clearMarks(start);
+  performance.clearMarks(frame);
 }

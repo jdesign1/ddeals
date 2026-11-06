@@ -6,7 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useSearchShell } from "@/lib/search-context";
-import { markNavigationCommit } from "@/lib/navigation-performance";
+import { markNavigationCommit, markNavigationFirstFrame } from "@/lib/navigation-performance";
 import {
   isNearScrollBottom,
   CHECK_DEALS_SCROLL_TO_TOP_EVENT,
@@ -201,6 +201,11 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
     };
+  }, [pathname]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => markNavigationFirstFrame(pathname));
+    return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
 
   // Switching deal tabs changes the content beneath the sticky chrome. Start
