@@ -7,7 +7,7 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { useSearchNavigation } from "@/lib/search-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
-import { useNewSpecials } from "@/lib/new-specials-context";
+import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useRouter } from "next/navigation";
 import { markNavigationStart } from "@/lib/navigation-performance";
 
@@ -326,7 +326,8 @@ export default function BottomNav() {
   const { isActive: isSearchActive, closeSearch } = useSearchNavigation();
   const { hasUnreadWatchlistUpdates } = useNotifications();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
-  const { hasPendingDigest, requestOpen } = useNewSpecials();
+  const { hasPendingDigest } = useNewSpecialsData();
+  const { requestOpen } = useNewSpecialsActions();
   const hasBottomNav = pathname !== null
     && !pathname.startsWith("/deal/")
     && pathname !== "/settings"

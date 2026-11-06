@@ -10,7 +10,7 @@ import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
-import { useNewSpecials } from "@/lib/new-specials-context";
+import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useSearchCatalogue } from "@/lib/search-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useWatchlist } from "@/lib/watchlist-context";
@@ -29,7 +29,8 @@ export default function AppDrawer() {
   } = useNavigationDrawer();
   const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
   const { unreadAlerts } = useNotifications();
-  const { canOpenDetectiveCase, requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecials();
+  const { canOpenDetectiveCase } = useNewSpecialsData();
+  const { requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecialsActions();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
   const { products, catalogueLiveLoaded } = useSearchCatalogue();
   const { savedProductIds, savedItemsReady } = useWatchlist();

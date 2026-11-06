@@ -23,7 +23,7 @@ import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSh
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
-import { useNewSpecials } from "@/lib/new-specials-context";
+import { useNewSpecialsData } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
 import {
   DEFAULT_CHECK_DEALS_BELT_ORDER,
@@ -433,7 +433,7 @@ export default function HomePage() {
     updateCategoryInterests,
     dismissCategoryInterestsPrompt,
   } = useAuth();
-  const { digest } = useNewSpecials();
+  const { digest } = useNewSpecialsData();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.

@@ -75,6 +75,34 @@ interface NewSpecialsContextValue {
   markReviewed: (dealKeys?: string[], filter?: DealFilter) => void;
 }
 
+export type NewSpecialsDataContextValue = Pick<
+  NewSpecialsContextValue,
+  | "digest"
+  | "detectiveCase"
+  | "hasUnplayedDetectiveCase"
+  | "canOpenDetectiveCase"
+  | "hasPendingDigest"
+  | "popupEligible"
+  | "popupSuppressedUntilHomeExit"
+  | "openRequested"
+  | "previewSummary"
+  | "previewOpenRequested"
+  | "detectiveCaseOpenRequested"
+>;
+
+export type NewSpecialsActionsContextValue = Pick<
+  NewSpecialsContextValue,
+  | "requestOpen"
+  | "requestPreviewOpen"
+  | "requestDetectiveCaseOpen"
+  | "consumeOpenRequest"
+  | "consumePreviewOpenRequest"
+  | "consumeDetectiveCaseOpenRequest"
+  | "markPopupShown"
+  | "markDetectiveCasePlayed"
+  | "markReviewed"
+>;
+
 interface StoredNewSpecialsState {
   scope: string | null;
   snapshot: NewSpecialsSnapshot | null;
@@ -86,6 +114,8 @@ interface StoredNewSpecialsState {
 }
 
 const NewSpecialsContext = createContext<NewSpecialsContextValue | null>(null);
+const NewSpecialsDataContext = createContext<NewSpecialsDataContextValue | null>(null);
+const NewSpecialsActionsContext = createContext<NewSpecialsActionsContextValue | null>(null);
 
 function snapshotFingerprint(snapshot: NewSpecialsSnapshot): string {
   return JSON.stringify(snapshot.deals);
@@ -614,11 +644,63 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     [canOpenDetectiveCase, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
   );
 
-  return <NewSpecialsContext.Provider value={value}>{children}</NewSpecialsContext.Provider>;
+  const dataValue = useMemo<NewSpecialsDataContextValue>(
+    () => ({
+      digest,
+      detectiveCase,
+      hasUnplayedDetectiveCase: Boolean(detectiveCase),
+      canOpenDetectiveCase,
+      hasPendingDigest: Boolean(pendingDigest?.total),
+      popupEligible,
+      popupSuppressedUntilHomeExit,
+      openRequested,
+      previewSummary,
+      previewOpenRequested,
+      detectiveCaseOpenRequested,
+    }),
+    [canOpenDetectiveCase, detectiveCase, detectiveCaseOpenRequested, digest, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary],
+  );
+
+  const actionsValue = useMemo<NewSpecialsActionsContextValue>(
+    () => ({
+      requestOpen,
+      requestPreviewOpen,
+      requestDetectiveCaseOpen,
+      consumeOpenRequest,
+      consumePreviewOpenRequest,
+      consumeDetectiveCaseOpenRequest,
+      markPopupShown,
+      markDetectiveCasePlayed,
+      markReviewed,
+    }),
+    [consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, markDetectiveCasePlayed, markPopupShown, markReviewed, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
+  );
+
+  return (
+    <NewSpecialsContext.Provider value={value}>
+      <NewSpecialsDataContext.Provider value={dataValue}>
+        <NewSpecialsActionsContext.Provider value={actionsValue}>
+          {children}
+        </NewSpecialsActionsContext.Provider>
+      </NewSpecialsDataContext.Provider>
+    </NewSpecialsContext.Provider>
+  );
 }
 
 export function useNewSpecials(): NewSpecialsContextValue {
   const context = useContext(NewSpecialsContext);
   if (!context) throw new Error("useNewSpecials must be used inside NewSpecialsProvider");
+  return context;
+}
+
+export function useNewSpecialsData(): NewSpecialsDataContextValue {
+  const context = useContext(NewSpecialsDataContext);
+  if (!context) throw new Error("useNewSpecialsData must be used inside NewSpecialsProvider");
+  return context;
+}
+
+export function useNewSpecialsActions(): NewSpecialsActionsContextValue {
+  const context = useContext(NewSpecialsActionsContext);
+  if (!context) throw new Error("useNewSpecialsActions must be used inside NewSpecialsProvider");
   return context;
 }

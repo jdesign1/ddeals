@@ -34,7 +34,7 @@ import {
   type CheckDealsSortBy,
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
-import { useNewSpecials } from "@/lib/new-specials-context";
+import { useNewSpecialsActions } from "@/lib/new-specials-context";
 import { useInfiniteReveal, INFINITE_REVEAL_MAX_ITEMS } from "@/hooks/useInfiniteReveal";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
@@ -305,7 +305,7 @@ export default function FullScreenSearch() {
     searchSortOverride,
     searchCategoryOverride,
   } = useSearch();
-  const { markReviewed } = useNewSpecials();
+  const { markReviewed } = useNewSpecialsActions();
   const { isGridLayout } = useCardLayout();
   const pathname = usePathname();
 
