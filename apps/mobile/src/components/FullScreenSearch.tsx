@@ -192,8 +192,13 @@ function applicableDigestDeals(
   filter: DealFilter,
   dealKeys: Set<string> | null,
 ): CurrentDeal[] {
-  const applicable = applicableDealsFor(product, selectedStores, filter);
-  return dealKeys ? applicable.filter((deal) => dealKeys.has(getNewSpecialDealKey(product.id, deal.store))) : applicable;
+  const applicable: CurrentDeal[] = [];
+  for (const deal of product.currentDeals) {
+    if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, filter)) continue;
+    if (dealKeys && !dealKeys.has(getNewSpecialDealKey(product.id, deal.store))) continue;
+    applicable.push(deal);
+  }
+  return applicable;
 }
 
 function cheapestDeal(deals: CurrentDeal[]): CurrentDeal {
