@@ -105,7 +105,10 @@ export default function SpecialsPage() {
     maxItems: INFINITE_REVEAL_MAX_ITEMS,
     resetKey: filteredDeals,
   });
-  const visibleDeals = filteredDeals.slice(0, visibleCount);
+  const visibleDeals = useMemo(
+    () => filteredDeals.slice(0, visibleCount),
+    [filteredDeals, visibleCount],
+  );
 
   return (
     <main className="flex flex-col gap-4 pb-6">
