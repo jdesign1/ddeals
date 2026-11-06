@@ -71,6 +71,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [watchlistNavStateReady, setWatchlistNavStateReady] = useState(false);
   const registeredTokenRef = useRef<string | null>(null);
   const viewedRequestsRef = useRef(new Set<string>());
+  const currentNotificationUserIdRef = useRef<string | undefined>(userId);
+  const refreshNotificationsInFlightRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
+  const refreshNotificationsTokenRef = useRef<symbol | null>(null);
+
+  useEffect(() => {
+    // Never carry unread alerts or an in-flight account refresh across a
+    // logout/account switch. The next account gets a clean notification load.
+    currentNotificationUserIdRef.current = userId;
+    const timer = window.setTimeout(() => {
+      refreshNotificationsInFlightRef.current = null;
+      refreshNotificationsTokenRef.current = null;
+      setUnreadAlerts([]);
+      setPushEnabledState(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,71 +117,101 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   const refreshNotifications = useCallback(async () => {
-    if (!client || !user || subscriptionLoading) {
-      setPushEnabledState(false);
-      setUnreadAlerts([]);
-      return;
-    }
+    const refreshIdentityKey = `${user?.id ?? "signed-out"}:${isPremium ? "premium" : "free"}:${subscriptionLoading ? "loading" : "ready"}`;
+    const inFlight = refreshNotificationsInFlightRef.current;
+    if (inFlight?.key === refreshIdentityKey) return inFlight.promise;
+    const requestToken = Symbol(refreshIdentityKey);
+    refreshNotificationsTokenRef.current = requestToken;
+    const isCurrentRefresh = () => refreshNotificationsTokenRef.current === requestToken
+      && currentNotificationUserIdRef.current === userId;
 
-    let unlockedWatchlistProductIds: ReadonlySet<string> | null = null;
-    let watchlistIds: ReadonlySet<string> | null = null;
-    if (!isPremium) {
-      try {
-        const lists = await fetchUserLists(client);
-        const currentWatchlistIds = lists
-          .filter((list) => list.name.trim().toLowerCase() === "watchlist")
-          .map((list) => list.id);
-        watchlistIds = new Set(currentWatchlistIds);
-        const items = await fetchItemsForLists(client, currentWatchlistIds);
-        unlockedWatchlistProductIds = getUnlockedWatchlistProductIdsFromRows(items, false);
-      } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("[notifications] Could not load free Watchlist entitlement", error);
-        }
+    const request = (async () => {
+      if (!client || !user || subscriptionLoading) {
+        if (!isCurrentRefresh()) return;
         setPushEnabledState(false);
         setUnreadAlerts([]);
         return;
       }
-    }
 
-    let pushEnabled = false;
-    if (isPremium) {
-      const preferenceResult = await client
-        .from("notification_preferences")
-        .select("push_enabled")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (preferenceResult.error && process.env.NODE_ENV !== "production") {
-        console.warn("[notifications] Could not load preference", preferenceResult.error.message);
-      }
-      pushEnabled = Boolean(preferenceResult.data?.push_enabled);
-    }
-    const nextUnreadAlerts: UnreadListAlert[] = [];
-    for (let offset = 0; ; offset += 500) {
-      const unreadResult = await client
-        .from("list_price_alert_events")
-        .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,previous_verdict,price,previous_price,created_at")
-        .is("viewed_at", null)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + 499);
-      if (unreadResult.error) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("[notifications] Could not load unread updates", unreadResult.error.message);
+      let unlockedWatchlistProductIds: ReadonlySet<string> | null = null;
+      let watchlistIds: ReadonlySet<string> | null = null;
+      if (!isPremium) {
+        try {
+          const lists = await fetchUserLists(client);
+          const currentWatchlistIds = lists
+            .filter((list) => list.name.trim().toLowerCase() === "watchlist")
+            .map((list) => list.id);
+          watchlistIds = new Set(currentWatchlistIds);
+          const items = await fetchItemsForLists(client, currentWatchlistIds);
+          unlockedWatchlistProductIds = getUnlockedWatchlistProductIdsFromRows(items, false);
+        } catch (error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[notifications] Could not load free Watchlist entitlement", error);
+          }
+          if (!isCurrentRefresh()) return;
+          setPushEnabledState(false);
+          setUnreadAlerts([]);
+          return;
         }
-        return;
       }
-      const page = (unreadResult.data ?? []) as UnreadListAlert[];
-      nextUnreadAlerts.push(...page);
-      if (page.length < 500) break;
-    }
 
-    setPushEnabledState(pushEnabled);
-    setUnreadAlerts(nextUnreadAlerts.filter((alert) => (
-      isPremium
-      || (watchlistIds?.has(alert.list_id) && unlockedWatchlistProductIds?.has(alert.product_id))
-    )));
-  }, [client, isPremium, subscriptionLoading, user]);
+      let pushEnabled = false;
+      if (isPremium) {
+        const preferenceResult = await client
+          .from("notification_preferences")
+          .select("push_enabled")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (preferenceResult.error && process.env.NODE_ENV !== "production") {
+          console.warn("[notifications] Could not load preference", preferenceResult.error.message);
+        }
+        pushEnabled = Boolean(preferenceResult.data?.push_enabled);
+      }
+      const nextUnreadAlerts: UnreadListAlert[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const unreadResult = await client
+          .from("list_price_alert_events")
+          .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,previous_verdict,price,previous_price,created_at")
+          .is("viewed_at", null)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + 499);
+        if (unreadResult.error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[notifications] Could not load unread updates", unreadResult.error.message);
+          }
+          return;
+        }
+        const page = (unreadResult.data ?? []) as UnreadListAlert[];
+        nextUnreadAlerts.push(...page);
+        if (page.length < 500) break;
+      }
+
+      if (!isCurrentRefresh()) return;
+      setPushEnabledState(pushEnabled);
+      const filteredUnreadAlerts = nextUnreadAlerts.filter((alert) => (
+        isPremium
+        || (watchlistIds?.has(alert.list_id) && unlockedWatchlistProductIds?.has(alert.product_id))
+      ));
+      setUnreadAlerts((current) => {
+        if (current.length === filteredUnreadAlerts.length && current.every((alert, index) => alert.id === filteredUnreadAlerts[index]?.id)) {
+          return current;
+        }
+        return filteredUnreadAlerts;
+      });
+    })();
+
+    const requestEntry = { key: refreshIdentityKey, promise: request };
+    refreshNotificationsInFlightRef.current = requestEntry;
+    try {
+      await request;
+    } finally {
+      if (refreshNotificationsInFlightRef.current === requestEntry) {
+        refreshNotificationsInFlightRef.current = null;
+        if (refreshNotificationsTokenRef.current === requestToken) refreshNotificationsTokenRef.current = null;
+      }
+    }
+  }, [client, isPremium, subscriptionLoading, user, userId]);
 
   const refreshPushPermission = useCallback(async (): Promise<PermissionState | null> => {
     if (!isNativeIos()) {
