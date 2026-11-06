@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { ArrowRight, ShieldAlert } from "lucide-react";
 import type { DealFilter } from "@/lib/deal-filters";
 import { formatCompactUpdatedText } from "@/lib/check-deals-home";
@@ -71,7 +71,7 @@ function CategoryMixChart({ categories }: { categories: MarketWatchCategory[] })
   );
 }
 
-export default function MarketWatchPanel({ stats, onBrowse }: MarketWatchPanelProps) {
+function MarketWatchPanel({ stats, onBrowse }: MarketWatchPanelProps) {
   const updatedText = formatCompactUpdatedText(stats.updatedAt);
   const updatedLabel = stats.updatedAt
     ? `Live data, updated ${updatedText === "now" ? "just now" : updatedText ? `${updatedText} ago` : "recently"}`
@@ -157,3 +157,5 @@ export default function MarketWatchPanel({ stats, onBrowse }: MarketWatchPanelPr
     </div>
   );
 }
+
+export default memo(MarketWatchPanel);
