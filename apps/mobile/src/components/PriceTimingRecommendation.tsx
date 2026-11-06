@@ -1,4 +1,5 @@
 import { buildPriceTimingSignal, type PriceHistoryPoint, type PriceTimingAction, type PriceTimingSignal } from "@dodgey-deals/shared";
+import { memo } from "react";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
 export interface PriceTimingSeries {
@@ -62,7 +63,7 @@ function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore
   );
 }
 
-export default function PriceTimingRecommendation({ series }: { series: PriceTimingSeries[] }) {
+function PriceTimingRecommendation({ series }: { series: PriceTimingSeries[] }) {
   if (series.length === 0) return null;
 
   const showStore = series.length > 1;
@@ -74,3 +75,5 @@ export default function PriceTimingRecommendation({ series }: { series: PriceTim
     </div>
   );
 }
+
+export default memo(PriceTimingRecommendation);
