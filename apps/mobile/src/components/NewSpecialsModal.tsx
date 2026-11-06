@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Gamepad2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import DealDetectiveQuiz from "@/components/DealDetectiveQuiz";
@@ -25,7 +25,7 @@ interface NewSpecialsModalProps {
   gameOnly?: boolean;
 }
 
-export default function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, detectiveStreakScope, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
+function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, detectiveStreakScope, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
   // The portal unlocks as soon as `open` flips false. The exiting backdrop and
   // panel still cover the page visually, while the pending navigation action
   // waits for the animation to finish (or the fallback timer below).
@@ -334,3 +334,5 @@ export default function NewSpecialsModal({ open, summary, onClose, onSelectFilte
     </BottomSheetPortal>
   );
 }
+
+export default memo(NewSpecialsModal);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -15,6 +15,7 @@ import { useNewSpecials } from "@/lib/new-specials-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearchInput } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
+import type { DealFilter } from "@/lib/deal-filters";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 const CONTEXT_HEADER_ROUTES = ["/account", "/how-it-works", "/settings", "/privacy", "/terms", "/support", "/report-deal"];
@@ -133,19 +134,23 @@ export default function AppHeader({
   const profileDisplayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "";
   const avatarInitial = profileDisplayName.charAt(0).toUpperCase();
   const profileAvatarLoading = Boolean(user && profileLoading && !profile);
-  const handleNewSpecialsClose = () => {
+  const handleNewSpecialsClose = useCallback(() => {
     setIsNewSpecialsModalOpen(false);
     setNewSpecialsModalGameOnly(false);
     setNewSpecialsModalPreview(false);
-  };
-  const handleShowAllNewDeals = (dealKeys: string[]) => {
+  }, []);
+  const handleShowAllNewDeals = useCallback((dealKeys: string[]) => {
     setIsNewSpecialsModalOpen(false);
     openSearchForFilter("all", {
       focus: false,
       dealKeys,
       sortBy: "biggest-saver",
     });
-  };
+  }, [openSearchForFilter]);
+  const handleSelectNewSpecialsFilter = useCallback((filter: DealFilter, dealKeys: string[]) => {
+    setIsNewSpecialsModalOpen(false);
+    openSearchForFilter(filter, { focus: false, dealKeys });
+  }, [openSearchForFilter]);
 
   return (
     <>
@@ -220,10 +225,7 @@ export default function AppHeader({
           open={isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalPreview || pathname === "/") && !popupSuppressedUntilHomeExit}
           summary={newSpecialsModalSummary}
           onClose={handleNewSpecialsClose}
-          onSelectFilter={(filter, dealKeys) => {
-            setIsNewSpecialsModalOpen(false);
-            openSearchForFilter(filter, { focus: false, dealKeys });
-          }}
+          onSelectFilter={handleSelectNewSpecialsFilter}
           onSelectAllNewDeals={handleShowAllNewDeals}
           quizCase={detectiveCase}
           detectiveStreakScope={detectiveStreakScope}
