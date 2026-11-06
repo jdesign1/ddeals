@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 /**
  * Shared loading-state indicator (2026-08-09, per Jay's ask): the mascot
@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
  * state internally so the fade actually gets to play before it's removed
  * from the DOM.
  */
-export default function LoadingMascot({
+function LoadingMascot({
   loading,
   overlay = false,
 }: {
@@ -72,3 +72,5 @@ export default function LoadingMascot({
     </div>
   ) : mascot;
 }
+
+export default memo(LoadingMascot);
