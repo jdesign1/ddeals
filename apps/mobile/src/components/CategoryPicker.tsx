@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { CATEGORY_SECTIONS } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import FilterTrigger from "@/components/FilterTrigger";
 
-export default function CategoryPicker({
+function CategoryPicker({
   selectedCategories,
   onChange,
   availableCategories,
@@ -158,3 +158,5 @@ export default function CategoryPicker({
     </>
   );
 }
+
+export default memo(CategoryPicker);
