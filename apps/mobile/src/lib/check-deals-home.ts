@@ -134,29 +134,34 @@ function storeKeyForSummary(store: string): CheckDealsSummaryStore | null {
 export function buildCurrentSpecialCounts(
   products: readonly ProductCard[],
 ): Record<CheckDealsSummaryStore, number> {
+  return buildCurrentSpecialSummary(products).counts;
+}
+
+export interface CurrentSpecialSummary {
+  counts: Record<CheckDealsSummaryStore, number>;
+  latestPublishedAt: string | null;
+}
+
+/**
+ * Build the Check Deals supermarket counts and freshness timestamp together.
+ * Both values come from the same catalogue-wide traversal on the home page.
+ */
+export function buildCurrentSpecialSummary(
+  products: readonly ProductCard[],
+): CurrentSpecialSummary {
   const productIdsByStore = new Map<CheckDealsSummaryStore, Set<string>>(
     CHECK_DEALS_SUMMARY_STORES.map((store) => [store, new Set<string>()]),
   );
-
-  for (const product of products) {
-    for (const deal of product.currentDeals) {
-      if (!deal.isOnSpecial) continue;
-      const store = storeKeyForSummary(deal.store);
-      if (store) productIdsByStore.get(store)?.add(product.id);
-    }
-  }
-
-  return Object.fromEntries(
-    CHECK_DEALS_SUMMARY_STORES.map((store) => [store, productIdsByStore.get(store)?.size ?? 0]),
-  ) as Record<CheckDealsSummaryStore, number>;
-}
-
-export function getLatestPublishedAt(products: readonly ProductCard[]): string | null {
   let latestTimestamp = Number.NEGATIVE_INFINITY;
   let latestPublishedAt: string | null = null;
 
   for (const product of products) {
     for (const deal of product.currentDeals) {
+      if (deal.isOnSpecial) {
+        const store = storeKeyForSummary(deal.store);
+        if (store) productIdsByStore.get(store)?.add(product.id);
+      }
+
       for (const candidate of [deal.scrapedAt, deal.specialsVerifiedAt]) {
         const timestamp = Date.parse(candidate ?? "");
         if (Number.isFinite(timestamp) && timestamp > latestTimestamp) {
@@ -167,7 +172,16 @@ export function getLatestPublishedAt(products: readonly ProductCard[]): string |
     }
   }
 
-  return latestPublishedAt;
+  return {
+    counts: Object.fromEntries(
+      CHECK_DEALS_SUMMARY_STORES.map((store) => [store, productIdsByStore.get(store)?.size ?? 0]),
+    ) as Record<CheckDealsSummaryStore, number>,
+    latestPublishedAt,
+  };
+}
+
+export function getLatestPublishedAt(products: readonly ProductCard[]): string | null {
+  return buildCurrentSpecialSummary(products).latestPublishedAt;
 }
 
 /** Compact live-feed copy for the summary card. The screen has its own

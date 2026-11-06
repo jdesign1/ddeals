@@ -6,6 +6,7 @@ import {
   buildForYouCategoryDeals,
   buildForYouCategoryDealsByCategory,
   buildCurrentSpecialCounts,
+  buildCurrentSpecialSummary,
   buildNewSinceLastVisitDeals,
   buildPreviouslyCheckedChangedDeals,
   buildWatchlistSpecialDeals,
@@ -63,6 +64,18 @@ test("summary counts are unique active products per supermarket", () => {
   ];
 
   assert.deepEqual(buildCurrentSpecialCounts(products), { newworld: 2, paknsave: 1, woolworths: 0 });
+});
+
+test("current special summary shares counts and freshness from one catalogue", () => {
+  const products = [
+    product("active", "Active", [deal({ scrapedAt: "2026-10-16T00:00:00.000Z", specialsVerifiedAt: "2026-10-16T01:00:00.000Z" })]),
+    product("inactive", "Inactive", [deal({ isOnSpecial: false, scrapedAt: "2026-10-16T02:00:00.000Z", specialsVerifiedAt: "2026-10-16T03:00:00.000Z" })]),
+  ];
+
+  assert.deepEqual(buildCurrentSpecialSummary(products), {
+    counts: { newworld: 1, paknsave: 0, woolworths: 0 },
+    latestPublishedAt: "2026-10-16T03:00:00.000Z",
+  });
 });
 
 test("compact freshness text stays short and omits ago", () => {

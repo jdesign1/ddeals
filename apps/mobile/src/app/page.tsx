@@ -33,11 +33,10 @@ import {
 } from "@/lib/check-deals-belt-order";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
-  buildCurrentSpecialCounts,
+  buildCurrentSpecialSummary,
   buildForYouCategoryDealsByCategory,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
-  getLatestPublishedAt,
   getPreviouslyCheckedDealKey,
   type CheckDealsSummaryStore,
 } from "@/lib/check-deals-home";
@@ -614,12 +613,13 @@ export default function HomePage() {
   const categoryCounts = dealCatalogueSummary.categoryCounts;
   const availableCategories = dealCatalogueSummary.availableCategories;
 
-  const currentSpecialCounts = useMemo(() => buildCurrentSpecialCounts(products), [products]);
+  const currentSpecialSummary = useMemo(() => buildCurrentSpecialSummary(products), [products]);
+  const currentSpecialCounts = currentSpecialSummary.counts;
   const didYouKnowCards = useMemo(
     () => buildDidYouKnowCards(products, selectedStores),
     [products, selectedStores],
   );
-  const latestPublishedAt = useMemo(() => getLatestPublishedAt(products), [products]);
+  const latestPublishedAt = currentSpecialSummary.latestPublishedAt;
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
   const updatedLabel = latestPublishedAt
     ? `Live data, updated ${updatedText === "now" ? "just now" : `${updatedText} ago`}`
