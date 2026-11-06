@@ -50,6 +50,7 @@ export default function UnreadListItem({
   const [viewedUpdateId, setViewedUpdateId] = useState<string | null>(null);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerIconRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const tooltipId = `watchlist-update-${listId}-${productId}`;
@@ -66,7 +67,7 @@ export default function UnreadListItem({
       }
     };
     const updatePosition = () => {
-      const trigger = triggerRef.current;
+      const trigger = triggerIconRef.current ?? triggerRef.current;
       if (trigger) setPopoverStyle(popoverPosition(trigger.getBoundingClientRect()));
     };
     const frame = window.requestAnimationFrame(() => {
@@ -98,7 +99,7 @@ export default function UnreadListItem({
 
   const openTooltip = () => {
     if (!updates.length) return;
-    const trigger = triggerRef.current;
+    const trigger = triggerIconRef.current ?? triggerRef.current;
     if (trigger) setPopoverStyle(popoverPosition(trigger.getBoundingClientRect()));
     setVisibleUpdates(updates);
     setViewedUpdateId(latestUpdateId);
@@ -132,7 +133,6 @@ export default function UnreadListItem({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p id={`${tooltipId}-title`} className="dd-type-meta dd-type-meta-strong text-stone-900">What changed</p>
-            <p className="mt-0.5 text-[11px] font-semibold text-stone-500">New Watchlist update</p>
           </div>
           <button
             ref={closeButtonRef}
@@ -150,10 +150,22 @@ export default function UnreadListItem({
         <div id={`${tooltipId}-description`} className="mt-2 flex flex-col gap-2">
           {visibleUpdates.slice(0, 3).map((update) => {
             const copy = getWatchlistUpdateCopy(update);
+            const previousPriceValue = update.previous_price;
+            const isPriceIncrease = previousPriceValue !== null && update.price > previousPriceValue;
+            const previousPrice = isPriceIncrease ? `$${previousPriceValue.toFixed(2)}` : null;
+            const currentPrice = isPriceIncrease ? `$${update.price.toFixed(2)}` : null;
             return (
               <div key={update.id}>
-                <p className={`text-sm font-extrabold ${copy.toneClass}`}>{copy.title}</p>
-                <p className="mt-0.5 text-[12px] leading-4 text-stone-700">{copy.description}</p>
+                <p className={`text-sm font-extrabold ${isPriceIncrease ? "text-alert-700" : copy.toneClass}`}>
+                  {isPriceIncrease ? "Price Increase" : copy.title}
+                </p>
+                {isPriceIncrease && previousPrice && currentPrice ? (
+                  <p className="mt-0.5 text-[12px] leading-4 text-stone-700">
+                    from <strong className="font-extrabold text-stone-900">{previousPrice}</strong> to <strong className="font-extrabold text-stone-900">{currentPrice}</strong> at {update.store_name}.
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-[12px] leading-4 text-stone-700">{copy.description}</p>
+                )}
               </div>
             );
           })}
@@ -182,11 +194,11 @@ export default function UnreadListItem({
           onPointerDown={(event) => event.stopPropagation()}
           ref={triggerRef}
           aria-label={updateAriaLabel}
-          aria-expanded={false}
+          aria-expanded={isTooltipOpen}
           aria-controls={tooltipId}
           className="absolute right-0 top-0 z-30 flex h-11 w-11 cursor-pointer items-start justify-end rounded-full p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alert-600 focus-visible:ring-offset-1"
         >
-          <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-alert-50 text-alert-700 shadow-xs ring-1 ring-alert-200 transition-colors hover:bg-alert-100">
+          <span ref={triggerIconRef} aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-alert-50 text-alert-700 shadow-xs ring-1 ring-alert-200 transition-colors hover:bg-alert-100">
             <Info className="h-4 w-4" strokeWidth={2.5} />
           </span>
         </button>

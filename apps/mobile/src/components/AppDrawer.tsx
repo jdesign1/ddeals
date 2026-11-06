@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, FlaskConical, Gamepad2, X } from "lucide-react";
+import { Bell, FlaskConical, Gamepad2, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
@@ -12,14 +12,6 @@ import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
 import { useSubscriptions } from "@/lib/subscription-context";
-
-function alertFreshnessLabel(createdAt: string): string | null {
-  const ageHours = Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 3_600_000);
-  if (!Number.isFinite(ageHours) || ageHours < 1) return "verified just now";
-  if (ageHours < 24) return `verified ${Math.floor(ageHours)}h ago`;
-  if (ageHours < 48) return "verified yesterday";
-  return null;
-}
 
 const SETTINGS_ROUTE_FALLBACK_MS = 1600;
 
@@ -34,10 +26,9 @@ export default function AppDrawer() {
     closeDrawer,
   } = useNavigationDrawer();
   const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
-  const { unreadCount, unreadAlerts } = useNotifications();
+  const { unreadCount } = useNotifications();
   const { canOpenDetectiveCase, requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecials();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
   const settingsNavigationStartedRef = useRef(false);
@@ -205,49 +196,16 @@ export default function AppDrawer() {
         </div>
 
         {user && unreadCount > 0 && (
-          <div className="mx-4 mb-3 rounded-2xl border border-alert-100 bg-alert-50">
-            <button
-              type="button"
-              onClick={() => setIsNotificationsOpen((open) => !open)}
-              aria-expanded={isNotificationsOpen}
-              className="flex min-h-12 w-full items-center gap-2 px-4 text-left dd-type-control font-semibold text-alert-800"
-            >
+          <Link
+            href="/lists?updates=1"
+            onClick={closeDrawer}
+            aria-label={`Open Watchlist with ${unreadCount} ${unreadCount === 1 ? "update" : "updates"}`}
+            className="mx-4 mb-3 flex min-h-12 items-center gap-2 rounded-2xl border border-alert-100 bg-alert-50 px-4 dd-type-control font-semibold text-alert-800 transition-colors hover:bg-alert-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-alert-600"
+          >
               <Bell className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="min-w-0 flex-1">Watchlist updates ({unreadCount})</span>
+              <span className="min-w-0 flex-1">Watchlist updates ({unreadCount})</span>
               <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-alert-600" aria-hidden="true" />
-              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isNotificationsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-            </button>
-            {isNotificationsOpen && (
-              <div className="border-t border-alert-100 px-4 pb-3 pt-2">
-                <p className="dd-type-meta leading-4 text-alert-800">
-                  {unreadCount === 1 ? "One new Watchlist update." : `${unreadCount} new Watchlist updates.`}
-                </p>
-                <ul className="mt-2 space-y-1.5" aria-label="Unread Watchlist updates">
-                  {unreadAlerts.slice(0, 3).map((alert) => {
-                    const freshness = alertFreshnessLabel(alert.created_at);
-                    const message = alert.event_type === "dodgy_special"
-                      ? `${alert.product_name} now looks dodgy at ${alert.store_name}`
-                      : alert.event_type === "verdict_changed"
-                        ? `${alert.product_name} has a new deal verdict at ${alert.store_name}`
-                        : alert.event_type === "price_changed"
-                          ? `${alert.product_name} has a price update at ${alert.store_name}`
-                      : alert.verdict === "GENUINE"
-                        ? `${alert.product_name} is a verified special at ${alert.store_name}`
-                        : `${alert.product_name} has a better price at ${alert.store_name}`;
-                    return (
-                      <li key={alert.id} className="dd-type-meta leading-4 text-alert-800">
-                        {message}{freshness ? ` (${freshness})` : ""}.
-                      </li>
-                    );
-                  })}
-                </ul>
-                {unreadCount > 3 && <p className="mt-1 dd-type-meta text-alert-700">Plus {unreadCount - 3} more updates.</p>}
-                <Link href="/lists" onClick={closeDrawer} className="mt-2 inline-flex dd-type-meta font-bold text-alert-800 underline decoration-alert-300 underline-offset-2">
-                  Review Watchlist
-                </Link>
-              </div>
-            )}
-          </div>
+          </Link>
         )}
 
         <nav aria-label="Menu links" className="border-t border-stone-100 px-3 py-3">

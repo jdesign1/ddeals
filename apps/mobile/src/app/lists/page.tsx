@@ -235,6 +235,7 @@ export default function ListsPage() {
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
   const [isWatchlistUpgradePromptOpen, setIsWatchlistUpgradePromptOpen] = useState(false);
+  const [prioritizeUpdates, setPrioritizeUpdates] = useState(false);
   const watchlistVisitRecordedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -374,15 +375,19 @@ export default function ListsPage() {
     [isPremium, subscriptionLoading, watchlistItems],
   );
 
-  const newUpdateItemCount = useMemo(
-    () => watchlistItems.reduce(
-      (count, item) => lockedWatchlistProductIds.has(item.productId)
-        ? count
-        : count + (item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`)) ? 1 : 0),
-      0,
+  const updateProductIds = useMemo(
+    () => new Set(
+      watchlistItems
+        .filter((item) => (
+          !lockedWatchlistProductIds.has(item.productId)
+          && item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`))
+        ))
+        .map((item) => item.productId),
     ),
     [lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
   );
+  const newUpdateItemCount = updateProductIds.size;
+  const shouldPrioritizeUpdates = prioritizeUpdates || newUpdateItemCount > 0;
 
   const filterSupermarkets = selectedSupermarkets;
 
@@ -430,8 +435,10 @@ export default function ListsPage() {
       "best",
       itemCards,
       filterSupermarkets,
+      undefined,
+      shouldPrioritizeUpdates ? updateProductIds : undefined,
     ),
-    [filterSupermarkets, itemCards, productMeta, selectedCategories, selectedSupermarkets, watchlistItems],
+    [filterSupermarkets, itemCards, productMeta, selectedCategories, selectedSupermarkets, shouldPrioritizeUpdates, updateProductIds, watchlistItems],
   );
 
   const allDealTypeFilteredItems = useMemo(
@@ -602,6 +609,7 @@ export default function ListsPage() {
             dealTypeCounts={dealTypeCounts}
             selectedDealType={selectedDealType}
             onDealTypeChange={setSelectedDealType}
+            onUpdatesClick={() => setPrioritizeUpdates(true)}
           />
         )}
       </div>
@@ -905,6 +913,7 @@ function WatchlistSummaryCard({
   dealTypeCounts,
   selectedDealType,
   onDealTypeChange,
+  onUpdatesClick,
 }: {
   itemCount: number;
   newUpdateItemCount: number;
@@ -912,6 +921,7 @@ function WatchlistSummaryCard({
   dealTypeCounts: WatchlistDealTypeCounts;
   selectedDealType: WatchlistDealTypeFilter;
   onDealTypeChange: (value: WatchlistDealTypeFilter) => void;
+  onUpdatesClick: () => void;
 }) {
   const hasNewUpdates = newUpdateItemCount > 0;
   const isEmpty = itemCount === 0;
@@ -954,10 +964,16 @@ function WatchlistSummaryCard({
               </div>
             </div>
             {hasNewUpdates && (
-              <div className="flex items-center gap-2 border-t border-stone-100 px-4 py-3 text-[13px] font-extrabold text-stone-900" aria-live="polite">
+              <button
+                type="button"
+                onClick={onUpdatesClick}
+                aria-label={`Show ${newUpdateItemCount} ${newUpdateItemCount === 1 ? "item" : "items"} with updates first`}
+                className="flex w-full items-center justify-center gap-2 border-t border-stone-100 px-4 py-3 text-center text-[13px] font-extrabold text-stone-900 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
+                aria-live="polite"
+              >
                 <Info className="h-4 w-4 shrink-0 text-alert-700" aria-hidden="true" />
-                {newUpdateItemCount} {newUpdateItemCount === 1 ? "item" : "items"} with new Watchlist updates
-              </div>
+                {newUpdateItemCount} {newUpdateItemCount === 1 ? "item has" : "items have"} updates
+              </button>
             )}
           </div>
         )}
