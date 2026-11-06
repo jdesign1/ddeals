@@ -223,7 +223,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       lastScrollTopRef.current = 0;
       headerScrollAnchorRef.current = 0;
       headerHiddenRef.current = false;
-      setIsHeaderHidden(false);
       publishCheckDealsHeaderVisibility(false);
       publishCheckDealsScrollPosition(0);
     };
@@ -271,9 +270,12 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     lastScrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
     headerScrollAnchorRef.current = lastScrollTopRef.current;
     headerHiddenRef.current = false;
-    setIsHeaderHidden(false);
-    publishCheckDealsHeaderVisibility(false);
-    publishCheckDealsScrollPosition(lastScrollTopRef.current);
+    const frame = window.requestAnimationFrame(() => {
+      setIsHeaderHidden(false);
+      publishCheckDealsHeaderVisibility(false);
+      publishCheckDealsScrollPosition(lastScrollTopRef.current);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [dealFilter, pathname]);
 
   useEffect(() => {
