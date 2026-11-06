@@ -145,26 +145,35 @@ function createBuckets(
       if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
     }
 
-    const historyDeals = assessedDeals.filter(isHistoryReady);
-    if (historyDeals.length > 0) bucket.trackedHistoryProducts.add(product.id);
+    let hasHistory = false;
+    let bestHistoricalValue: number | null = null;
+    let bestPriceChangeCount: number | null = null;
+    for (const deal of assessedDeals) {
+      if (!isHistoryReady(deal)) continue;
+      hasHistory = true;
 
-    const bestHistoricalValue = historyDeals
-      .filter((deal) => deal.dealType === "Real Deal")
-      .map(averageDiscount)
-      .filter((value): value is number => value !== null)
-      .sort((left, right) => right - left)[0];
-    if (bestHistoricalValue !== undefined) {
+      if (deal.dealType === "Real Deal") {
+        const discount = averageDiscount(deal);
+        if (discount !== null && (bestHistoricalValue === null || discount > bestHistoricalValue)) {
+          bestHistoricalValue = discount;
+        }
+      }
+
+      const changes = priceChanges(deal);
+      if (changes !== null && (bestPriceChangeCount === null || changes > bestPriceChangeCount)) {
+        bestPriceChangeCount = changes;
+      }
+    }
+    if (hasHistory) bucket.trackedHistoryProducts.add(product.id);
+
+    if (bestHistoricalValue !== null) {
       bucket.historyEntries.push({
         averageDiscountPct: bestHistoricalValue,
         priceChanges: 0,
       });
     }
 
-    const bestPriceChangeCount = historyDeals
-      .map(priceChanges)
-      .filter((value): value is number => value !== null)
-      .sort((left, right) => right - left)[0];
-    if (bestPriceChangeCount !== undefined) {
+    if (bestPriceChangeCount !== null) {
       bucket.movementProducts.add(product.id);
       const historyEntry = bucket.historyEntries.find((entry) => entry.priceChanges === 0);
       if (historyEntry) historyEntry.priceChanges = bestPriceChangeCount;
