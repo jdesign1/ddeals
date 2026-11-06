@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useRef } from "react";
 
 const MAX_FONT_SIZE_PX = 22;
 const MAX_COMPACT_FONT_SIZE_PX = 16;
@@ -14,7 +14,7 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
  * rendered text, so it accounts for both the card layout and the number of
  * digits in the prices instead of estimating from the viewport alone.
  */
-export default function ResponsivePriceRange({ text, compact = false }: { text: string; compact?: boolean }) {
+function ResponsivePriceRange({ text, compact = false }: { text: string; compact?: boolean }) {
   const textRef = useRef<HTMLSpanElement>(null);
   const maxFontSize = compact ? MAX_COMPACT_FONT_SIZE_PX : MAX_FONT_SIZE_PX;
 
@@ -55,3 +55,5 @@ export default function ResponsivePriceRange({ text, compact = false }: { text: 
     </span>
   );
 }
+
+export default memo(ResponsivePriceRange);
