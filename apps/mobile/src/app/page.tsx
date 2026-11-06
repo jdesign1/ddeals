@@ -578,8 +578,12 @@ export default function HomePage() {
 
   // Build one best matching special per product for the selected shared deal
   // tab. Real Deals deliberately includes both Real Deal and Fair Price.
-  const dealsAllCategories = useMemo<FlatDeal[]>(() => {
+  // Keep the category summary alongside this pass so the large catalogue is
+  // only traversed once for the belts that depend on it.
+  const dealCatalogueSummary = useMemo(() => {
     const all: FlatDeal[] = [];
+    const counts = new Map<string, number>();
+    const categories = new Set<string>();
     for (const product of products) {
       const qualifying = product.currentDeals.filter(
         (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, dealFilter)
@@ -587,23 +591,21 @@ export default function HomePage() {
       if (!qualifying.length) continue;
       const best = qualifying.reduce((a, b) => (b.price < a.price ? b : a));
       all.push({ product, deal: best });
+
+      const category = groupCategory(product.category, product.name);
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+      categories.add(category);
     }
-    return all;
+
+    return {
+      deals: all,
+      categoryCounts: counts,
+      availableCategories: [...categories],
+    };
   }, [products, selectedStores, dealFilter]);
-
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const { product } of dealsAllCategories) {
-      const cat = groupCategory(product.category, product.name);
-      counts.set(cat, (counts.get(cat) ?? 0) + 1);
-    }
-    return counts;
-  }, [dealsAllCategories]);
-
-  const availableCategories = useMemo(
-    () => [...new Set(dealsAllCategories.map(({ product }) => groupCategory(product.category, product.name)))],
-    [dealsAllCategories]
-  );
+  const dealsAllCategories = dealCatalogueSummary.deals;
+  const categoryCounts = dealCatalogueSummary.categoryCounts;
+  const availableCategories = dealCatalogueSummary.availableCategories;
 
   const currentSpecialCounts = useMemo(() => buildCurrentSpecialCounts(products), [products]);
   const didYouKnowCards = useMemo(
