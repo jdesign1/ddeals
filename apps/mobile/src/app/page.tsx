@@ -757,11 +757,14 @@ export default function HomePage() {
     if (linkedFilter) setDealFilter(linkedFilter);
   };
 
-  const handleSummaryStoreSelect = (store: CheckDealsSummaryStore) => {
+  const handleSummaryStoreSelect = useCallback((store: CheckDealsSummaryStore) => {
     toggleStore("all");
     toggleStore(store);
     openSearchForFilter("all", { focus: false });
-  };
+  }, [openSearchForFilter, toggleStore]);
+  const handleOpenBeltOrder = useCallback(() => {
+    setIsBeltOrderSheetOpen(true);
+  }, []);
 
   const handleDidYouKnowBrowse = useCallback((card: DidYouKnowCard) => {
     openSearchForFilter(card.search.filter, {
@@ -819,7 +822,7 @@ export default function HomePage() {
           updatedText={updatedText}
           updatedLabel={updatedLabel}
           onOpenStoreDeals={handleSummaryStoreSelect}
-          onOpenBeltOrder={() => setIsBeltOrderSheetOpen(true)}
+          onOpenBeltOrder={handleOpenBeltOrder}
         />
       )}
       {/* Ported from Prototype/index.html's SearchTab persistent header +

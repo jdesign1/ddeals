@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ChevronRight, LayoutGrid } from "lucide-react";
 import type { CheckDealsSummaryStore } from "@/lib/check-deals-home";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -37,7 +37,7 @@ function interpolateCounts(target: SummaryCounts, progress: number): SummaryCoun
   };
 }
 
-export default function CheckDealsSummary({
+function CheckDealsSummary({
   counts,
   updatedText,
   updatedLabel,
@@ -139,3 +139,5 @@ export default function CheckDealsSummary({
     </section>
   );
 }
+
+export default memo(CheckDealsSummary);
