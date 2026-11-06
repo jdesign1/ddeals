@@ -130,6 +130,25 @@ function snapshotKindForDeal(deal: CurrentDeal): "savings" | "dodgy" {
   return deal.dealType === "Dodgy Deal" ? "dodgy" : "savings";
 }
 
+const WATCHLIST_RAIL_LIMIT = 20;
+
+function compareWatchlistDeals(left: CheckDealsRailItem, right: CheckDealsRailItem): number {
+  const rightAmount = getDealSnapshotAmount(right.deal, snapshotKindForDeal(right.deal)) ?? 0;
+  const leftAmount = getDealSnapshotAmount(left.deal, snapshotKindForDeal(left.deal)) ?? 0;
+  return rightAmount - leftAmount || left.product.name.localeCompare(right.product.name);
+}
+
+function insertWatchlistDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem): void {
+  let insertAt = 0;
+  while (insertAt < items.length && compareWatchlistDeals(items[insertAt]!, candidate) <= 0) {
+    insertAt += 1;
+  }
+  if (insertAt >= WATCHLIST_RAIL_LIMIT) return;
+
+  items.splice(insertAt, 0, candidate);
+  if (items.length > WATCHLIST_RAIL_LIMIT) items.pop();
+}
+
 function bestSpecialDeal(left: CurrentDeal, right: CurrentDeal): CurrentDeal {
   const activeDifference = Number(right.isOnSpecial) - Number(left.isOnSpecial);
   if (activeDifference !== 0) return activeDifference > 0 ? right : left;
@@ -274,16 +293,10 @@ export function buildWatchlistSpecialDeals(
       if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
       best = best ? bestSpecialDeal(best, deal) : deal;
     }
-    if (best) items.push({ product, deal: best });
+    if (best) insertWatchlistDeal(items, { product, deal: best });
   }
 
-  return items
-    .sort((left, right) => {
-      const rightAmount = getDealSnapshotAmount(right.deal, snapshotKindForDeal(right.deal)) ?? 0;
-      const leftAmount = getDealSnapshotAmount(left.deal, snapshotKindForDeal(left.deal)) ?? 0;
-      return rightAmount - leftAmount || left.product.name.localeCompare(right.product.name);
-    })
-    .slice(0, 20);
+  return items;
 }
 
 function historyKey(row: DealCheckRow): string {
