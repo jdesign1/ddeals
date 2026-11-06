@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useId, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Info, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
@@ -69,7 +69,7 @@ function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
   );
 }
 
-export default function AssessmentEvidenceCard({
+function AssessmentEvidenceCard({
   deal,
   verdict,
   evidenceSummary,
@@ -222,3 +222,5 @@ export default function AssessmentEvidenceCard({
     </>
   );
 }
+
+export default memo(AssessmentEvidenceCard);
