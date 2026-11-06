@@ -264,11 +264,16 @@ function alsoSpecialStoresForResults(
  * verbatim, deliberately NOT filtered by the store selection (the prototype
  * doesn't filter it there either). */
 function alsoSpecialStoresForPopular(product: ProductCardData, shownDeal: CurrentDeal, newDealKeys: Set<string> | null = null): string[] {
-  return [...new Set(product.currentDeals.filter((deal) => (
-    deal.isOnSpecial !== false
-    && deal.store !== shownDeal.store
-    && (!newDealKeys || newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
-  )).map((d) => d.store))];
+  const stores = new Set<string>();
+  for (const deal of product.currentDeals) {
+    if (
+      deal.isOnSpecial === false
+      || deal.store === shownDeal.store
+      || (newDealKeys && !newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
+    ) continue;
+    stores.add(deal.store);
+  }
+  return [...stores];
 }
 
 export default function FullScreenSearch() {
