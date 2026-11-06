@@ -643,6 +643,9 @@ export default function HomePage() {
     });
     setIsWorthAnotherLookSheetOpen(false);
   }, [visiblePreviouslyCheckedDeals, worthAnotherLookStorageKey]);
+  const handleOpenWorthAnotherLookSheet = useCallback(() => {
+    setIsWorthAnotherLookSheetOpen(true);
+  }, []);
   const activeSnapshotNewDealKeys = newForYouFilterActive ? newDealKeySet : undefined;
   const snapshotDealGroups = useMemo(
     () => buildSnapshotDealGroups(products, selectedStores, activeSnapshotNewDealKeys),
@@ -1052,7 +1055,7 @@ export default function HomePage() {
                 description="Deals you checked before whose price or assessment has changed."
                 deals={visiblePreviouslyCheckedDeals}
                 tone="history"
-                onDismiss={() => setIsWorthAnotherLookSheetOpen(true)}
+                onDismiss={handleOpenWorthAnotherLookSheet}
               />
               <div className="px-5 pb-24 pt-1">
                 <button

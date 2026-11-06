@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, X } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 import { getDealSnapshotAmount, type DealSnapshotKind } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
@@ -17,7 +17,7 @@ function snapshotKindForDeal(item: CheckDealsRailItem): DealSnapshotKind {
   return item.deal.dealType === "Dodgy Deal" ? "dodgy" : "savings";
 }
 
-export default function PersonalDealRail({
+function PersonalDealRail({
   id,
   title,
   description,
@@ -125,3 +125,5 @@ export default function PersonalDealRail({
     </section>
   );
 }
+
+export default memo(PersonalDealRail);
