@@ -1,7 +1,7 @@
 "use client";
 
 import Image, { type ImageProps } from "next/image";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 export const PRODUCT_IMAGE_FALLBACK = "/no-product-image.svg";
 
@@ -24,7 +24,7 @@ function usableProductImageSource(src?: string | null) {
  * Keep the direct retailer URL (so Vercel's image quota is not involved), but
  * recover locally when the URL is absent or fails to load.
  */
-export default function ProductImage({ src, alt, decoding = "async", ...props }: ProductImageProps) {
+function ProductImage({ src, alt, decoding = "async", ...props }: ProductImageProps) {
   const source = usableProductImageSource(src);
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const imageSrc = failedSource === source ? PRODUCT_IMAGE_FALLBACK : source;
@@ -40,3 +40,5 @@ export default function ProductImage({ src, alt, decoding = "async", ...props }:
     />
   );
 }
+
+export default memo(ProductImage);
