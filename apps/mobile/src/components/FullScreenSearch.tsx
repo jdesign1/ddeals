@@ -623,13 +623,12 @@ export default function FullScreenSearch() {
 
   const popularCategoryFilterSet = useMemo(() => new Set(popularCategoryFilter), [popularCategoryFilter]);
   const sortedPopularSpecials = useMemo(() => {
-    const filtered = popularSpecials.filter(({ product }) => {
-      if (popularCategoryFilterSet.size > 0 && !popularCategoryFilterSet.has(groupCategory(product.category, product.name))) {
-        return false;
-      }
-      return true;
-    });
-    const sorted = [...filtered];
+    const sorted: PopularEntry[] = [];
+    for (const entry of popularSpecials) {
+      const category = groupCategory(entry.product.category, entry.product.name);
+      if (popularCategoryFilterSet.size > 0 && !popularCategoryFilterSet.has(category)) continue;
+      sorted.push(entry);
+    }
     if (popularSortBy === "latest") {
       sorted.sort((a, b) => compareLatestSpecials(a.bestDeal, b.bestDeal));
     } else if (popularSortBy === "price-asc") {
