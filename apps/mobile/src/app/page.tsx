@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
 import {
   matchesAnySelectedStore,
   deriveAvailableStoreKeys,
@@ -793,10 +792,7 @@ export default function HomePage() {
   return (
     <>
       <div className="relative">
-      <motion.main
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+      <main
           className={`flex flex-col gap-2 pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
         >
       {!isSearchActive && !loadingProducts && !error && (
@@ -1059,7 +1055,7 @@ export default function HomePage() {
           )}
         </>
       )}
-      </motion.main>
+      </main>
       </div>
       <DismissWorthAnotherLookSheet
         open={isWorthAnotherLookSheetOpen}

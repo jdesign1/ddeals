@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { useSearch } from "@/lib/search-context";
+import { useSearchNavigation } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 
 function OverlayChunkFallback() {
@@ -76,7 +76,7 @@ function hasSeenOnboardingTour(userId: string): boolean {
  *
  */
 export default function GlobalOverlays() {
-  const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearch();
+  const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearchNavigation();
   const {
     user,
     isAuthSheetOpen,

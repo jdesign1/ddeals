@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef } from "react";
-import { useSearch } from "@/lib/search-context";
+import { useCallback, useEffect, useRef } from "react";
+import { useSearchNavigation } from "@/lib/search-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
@@ -232,7 +232,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const prefetchedRoutesRef = useRef(new Set<string>());
-  const { isActive: isSearchActive, closeSearch } = useSearch();
+  const { isActive: isSearchActive, closeSearch } = useSearchNavigation();
   const { hasUnreadWatchlistUpdates } = useNotifications();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest, requestOpen } = useNewSpecials();
@@ -243,13 +243,44 @@ export default function BottomNav() {
     && !CONTACT_ROUTES.includes(pathname);
   const routeVisibilityClass = hasBottomNav ? "" : "bottom-nav-route-hidden";
 
-  const prefetchRoute = (href: string) => {
+  const prefetchRoute = useCallback((href: string) => {
     if (prefetchedRoutesRef.current.has(href)) return;
     prefetchedRoutesRef.current.add(href);
     void Promise.resolve(router.prefetch(href)).catch(() => {
       prefetchedRoutesRef.current.delete(href);
     });
-  };
+  }, [router]);
+
+  useEffect(() => {
+    if (!hasBottomNav || typeof window === "undefined") return;
+    const connection = (navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }).connection;
+    if (connection?.saveData || connection?.effectiveType === "slow-2g" || connection?.effectiveType === "2g") return;
+
+    const prefetchRemainingRoutes = () => {
+      for (const { href } of TABS) {
+        if (href !== pathname) prefetchRoute(href);
+      }
+    };
+
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+    if ("requestIdleCallback" in window) {
+      idleId = (window as Window & {
+        requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number;
+      }).requestIdleCallback(prefetchRemainingRoutes, { timeout: 1500 });
+    } else {
+      timeoutId = window.setTimeout(prefetchRemainingRoutes, 900);
+    }
+
+    return () => {
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, [hasBottomNav, pathname, prefetchRoute]);
 
   return (
     <>

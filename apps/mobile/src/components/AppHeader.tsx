@@ -13,7 +13,7 @@ import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
-import { useSearch } from "@/lib/search-context";
+import { useSearchInput } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
@@ -45,7 +45,7 @@ export default function AppHeader({
   const { isAnonymousSession, user, profile, profileLoading, session } = useAuth();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
-  const { query, setQuery, openSearch, openSearchForFilter } = useSearch();
+  const { query, setQuery, openSearch, openSearchForFilter } = useSearchInput();
   const {
     digest,
     popupEligible,

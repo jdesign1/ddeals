@@ -3,7 +3,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
-import { motion } from "motion/react";
 import {
   collapseConsecutiveDealChecks,
   fetchNonSpecialProductCards,
@@ -182,9 +181,17 @@ export default function HistoryPage() {
       return Boolean(product && productMatchesSearch(product, searchQuery));
     });
   }, [displayHistory, productById, searchQuery, verdictFilter]);
-  const filteredLockedHistoryCount = historyIsPremium
-    ? 0
-    : filteredHistory.filter((row) => !historyPreviewIds.has(row.id)).length;
+  const lockedHistoryIndexes = useMemo(() => {
+    const indexes = new Map<string, number>();
+    let lockedCount = 0;
+    for (const row of filteredHistory) {
+      if (historyPreviewIds.has(row.id)) continue;
+      indexes.set(row.id, lockedCount);
+      lockedCount += 1;
+    }
+    return { indexes, count: lockedCount };
+  }, [filteredHistory, historyPreviewIds]);
+  const filteredLockedHistoryCount = historyIsPremium ? 0 : lockedHistoryIndexes.count;
   const firstLockedHistoryIndex = historyIsPremium
     ? -1
     : filteredHistory.findIndex((row) => !historyPreviewIds.has(row.id));
@@ -311,19 +318,14 @@ export default function HistoryPage() {
               <p className="max-w-xs px-4 dd-type-secondary text-stone-500">Try searching for a different product name or brand.</p>
             </div>
           ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="flex flex-col gap-3 px-5"
-            >
+            <div className="flex flex-col gap-3 px-5">
             {filteredHistory.map((h, index) => {
               const product = productById.get(h.product_id);
               if (!product) return null;
               const deal = buildHistoricalDeal(h);
               const isLocked = !historyIsPremium && !historyPreviewIds.has(h.id);
               const lockedIndex = isLocked
-                ? filteredHistory.slice(0, index).filter((row) => !historyPreviewIds.has(row.id)).length
+                ? lockedHistoryIndexes.indexes.get(h.id) ?? 0
                 : -1;
               const lockedOpacity = isLocked
                 ? getLockedPreviewOpacity(lockedIndex, filteredLockedHistoryCount)
@@ -399,7 +401,7 @@ export default function HistoryPage() {
                 </Fragment>
               );
             })}
-            </motion.div>
+            </div>
           )
         )}
       </div>

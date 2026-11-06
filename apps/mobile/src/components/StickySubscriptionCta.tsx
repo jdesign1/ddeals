@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "motion/react";
-import { useSearch } from "@/lib/search-context";
+import { useSearchNavigation } from "@/lib/search-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 
@@ -38,7 +38,7 @@ export default function StickySubscriptionCta({
   const [showSticky, setShowSticky] = useState(false);
   const prefersReducedMotion = useReducedMotion() ?? false;
   const isClientMounted = useSyncExternalStore(subscribeToMount, getClientMounted, getServerMounted);
-  const { isActive: isSearchActive } = useSearch();
+  const { isActive: isSearchActive } = useSearchNavigation();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { selectedProductIds, confirmation, error } = useWatchlist();
   const isSelectionBarVisible = selectedProductIds.size > 0 || Boolean(confirmation) || Boolean(error);

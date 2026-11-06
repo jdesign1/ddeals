@@ -10,7 +10,10 @@ export function filterRecentlyVerifiedSpecials(
   products: ProductCard[],
   now = Date.now()
 ): ProductCard[] {
-  return products.flatMap((product) => {
+  let changed = false;
+  const filteredProducts: ProductCard[] = [];
+
+  for (const product of products) {
     const currentDeals = product.currentDeals.filter((deal) => {
       if (!deal.specialsVerifiedAt) return false;
       const verifiedAt = Date.parse(deal.specialsVerifiedAt);
@@ -19,16 +22,27 @@ export function filterRecentlyVerifiedSpecials(
         && now - verifiedAt < SPECIALS_VERIFICATION_TTL_MS;
     });
 
-    if (currentDeals.length === 0) return [];
-    if (currentDeals.length === product.currentDeals.length) return [product];
+    if (currentDeals.length === 0) {
+      changed = true;
+      continue;
+    }
+    if (currentDeals.length === product.currentDeals.length) {
+      filteredProducts.push(product);
+      continue;
+    }
 
     const regularPrices = currentDeals
       .map((deal) => deal.originalPrice)
       .filter((price) => Number.isFinite(price));
-    return [{
+    changed = true;
+    filteredProducts.push({
       ...product,
       currentDeals,
       ...(regularPrices.length ? { standardPrice: Math.min(...regularPrices) } : {}),
-    }];
-  });
+    });
+  }
+
+  // Most minute-by-minute checks do not expire anything. Keep the existing
+  // reference in that case so catalogue consumers do not all re-render.
+  return changed ? filteredProducts : products;
 }

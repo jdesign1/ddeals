@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -142,6 +142,27 @@ interface SearchContextValue {
 }
 
 const SearchContext = createContext<SearchContextValue | null>(null);
+interface SearchNavigationContextValue {
+  isActive: boolean;
+  closeSearch: () => void;
+  openSearch: () => void;
+  openSearchForFilter: SearchContextValue["openSearchForFilter"];
+  isScannerOpen: boolean;
+  hasOpenedScanner: boolean;
+  openScanner: () => void;
+  closeScanner: () => void;
+}
+
+const SearchNavigationContext = createContext<SearchNavigationContextValue | null>(null);
+interface SearchInputContextValue {
+  query: string;
+  setQuery: (value: string) => void;
+  isActive: boolean;
+  openSearch: () => void;
+  openSearchForFilter: SearchContextValue["openSearchForFilter"];
+}
+
+const SearchInputContext = createContext<SearchInputContextValue | null>(null);
 
 const INITIAL_CATALOGUE_RETRY_DELAYS_MS = [500, 1500];
 
@@ -224,14 +245,16 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   // those routes correct without relying on Home having mounted first.
   const shouldLoadCatalogue = pathname === "/" || pathname === "/specials" || pathname === "/history" || pathname === "/me" || isActive;
   // Bumped by `retry()` below to force the effect to re-run. A plain counter
-  // rather than calling the fetch directly from `retry()` so there's still
-  // exactly one place (`fetchProducts` below) that owns the load-products
-  // lifecycle -- `retry` just asks for another attempt, it doesn't duplicate
-  // the loading/error/cancelled bookkeeping that attempt needs.
+  // rather than calling the fetch directly from `retry()` keeps one owner for
+  // the load lifecycle and lets the in-flight ref deduplicate route changes.
   const [retryTick, setRetryTick] = useState(0);
+  const catalogueLoadAttemptRef = useRef<number | null>(null);
+  const catalogueLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const catalogueLoadSucceededRef = useRef(false);
 
   const refreshCatalogue = useCallback(async (): Promise<RefreshLiveProductsResult> => {
     const result = await refreshLiveProducts(supabaseConfig);
+    catalogueLoadSucceededRef.current = true;
     setProducts(result.products);
     const publication = await readCurrentCataloguePublication();
     setCataloguePublicationKey(publication.key);
@@ -257,9 +280,69 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const openSearch = useCallback(() => {
+    setHasOpenedSearch(true);
+    setNewSpecialDealKeys(null);
+    // Opening the global search bar is a neutral browse action. A pending
+    // new-specials digest must not silently narrow the catalogue; the
+    // shopper can still enter New to you from the explicit Check Deals
+    // Top Savers entry point.
+    setNewSpecialsSearchMode("all");
+    setNewSpecialsShowTab(false);
+    setSearchSortOverride(null);
+    setSearchCategoryOverride(null);
+    setPreserveSearchStateOnOpen(false);
+    setFocusSearchOnOpen(true);
+    setIsActive(true);
+  }, []);
+
+  const openSearchForFilter = useCallback<SearchContextValue["openSearchForFilter"]>((filter, options) => {
+    setHasOpenedSearch(true);
+    setQuery("");
+    setDealFilter(filter);
+    const hasDealKeys = Boolean(options?.dealKeys?.length);
+    setNewSpecialsSearchMode(hasDealKeys ? "keys" : "all");
+    setNewSpecialsShowTab(hasDealKeys && options?.showNewToYouTab === true);
+    setNewSpecialDealKeys(hasDealKeys ? options?.dealKeys ?? null : null);
+    setSearchSortOverride(options?.sortBy ?? null);
+    setSearchCategoryOverride(options?.category ?? null);
+    // The digest count spans every supermarket. Reset a previous search
+    // preference here so its "View all" promise cannot land on a
+    // smaller, hidden subset of the selected deals.
+    if (options?.dealKeys?.length && options.preserveSelectedStores !== true) setSelectedStores(["all"]);
+    setPreserveSearchStateOnOpen(false);
+    setFocusSearchOnOpen(options?.focus !== false);
+    setIsActive(true);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setQuery("");
+    setNewSpecialDealKeys(null);
+    setNewSpecialsSearchMode("all");
+    setNewSpecialsShowTab(false);
+    setSearchSortOverride(null);
+    setSearchCategoryOverride(null);
+    setSelectedStores(["all"]);
+    setDealFilter("all");
+    setFocusSearchOnOpen(true);
+    setIsActive(false);
+    setReturnToSearch(null);
+    setPreserveSearchStateOnOpen(false);
+  }, []);
+
+  const openScanner = useCallback(() => {
+    setHasOpenedScanner(true);
+    setIsScannerOpen(true);
+  }, []);
+
+  const closeScanner = useCallback(() => setIsScannerOpen(false), []);
+
   useEffect(() => {
     if (!shouldLoadCatalogue) return;
-    let cancelled = false;
+    if (catalogueLoadInFlightRef.current) return;
+    if (catalogueLoadAttemptRef.current === retryTick) return;
+
+    catalogueLoadAttemptRef.current = retryTick;
     let liveResultSucceeded = false;
     let displayedCachedProducts = false;
 
@@ -268,41 +351,46 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     // resolves; this only removes the IndexedDB/publication-marker wait from
     // the warm-launch critical path. The cache reader applies the same
     // version and retailer-freshness checks as loadLiveProducts().
-    void readCatalogueCache().then((cached) => {
-      if (cancelled || liveResultSucceeded || !cached?.length) return;
-      displayedCachedProducts = true;
-      setProducts(cached);
-      setError(null);
-      setLoadingProducts(false);
-    });
-
-    loadLiveProductsWithRetry()
-      .then(async (result) => {
-        liveResultSucceeded = true;
-        if (!cancelled) {
-          setProducts(result);
-          setError(null);
-          setLoadingProducts(false);
-        }
-        const publication = await readCurrentCataloguePublication();
-        if (!cancelled) {
-          setCataloguePublicationKey(publication.key);
-          setCataloguePublicationComplete(publication.complete);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled && !displayedCachedProducts) setError(describeFetchError(err, "Failed to load specials"));
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCatalogueLiveLoaded(true);
-          setLoadingProducts(false);
-        }
+    const loadRequest = (async () => {
+      void readCatalogueCache().then((cached) => {
+        if (liveResultSucceeded || !cached?.length) return;
+        displayedCachedProducts = true;
+        setProducts(cached);
+        setError(null);
+        setLoadingProducts(false);
       });
-    return () => {
-      cancelled = true;
-    };
+
+      try {
+        const result = await loadLiveProductsWithRetry();
+        liveResultSucceeded = true;
+        catalogueLoadSucceededRef.current = true;
+        setProducts(result);
+        setError(null);
+        setLoadingProducts(false);
+        const publication = await readCurrentCataloguePublication();
+        setCataloguePublicationKey(publication.key);
+        setCataloguePublicationComplete(publication.complete);
+      } catch (err: unknown) {
+        if (!displayedCachedProducts) setError(describeFetchError(err, "Failed to load specials"));
+      } finally {
+        setCatalogueLiveLoaded(true);
+        setLoadingProducts(false);
+      }
+    })();
+    catalogueLoadInFlightRef.current = loadRequest;
+    void loadRequest.finally(() => {
+      catalogueLoadInFlightRef.current = null;
+    });
   }, [retryTick, shouldLoadCatalogue]);
+
+  useEffect(() => {
+    // If a catalogue attempt failed while this provider was off a catalogue
+    // route, allow the next visit to recover automatically. A successful
+    // session load remains cached and should not be repeated on every detour.
+    if (!shouldLoadCatalogue && !catalogueLoadSucceededRef.current) {
+      catalogueLoadAttemptRef.current = null;
+    }
+  }, [shouldLoadCatalogue]);
 
   // Deal-detail targeted validation can update a single cached card without
   // downloading the full catalogue. Keep the global Check-deals/search state
@@ -423,62 +511,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setError(null);
         setLoadingProducts(true);
         setCatalogueLiveLoaded(false);
+        catalogueLoadSucceededRef.current = false;
         setRetryTick((t) => t + 1);
       },
       refreshCatalogue,
-      openSearch: () => {
-        setHasOpenedSearch(true);
-        setNewSpecialDealKeys(null);
-        // Opening the global search bar is a neutral browse action. A pending
-        // new-specials digest must not silently narrow the catalogue; the
-        // shopper can still enter New to you from the explicit Check Deals
-        // Top Savers entry point.
-        setNewSpecialsSearchMode("all");
-        setNewSpecialsShowTab(false);
-        setSearchSortOverride(null);
-        setSearchCategoryOverride(null);
-        setPreserveSearchStateOnOpen(false);
-        setFocusSearchOnOpen(true);
-        setIsActive(true);
-      },
-      openSearchForFilter: (filter, options) => {
-        setHasOpenedSearch(true);
-        setQuery("");
-        setDealFilter(filter);
-        const hasDealKeys = Boolean(options?.dealKeys?.length);
-        setNewSpecialsSearchMode(hasDealKeys ? "keys" : "all");
-        setNewSpecialsShowTab(hasDealKeys && options?.showNewToYouTab === true);
-        setNewSpecialDealKeys(hasDealKeys ? options?.dealKeys ?? null : null);
-        setSearchSortOverride(options?.sortBy ?? null);
-        setSearchCategoryOverride(options?.category ?? null);
-        // The digest count spans every supermarket. Reset a previous search
-        // preference here so its "View all" promise cannot land on a
-        // smaller, hidden subset of the selected deals.
-        if (options?.dealKeys?.length && options.preserveSelectedStores !== true) setSelectedStores(["all"]);
-        setPreserveSearchStateOnOpen(false);
-        setFocusSearchOnOpen(options?.focus !== false);
-        setIsActive(true);
-      },
+      openSearch,
+      openSearchForFilter,
       clearNewSpecialsFilter: () => {
         setNewSpecialsSearchMode("all");
         setNewSpecialDealKeys(null);
         setNewSpecialsShowTab(false);
         setSearchSortOverride(null);
       },
-      closeSearch: () => {
-        setQuery("");
-        setNewSpecialDealKeys(null);
-        setNewSpecialsSearchMode("all");
-        setNewSpecialsShowTab(false);
-        setSearchSortOverride(null);
-        setSearchCategoryOverride(null);
-        setSelectedStores(["all"]);
-        setDealFilter("all");
-        setFocusSearchOnOpen(true);
-        setIsActive(false);
-        setReturnToSearch(null);
-        setPreserveSearchStateOnOpen(false);
-      },
+      closeSearch,
       returnToSearch,
       pauseForDealNavigation: (productId, store) => {
         setReturnToSearch({ productId, store });
@@ -496,24 +541,50 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       preserveSearchStateOnOpen,
       isScannerOpen,
       hasOpenedScanner,
-      openScanner: () => {
-        setHasOpenedScanner(true);
-        setIsScannerOpen(true);
-      },
-      closeScanner: () => setIsScannerOpen(false),
+      openScanner,
+      closeScanner,
     }),
-    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue]
+    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, refreshCatalogue, closeSearch, openSearch, openSearchForFilter, openScanner, closeScanner]
     // Note: `retry` and `openSearch`/etc. are stable closures (no external
     // deps beyond the setters, which React guarantees are stable), so they
     // don't need to be listed here -- same convention this array already
     // followed before `retry` was added.
   );
 
-  return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
+  const navigationValue = useMemo<SearchNavigationContextValue>(
+    () => ({ isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner }),
+    [isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner],
+  );
+  const inputValue = useMemo<SearchInputContextValue>(
+    () => ({ query, setQuery, isActive, openSearch, openSearchForFilter }),
+    [query, setQuery, isActive, openSearch, openSearchForFilter],
+  );
+
+  return (
+    <SearchContext.Provider value={value}>
+      <SearchNavigationContext.Provider value={navigationValue}>
+        <SearchInputContext.Provider value={inputValue}>
+          {children}
+        </SearchInputContext.Provider>
+      </SearchNavigationContext.Provider>
+    </SearchContext.Provider>
+  );
 }
 
 export function useSearch(): SearchContextValue {
   const ctx = useContext(SearchContext);
   if (!ctx) throw new Error("useSearch must be used within a SearchProvider");
+  return ctx;
+}
+
+export function useSearchNavigation(): SearchNavigationContextValue {
+  const ctx = useContext(SearchNavigationContext);
+  if (!ctx) throw new Error("useSearchNavigation must be used within a SearchProvider");
+  return ctx;
+}
+
+export function useSearchInput(): SearchInputContextValue {
+  const ctx = useContext(SearchInputContext);
+  if (!ctx) throw new Error("useSearchInput must be used within a SearchProvider");
   return ctx;
 }

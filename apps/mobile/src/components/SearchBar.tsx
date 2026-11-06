@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
-import { useSearch } from "@/lib/search-context";
+import { useSearchInput } from "@/lib/search-context";
 
 /**
  * Global search bar — extracted 2026-08-11 from Home's own inline block
@@ -14,9 +14,9 @@ import { useSearch } from "@/lib/search-context";
  * 2026-08-11 "remove the search icon from the top nav bar" change (that
  * comment's own "follow-up in case that's an oversight" — it was).
  *
- * No props: reads everything from the global `useSearch()` context
- * (lib/search-context.tsx), same as `FullScreenSearch.tsx`/`AppHeader.tsx`
- * already do, so any page can drop this in with zero wiring. Renders `null`
+ * No props: reads its query and search-entry actions from the small global
+ * search-input context (lib/search-context.tsx), so any page can drop this
+ * in with zero wiring. Renders `null`
  * while the full-screen overlay is open (`isActive`) — same guard Home's own
  * copy of this block always had, so this doesn't render a second, redundant
  * bar underneath the overlay's own sticky bar.
@@ -182,7 +182,7 @@ export default function SearchBar({
   /** Compact top-search treatment: shorter control and no bottom shell padding. */
   compact?: boolean;
 }) {
-  const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearch();
+  const { query: searchInput, setQuery: setSearchInput, isActive: isSearchActive, openSearch } = useSearchInput();
 
   // Keep the native sticky inset fixed, matching FullScreenSearch's toolbar.
   // Changing `top` during an iOS momentum scroll can cause WebKit to release
