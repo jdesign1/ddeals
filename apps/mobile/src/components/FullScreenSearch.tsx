@@ -243,12 +243,21 @@ function alsoSpecialStoresForResults(
   filter: DealFilter = "all",
   newDealKeys: Set<string> | null = null,
 ): string[] {
-  const applicable = applicableDealsFor(product, selectedStores, filter);
-  const filtered = newDealKeys
-    ? applicable.filter((deal) => newDealKeys.has(getNewSpecialDealKey(product.id, deal.store)))
-    : applicable;
-  const pool = filtered.length > 0 ? filtered : newDealKeys ? [] : product.currentDeals;
-  return [...new Set(pool.filter((d) => d.isOnSpecial !== false && d.store !== shownDeal.store).map((d) => d.store))];
+  const filteredStores = new Set<string>();
+  let hasFilteredDeal = false;
+  for (const deal of product.currentDeals) {
+    if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, filter)) continue;
+    if (newDealKeys && !newDealKeys.has(getNewSpecialDealKey(product.id, deal.store))) continue;
+    hasFilteredDeal = true;
+    if (deal.isOnSpecial !== false && deal.store !== shownDeal.store) filteredStores.add(deal.store);
+  }
+  if (hasFilteredDeal || newDealKeys) return [...filteredStores];
+
+  const fallbackStores = new Set<string>();
+  for (const deal of product.currentDeals) {
+    if (deal.isOnSpecial !== false && deal.store !== shownDeal.store) fallbackStores.add(deal.store);
+  }
+  return [...fallbackStores];
 }
 
 /** Same idea for the pre-3-character "Popular specials" list -- ported
