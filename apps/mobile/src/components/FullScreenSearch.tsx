@@ -609,9 +609,10 @@ export default function FullScreenSearch() {
     return out;
   }, [products, selectedStores, dealFilter, newSpecialDealKeySet]);
 
+  const popularCategoryFilterSet = useMemo(() => new Set(popularCategoryFilter), [popularCategoryFilter]);
   const sortedPopularSpecials = useMemo(() => {
     const filtered = popularSpecials.filter(({ product }) => {
-      if (popularCategoryFilter.length > 0 && !popularCategoryFilter.includes(groupCategory(product.category, product.name))) {
+      if (popularCategoryFilterSet.size > 0 && !popularCategoryFilterSet.has(groupCategory(product.category, product.name))) {
         return false;
       }
       return true;
@@ -629,7 +630,7 @@ export default function FullScreenSearch() {
       );
     }
     return sorted;
-  }, [popularSpecials, popularSortBy, popularCategoryFilter]);
+  }, [popularSpecials, popularSortBy, popularCategoryFilterSet]);
 
   const popularPageSize = dealFilter === "dodgy" ? POPULAR_PAGE_SIZE_DODGY : POPULAR_PAGE_SIZE_SPECIALS;
   // Infinite-scroll reveal replaced the old "Show all N deals" button,
