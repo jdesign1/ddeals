@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useSearchNavigation } from "@/lib/search-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -229,6 +229,95 @@ const TABS: {
 
 const CONTACT_ROUTES = ["/support", "/report-deal"];
 
+const BottomNavTab = memo(function BottomNavTab({
+  href,
+  label,
+  icon,
+  isActive,
+  hasUnreadUpdates,
+  hasNewSpecials,
+  prefetchRoute,
+  isSearchActive,
+  closeSearch,
+  requestOpen,
+}: {
+  href: string;
+  label: string;
+  icon: MaterialSymbolName;
+  isActive: boolean;
+  hasUnreadUpdates: boolean;
+  hasNewSpecials: boolean;
+  prefetchRoute: (href: string) => void;
+  isSearchActive: boolean;
+  closeSearch: () => void;
+  requestOpen: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      data-onboarding={
+        href === "/"
+          ? "check-deals-tab"
+          : href === "/lists"
+            ? "watchlist-tab"
+            : href === "/history"
+              ? "history-tab"
+              : "stats-tab"
+      }
+      aria-current={isActive ? "page" : undefined}
+      aria-label={hasUnreadUpdates || hasNewSpecials ? `${label}, new deal updates` : undefined}
+      onPointerEnter={() => prefetchRoute(href)}
+      onPointerDown={() => prefetchRoute(href)}
+      onFocus={() => prefetchRoute(href)}
+      onClick={() => {
+        if (!isActive) markNavigationStart(href);
+        if (isSearchActive) closeSearch();
+        if (hasNewSpecials) requestOpen();
+      }}
+      className="flex min-w-0 flex-1 items-center justify-center py-1.5 transition-transform duration-100 active:scale-[0.98]"
+    >
+      <span
+        className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
+          isActive ? "dd-bottom-nav-active w-max min-w-full px-2" : "w-full min-w-0 px-0"
+        }`}
+        style={{ color: isActive ? "#ffffff" : "var(--dd-nav-inactive)" }}
+      >
+        <AnimatePresence initial={false}>
+          {isActive && (
+            <motion.span
+              className="dd-bottom-nav-active-fill absolute inset-0 rounded-full bg-ink-900"
+              style={{ zIndex: -1 }}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            />
+          )}
+        </AnimatePresence>
+        <span className="relative inline-flex h-5 w-5 items-center justify-center">
+          <span
+            className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
+            style={{
+              color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
+              fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+            }}
+            aria-hidden="true"
+          >
+            {icon}
+          </span>
+          {(hasUnreadUpdates || hasNewSpecials) && (
+            <span
+              className={`absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ${isActive ? "" : "ring-2 ring-white"}`}
+              aria-hidden="true"
+            />
+          )}
+        </span>
+        {label}
+      </span>
+    </Link>
+  );
+});
+
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -301,85 +390,21 @@ export default function BottomNav() {
           isSearchActive ? "z-[55]" : "z-40"
         }`}
       >
-        {TABS.map(({ href, label, icon }) => {
-          const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          const hasUnreadUpdates = href === "/lists" && hasUnreadWatchlistUpdates;
-          const hasNewSpecials = href === "/" && hasPendingDigest;
-          return (
-            <Link
-              key={href}
-              href={href}
-              data-onboarding={
-                href === "/"
-                  ? "check-deals-tab"
-                  : href === "/lists"
-                    ? "watchlist-tab"
-                    : href === "/history"
-                      ? "history-tab"
-                      : "stats-tab"
-              }
-              aria-current={isActive ? "page" : undefined}
-              aria-label={hasUnreadUpdates || hasNewSpecials ? `${label}, new deal updates` : undefined}
-              onPointerEnter={() => prefetchRoute(href)}
-              onPointerDown={() => prefetchRoute(href)}
-              onFocus={() => prefetchRoute(href)}
-              onClick={() => {
-                if (!isActive) markNavigationStart(href);
-                if (isSearchActive) closeSearch();
-                if (hasNewSpecials) requestOpen();
-              }}
-              className="flex min-w-0 flex-1 items-center justify-center py-1.5 transition-transform duration-100 active:scale-[0.98]"
-            >
-              <span
-                className={`bottom-nav-tab relative flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-full py-2.5 dd-type-meta transition-colors ${
-                  isActive ? "dd-bottom-nav-active w-max min-w-full px-2" : "w-full min-w-0 px-0"
-                }`}
-                style={{ color: isActive ? "#ffffff" : "var(--dd-nav-inactive)" }}
-              >
-                {/* initial={false} (2026-08-20, per Jay: "don't animate the
-                    tabs into view [on load] ... animation only occurs when
-                    users select the tab") -- see home-page.tsx's own version
-                    of this comment for the full reasoning. Matters here even
-                    more than most: this is a route-driven active state (which
-                    pill is "active" depends on the current URL), so on a cold
-                    page load/refresh the pill for whatever route you landed
-                    on would otherwise pop in every single time, not just on a
-                    real tap. */}
-                <AnimatePresence initial={false}>
-                  {isActive && (
-                    <motion.span
-                      className="dd-bottom-nav-active-fill absolute inset-0 rounded-full bg-ink-900"
-                      style={{ zIndex: -1 }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                </AnimatePresence>
-                <span className="relative inline-flex h-5 w-5 items-center justify-center">
-                  <span
-                    className={`material-symbols-outlined h-5 w-5 text-[24px] ${isActive ? "dd-bottom-nav-active-icon" : ""}`}
-                    style={{
-                      color: isActive ? "#ffffff" : "var(--dd-nav-inactive)",
-                      fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
-                    }}
-                    aria-hidden="true"
-                  >
-                    {icon}
-                  </span>
-                  {(hasUnreadUpdates || hasNewSpecials) && (
-                    <span
-                      className={`absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ${isActive ? "" : "ring-2 ring-white"}`}
-                      aria-hidden="true"
-                    />
-                  )}
-                </span>
-                {label}
-              </span>
-            </Link>
-          );
-        })}
+        {TABS.map(({ href, label, icon }) => (
+          <BottomNavTab
+            key={href}
+            href={href}
+            label={label}
+            icon={icon}
+            isActive={href === "/" ? pathname === "/" : pathname.startsWith(href)}
+            hasUnreadUpdates={href === "/lists" && hasUnreadWatchlistUpdates}
+            hasNewSpecials={href === "/" && hasPendingDigest}
+            prefetchRoute={prefetchRoute}
+            isSearchActive={isSearchActive}
+            closeSearch={closeSearch}
+            requestOpen={requestOpen}
+          />
+        ))}
       </nav>
     </>
   );
