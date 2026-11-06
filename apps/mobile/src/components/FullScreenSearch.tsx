@@ -181,7 +181,12 @@ const TOOLBAR_TRANSITION_MS = 300;
 // store-pill row needed the identical logic and duplicating it a second
 // time was the wrong call.
 function applicableDealsFor(product: ProductCardData, selectedStores: string[], filter: DealFilter = "all"): CurrentDeal[] {
-  return product.currentDeals.filter((deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, filter));
+  const applicable: CurrentDeal[] = [];
+  for (const deal of product.currentDeals) {
+    if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, filter)) continue;
+    applicable.push(deal);
+  }
+  return applicable;
 }
 
 /** Narrows an existing search filter to the precise deals selected from the
