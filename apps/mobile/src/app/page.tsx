@@ -681,7 +681,7 @@ export default function HomePage() {
       : { focus: false },
     [newDealKeys, newForYouFilterActive],
   );
-  const openRailSearch = (
+  const openRailSearch = useCallback((
     filter: DealFilter,
     options: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy },
     allowNewToYou = false,
@@ -695,9 +695,18 @@ export default function HomePage() {
       useNewToYou ? "all" : filter,
       useNewToYou ? { ...newDealsAllSearchOptions, showNewToYouTab: true } : allDealsOptions,
     );
-  };
+  }, [newDealsAllSearchOptions, newForYouFilterActive, openSearchForFilter]);
   const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
   const worstDodgyDeals = newForYouFilterActive ? newWorstDodgyDeals : allWorstDodgyDeals;
+  const handleTopSavingsSeeAll = useCallback(() => {
+    openRailSearch("real", newDealsRealSearchOptions, true);
+  }, [newDealsRealSearchOptions, openRailSearch]);
+  const handleTopSavingsSeeMore = useCallback(() => {
+    openRailSearch("real", newDealsRealSearchOptions);
+  }, [newDealsRealSearchOptions, openRailSearch]);
+  const handleDodgyDealsSeeAll = useCallback(() => {
+    openRailSearch("dodgy", newDealsDodgySearchOptions);
+  }, [newDealsDodgySearchOptions, openRailSearch]);
 
   const topDealsCategorySummary = useMemo(() => {
     const categories = new Set<string>();
@@ -1037,8 +1046,8 @@ export default function HomePage() {
                       refreshKey={selectedStores.join(",")}
                       showingNewOnly={newForYouFilterActive}
                       updatedText={updatedText}
-                      onSeeAll={() => openRailSearch("real", newDealsRealSearchOptions, true)}
-                      onSeeMore={() => openRailSearch("real", newDealsRealSearchOptions)}
+                      onSeeAll={handleTopSavingsSeeAll}
+                      onSeeMore={handleTopSavingsSeeMore}
                     />
                     <DealSnapshotRail
                       kind="dodgy"
@@ -1047,8 +1056,8 @@ export default function HomePage() {
                       refreshKey={selectedStores.join(",")}
                       showingNewOnly={newForYouFilterActive}
                       updatedText={updatedText}
-                      onSeeAll={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
-                      onSeeMore={() => openRailSearch("dodgy", newDealsDodgySearchOptions)}
+                      onSeeAll={handleDodgyDealsSeeAll}
+                      onSeeMore={handleDodgyDealsSeeAll}
                     />
                   </section>
                 );

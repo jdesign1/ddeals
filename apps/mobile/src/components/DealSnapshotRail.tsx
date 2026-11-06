@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   compareDealSnapshotEntries,
@@ -86,7 +86,7 @@ function arraysMatch(left: readonly string[] | undefined, right: readonly string
   return left.every((value, index) => value === right[index]);
 }
 
-export default function DealSnapshotRail({
+function DealSnapshotRail({
   kind,
   deals,
   selectedCategories,
@@ -288,6 +288,8 @@ export default function DealSnapshotRail({
     </section>
   );
 }
+
+export default memo(DealSnapshotRail);
 
 function SnapshotSeeAllCard({
   kind,
