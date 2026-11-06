@@ -1,6 +1,6 @@
 const NAVIGATION_MARK_PREFIX = "dodgey-navigation";
 
-function markName(kind: "start" | "commit", pathname: string): string {
+function markName(kind: "start" | "commit" | "first-frame", pathname: string): string {
   return `${NAVIGATION_MARK_PREFIX}:${kind}:${encodeURIComponent(pathname)}`;
 }
 
