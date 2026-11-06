@@ -116,6 +116,7 @@ function createBuckets(
   now: number,
 ): CategoryBucket[] {
   const buckets = new Map<string, CategoryBucket>();
+  const storeFilters = [...selectedStores];
 
   for (const product of products) {
     const category = groupCategory(product.category, product.name);
@@ -132,7 +133,7 @@ function createBuckets(
     buckets.set(category, bucket);
 
     const deals = product.currentDeals.filter(
-      (deal) => isCurrentSpecial(deal) && matchesAnySelectedStore(deal.store, [...selectedStores]),
+      (deal) => isCurrentSpecial(deal) && matchesAnySelectedStore(deal.store, storeFilters),
     );
     const assessedDeals = deals.filter(isAssessedDeal);
     if (assessedDeals.length === 0) continue;

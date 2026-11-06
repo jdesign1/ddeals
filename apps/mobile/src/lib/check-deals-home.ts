@@ -208,11 +208,12 @@ export function buildNewSinceLastVisitDeals(
   selectedStores: readonly string[],
 ): CheckDealsRailItem[] {
   const newKeys = new Set(dealKeys);
+  const storeFilters = [...selectedStores];
   const items: CheckDealsRailItem[] = [];
 
   for (const product of products) {
     for (const deal of product.currentDeals) {
-      if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, [...selectedStores])) continue;
+      if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
       if (!newKeys.has(getNewSpecialDealKey(product.id, deal.store))) continue;
       items.push({ product, deal, isNew: true });
     }
@@ -228,12 +229,13 @@ export function buildWatchlistSpecialDeals(
   savedProductIds: ReadonlySet<string>,
   selectedStores: readonly string[],
 ): CheckDealsRailItem[] {
+  const storeFilters = [...selectedStores];
   const items: CheckDealsRailItem[] = [];
 
   for (const product of products) {
     if (!savedProductIds.has(product.id)) continue;
     const candidates = product.currentDeals.filter(
-      (deal) => deal.isOnSpecial && matchesAnySelectedStore(deal.store, [...selectedStores]),
+      (deal) => deal.isOnSpecial && matchesAnySelectedStore(deal.store, storeFilters),
     );
     if (candidates.length === 0) continue;
     const best = candidates.reduce(bestSpecialDeal);
@@ -253,11 +255,11 @@ function historyKey(row: DealCheckRow): string {
   return `${row.product_id}::${normalizeStoreKey(row.store)}`;
 }
 
-function findCurrentCheckedDeal(product: ProductCard, row: DealCheckRow, selectedStores: readonly string[]): CurrentDeal | undefined {
+function findCurrentCheckedDeal(product: ProductCard, row: DealCheckRow, selectedStores: string[]): CurrentDeal | undefined {
   const checkedStoreKey = normalizeStoreKey(row.store);
   const candidates = product.currentDeals.filter(
     (deal) => deal.isOnSpecial
-      && matchesAnySelectedStore(deal.store, [...selectedStores])
+      && matchesAnySelectedStore(deal.store, selectedStores)
       && (normalizeStoreKey(deal.store).includes(checkedStoreKey) || checkedStoreKey.includes(normalizeStoreKey(deal.store))),
   );
   return candidates.reduce<CurrentDeal | undefined>(
@@ -271,6 +273,7 @@ export function buildPreviouslyCheckedChangedDeals(
   history: readonly DealCheckRow[],
   selectedStores: readonly string[],
 ): CheckDealsRailItem[] {
+  const storeFilters = [...selectedStores];
   const productById = new Map(products.map((product) => [product.id, product]));
   const latestRows = new Map<string, DealCheckRow>();
 
@@ -283,7 +286,7 @@ export function buildPreviouslyCheckedChangedDeals(
   for (const row of latestRows.values()) {
     const product = productById.get(row.product_id);
     if (!product) continue;
-    const deal = findCurrentCheckedDeal(product, row, selectedStores);
+    const deal = findCurrentCheckedDeal(product, row, storeFilters);
     if (!deal) continue;
 
     const priceChanged = Math.abs(deal.price - row.price) > 0.005;
