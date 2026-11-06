@@ -320,6 +320,12 @@ export default function DealAssessmentPage() {
     },
     [historyRouteKey]
   );
+  const selectHistoryStore = useCallback(
+    (store: string) => {
+      setHistorySelection({ routeKey: historyRouteKey, store });
+    },
+    [historyRouteKey]
+  );
   const historyStoreDeals = useMemo(() => {
     if (!product) return [];
     const seen = new Set<string>();
@@ -1417,7 +1423,7 @@ export default function DealAssessmentPage() {
                   historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
                   storeOptions={historyStoreOptions}
                   selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
-                  onStoreChange={(store) => setHistorySelection({ routeKey: historyRouteKey, store })}
+                  onStoreChange={selectHistoryStore}
                   verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
                 />
               </div>

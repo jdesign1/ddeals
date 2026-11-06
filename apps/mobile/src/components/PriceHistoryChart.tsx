@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { type AssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
@@ -106,7 +106,7 @@ function hasDrawableArea(coordinates: { x: number; y: number }[]): boolean {
   return coordinates.length >= 2 && coordinates[0].x < coordinates[coordinates.length - 1].x;
 }
 
-export default function PriceHistoryChart({
+function PriceHistoryChart({
   points,
   currentPrice,
   currentStore,
@@ -485,3 +485,5 @@ export default function PriceHistoryChart({
     </div>
   );
 }
+
+export default memo(PriceHistoryChart);
