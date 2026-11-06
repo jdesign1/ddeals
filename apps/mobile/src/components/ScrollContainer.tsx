@@ -6,6 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useSearchShell } from "@/lib/search-context";
+import { markNavigationCommit } from "@/lib/navigation-performance";
 import {
   isNearScrollBottom,
   CHECK_DEALS_SCROLL_TO_TOP_EVENT,
@@ -93,6 +94,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const previousPathname = previousPathnameRef.current;
     previousPathnameRef.current = pathname;
+    markNavigationCommit(pathname);
 
     const isContactRoute = CONTACT_ROUTES.includes(pathname);
     const wasContactRoute = CONTACT_ROUTES.includes(previousPathname);

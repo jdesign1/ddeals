@@ -9,6 +9,7 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
 import { useRouter } from "next/navigation";
+import { markNavigationStart } from "@/lib/navigation-performance";
 
 type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
@@ -318,6 +319,7 @@ export default function BottomNav() {
               onPointerDown={() => prefetchRoute(href)}
               onFocus={() => prefetchRoute(href)}
               onClick={() => {
+                if (!isActive) markNavigationStart(href);
                 if (isSearchActive) closeSearch();
                 if (hasNewSpecials) requestOpen();
               }}
