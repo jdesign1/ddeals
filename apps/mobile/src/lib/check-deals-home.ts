@@ -315,6 +315,24 @@ function findCurrentCheckedDeal(product: ProductCard, row: DealCheckRow, selecte
   return best;
 }
 
+const CHECKED_HISTORY_RAIL_LIMIT = 20;
+
+function compareCheckedHistoryItems(left: CheckDealsRailItem, right: CheckDealsRailItem): number {
+  return Date.parse(right.checkedAt ?? "") - Date.parse(left.checkedAt ?? "")
+    || left.product.name.localeCompare(right.product.name);
+}
+
+function insertCheckedHistoryItem(items: CheckDealsRailItem[], candidate: CheckDealsRailItem): void {
+  let insertAt = 0;
+  while (insertAt < items.length && compareCheckedHistoryItems(items[insertAt]!, candidate) <= 0) {
+    insertAt += 1;
+  }
+  if (insertAt >= CHECKED_HISTORY_RAIL_LIMIT) return;
+
+  items.splice(insertAt, 0, candidate);
+  if (items.length > CHECKED_HISTORY_RAIL_LIMIT) items.pop();
+}
+
 export function buildPreviouslyCheckedChangedDeals(
   products: readonly ProductCard[],
   history: readonly DealCheckRow[],
@@ -377,7 +395,11 @@ export function buildPreviouslyCheckedChangedDeals(
     items.push({ product, deal, checkedAt: row.checked_at, changeLabel });
   }
 
-  return items
-    .sort((left, right) => Date.parse(right.checkedAt ?? "") - Date.parse(left.checkedAt ?? "") || left.product.name.localeCompare(right.product.name))
-    .slice(0, 20);
+  if (hasInvalidHistoryTimestamp) {
+    return items.sort(compareCheckedHistoryItems).slice(0, CHECKED_HISTORY_RAIL_LIMIT);
+  }
+
+  const rankedItems: CheckDealsRailItem[] = [];
+  for (const item of items) insertCheckedHistoryItem(rankedItems, item);
+  return rankedItems;
 }
