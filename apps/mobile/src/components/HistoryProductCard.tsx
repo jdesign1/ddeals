@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { memo } from "react";
 import type { CurrentDeal, ProductCard as ProductCardData } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
@@ -20,7 +21,7 @@ interface HistoryProductCardProps {
  * tap-through to the deal page. Assessment badges stay on the
  * assessment screen rather than competing with this scan-friendly history.
  */
-export default function HistoryProductCard({ product, deal, isLocked = false }: HistoryProductCardProps) {
+function HistoryProductCard({ product, deal, isLocked = false }: HistoryProductCardProps) {
   const router = useRouter();
   const { beginNavigation, isNavigating } = useDealNavigationActivation();
   const warmDealRoute = () => prepareDealNavigation(router, product, deal.store);
@@ -89,3 +90,5 @@ export default function HistoryProductCard({ product, deal, isLocked = false }: 
     </div>
   );
 }
+
+export default memo(HistoryProductCard);

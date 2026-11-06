@@ -181,6 +181,10 @@ export default function HistoryPage() {
       return Boolean(product && productMatchesSearch(product, searchQuery));
     });
   }, [displayHistory, productById, searchQuery, verdictFilter]);
+  const historicalDealById = useMemo(
+    () => new Map(displayHistory.map((row) => [row.id, buildHistoricalDeal(row)])),
+    [displayHistory],
+  );
   const lockedHistoryIndexes = useMemo(() => {
     const indexes = new Map<string, number>();
     let lockedCount = 0;
@@ -322,7 +326,8 @@ export default function HistoryPage() {
             {filteredHistory.map((h, index) => {
               const product = productById.get(h.product_id);
               if (!product) return null;
-              const deal = buildHistoricalDeal(h);
+              const deal = historicalDealById.get(h.id);
+              if (!deal) return null;
               const isLocked = !historyIsPremium && !historyPreviewIds.has(h.id);
               const lockedIndex = isLocked
                 ? lockedHistoryIndexes.indexes.get(h.id) ?? 0
