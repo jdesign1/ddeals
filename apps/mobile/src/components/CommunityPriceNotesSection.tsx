@@ -535,7 +535,7 @@ function NoteComposer({
   );
 }
 
-export default function CommunityPriceNotesSection({
+function CommunityPriceNotesSection({
   productId,
   productName,
   productBrand,
@@ -765,3 +765,5 @@ export default function CommunityPriceNotesSection({
     </>
   );
 }
+
+export default memo(CommunityPriceNotesSection);
