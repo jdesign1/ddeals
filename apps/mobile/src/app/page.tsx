@@ -34,7 +34,7 @@ import {
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildCurrentSpecialCounts,
-  buildForYouCategoryDeals,
+  buildForYouCategoryDealsByCategory,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getLatestPublishedAt,
@@ -651,10 +651,7 @@ export default function HomePage() {
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
   const forYouCategoryDeals = useMemo(
-    () => preferredCategories.map((category) => ({
-      category,
-      deals: buildForYouCategoryDeals(allTopSavingsDeals, category, newDealKeys),
-    })),
+    () => buildForYouCategoryDealsByCategory(allTopSavingsDeals, preferredCategories, newDealKeys),
     [allTopSavingsDeals, newDealKeys, preferredCategories],
   );
   const visibleForYouCategory = activeForYouCategory && preferredCategories.includes(activeForYouCategory)

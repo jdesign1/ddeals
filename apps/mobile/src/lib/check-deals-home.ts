@@ -34,21 +34,48 @@ export function buildForYouCategoryDeals(
   category: string,
   newDealKeys: readonly string[] = [],
 ): CheckDealsRailItem[] {
+  return buildForYouCategoryDealsByCategory(deals, [category], newDealKeys)[0]?.deals ?? [];
+}
+
+/**
+ * Group the savings rail once for the shopper's preferred categories. The
+ * page usually asks for three categories, so doing the category lookup and
+ * new-deal key construction once avoids rescanning the full rail per pill.
+ */
+export function buildForYouCategoryDealsByCategory(
+  deals: readonly Pick<CheckDealsRailItem, "product" | "deal">[],
+  categories: readonly string[],
+  newDealKeys: readonly string[] = [],
+): Array<{ category: string; deals: CheckDealsRailItem[] }> {
   const newKeys = new Set(newDealKeys);
-  return deals
-    .filter(({ product }) => groupCategory(product.category, product.name) === category)
-    .map(({ product, deal }) => ({
+  const categorySet = new Set(categories);
+  const grouped = new Map<string, CheckDealsRailItem[]>();
+
+  for (const category of categories) grouped.set(category, []);
+
+  for (const { product, deal } of deals) {
+    const category = groupCategory(product.category, product.name);
+    if (!categorySet.has(category)) continue;
+    grouped.get(category)?.push({
       product,
       deal,
       isNew: newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
-    }))
-    .sort((left, right) => {
+    });
+  }
+
+  return categories.map((category) => {
+    const categoryDeals = grouped.get(category) ?? [];
+    categoryDeals.sort((left, right) => {
       const newDifference = Number(right.isNew) - Number(left.isNew);
       return newDifference
         || compareDealSnapshotEntries(left, right, "savings")
         || left.product.name.localeCompare(right.product.name);
-    })
-    .slice(0, MAX_FOR_YOU_CATEGORY_PRODUCTS);
+    });
+    return {
+      category,
+      deals: categoryDeals.slice(0, MAX_FOR_YOU_CATEGORY_PRODUCTS),
+    };
+  });
 }
 
 /**

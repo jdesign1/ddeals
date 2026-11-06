@@ -4,6 +4,7 @@ import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import type { DealCheckRow } from "@dodgey-deals/shared";
 import {
   buildForYouCategoryDeals,
+  buildForYouCategoryDealsByCategory,
   buildCurrentSpecialCounts,
   buildNewSinceLastVisitDeals,
   buildPreviouslyCheckedChangedDeals,
@@ -98,6 +99,39 @@ test("For you keeps the chosen category useful after the new-special batch is re
   assert.deepEqual(result.map((item) => item.product.id), ["fruit-2", "fruit-1"]);
   assert.equal(result[0]?.isNew, true);
   assert.equal(result[1]?.isNew, false);
+});
+
+test("For you grouping keeps category order, empty categories, and new-first ranking", () => {
+  const products = [
+    product("fruit-1", "Apples", [deal({ price: 3, originalPrice: 5 })], "Fruit & Veg"),
+    product("fruit-2", "Bananas", [deal({ price: 2, originalPrice: 4 })], "Fruit & Veg"),
+    product("dairy-1", "Milk", [deal({ price: 4, originalPrice: 6 })], "Dairy & Eggs"),
+  ];
+  const deals = products.map((item) => ({ product: item, deal: item.currentDeals[0]! }));
+
+  const result = buildForYouCategoryDealsByCategory(
+    deals,
+    ["Dairy & Eggs", "Pantry", "Fruit & Veg"],
+    [getNewSpecialDealKey("fruit-2", "New World")],
+  );
+
+  assert.deepEqual(result.map(({ category }) => category), ["Dairy & Eggs", "Pantry", "Fruit & Veg"]);
+  assert.deepEqual(result[1]?.deals, []);
+  assert.deepEqual(result[2]?.deals.map(({ product: item }) => item.id), ["fruit-2", "fruit-1"]);
+  assert.equal(result[2]?.deals[0]?.isNew, true);
+});
+
+test("For you grouping caps each category without mutating the source rail", () => {
+  const deals = Array.from({ length: 12 }, (_, index) => {
+    const item = product(`pantry-${index}`, `Item ${index}`, [deal({ price: index + 1 })], "Pantry");
+    return { product: item, deal: item.currentDeals[0]! };
+  });
+  const originalOrder = deals.map(({ product: item }) => item.id);
+
+  const result = buildForYouCategoryDealsByCategory(deals, ["Pantry"]);
+
+  assert.equal(result[0]?.deals.length, 10);
+  assert.deepEqual(deals.map(({ product: item }) => item.id), originalOrder);
 });
 
 test("watchlist belt only includes saved active specials and picks the strongest offer", () => {
