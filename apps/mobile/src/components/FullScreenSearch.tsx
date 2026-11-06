@@ -627,47 +627,61 @@ export default function FullScreenSearch() {
   const sortedProducts = useMemo<ProductCardData[]>(() => {
     if (trimmedQuery.length < 3) return [];
     const textMatched = products.filter((p) => productMatchesSearch(p, trimmedQuery));
-    const matched = textMatched.filter((p) => {
-      const matchingDeals = applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet);
-      if (matchingDeals.length === 0) return false;
-      if (resultsCategoryFilter.length > 0 && !resultsCategoryFilter.includes(groupCategory(p.category, p.name))) return false;
-      return true;
-    });
+    const resultCategorySet = new Set(resultsCategoryFilter);
+    const now = Date.now();
+    const matched: Array<{
+      product: ProductCardData;
+      relevance: number;
+      bestDeal: CurrentDeal;
+      bestPrice: number;
+      latestStart: number;
+      hasNewSpecial: boolean;
+    }> = [];
 
-    const getBestDeal = (p: ProductCardData) =>
-      newSpecialDealKeySet
-        ? representativeDeal(applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet), resultsSortBy)
-        : cheapestDeal(applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet));
-    const getBestPrice = (p: ProductCardData) => getBestDeal(p).price;
-    const getLatestStart = (p: ProductCardData) => {
-      const deals = applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet);
-      return Math.max(...deals.map((d) => new Date(d.saleStartedAt || 0).getTime()));
-    };
-    const hasNewSpecial = (p: ProductCardData) =>
-      applicableDigestDeals(p, selectedStores, dealFilter, newSpecialDealKeySet).some((deal) => isNewSpecial(deal));
+    for (const product of textMatched) {
+      const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
+      if (matchingDeals.length === 0) continue;
+      if (resultCategorySet.size > 0 && !resultCategorySet.has(groupCategory(product.category, product.name))) continue;
 
-    return matched
-      .map((product) => ({
+      const bestDeal = newSpecialDealKeySet
+        ? representativeDeal(matchingDeals, resultsSortBy)
+        : cheapestDeal(matchingDeals);
+      let latestStart = Number.NEGATIVE_INFINITY;
+      let hasNewSpecial = false;
+      for (const deal of matchingDeals) {
+        const start = new Date(deal.saleStartedAt || 0).getTime();
+        if (Number.isNaN(start)) latestStart = Number.NaN;
+        else if (!Number.isNaN(latestStart) && start > latestStart) latestStart = start;
+        if (isNewSpecial(deal, now)) hasNewSpecial = true;
+      }
+      matched.push({
         product,
         relevance: getProductSearchRelevance(product, trimmedQuery),
-      }))
+        bestDeal,
+        bestPrice: bestDeal.price,
+        latestStart,
+        hasNewSpecial,
+      });
+    }
+
+    return matched
       .sort((a, b) => {
         if (resultsSortBy === "price-asc") {
-          const priceDifference = getBestPrice(a.product) - getBestPrice(b.product);
+          const priceDifference = a.bestPrice - b.bestPrice;
           if (priceDifference !== 0) return priceDifference;
         }
         if (resultsSortBy === "biggest-saver" || resultsSortBy === "worst-dodgy") {
           const sortDifference = (
-            getDealSortScore(getBestDeal(b.product), resultsSortBy) ?? Number.NEGATIVE_INFINITY
+            getDealSortScore(b.bestDeal, resultsSortBy) ?? Number.NEGATIVE_INFINITY
           ) - (
-            getDealSortScore(getBestDeal(a.product), resultsSortBy) ?? Number.NEGATIVE_INFINITY
+            getDealSortScore(a.bestDeal, resultsSortBy) ?? Number.NEGATIVE_INFINITY
           );
           if (sortDifference !== 0) return sortDifference;
         }
         if (b.relevance !== a.relevance) return b.relevance - a.relevance;
-        const newFirst = Number(hasNewSpecial(b.product)) - Number(hasNewSpecial(a.product));
+        const newFirst = Number(b.hasNewSpecial) - Number(a.hasNewSpecial);
         if (newFirst !== 0) return newFirst;
-        return getLatestStart(b.product) - getLatestStart(a.product);
+        return b.latestStart - a.latestStart;
       })
       .map((x) => x.product);
   }, [products, trimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet]);
