@@ -1,6 +1,7 @@
 "use client";
 
 import { Settings } from "lucide-react";
+import { useMemo } from "react";
 import { getDealSnapshotAmount } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
@@ -20,6 +21,14 @@ export default function ForYouCategoryRail({
   onEditCategories: () => void;
   onSeeAll: () => void;
 }) {
+  const cards = useMemo(
+    () => deals.map((item) => ({
+      item,
+      amount: getDealSnapshotAmount(item.deal, "savings"),
+    })),
+    [deals],
+  );
+
   return (
     <section className="flex flex-col gap-3 bg-fair-50 px-5 py-5" aria-labelledby="for-you-title">
       <div className="flex items-start justify-between gap-3">
@@ -71,8 +80,7 @@ export default function ForYouCategoryRail({
         </div>
       ) : (
         <div id="for-you-deals" className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0" role="tabpanel" aria-label={`${activeCategory} deals for you`}>
-          {deals.map((item, index) => {
-            const amount = getDealSnapshotAmount(item.deal, "savings");
+          {cards.map(({ item, amount }, index) => {
             return (
               <ProductListCard
                 key={`for-you-${activeCategory}-${item.product.id}-${item.deal.store}`}
