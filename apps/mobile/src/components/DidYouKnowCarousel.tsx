@@ -107,7 +107,7 @@ const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, onBrowse }: 
   );
 });
 
-export default function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storageScope, flushTop = false, onBrowse }: DidYouKnowCarouselProps) {
+function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storageScope, flushTop = false, onBrowse }: DidYouKnowCarouselProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const [seenState, setSeenState] = useState<ReturnType<typeof readDidYouKnowSeenState>>(null);
   const [storageReady, setStorageReady] = useState(false);
@@ -199,3 +199,5 @@ export default function DidYouKnowCarousel({ cards, publicationKey, publicationC
     </section>
   );
 }
+
+export default memo(DidYouKnowCarousel);
