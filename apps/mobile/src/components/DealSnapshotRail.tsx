@@ -180,6 +180,19 @@ export default function DealSnapshotRail({
     () => rankedDeals.findIndex(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
   );
+  const rankedCards = useMemo(
+    () => rankedDeals.map(({ product, deal }, index) => {
+      const amount = getDealSnapshotAmount(deal, kind);
+      return {
+        product,
+        deal,
+        index,
+        amount,
+        relatedStores: amount == null ? [] : alsoSpecialStores(product, deal.store),
+      };
+    }),
+    [kind, rankedDeals],
+  );
   const isShortRail = rankedDeals.length < 10;
 
   useEffect(() => {
@@ -230,8 +243,7 @@ export default function DealSnapshotRail({
         animate={isRefreshing ? { opacity: [1, 0.72, 1] } : { opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
-        {rankedDeals.map(({ product, deal }, index) => {
-          const amount = getDealSnapshotAmount(deal, kind);
+        {rankedCards.map(({ product, deal, amount, relatedStores, index }) => {
           if (amount == null) return null;
 
           return (
@@ -241,7 +253,7 @@ export default function DealSnapshotRail({
               deal={deal}
               imageLoading={index < 2 ? "eager" : "lazy"}
               storeLinePrefix={null}
-              alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+              alsoSpecialStores={relatedStores}
               // The first rendered tile in each top specials belt is a
               // reliable bridge into the assessment walkthrough. The
               // savings belt renders first, with dodgy as a fallback.
