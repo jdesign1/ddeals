@@ -66,12 +66,15 @@ function getLatestPublishedAt(deals: readonly FlatDeal[]): string | null {
   let latestPublishedAt: string | null = null;
 
   for (const { deal } of deals) {
-    for (const candidate of [deal.scrapedAt, deal.specialsVerifiedAt]) {
-      const timestamp = Date.parse(candidate ?? "");
-      if (Number.isFinite(timestamp) && timestamp > latestTimestamp) {
-        latestTimestamp = timestamp;
-        latestPublishedAt = new Date(timestamp).toISOString();
-      }
+    const scrapedTimestamp = Date.parse(deal.scrapedAt ?? "");
+    if (Number.isFinite(scrapedTimestamp) && scrapedTimestamp > latestTimestamp) {
+      latestTimestamp = scrapedTimestamp;
+      latestPublishedAt = new Date(scrapedTimestamp).toISOString();
+    }
+    const verifiedTimestamp = Date.parse(deal.specialsVerifiedAt ?? "");
+    if (Number.isFinite(verifiedTimestamp) && verifiedTimestamp > latestTimestamp) {
+      latestTimestamp = verifiedTimestamp;
+      latestPublishedAt = new Date(verifiedTimestamp).toISOString();
     }
   }
 
