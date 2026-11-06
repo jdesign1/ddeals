@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { getPriceChange } from "@/lib/price-change";
 
-export default function PriceChangeBadge({
+function PriceChangeBadge({
   currentPrice,
   comparisonPrice,
   format = "percentage",
@@ -54,3 +55,5 @@ export default function PriceChangeBadge({
     </span>
   );
 }
+
+export default memo(PriceChangeBadge);
