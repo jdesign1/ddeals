@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useEffect, useRef, useState, type RefObject } from "react";
 import { ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -14,7 +14,7 @@ const SCROLL_TO_TOP_DURATION_MS = 220;
  * genuinely long and the user is well into it before appearing, so a short
  * page or a tiny accidental scroll does not add extra floating chrome.
  */
-export default function BackToTopButton({
+function BackToTopButton({
   scrollRef,
   enabled = true,
   minimumScrollableDistance = DEFAULT_MIN_SCROLLABLE_DISTANCE_PX,
@@ -120,3 +120,5 @@ export default function BackToTopButton({
     </AnimatePresence>
   );
 }
+
+export default memo(BackToTopButton);
