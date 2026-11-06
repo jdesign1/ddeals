@@ -259,7 +259,9 @@ export default function BottomNav() {
     }).connection;
     if (connection?.saveData || connection?.effectiveType === "slow-2g" || connection?.effectiveType === "2g") return;
 
+    let cancelled = false;
     const prefetchRemainingRoutes = () => {
+      if (cancelled) return;
       for (const { href } of TABS) {
         if (href !== pathname) prefetchRoute(href);
       }
@@ -267,17 +269,20 @@ export default function BottomNav() {
 
     let idleId: number | null = null;
     let timeoutId: number | null = null;
-    if ("requestIdleCallback" in window) {
-      idleId = (window as Window & {
-        requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number;
-      }).requestIdleCallback(prefetchRemainingRoutes, { timeout: 1500 });
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      idleId = idleWindow.requestIdleCallback(prefetchRemainingRoutes, { timeout: 1500 });
     } else {
       timeoutId = window.setTimeout(prefetchRemainingRoutes, 900);
     }
 
     return () => {
-      if (idleId !== null && "cancelIdleCallback" in window) {
-        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      cancelled = true;
+      if (idleId !== null && typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(idleId);
       }
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
