@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { getSpecialPriceRange, type ProductCard, type CurrentDeal } from "@dodgey-deals/shared";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
@@ -22,7 +22,7 @@ import { useDealNavigationActivation } from "@/lib/deal-navigation-feedback-cont
  * Tappable as a whole (2026-08-09) -- navigates to `/deal/[id]/[store]`,
  * same as ProductListCard.tsx; see that component's doc comment.
  */
-export default function DealCard({
+function DealCard({
   product,
   deal,
   imageLoading = "lazy",
@@ -126,3 +126,5 @@ export default function DealCard({
     </article>
   );
 }
+
+export default memo(DealCard);
