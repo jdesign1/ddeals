@@ -763,7 +763,7 @@ export default function HomePage() {
     openSearchForFilter("all", { focus: false });
   };
 
-  const handleDidYouKnowBrowse = (card: DidYouKnowCard) => {
+  const handleDidYouKnowBrowse = useCallback((card: DidYouKnowCard) => {
     openSearchForFilter(card.search.filter, {
       focus: false,
       category: card.search.category,
@@ -771,7 +771,7 @@ export default function HomePage() {
       dealKeys: card.search.dealKeys,
       preserveSelectedStores: card.search.preserveSelectedStores,
     });
-  };
+  }, [openSearchForFilter]);
 
   const saveCategoryInterests = async (categories: string[]) => {
     setCategoryInterestsError(null);

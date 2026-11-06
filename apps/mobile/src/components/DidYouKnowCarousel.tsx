@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import InsightCarousel from "@/components/InsightCarousel";
@@ -70,14 +70,14 @@ function formatMetric(card: DidYouKnowCard): string {
   return card.metricFormat === "percentage" ? `${value}%` : value;
 }
 
-function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse: () => void }) {
+const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse: (card: DidYouKnowCard) => void }) {
   const styles = ACCENT_STYLES[card.accent];
   const categoryImage = CATEGORY_IMAGES[card.category] ?? CATEGORY_IMAGES.Pantry;
 
   return (
     <button
       type="button"
-      onClick={onBrowse}
+      onClick={() => onBrowse(card)}
       aria-label={`${card.supportingText} Explore ${card.category} deals.`}
       className={`group flex h-[11rem] w-full cursor-pointer flex-col rounded-3xl border px-5 py-4 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
@@ -105,7 +105,7 @@ function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse
       </span>
     </button>
   );
-}
+});
 
 export default function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storageScope, flushTop = false, onBrowse }: DidYouKnowCarouselProps) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -150,6 +150,10 @@ export default function DidYouKnowCarousel({ cards, publicationKey, publicationC
     const nextState = { version: 1 as const, publicationKey, fingerprint };
     if (writeDidYouKnowSeenState(nextState, storageScope)) setSeenState(nextState);
   }, [fingerprint, publicationComplete, publicationKey, storageScope]);
+  const handleBrowse = useCallback((card: DidYouKnowCard) => {
+    markSeen();
+    onBrowse(card);
+  }, [markSeen, onBrowse]);
 
   useEffect(() => {
     if (!hasNewInsight) return;
@@ -189,10 +193,7 @@ export default function DidYouKnowCarousel({ cards, publicationKey, publicationC
         trackPaddingClassName="px-5"
       >
         {cards.map((card) => (
-          <DidYouKnowCardView key={`${card.id}-${card.category}`} card={card} onBrowse={() => {
-            markSeen();
-            onBrowse(card);
-          }} />
+          <DidYouKnowCardView key={`${card.id}-${card.category}`} card={card} onBrowse={handleBrowse} />
         ))}
       </InsightCarousel>
     </section>
