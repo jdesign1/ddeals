@@ -189,9 +189,21 @@ export default function DealSnapshotRail({
         index,
         amount,
         relatedStores: amount == null ? [] : alsoSpecialStores(product, deal.store),
+        snapshot: amount == null
+          ? undefined
+          : {
+              rank: index + 1,
+              kind,
+              amount,
+              // Every card in the filtered rail has already passed the
+              // New-to-you filter. Keep the existing Top 20 freshness badge
+              // for the normal rail, and surface the same badge in filtered
+              // mode so the card reinforces the active filter.
+              isNew: showingNewOnly || newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
+            },
       };
     }),
-    [kind, rankedDeals],
+    [kind, newTop20Keys, rankedDeals, showingNewOnly],
   );
   const isShortRail = rankedDeals.length < 10;
 
@@ -243,7 +255,7 @@ export default function DealSnapshotRail({
         animate={isRefreshing ? { opacity: [1, 0.72, 1] } : { opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
-        {rankedCards.map(({ product, deal, amount, relatedStores, index }) => {
+        {rankedCards.map(({ product, deal, amount, relatedStores, index, snapshot }) => {
           if (amount == null) return null;
 
           return (
@@ -264,16 +276,7 @@ export default function DealSnapshotRail({
                     : "dodgy-deal-card"
                   : undefined
               }
-              snapshot={{
-                rank: index + 1,
-                kind,
-                amount,
-                // Every card in the filtered rail has already passed the
-                // New-to-you filter. Keep the existing Top 20 freshness
-                // badge for the normal rail, and surface the same badge in
-                // filtered mode so the card reinforces the active filter.
-                isNew: showingNewOnly || newTop20Keys.has(getTop20DealKey(product.id, deal.store)),
-              }}
+              snapshot={snapshot}
             />
           );
         })}

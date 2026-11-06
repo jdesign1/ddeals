@@ -37,15 +37,26 @@ export default function PersonalDealRail({
   const railRef = useRef<HTMLDivElement>(null);
   const visibleDeals = useMemo(() => deals.slice(0, 20), [deals]);
   const visibleCards = useMemo(
-    () => visibleDeals.map((item) => {
+    () => visibleDeals.map((item, index) => {
       const kind = snapshotKindForDeal(item);
+      const amount = getDealSnapshotAmount(item.deal, kind);
+      const badgeTone: "savings" | "dodgy" | "neutral" = amount == null ? "neutral" : kind;
       return {
         item,
-        kind,
-        amount: getDealSnapshotAmount(item.deal, kind),
+        index,
+        amount,
+        snapshot: {
+          rank: index + 1,
+          showRank: tone !== "watchlist",
+          kind,
+          amount: amount ?? undefined,
+          badgeLabel: amount == null ? "Special" : undefined,
+          badgeTone,
+          isNew: item.isNew,
+        },
       };
     }),
-    [visibleDeals],
+    [tone, visibleDeals],
   );
   const styles = toneStyles[tone];
 
@@ -85,7 +96,7 @@ export default function PersonalDealRail({
         role="region"
         aria-label={`${title} products`}
       >
-        {visibleCards.map(({ item, kind, amount }, index) => {
+        {visibleCards.map(({ item, snapshot, index }) => {
           return (
             <ProductListCard
               key={`${id}-${item.product.id}-${item.deal.store}`}
@@ -93,15 +104,7 @@ export default function PersonalDealRail({
               deal={item.deal}
               imageLoading={index < 2 ? "eager" : "lazy"}
               storeLinePrefix={null}
-              snapshot={{
-                rank: index + 1,
-                showRank: tone !== "watchlist",
-                kind,
-                amount: amount ?? undefined,
-                badgeLabel: amount == null ? "Special" : undefined,
-                badgeTone: amount == null ? "neutral" : kind,
-                isNew: item.isNew,
-              }}
+              snapshot={snapshot}
             />
           );
         })}

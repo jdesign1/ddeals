@@ -22,10 +22,23 @@ export default function ForYouCategoryRail({
   onSeeAll: () => void;
 }) {
   const cards = useMemo(
-    () => deals.map((item) => ({
-      item,
-      amount: getDealSnapshotAmount(item.deal, "savings"),
-    })),
+    () => deals.map((item, index) => {
+      const amount = getDealSnapshotAmount(item.deal, "savings");
+      return {
+        item,
+        index,
+        amount,
+        snapshot: {
+          rank: index + 1,
+          showRank: false,
+          kind: "savings" as const,
+          amount: amount ?? undefined,
+          isNew: item.isNew,
+          badgeLabel: amount == null ? "Special" : undefined,
+          badgeTone: amount == null ? "neutral" as const : "savings" as const,
+        },
+      };
+    }),
     [deals],
   );
 
@@ -80,7 +93,7 @@ export default function ForYouCategoryRail({
         </div>
       ) : (
         <div id="for-you-deals" className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0" role="tabpanel" aria-label={`${activeCategory} deals for you`}>
-          {cards.map(({ item, amount }, index) => {
+          {cards.map(({ item, snapshot, index }) => {
             return (
               <ProductListCard
                 key={`for-you-${activeCategory}-${item.product.id}-${item.deal.store}`}
@@ -88,15 +101,7 @@ export default function ForYouCategoryRail({
                 deal={item.deal}
                 imageLoading={index < 2 ? "eager" : "lazy"}
                 storeLinePrefix={null}
-                snapshot={{
-                  rank: index + 1,
-                  showRank: false,
-                  kind: "savings",
-                  amount: amount ?? undefined,
-                  isNew: item.isNew,
-                  badgeLabel: amount == null ? "Special" : undefined,
-                  badgeTone: amount == null ? "neutral" : "savings",
-                }}
+                snapshot={snapshot}
               />
             );
           })}
