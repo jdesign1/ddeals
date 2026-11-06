@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -530,6 +530,12 @@ export default function FullScreenSearch() {
   };
 
   const trimmedQuery = query.trim();
+  // Keep the input controlled by the immediate query, but let React schedule
+  // the catalogue-wide matching/ranking pass at lower priority. This keeps
+  // the iOS keyboard and text field responsive when the live catalogue is
+  // large, while the result heading/list/empty state all move together on the
+  // same deferred query snapshot.
+  const deferredTrimmedQuery = useDeferredValue(trimmedQuery);
 
   // The old dedicated "reset show-all expansion" effect that used to live
   // here (keyed on this exact same dep list: trimmedQuery, selectedStores,
@@ -670,7 +676,7 @@ export default function FullScreenSearch() {
   // followed by store/deal filters and relevance sorting. The matcher lives
   // in shared code so browser and mobile surfaces cannot drift apart.
   const sortedProducts = useMemo<ProductCardData[]>(() => {
-    if (trimmedQuery.length < 3) return [];
+    if (deferredTrimmedQuery.length < 3) return [];
     const resultCategorySet = new Set(resultsCategoryFilter);
     const now = Date.now();
     const matched: Array<{
@@ -683,7 +689,7 @@ export default function FullScreenSearch() {
     }> = [];
 
     for (const product of products) {
-      if (!productMatchesSearch(product, trimmedQuery)) continue;
+      if (!productMatchesSearch(product, deferredTrimmedQuery)) continue;
       const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
       if (matchingDeals.length === 0) continue;
       if (resultCategorySet.size > 0 && !resultCategorySet.has(groupCategory(product.category, product.name))) continue;
@@ -701,7 +707,7 @@ export default function FullScreenSearch() {
       }
       matched.push({
         product,
-        relevance: getProductSearchRelevance(product, trimmedQuery),
+        relevance: getProductSearchRelevance(product, deferredTrimmedQuery),
         bestDeal,
         bestPrice: bestDeal.price,
         latestStart,
@@ -729,7 +735,7 @@ export default function FullScreenSearch() {
         return b.latestStart - a.latestStart;
       })
       .map((x) => x.product);
-  }, [products, trimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet]);
+  }, [products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet]);
 
   // Infinite-scroll reveal replaced the old "Show all N items" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
@@ -777,7 +783,7 @@ export default function FullScreenSearch() {
   const displayedNewDealKeys = useMemo(() => {
     if (!newSpecialDealKeySet) return [];
     const keys = new Set<string>();
-    if (trimmedQuery.length >= 3) {
+    if (deferredTrimmedQuery.length >= 3) {
       for (const { product, matchingDeals } of visibleSearchCards) {
         for (const deal of matchingDeals) {
           keys.add(getNewSpecialDealKey(product.id, deal.store));
@@ -789,7 +795,7 @@ export default function FullScreenSearch() {
       }
     }
     return [...keys];
-  }, [dealFilter, newSpecialDealKeySet, selectedStores, trimmedQuery, visiblePopularSpecials, visibleSearchCards]);
+  }, [dealFilter, newSpecialDealKeySet, selectedStores, deferredTrimmedQuery, visiblePopularSpecials, visibleSearchCards]);
 
   // Do not clear the unread cue when navigation starts. Keep it until the
   // exact-key search has actually produced a result, so a failed load or a
@@ -1111,7 +1117,7 @@ export default function FullScreenSearch() {
               </div>
             )}
 
-            {!loading && !error && trimmedQuery.length < 3 && (
+            {!loading && !error && deferredTrimmedQuery.length < 3 && (
               // `space-y-8` -> plain div, spacing moved to explicit
               // `mb-8`/`mt-8` on the individual blocks below (2026-08-17,
               // peer review catch on the toolbar's sticky fix just below):
@@ -1375,11 +1381,11 @@ export default function FullScreenSearch() {
               </div>
             )}
 
-            {!loading && !error && trimmedQuery.length >= 3 && (
+            {!loading && !error && deferredTrimmedQuery.length >= 3 && (
               <>
                 <section className="py-4 text-center">
                   <h2 id="search-title" className="dd-type-section text-stone-900">
-                    Results for &lsquo;{trimmedQuery}&rsquo;
+                    Results for &lsquo;{deferredTrimmedQuery}&rsquo;
                   </h2>
                 </section>
 
@@ -1536,11 +1542,11 @@ export default function FullScreenSearch() {
                         <p className="dd-type-control text-stone-500">
                           {!selectedStores.includes("all")
                             ? selectedStores.length === 1
-                              ? `No ${trimmedQuery || "grocery"} items were found at ${getStoreDisplayName(selectedStores[0])}`
-                              : `No ${trimmedQuery || "grocery"} items were found at the selected supermarkets (${selectedStores
+                              ? `No ${deferredTrimmedQuery || "grocery"} items were found at ${getStoreDisplayName(selectedStores[0])}`
+                              : `No ${deferredTrimmedQuery || "grocery"} items were found at the selected supermarkets (${selectedStores
                                   .map(getStoreDisplayName)
                                   .join(", ")})`
-                            : `No items matching '${trimmedQuery}'`}
+                            : `No items matching '${deferredTrimmedQuery}'`}
                         </p>
                         <p className="dd-type-secondary text-stone-500">
                           {!selectedStores.includes("all")
