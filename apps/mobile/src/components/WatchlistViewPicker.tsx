@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -10,7 +10,7 @@ import StoreLogoBadge from "@/components/StoreLogoBadge";
 type StoreOption = { id: string; label: string };
 
 /** Compact supermarket filter used by the Watchlist toolbar. */
-export default function SupermarketPicker({
+function SupermarketPicker({
   selectedStoreIds,
   stores,
   onToggleStore,
@@ -192,3 +192,5 @@ export default function SupermarketPicker({
     </>
   );
 }
+
+export default memo(SupermarketPicker);
