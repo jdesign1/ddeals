@@ -380,15 +380,6 @@ function buildSnapshotDealGroups(
   return { savings, dodgy, newSavings, newDodgy };
 }
 
-function getSnapshotCategoryCounts(deals: FlatDeal[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const { product } of deals) {
-    const category = groupCategory(product.category, product.name);
-    counts.set(category, (counts.get(category) ?? 0) + 1);
-  }
-  return counts;
-}
-
 const TRENDING_PAGE_SIZE = 12;
 
 type IdleSchedulerWindow = Window & {
@@ -705,14 +696,23 @@ export default function HomePage() {
   const topSavingsDeals = newForYouFilterActive ? newTopSavingsDeals : allTopSavingsDeals;
   const worstDodgyDeals = newForYouFilterActive ? newWorstDodgyDeals : allWorstDodgyDeals;
 
-  const topDealsAvailableCategories = useMemo(
-    () => [...new Set([...topSavingsDeals, ...worstDodgyDeals].map(({ product }) => groupCategory(product.category, product.name)))],
-    [topSavingsDeals, worstDodgyDeals]
-  );
-  const topDealsCategoryCounts = useMemo(
-    () => getSnapshotCategoryCounts([...topSavingsDeals, ...worstDodgyDeals]),
-    [topSavingsDeals, worstDodgyDeals]
-  );
+  const topDealsCategorySummary = useMemo(() => {
+    const categories = new Set<string>();
+    const counts = new Map<string, number>();
+    for (const deals of [topSavingsDeals, worstDodgyDeals]) {
+      for (const { product } of deals) {
+        const category = groupCategory(product.category, product.name);
+        categories.add(category);
+        counts.set(category, (counts.get(category) ?? 0) + 1);
+      }
+    }
+    return {
+      availableCategories: [...categories],
+      categoryCounts: counts,
+    };
+  }, [topSavingsDeals, worstDodgyDeals]);
+  const topDealsAvailableCategories = topDealsCategorySummary.availableCategories;
+  const topDealsCategoryCounts = topDealsCategorySummary.categoryCounts;
 
   const filteredDeals = useMemo<FlatDeal[]>(() => {
     const categoryFiltered = dealCategoryFilter.length === 0
