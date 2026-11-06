@@ -1210,7 +1210,14 @@ function TrendingSection({
     resetKey: sorted,
     persistenceKey: revealPersistenceKey,
   });
-  const visible = sorted.slice(0, visibleCount);
+  const visible = useMemo(
+    () => sorted.slice(0, visibleCount).map(({ product, deal }) => ({
+      product,
+      deal,
+      relatedStores: alsoSpecialStores(product, deal.store),
+    })),
+    [sorted, visibleCount],
+  );
   return (
     <section className="flex flex-col gap-4 px-5">
       <DealFilterSummary filter={filter} />
@@ -1228,13 +1235,13 @@ function TrendingSection({
           ) : (
             <>
               <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
-                {visible.map(({ product, deal }, index) => (
+                {visible.map(({ product, deal, relatedStores }, index) => (
                   <ProductListCard
                     key={`${product.id}-${deal.store}`}
                     product={product}
                     deal={deal}
                     imageLoading={index < 2 ? "eager" : "lazy"}
-                    alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                    alsoSpecialStores={relatedStores}
                     dataOnboarding={index === 0 ? "deal-card" : undefined}
                   />
                 ))}
