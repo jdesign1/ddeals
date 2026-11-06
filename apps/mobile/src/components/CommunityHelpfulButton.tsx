@@ -2,11 +2,11 @@
 
 import { LoaderCircle, ThumbsUp } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { setCommunityPriceNoteHelpful, type CommunityPriceNote } from "@/lib/community-notes-api";
 
-export default function CommunityHelpfulButton({
+function CommunityHelpfulButton({
   note,
   onChanged,
 }: {
@@ -58,3 +58,5 @@ export default function CommunityHelpfulButton({
     </div>
   );
 }
+
+export default memo(CommunityHelpfulButton);
