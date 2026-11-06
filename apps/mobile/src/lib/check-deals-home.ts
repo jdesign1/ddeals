@@ -323,10 +323,39 @@ export function buildPreviouslyCheckedChangedDeals(
   const storeFilters = [...selectedStores];
   const productById = new Map(products.map((product) => [product.id, product]));
   const latestRows = new Map<string, DealCheckRow>();
+  const latestTimestamps = new Map<string, number>();
+  const latestIndices = new Map<string, number>();
+  let hasInvalidHistoryTimestamp = false;
 
-  for (const row of [...history].sort((left, right) => Date.parse(right.checked_at) - Date.parse(left.checked_at))) {
+  for (let index = 0; index < history.length; index += 1) {
+    const row = history[index]!;
+    const timestamp = Date.parse(row.checked_at);
+    if (!Number.isFinite(timestamp)) {
+      hasInvalidHistoryTimestamp = true;
+      break;
+    }
     const key = historyKey(row);
-    if (!latestRows.has(key)) latestRows.set(key, row);
+    const previousTimestamp = latestTimestamps.get(key);
+    if (previousTimestamp === undefined || timestamp > previousTimestamp) {
+      latestRows.set(key, row);
+      latestTimestamps.set(key, timestamp);
+      latestIndices.set(key, index);
+    }
+  }
+
+  if (hasInvalidHistoryTimestamp) {
+    latestRows.clear();
+    for (const row of [...history].sort((left, right) => Date.parse(right.checked_at) - Date.parse(left.checked_at))) {
+      const key = historyKey(row);
+      if (!latestRows.has(key)) latestRows.set(key, row);
+    }
+  } else {
+    const orderedEntries = [...latestRows.entries()].sort(([leftKey, left], [rightKey, right]) => {
+      const timestampDifference = Date.parse(right.checked_at) - Date.parse(left.checked_at);
+      return timestampDifference || (latestIndices.get(leftKey)! - latestIndices.get(rightKey)!);
+    });
+    latestRows.clear();
+    for (const [key, row] of orderedEntries) latestRows.set(key, row);
   }
 
   const items: CheckDealsRailItem[] = [];
