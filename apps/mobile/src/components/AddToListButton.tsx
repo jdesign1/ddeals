@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Plus, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -15,7 +15,7 @@ import ButtonSpinner from "@/components/ButtonSpinner";
  * avoiding a modal interruption for every item a user wants to save. Tapping
  * a saved checkmark opens a confirmation sheet before removing the product.
  */
-export default function AddToListButton({
+function AddToListButton({
   productId,
   productName,
   containerClassName = "absolute right-0 top-0 z-10",
@@ -111,6 +111,8 @@ export default function AddToListButton({
     </>
   );
 }
+
+export default memo(AddToListButton);
 
 function RemoveFromWatchlistSheet({
   open,
