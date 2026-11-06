@@ -107,7 +107,8 @@ export default function InsightCarousel({
     const step = getSlideStep(el);
     if (!step) return;
     const idx = Math.round(el.scrollLeft / step);
-    setActiveIndex(Math.max(0, Math.min(slideCount - 1, idx)));
+    const nextIndex = Math.max(0, Math.min(slideCount - 1, idx));
+    setActiveIndex((currentIndex) => currentIndex === nextIndex ? currentIndex : nextIndex);
   }, [slideCount, getSlideStep]);
 
   // Peer-review fix (2026-08-19): `scrollLeft` (absolute pixels) doesn't
