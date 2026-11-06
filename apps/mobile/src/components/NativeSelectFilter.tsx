@@ -1,12 +1,13 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { memo } from "react";
 
 /**
  * A styled native select. iOS presents this control with its system picker,
  * while the visible trigger retains the compact filter-row proportions.
  */
-export default function NativeSelectFilter<T extends string>({
+function NativeSelectFilter<T extends string>({
   value,
   defaultValue,
   onChange,
@@ -49,3 +50,5 @@ export default function NativeSelectFilter<T extends string>({
     </div>
   );
 }
+
+export default memo(NativeSelectFilter) as typeof NativeSelectFilter;
