@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Equal, Tag } from "lucide-react";
+import { memo } from "react";
 
 import { isUncertainAssessment, type AssessmentVerdict, type PriceHistoryInsight } from "@dodgey-deals/shared";
 import AssessmentText from "@/components/AssessmentText";
@@ -164,7 +165,7 @@ function getPriceTipsStatement(verdict: AssessmentVerdict, frequency: string): s
   return "This deal is fair, but it may be worth waiting if you don't need it today.";
 }
 
-export default function PriceHistoryInsightCard({
+function PriceHistoryInsightCard({
   insights,
   verdict,
 }: {
@@ -219,3 +220,5 @@ export default function PriceHistoryInsightCard({
     </div>
   );
 }
+
+export default memo(PriceHistoryInsightCard);
