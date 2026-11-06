@@ -99,6 +99,20 @@ test("new since last visit honours the semantic deal keys and store filter", () 
   );
 });
 
+test("new since last visit keeps the full-sort order when freshness is invalid", () => {
+  const products = [
+    product("invalid", "Zulu", [deal({ saleStartedAt: null, scrapedAt: null, specialsVerifiedAt: null })]),
+    product("recent", "Alpha", [deal({ saleStartedAt: "2026-10-20T00:00:00.000Z" })]),
+    product("older", "Beta", [deal({ saleStartedAt: "2026-10-19T00:00:00.000Z" })]),
+  ];
+  const keys = products.map((item) => getNewSpecialDealKey(item.id, "New World"));
+
+  assert.deepEqual(
+    buildNewSinceLastVisitDeals(products, keys, ["newworld"]).map(({ product: item }) => item.id),
+    ["recent", "older", "invalid"],
+  );
+});
+
 test("For you keeps the chosen category useful after the new-special batch is read", () => {
   const products = [
     product("fruit-1", "Apples", [deal({ price: 3, originalPrice: 5 })], "Fruit & Veg"),

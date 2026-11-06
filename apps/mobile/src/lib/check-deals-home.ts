@@ -108,6 +108,24 @@ function dealFreshness(deal: CurrentDeal): number {
   );
 }
 
+const NEW_DEALS_RAIL_LIMIT = 20;
+
+function compareNewDealFreshness(left: CheckDealsRailItem, right: CheckDealsRailItem): number {
+  return dealFreshness(right.deal) - dealFreshness(left.deal)
+    || left.product.name.localeCompare(right.product.name);
+}
+
+function insertFreshDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem): void {
+  let insertAt = 0;
+  while (insertAt < items.length && compareNewDealFreshness(items[insertAt]!, candidate) <= 0) {
+    insertAt += 1;
+  }
+  if (insertAt >= NEW_DEALS_RAIL_LIMIT) return;
+
+  items.splice(insertAt, 0, candidate);
+  if (items.length > NEW_DEALS_RAIL_LIMIT) items.pop();
+}
+
 function snapshotKindForDeal(deal: CurrentDeal): "savings" | "dodgy" {
   return deal.dealType === "Dodgy Deal" ? "dodgy" : "savings";
 }
@@ -210,18 +228,32 @@ export function buildNewSinceLastVisitDeals(
   const newKeys = new Set(dealKeys);
   const storeFilters = [...selectedStores];
   const items: CheckDealsRailItem[] = [];
+  let hasInvalidFreshness = false;
 
   for (const product of products) {
     for (const deal of product.currentDeals) {
       if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
       if (!newKeys.has(getNewSpecialDealKey(product.id, deal.store))) continue;
-      items.push({ product, deal, isNew: true });
+      if (!Number.isFinite(dealFreshness(deal))) hasInvalidFreshness = true;
+      insertFreshDeal(items, { product, deal, isNew: true });
     }
   }
 
-  return items
-    .sort((left, right) => dealFreshness(right.deal) - dealFreshness(left.deal) || left.product.name.localeCompare(right.product.name))
-    .slice(0, 20);
+  if (hasInvalidFreshness) {
+    const allItems: CheckDealsRailItem[] = [];
+    for (const product of products) {
+      for (const deal of product.currentDeals) {
+        if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
+        if (!newKeys.has(getNewSpecialDealKey(product.id, deal.store))) continue;
+        allItems.push({ product, deal, isNew: true });
+      }
+    }
+    return allItems
+      .sort(compareNewDealFreshness)
+      .slice(0, NEW_DEALS_RAIL_LIMIT);
+  }
+
+  return items;
 }
 
 export function buildWatchlistSpecialDeals(
