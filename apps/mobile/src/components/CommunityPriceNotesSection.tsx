@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { CalendarDays, LoaderCircle, MessageCircle, Pencil, Tag, Trash2, X } from "lucide-react";
@@ -69,7 +69,7 @@ function nzToday(): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function NoteCard({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
+const NoteCard = memo(function NoteCard({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
   note: CommunityPriceNote;
   onEdit: (note: CommunityPriceNote, returnFocusTarget?: HTMLButtonElement | null) => void;
   onHelpfulChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
@@ -112,7 +112,7 @@ function NoteCard({ note, onEdit, onHelpfulChanged, onOpenProfile }: {
       )}
     </article>
   );
-}
+});
 
 function NoteComposer({
   productId,
