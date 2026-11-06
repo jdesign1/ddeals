@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchNavigation } from "@/lib/search-context";
 import { useAuth } from "@/lib/auth-context";
 
@@ -110,16 +110,22 @@ export default function GlobalOverlays() {
     isPreviewTourOpen ||
     (canOpenRequestedTour &&
       (onboardingTourRequest === "replay" || !hasSeenOnboardingTour(user?.id ?? ANONYMOUS_ONBOARDING_TOUR_ID)));
+  const onboardingUserId = user?.id ?? ANONYMOUS_ONBOARDING_TOUR_ID;
 
-  const closeOnboardingTour = () => {
+  const handleScannerSearch = useCallback(() => {
+    closeScanner();
+    openSearch();
+  }, [closeScanner, openSearch]);
+
+  const closeOnboardingTour = useCallback(() => {
     try {
-      window.localStorage.setItem(`${ONBOARDING_TOUR_SEEN_PREFIX}${user?.id ?? ANONYMOUS_ONBOARDING_TOUR_ID}`, "1");
+      window.localStorage.setItem(`${ONBOARDING_TOUR_SEEN_PREFIX}${onboardingUserId}`, "1");
     } catch {
       // Keep the dismissal effective in memory when local storage is unavailable.
     }
     setIsPreviewTourOpen(false);
     dismissOnboardingTour();
-  };
+  }, [dismissOnboardingTour, onboardingUserId]);
 
   return (
     <>
@@ -132,10 +138,7 @@ export default function GlobalOverlays() {
         <ScannerModal
           isOpen={isScannerOpen}
           onClose={closeScanner}
-          onSearchForItem={() => {
-            closeScanner();
-            openSearch();
-          }}
+          onSearchForItem={handleScannerSearch}
         />
       )}
       {(hasOpenedAuthSheet || isAuthSheetOpen) && (
