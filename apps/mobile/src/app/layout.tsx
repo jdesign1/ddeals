@@ -19,6 +19,7 @@ import { NavigationDrawerProvider } from "@/lib/navigation-drawer-context";
 import { NewSpecialsProvider } from "@/lib/new-specials-context";
 import { DealNavigationFeedbackProvider } from "@/lib/deal-navigation-feedback-context";
 import "./globals.css";
+import "./close-controls.css";
 
 // Brand Guide v1.0 ("04 — TYPE"): Inter for everything read closely --
 // prices, product names, body copy. Replaces Geist Sans (2026-08-13 UI

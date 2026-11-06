@@ -378,13 +378,15 @@ export default function ListsPage() {
   const updateProductIds = useMemo(
     () => new Set(
       watchlistItems
-        .filter((item) => (
-          !lockedWatchlistProductIds.has(item.productId)
-          && item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`))
-        ))
+        .filter((item) => {
+          if (lockedWatchlistProductIds.has(item.productId)) return false;
+          const currentDeal = watchlistItemDeal(item, itemCards, ["all"], undefined, "best");
+          return currentDeal?.isOnSpecial === true
+            && item.sourceItems.some((sourceItem) => unreadListItemKeys.has(`${sourceItem.list_id}:${sourceItem.id}`));
+        })
         .map((item) => item.productId),
     ),
-    [lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
+    [itemCards, lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
   );
   const newUpdateItemCount = updateProductIds.size;
   const shouldPrioritizeUpdates = prioritizeUpdates || newUpdateItemCount > 0;

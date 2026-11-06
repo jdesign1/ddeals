@@ -1,0 +1,32 @@
+.dd-bottom-sheet-close {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background-color: transparent;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dd-bottom-sheet-close:hover,
+.dd-bottom-sheet-close:active {
+  border: 0;
+  box-shadow: none;
+  background-color: transparent !important;
+}
+
+.dd-bottom-sheet-close:focus-visible,
+.app-drawer-close:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dd-bottom-sheet-close:focus-visible {
+    outline: 2px solid var(--color-ink-600);
+    outline-offset: 2px;
+  }
+
+  .app-drawer-close:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-ink-200);
+  }
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import {
   CHECK_DEALS_BELT_LABELS,
@@ -95,8 +95,7 @@ export default function CheckDealsBeltOrderSheet({
             >
               <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 pb-3 pt-4">
                 <div>
-                  <h3 id="check-deals-belt-order-title" className="dd-type-sheet-title text-stone-900">Arrange deal belts</h3>
-                  <p className="mt-1 text-xs leading-4 text-stone-500">Choose the order they appear on Check Deals.</p>
+                  <h3 id="check-deals-belt-order-title" className="dd-type-sheet-title text-stone-900">Change page order</h3>
                 </div>
                 <button
                   type="button"
@@ -110,8 +109,7 @@ export default function CheckDealsBeltOrderSheet({
 
               <div className="space-y-2 px-5 py-4 pb-safe-sm">
                 {order.map((belt, index) => (
-                  <div key={belt} className="flex items-center gap-3 rounded-2xl bg-fair-50 px-3 py-2.5">
-                    <GripVertical className="h-5 w-5 shrink-0 text-stone-400" aria-hidden="true" />
+                  <div key={belt} className="flex items-center gap-3 rounded-2xl border border-stone-200/80 bg-fair-50 px-3 py-2.5">
                     <span className="min-w-0 flex-1 dd-type-control text-stone-800">{CHECK_DEALS_BELT_LABELS[belt]}</span>
                     <div className="flex shrink-0 items-center gap-1">
                       <button

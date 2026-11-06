@@ -141,7 +141,7 @@ export default function AppDrawer() {
             type="button"
             onClick={closeDrawer}
             aria-label="Close menu"
-            className="flex h-11 w-11 items-center justify-center text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 [-webkit-tap-highlight-color:transparent]"
+            className="app-drawer-close flex h-11 w-11 items-center justify-center text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 [-webkit-tap-highlight-color:transparent]"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>

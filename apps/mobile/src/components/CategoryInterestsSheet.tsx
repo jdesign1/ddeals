@@ -131,7 +131,9 @@ export default function CategoryInterestsSheet({
                   <h2 id="category-interests-sheet-title" className="dd-type-sheet-title text-stone-900">
                     {isOnboarding ? "Pick your deal interests" : "Your deal interests"}
                   </h2>
-                  <p className="mt-1 dd-type-meta text-stone-500">Choose up to {MAX_CATEGORY_INTERESTS}</p>
+                  <p className="mt-1 dd-type-meta dd-type-meta-strong text-ink-700" aria-live="polite">
+                    {selectedCategories.length} of {MAX_CATEGORY_INTERESTS} selected
+                  </p>
                 </div>
                 <button
                   ref={closeButtonRef}
@@ -147,12 +149,7 @@ export default function CategoryInterestsSheet({
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
                 <p id="category-interests-sheet-description" className="dd-type-secondary text-stone-600">
-                  {isOnboarding
-                    ? "When fresh specials arrive, Check Deals will bring the categories you care about to the top."
-                    : "Choose the categories you want to see first when new specials arrive."}
-                </p>
-                <p className="mt-4 dd-type-meta dd-type-meta-strong text-ink-700" aria-live="polite">
-                  {selectedCategories.length} of {MAX_CATEGORY_INTERESTS} selected
+                  When fresh specials arrive, we&apos;ll bring the categories you care about to the front.
                 </p>
 
                 <div className="mt-5 space-y-5">
@@ -189,7 +186,7 @@ export default function CategoryInterestsSheet({
                 </div>
               </div>
 
-              <div className="dd-sheet-cta-footer flex flex-shrink-0 flex-col gap-2 border-t border-stone-100 px-5 pt-3">
+              <div className="dd-sheet-cta-footer pb-safe-sm flex flex-shrink-0 flex-col gap-2 border-t border-stone-100 px-5 pt-2">
                 {error && <p role="alert" className="dd-type-secondary text-alert-700">{error}</p>}
                 <button
                   type="button"

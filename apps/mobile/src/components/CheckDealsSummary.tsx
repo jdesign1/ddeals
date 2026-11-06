@@ -128,7 +128,7 @@ function CheckDealsSummary({
               >
                 <StoreLogoBadge store={key} variant="ranking" decorative />
                 <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-fair-800">
-                  <span>{visibleCounts[key]}</span>
+                  <span className="relative left-1.5">{visibleCounts[key]}</span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
                 </span>
               </button>

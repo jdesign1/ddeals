@@ -1080,7 +1080,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => openSearchForFilter("all", { focus: false })}
-                  className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50"
+                  className="dd-btn dd-btn-outline-muted min-h-12 w-full cursor-pointer text-center"
                 >
                   See all deals
                 </button>
