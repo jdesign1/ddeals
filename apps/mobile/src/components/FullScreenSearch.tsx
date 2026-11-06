@@ -659,7 +659,10 @@ export default function FullScreenSearch() {
     maxItems: INFINITE_REVEAL_MAX_ITEMS,
     resetKey: sortedPopularSpecials,
   });
-  const visiblePopularSpecials = sortedPopularSpecials.slice(0, visiblePopularCount);
+  const visiblePopularSpecials = useMemo(
+    () => sortedPopularSpecials.slice(0, visiblePopularCount),
+    [sortedPopularSpecials, visiblePopularCount],
+  );
   // 3+ character results -- tokenized AND search across brand/name/category,
   // followed by store/deal filters and relevance sorting. The matcher lives
   // in shared code so browser and mobile surfaces cannot drift apart.
@@ -739,7 +742,10 @@ export default function FullScreenSearch() {
     maxItems: INFINITE_REVEAL_MAX_ITEMS,
     resetKey: sortedProducts,
   });
-  const visibleSearchResults = sortedProducts.slice(0, visibleSearchResultsCount);
+  const visibleSearchResults = useMemo(
+    () => sortedProducts.slice(0, visibleSearchResultsCount),
+    [sortedProducts, visibleSearchResultsCount],
+  );
   const displayedNewDealKeys = useMemo(() => {
     if (!newSpecialDealKeySet) return [];
     const keys = new Set<string>();
