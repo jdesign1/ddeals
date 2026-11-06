@@ -15,7 +15,7 @@ import {
 } from "@dodgey-deals/shared";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionStatus } from "@/lib/subscription-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { describeFetchError } from "@dodgey-deals/shared";
 import WatchlistNotificationSheet from "@/components/WatchlistNotificationSheet";
@@ -55,7 +55,7 @@ function isWatchlist(list: ListRow): boolean {
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id;
-  const { isPremium } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const {
     pushEnabled,
     pushReady,
@@ -251,7 +251,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         invalidateListsPageCache(user.id);
         window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
         setConfirmation(`${addedIds.length} ${addedIds.length === 1 ? "item" : "items"} added to Watchlist`);
-        if (!pushEnabled && isPremium) {
+        if (!pushEnabled && !subscriptionLoading && isPremium) {
           setNotificationPromptItemCount(addedIds.length);
           setNotificationPromptUserId(user.id);
           setNotificationPromptPending(true);
@@ -265,7 +265,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsCommitting(false);
     }
-  }, [isCommitting, isPremium, pushEnabled, savedProductIds, selectedProductIds, user]);
+  }, [isCommitting, isPremium, pushEnabled, savedProductIds, selectedProductIds, subscriptionLoading, user]);
 
   const value = useMemo<WatchlistContextValue>(() => ({
     savedProductIds,

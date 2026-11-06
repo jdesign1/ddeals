@@ -12,7 +12,7 @@ import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useSearchCatalogue } from "@/lib/search-context";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionStatus } from "@/lib/subscription-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 
 const SETTINGS_ROUTE_FALLBACK_MS = 1600;
@@ -31,7 +31,7 @@ export default function AppDrawer() {
   const { unreadAlerts } = useNotifications();
   const { canOpenDetectiveCase } = useNewSpecialsData();
   const { requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecialsActions();
-  const { isPremium, loading: subscriptionLoading } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const { products, catalogueLiveLoaded } = useSearchCatalogue();
   const { savedProductIds, savedItemsReady } = useWatchlist();
   const closeButtonRef = useRef<HTMLButtonElement>(null);

@@ -45,9 +45,16 @@ interface SubscriptionContextValue {
   restore: () => Promise<boolean>;
 }
 
+export interface SubscriptionStatusContextValue {
+  isPremium: boolean;
+  loading: boolean;
+  currentSubscription: SubscriptionEntitlementRecord | null;
+}
+
 type SubscriptionErrorSource = "purchase" | "restore" | "product_loading" | "entitlement_sync";
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
+const SubscriptionStatusContext = createContext<SubscriptionStatusContextValue | null>(null);
 
 function productSortValue(productId: string): number {
   if (productId === SUBSCRIPTION_PRODUCT_IDS.annual) return 0;
@@ -332,9 +339,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     restore,
   }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loadedUserId, loading, nativeAvailable, products, productsLoading, purchase, refresh, restore, restoring, router, subscriptionLoading]);
 
+  const statusValue = useMemo<SubscriptionStatusContextValue>(
+    () => ({ isPremium, loading: subscriptionLoading, currentSubscription }),
+    [currentSubscription, isPremium, subscriptionLoading],
+  );
+
   return (
     <SubscriptionContext.Provider value={value}>
-      {children}
+      <SubscriptionStatusContext.Provider value={statusValue}>
+        {children}
+      </SubscriptionStatusContext.Provider>
     </SubscriptionContext.Provider>
   );
 }
@@ -342,5 +356,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 export function useSubscriptions(): SubscriptionContextValue {
   const context = useContext(SubscriptionContext);
   if (!context) throw new Error("useSubscriptions must be used inside SubscriptionProvider");
+  return context;
+}
+
+export function useSubscriptionStatus(): SubscriptionStatusContextValue {
+  const context = useContext(SubscriptionStatusContext);
+  if (!context) throw new Error("useSubscriptionStatus must be used inside SubscriptionProvider");
   return context;
 }

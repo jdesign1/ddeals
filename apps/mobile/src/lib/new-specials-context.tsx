@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { useSearchCatalogue } from "./search-context";
-import { useSubscriptions } from "./subscription-context";
+import { useSubscriptionStatus } from "./subscription-context";
 import {
   buildDealDetectiveQuizCase,
   clearStoredDealDetectiveCase,
@@ -152,7 +152,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
   const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuth();
-  const { isPremium } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const detectiveAccessToken = session?.access_token ?? null;
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null });
@@ -494,7 +494,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // Plus accounts retain a profile-menu replay path for QA and support. This
   // does not recreate the automatic launch popup after a case is answered;
   // it only lets the user explicitly start the game again from their profile.
-  const canReplayDetectiveCaseFromProfile = Boolean(isPremium && currentQuizCase && playedPairHistoryReady && storageReady);
+  const canReplayDetectiveCaseFromProfile = Boolean(!subscriptionLoading && isPremium && currentQuizCase && playedPairHistoryReady && storageReady);
   const canOpenDetectiveCase = Boolean(detectiveCase || canCreateDetectiveCaseOnDemand || canReplayDetectiveCaseFromProfile);
 
   const requestDetectiveCaseOpen = useCallback(() => {
