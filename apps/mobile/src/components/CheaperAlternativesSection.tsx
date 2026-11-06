@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { CheaperAlternative } from "@dodgey-deals/shared";
@@ -16,7 +16,7 @@ interface CheaperAlternativesSectionProps {
   onToggle: () => void;
 }
 
-export default function CheaperAlternativesSection({
+function CheaperAlternativesSection({
   alternatives,
   isMultiStoreDeal,
   showCarousel,
@@ -128,3 +128,5 @@ export default function CheaperAlternativesSection({
     </div>
   );
 }
+
+export default memo(CheaperAlternativesSection);

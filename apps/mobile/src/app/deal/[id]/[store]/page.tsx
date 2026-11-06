@@ -586,6 +586,9 @@ export default function DealAssessmentPage() {
   // screen either way), it just shows/hides one inline section, so a
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
+  const toggleCheaperCarousel = useCallback(() => {
+    setShowCheaperCarousel((open) => !open);
+  }, []);
   const [priceHistoryViewTab, setPriceHistoryViewTab] = useState<"90-day-view" | "insights">("90-day-view");
   const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("price-tips");
   const [showProductImage, setShowProductImage] = useState(false);
@@ -1116,7 +1119,7 @@ export default function DealAssessmentPage() {
             isMultiStoreDeal={false}
             showCarousel={showCheaperCarousel}
             verdictButtonBorderClass={verdictButtonBorderClass}
-            onToggle={() => setShowCheaperCarousel((open) => !open)}
+            onToggle={toggleCheaperCarousel}
           />
         </div>
       )}
@@ -1128,7 +1131,7 @@ export default function DealAssessmentPage() {
               {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
             </p>
             <button
-              onClick={() => setShowCheaperCarousel((open) => !open)}
+              onClick={toggleCheaperCarousel}
               aria-expanded={showCheaperCarousel}
               className={`flex w-full items-center justify-center gap-2 rounded-full border py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${
                 isMultiStoreDeal ? "border-stone-500 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
