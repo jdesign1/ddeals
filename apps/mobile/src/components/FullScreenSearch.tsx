@@ -746,6 +746,28 @@ export default function FullScreenSearch() {
     () => sortedProducts.slice(0, visibleSearchResultsCount),
     [sortedProducts, visibleSearchResultsCount],
   );
+  const visiblePopularCards = useMemo(
+    () => visiblePopularSpecials.map(({ product, bestDeal }) => ({
+      product,
+      bestDeal,
+      relatedStores: alsoSpecialStoresForPopular(product, bestDeal, newSpecialDealKeySet),
+    })),
+    [newSpecialDealKeySet, visiblePopularSpecials],
+  );
+  const visibleSearchCards = useMemo(
+    () => visibleSearchResults.map((product) => {
+      const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
+      const bestDeal = newSpecialDealKeySet
+        ? representativeDeal(matchingDeals, resultsSortBy)
+        : cheapestDeal(matchingDeals);
+      return {
+        product,
+        bestDeal,
+        relatedStores: alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet),
+      };
+    }),
+    [dealFilter, newSpecialDealKeySet, resultsSortBy, selectedStores, visibleSearchResults],
+  );
   const displayedNewDealKeys = useMemo(() => {
     if (!newSpecialDealKeySet) return [];
     const keys = new Set<string>();
@@ -1305,14 +1327,14 @@ export default function FullScreenSearch() {
                       </div>
                     </div>
                     <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
-                      {visiblePopularSpecials.map(({ product, bestDeal }, index) => (
+                      {visiblePopularCards.map(({ product, bestDeal, relatedStores }, index) => (
                         <ProductListCard
                           key={`${product.id}-${bestDeal.store}`}
                           product={product}
                           deal={bestDeal}
                           imageLoading={index < 2 ? "eager" : "lazy"}
                           storeLinePrefix={null}
-                            alsoSpecialStores={alsoSpecialStoresForPopular(product, bestDeal, newSpecialDealKeySet)}
+                          alsoSpecialStores={relatedStores}
                           isNew={isNewToYouMode}
                           onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                         />
@@ -1490,24 +1512,18 @@ export default function FullScreenSearch() {
 
                   <div className={isGridLayout ? "grid grid-cols-2 gap-3" : "space-y-4"}>
                     {sortedProducts.length > 0 ? (
-                      visibleSearchResults.map((product, index) => {
-                        const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
-                        const bestDeal = newSpecialDealKeySet
-                          ? representativeDeal(matchingDeals, resultsSortBy)
-                          : cheapestDeal(matchingDeals);
-                        return (
+                      visibleSearchCards.map(({ product, bestDeal, relatedStores }, index) => (
                           <ProductListCard
                             key={product.id}
                             product={product}
                             deal={bestDeal}
                             imageLoading={index < 2 ? "eager" : "lazy"}
                             storeLinePrefix={null}
-                            alsoSpecialStores={alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet)}
+                            alsoSpecialStores={relatedStores}
                             isNew={isNewToYouMode}
                             onNavigate={() => pauseForDealNavigation(product.id, bestDeal.store)}
                           />
-                        );
-                      })
+                      ))
                     ) : (
                       <div className="col-span-full w-full space-y-2 rounded-2xl border border-stone-200 bg-white px-4 py-6 text-center">
                         <AlertCircle className="mx-auto h-10 w-10 text-stone-300" aria-hidden="true" />
