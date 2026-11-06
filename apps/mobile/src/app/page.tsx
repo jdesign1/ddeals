@@ -1289,6 +1289,17 @@ function MyListSection({
 }) {
   const { isGridLayout } = useCardLayout();
   const sorted = useMemo(() => sortDeals(deals, sortBy), [deals, sortBy]);
+  const cards = useMemo(
+    () => {
+      if (authLoading || !signedIn || loading || error) return [];
+      return sorted.map(({ product, deal }) => ({
+        product,
+        deal,
+        relatedStores: alsoSpecialStores(product, deal.store),
+      }));
+    },
+    [authLoading, error, loading, signedIn, sorted],
+  );
   const { openAuthSheet } = useAuth();
 
   if (authLoading) return <LoadingMascot loading />;
@@ -1387,13 +1398,13 @@ function MyListSection({
             />
           </div>
           <div className={`grid gap-4 ${isGridLayout ? "grid-cols-2" : "grid-cols-1"}`}>
-            {sorted.map(({ product, deal }) => (
+            {cards.map(({ product, deal, relatedStores }) => (
               <ProductListCard
                 key={`${product.id}-${deal.store}`}
                 product={product}
                 deal={deal}
                 storeLinePrefix="Special at" // 2026-08-17, Jay: "change wording to just 'special at supermarket', remove the word 'on'"
-                alsoSpecialStores={alsoSpecialStores(product, deal.store)}
+                alsoSpecialStores={relatedStores}
               />
             ))}
           </div>
