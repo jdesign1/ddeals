@@ -16,7 +16,7 @@ import { supabaseConfig } from "@/lib/config";
 import { useAuth } from "@/lib/auth-context";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import { useSubscriptions } from "@/lib/subscription-context";
-import { useSearch } from "@/lib/search-context";
+import { useSearchCatalogue } from "@/lib/search-context";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import ErrorState from "@/components/ErrorState";
 import HistoryProductCard from "@/components/HistoryProductCard";
@@ -70,7 +70,7 @@ export default function HistoryPage() {
   const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { isPremium, openSubscriptionPage } = useSubscriptions();
   const router = useRouter();
-  const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearch();
+  const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearchCatalogue();
   const [verdictFilter, setVerdictFilter] = useState<"real" | "dodgy" | null>(null);
 
   useEffect(() => {

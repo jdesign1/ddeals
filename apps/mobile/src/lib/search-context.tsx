@@ -141,7 +141,19 @@ interface SearchContextValue {
   closeScanner: () => void;
 }
 
+/** Catalogue-only slice for global consumers that do not need search UI state. */
+export interface SearchCatalogueContextValue {
+  products: ProductCard[];
+  loadingProducts: boolean;
+  catalogueLiveLoaded: boolean;
+  error: string | null;
+  retry: () => void;
+  cataloguePublicationKey: string | null;
+  cataloguePublicationComplete: boolean;
+}
+
 const SearchContext = createContext<SearchContextValue | null>(null);
+const SearchCatalogueContext = createContext<SearchCatalogueContextValue | null>(null);
 interface SearchNavigationContextValue {
   isActive: boolean;
   closeSearch: () => void;
@@ -556,6 +568,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, retry, refreshCatalogue, openSearch, openSearchForFilter, clearNewSpecialsFilter, closeSearch, pauseForDealNavigation, finishDealNavigation, resumeAfterDealBack, openScanner, closeScanner]
   );
 
+  const catalogueValue = useMemo<SearchCatalogueContextValue>(
+    () => ({
+      products,
+      loadingProducts,
+      catalogueLiveLoaded,
+      error,
+      retry,
+      cataloguePublicationKey,
+      cataloguePublicationComplete,
+    }),
+    [catalogueLiveLoaded, cataloguePublicationComplete, cataloguePublicationKey, error, loadingProducts, products, retry],
+  );
+
   const navigationValue = useMemo<SearchNavigationContextValue>(
     () => ({ isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner }),
     [isActive, closeSearch, openSearch, openSearchForFilter, isScannerOpen, hasOpenedScanner, openScanner, closeScanner],
@@ -571,13 +596,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   return (
     <SearchContext.Provider value={value}>
-      <SearchNavigationContext.Provider value={navigationValue}>
-        <SearchInputContext.Provider value={inputValue}>
-          <SearchShellContext.Provider value={shellValue}>
-            {children}
-          </SearchShellContext.Provider>
-        </SearchInputContext.Provider>
-      </SearchNavigationContext.Provider>
+      <SearchCatalogueContext.Provider value={catalogueValue}>
+        <SearchNavigationContext.Provider value={navigationValue}>
+          <SearchInputContext.Provider value={inputValue}>
+            <SearchShellContext.Provider value={shellValue}>
+              {children}
+            </SearchShellContext.Provider>
+          </SearchInputContext.Provider>
+        </SearchNavigationContext.Provider>
+      </SearchCatalogueContext.Provider>
     </SearchContext.Provider>
   );
 }
@@ -585,6 +612,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 export function useSearch(): SearchContextValue {
   const ctx = useContext(SearchContext);
   if (!ctx) throw new Error("useSearch must be used within a SearchProvider");
+  return ctx;
+}
+
+export function useSearchCatalogue(): SearchCatalogueContextValue {
+  const ctx = useContext(SearchCatalogueContext);
+  if (!ctx) throw new Error("useSearchCatalogue must be used within SearchProvider");
   return ctx;
 }
 

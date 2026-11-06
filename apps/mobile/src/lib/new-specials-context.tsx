@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
-import { useSearch } from "./search-context";
+import { useSearchCatalogue } from "./search-context";
 import { useSubscriptions } from "./subscription-context";
 import {
   buildDealDetectiveQuizCase,
@@ -120,7 +120,7 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
 
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearch();
+  const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
   const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuth();
   const { isPremium } = useSubscriptions();
   const detectiveAccessToken = session?.access_token ?? null;

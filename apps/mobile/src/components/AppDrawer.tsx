@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useNewSpecials } from "@/lib/new-specials-context";
-import { useSearch } from "@/lib/search-context";
+import { useSearchCatalogue } from "@/lib/search-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 
@@ -31,7 +31,7 @@ export default function AppDrawer() {
   const { unreadAlerts } = useNotifications();
   const { canOpenDetectiveCase, requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecials();
   const { isPremium, loading: subscriptionLoading } = useSubscriptions();
-  const { products, catalogueLiveLoaded } = useSearch();
+  const { products, catalogueLiveLoaded } = useSearchCatalogue();
   const { savedProductIds, savedItemsReady } = useWatchlist();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);

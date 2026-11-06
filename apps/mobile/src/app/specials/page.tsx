@@ -9,7 +9,7 @@ import {
   type ProductCard,
   type CurrentDeal,
 } from "@dodgey-deals/shared";
-import { useSearch } from "@/lib/search-context";
+import { useSearchCatalogue } from "@/lib/search-context";
 import DealCard from "@/components/DealCard";
 import FilterPill from "@/components/FilterPill";
 import LoadingMascot from "@/components/LoadingMascot";
@@ -60,7 +60,7 @@ interface FlatDeal {
 const SPECIALS_PAGE_SIZE = 20;
 
 export default function SpecialsPage() {
-  const { products, loadingProducts: loading, error, retry } = useSearch();
+  const { products, loadingProducts: loading, error, retry } = useSearchCatalogue();
   const [storeFilter, setStoreFilter] = useState("all");
 
   const flatDeals = useMemo<FlatDeal[]>(() => {

@@ -13,7 +13,7 @@ import StickySubscriptionCta from "@/components/StickySubscriptionCta";
 import { useAuth } from "@/lib/auth-context";
 import type { DealFilter } from "@/lib/deal-filters";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
-import { useSearch } from "@/lib/search-context";
+import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useWatchlist } from "@/lib/watchlist-context";
 import { buildMarketWatchStats } from "@/lib/market-watch";
@@ -28,7 +28,8 @@ const MarketWatchPanel = dynamic(() => import("@/components/MarketWatchPanel"), 
 export default function MePage() {
   const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
-  const { products, loadingProducts, openSearchForFilter } = useSearch();
+  const { products, loadingProducts } = useSearchCatalogue();
+  const { openSearchForFilter } = useSearchNavigation();
   const { savedProductIds, loadingSavedItems } = useWatchlist();
   const [isSavingsOpen, setIsSavingsOpen] = useState(false);
   const [activeStatsTab, setActiveStatsTab] = useState<"watchlist" | "market">("watchlist");
