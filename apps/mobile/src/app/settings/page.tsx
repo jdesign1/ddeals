@@ -19,7 +19,7 @@ import MascotImage from "@/components/MascotImage";
 import ButtonSpinner from "@/components/ButtonSpinner";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
-import { useNotifications } from "@/lib/notifications-context";
+import { useNotificationsPush } from "@/lib/notifications-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import {
@@ -383,7 +383,7 @@ export default function SettingsPage() {
     notificationError,
     setPushEnabled,
     openNotificationSettings,
-  } = useNotifications();
+  } = useNotificationsPush();
   const {
     isPremium,
     loading: subscriptionLoading,

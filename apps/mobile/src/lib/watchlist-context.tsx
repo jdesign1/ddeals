@@ -14,7 +14,7 @@ import {
   type ListRow,
 } from "@dodgey-deals/shared";
 import { useAuthStatus } from "@/lib/auth-context";
-import { useNotifications } from "@/lib/notifications-context";
+import { useNotificationsPush } from "@/lib/notifications-context";
 import { useSubscriptionStatus } from "@/lib/subscription-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { describeFetchError } from "@dodgey-deals/shared";
@@ -88,7 +88,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     notificationError,
     setPushEnabled,
     openNotificationSettings,
-  } = useNotifications();
+  } = useNotificationsPush();
   const [savedProductIds, setSavedProductIds] = useState<Set<string>>(new Set());
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [loadingSavedItems, setLoadingSavedItems] = useState(false);

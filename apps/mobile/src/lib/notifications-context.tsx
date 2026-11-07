@@ -67,9 +67,24 @@ export type NotificationsActionsContextValue = Pick<
   | "refreshNotifications"
 >;
 
+/** Push settings are consumed by global providers independently of unread
+ * Watchlist alerts. Keeping this slice separate prevents an alert refresh
+ * from rerendering every provider that only needs push readiness. */
+export type NotificationsPushContextValue = Pick<
+  NotificationsContextValue,
+  | "pushEnabled"
+  | "pushReady"
+  | "pushAvailableOnDevice"
+  | "pushPermissionState"
+  | "notificationError"
+  | "setPushEnabled"
+  | "openNotificationSettings"
+>;
+
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 const NotificationsDataContext = createContext<NotificationsDataContextValue | null>(null);
 const NotificationsActionsContext = createContext<NotificationsActionsContextValue | null>(null);
+const NotificationsPushContext = createContext<NotificationsPushContextValue | null>(null);
 const alertKey = (listId: string, listItemId: string) => `${listId}:${listItemId}`;
 const watchlistNavSeenAtKey = (userId: string) => `dodgey-deals:watchlist-nav-seen-at-v1:${userId}`;
 // Verdict changes have a separate derived set for callers that need to style
@@ -572,10 +587,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [markListItemViewed, markWatchlistVisited, openNotificationSettings, refreshNotifications, setPushEnabled],
   );
 
+  const pushValue = useMemo<NotificationsPushContextValue>(
+    () => ({
+      pushEnabled,
+      pushReady,
+      pushAvailableOnDevice,
+      pushPermissionState,
+      notificationError,
+      setPushEnabled,
+      openNotificationSettings,
+    }),
+    [notificationError, openNotificationSettings, pushAvailableOnDevice, pushEnabled, pushPermissionState, pushReady, setPushEnabled],
+  );
+
   return (
     <NotificationsContext.Provider value={value}>
       <NotificationsDataContext.Provider value={dataValue}>
-        <NotificationsActionsContext.Provider value={actionsValue}>{children}</NotificationsActionsContext.Provider>
+        <NotificationsActionsContext.Provider value={actionsValue}>
+          <NotificationsPushContext.Provider value={pushValue}>{children}</NotificationsPushContext.Provider>
+        </NotificationsActionsContext.Provider>
       </NotificationsDataContext.Provider>
     </NotificationsContext.Provider>
   );
@@ -596,5 +626,11 @@ export function useNotificationsData(): NotificationsDataContextValue {
 export function useNotificationsActions(): NotificationsActionsContextValue {
   const context = useContext(NotificationsActionsContext);
   if (!context) throw new Error("useNotificationsActions must be used within NotificationsProvider");
+  return context;
+}
+
+export function useNotificationsPush(): NotificationsPushContextValue {
+  const context = useContext(NotificationsPushContext);
+  if (!context) throw new Error("useNotificationsPush must be used within NotificationsProvider");
   return context;
 }

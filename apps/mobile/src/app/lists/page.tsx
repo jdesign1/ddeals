@@ -27,7 +27,7 @@ import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import { useSubscriptions } from "@/lib/subscription-context";
-import { useNotifications, type UnreadListAlert } from "@/lib/notifications-context";
+import { useNotificationsActions, useNotificationsData, type UnreadListAlert } from "@/lib/notifications-context";
 import ErrorState from "@/components/ErrorState";
 import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
@@ -219,9 +219,11 @@ export default function ListsPage() {
   const {
     unreadListItemKeys,
     unreadAlerts,
+  } = useNotificationsData();
+  const {
     markListItemViewed,
     markWatchlistVisited,
-  } = useNotifications();
+  } = useNotificationsActions();
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [productMeta, setProductMeta] = useState<Map<string, ListItemProductMeta>>(new Map());
   const [itemCards, setItemCards] = useState<Map<string, ProductCardData>>(new Map());
