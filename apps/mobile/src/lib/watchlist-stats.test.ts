@@ -60,6 +60,25 @@ test("buildWatchlistStats only counts saved active specials and calculates per-s
   assert.deepEqual(stats.savings.map(({ amount }) => amount), [3, 1, 1]);
 });
 
+test("representative offers prefer specials before comparing price", () => {
+  const item = product("item", "Item", [
+    { ...deal("New World", "Fair Price", 1, 1, 0, 1, 1), isOnSpecial: false },
+    deal("New World", "Real Deal", 5, 8, 10, 5, 8),
+    deal("New World", "Fair Price", 4, 7, 8, 4, 8),
+  ]);
+
+  const stats = buildWatchlistStats([item], new Set(["item"]));
+
+  assert.deepEqual(stats.stores[0], {
+    key: "newworld",
+    store: "New World",
+    realSavers: 0,
+    fairDeals: 1,
+    dodgyDeals: 0,
+  });
+  assert.equal(stats.savings[0]?.amount, 3);
+});
+
 test("buildWatchlistStats ranks Watchlist Top 3 from 90-day history", () => {
   const often = product("often", "Often item", [deal("New World", "Real Deal", 4, 6, 20, 4, 7)]);
   const rarely = product("rarely", "Rarely item", [deal("New World", "Real Deal", 4, 6, 2, 4, 7)]);

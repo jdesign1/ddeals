@@ -54,9 +54,23 @@ export interface WatchlistStats {
 }
 
 function representativeDeal(product: ProductCard, storeKey: string): CurrentDeal | undefined {
-  return product.currentDeals
-    .filter((deal) => canonicalStoreKey(deal.store) === storeKey)
-    .sort((a, b) => Number(b.isOnSpecial === true) - Number(a.isOnSpecial === true) || a.price - b.price)[0];
+  let representative: CurrentDeal | undefined;
+  for (const deal of product.currentDeals) {
+    if (canonicalStoreKey(deal.store) !== storeKey) continue;
+    if (!representative) {
+      representative = deal;
+      continue;
+    }
+
+    const dealIsSpecial = deal.isOnSpecial === true;
+    const representativeIsSpecial = representative.isOnSpecial === true;
+    if (dealIsSpecial !== representativeIsSpecial) {
+      if (dealIsSpecial) representative = deal;
+      continue;
+    }
+    if (deal.price < representative.price) representative = deal;
+  }
+  return representative;
 }
 
 function finiteNonNegative(value: number | null | undefined): number | null {
@@ -99,9 +113,15 @@ function isActiveSpecial(deal: CurrentDeal | undefined): deal is CurrentDeal {
   return deal?.isOnSpecial === true;
 }
 
-function buildProductStats(product: ProductCard): WatchlistTopProduct {
-  const stores = WATCHLIST_STATS_STORES.map(({ key, label }) => {
-    const deal = representativeDeal(product, key);
+interface BuiltWatchlistProductStats {
+  summary: WatchlistTopProduct;
+  representativeDeals: Array<CurrentDeal | undefined>;
+}
+
+function buildProductStats(product: ProductCard): BuiltWatchlistProductStats {
+  const representativeDeals = WATCHLIST_STATS_STORES.map(({ key }) => representativeDeal(product, key));
+  const stores = WATCHLIST_STATS_STORES.map(({ key, label }, index) => {
+    const deal = representativeDeals[index];
     const priceSwing = priceSwingFor(deal);
     return {
       key,
@@ -114,21 +134,22 @@ function buildProductStats(product: ProductCard): WatchlistTopProduct {
   });
 
   return {
-    product,
-    stores,
-    totalSpecialDays: stores.reduce((sum, store) => sum + (store.specialDays ?? 0), 0),
-    totalPriceSwing: stores.reduce((sum, store) => sum + (store.priceSwing ?? 0), 0),
-    totalPriceChanges: stores.reduce((sum, store) => sum + (store.priceChanges ?? 0), 0),
-    hasHistory: stores.some((store) => store.specialDays !== null || store.priceSwing !== null || store.priceChanges !== null),
+    summary: {
+      product,
+      stores,
+      totalSpecialDays: stores.reduce((sum, store) => sum + (store.specialDays ?? 0), 0),
+      totalPriceSwing: stores.reduce((sum, store) => sum + (store.priceSwing ?? 0), 0),
+      totalPriceChanges: stores.reduce((sum, store) => sum + (store.priceChanges ?? 0), 0),
+      hasHistory: stores.some((store) => store.specialDays !== null || store.priceSwing !== null || store.priceChanges !== null),
+    },
+    representativeDeals,
   };
 }
 
-function rankedProducts(products: ProductCard[], savedProductIds: ReadonlySet<string>, mode: WatchlistTopMode): WatchlistTopProduct[] {
+function rankProducts(products: BuiltWatchlistProductStats[], mode: WatchlistTopMode): WatchlistTopProduct[] {
   return products
-    .filter((product) => savedProductIds.has(product.id))
-    .map(buildProductStats)
-    .filter((product) => product.hasHistory)
-    .sort((a, b) => {
+    .filter(({ summary }) => summary.hasHistory)
+    .sort(({ summary: a }, { summary: b }) => {
       if (mode === "least-often") {
         return a.totalSpecialDays - b.totalSpecialDays || a.product.name.localeCompare(b.product.name);
       }
@@ -137,18 +158,21 @@ function rankedProducts(products: ProductCard[], savedProductIds: ReadonlySet<st
       }
       return b.totalSpecialDays - a.totalSpecialDays || a.product.name.localeCompare(b.product.name);
     })
+    .map(({ summary }) => summary)
     .slice(0, 3);
 }
 
 export function buildWatchlistStats(products: ProductCard[], savedProductIds: ReadonlySet<string>, mode: WatchlistTopMode = "most-often"): WatchlistStats {
-  const watchlistProducts = products.filter((product) => savedProductIds.has(product.id));
-  const stores = WATCHLIST_STATS_STORES.map(({ key, label }) => {
+  const watchlistProducts = products
+    .filter((product) => savedProductIds.has(product.id))
+    .map(buildProductStats);
+  const stores = WATCHLIST_STATS_STORES.map(({ key, label }, storeIndex) => {
     let realSavers = 0;
     let fairDeals = 0;
     let dodgyDeals = 0;
 
     for (const product of watchlistProducts) {
-      const deal = representativeDeal(product, key);
+      const deal = product.representativeDeals[storeIndex];
       if (!isActiveSpecial(deal)) continue;
 
       if (deal.dealType === "Real Deal") realSavers += 1;
@@ -159,9 +183,9 @@ export function buildWatchlistStats(products: ProductCard[], savedProductIds: Re
     return { key, store: label, realSavers, fairDeals, dodgyDeals };
   });
 
-  const savings = WATCHLIST_STATS_STORES.map(({ key, label }) => {
+  const savings = WATCHLIST_STATS_STORES.map(({ key, label }, storeIndex) => {
     const amount = watchlistProducts.reduce((sum, product) => {
-      const deal = representativeDeal(product, key);
+      const deal = product.representativeDeals[storeIndex];
       return sum + (isActiveSpecial(deal) ? Math.max(0, deal.originalPrice - deal.price) : 0);
     }, 0);
     return { key, store: label, amount };
@@ -170,6 +194,6 @@ export function buildWatchlistStats(products: ProductCard[], savedProductIds: Re
   return {
     stores,
     savings,
-    topProducts: rankedProducts(products, savedProductIds, mode),
+    topProducts: rankProducts(watchlistProducts, mode),
   };
 }
