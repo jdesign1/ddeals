@@ -39,6 +39,7 @@ import {
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getPreviouslyCheckedDealKey,
+  type CurrentSpecialSummary,
   type CheckDealsSummaryStore,
 } from "@/lib/check-deals-home";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
@@ -72,6 +73,11 @@ import { buildDidYouKnowCards, getDidYouKnowScope, type DidYouKnowCard } from "@
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 const FOR_YOU_CATEGORY_STORAGE_PREFIX = "dodgey-deals:for-you-category:v1";
+const EMPTY_AVAILABLE_STORE_KEYS: string[] = [];
+const EMPTY_CURRENT_SPECIAL_SUMMARY: CurrentSpecialSummary = {
+  counts: { newworld: 0, paknsave: 0, woolworths: 0 },
+  latestPublishedAt: null,
+};
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -604,7 +610,10 @@ export default function HomePage() {
   // Woolworths pill missing -- see that fix's own history in project.md),
   // now shared with /specials and the new full-screen search view instead
   // of each keeping its own copy.
-  const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
+  const availableStoreKeys = useMemo(
+    () => isSearchActive ? EMPTY_AVAILABLE_STORE_KEYS : deriveAvailableStoreKeys(products),
+    [isSearchActive, products],
+  );
 
   // Build one best matching special per product for the selected shared deal
   // tab. Real Deals deliberately includes both Real Deal and Fair Price.
@@ -643,7 +652,10 @@ export default function HomePage() {
   const categoryCounts = dealCatalogueSummary.categoryCounts;
   const availableCategories = dealCatalogueSummary.availableCategories;
 
-  const currentSpecialSummary = useMemo(() => buildCurrentSpecialSummary(products), [products]);
+  const currentSpecialSummary = useMemo(
+    () => isSearchActive ? EMPTY_CURRENT_SPECIAL_SUMMARY : buildCurrentSpecialSummary(products),
+    [isSearchActive, products],
+  );
   const currentSpecialCounts = currentSpecialSummary.counts;
   const dealVerdictSummary = useMemo(() => {
     const realSaverProductIds = new Set<string>();
