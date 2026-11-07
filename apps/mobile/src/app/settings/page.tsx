@@ -20,7 +20,11 @@ import ButtonSpinner from "@/components/ButtonSpinner";
 import IdentityLinkingPanel from "@/components/IdentityLinkingPanel";
 import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
 import { useNotificationsPush } from "@/lib/notifications-context";
-import { useSubscriptions } from "@/lib/subscription-context";
+import {
+  useSubscriptionAccountActions,
+  useSubscriptionNavigation,
+  useSubscriptionStatus,
+} from "@/lib/subscription-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import {
   formatSubscriptionDate,
@@ -384,18 +388,16 @@ export default function SettingsPage() {
     setPushEnabled,
     openNotificationSettings,
   } = useNotificationsPush();
+  const { isPremium, loading: subscriptionLoading, currentSubscription } = useSubscriptionStatus();
+  const { openSubscriptionPage } = useSubscriptionNavigation();
   const {
-    isPremium,
-    loading: subscriptionLoading,
-    currentSubscription,
     error: subscriptionError,
-    openSubscriptionPage,
     isNativeAvailable,
     restoring,
     restore,
     clearError: clearSubscriptionError,
     errorSource: subscriptionErrorSource,
-  } = useSubscriptions();
+  } = useSubscriptionAccountActions();
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);

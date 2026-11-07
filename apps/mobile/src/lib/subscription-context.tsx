@@ -57,9 +57,19 @@ export interface SubscriptionNavigationContextValue {
 
 type SubscriptionErrorSource = "purchase" | "restore" | "product_loading" | "entitlement_sync";
 
+export interface SubscriptionAccountActionsContextValue {
+  error: string | null;
+  restoring: boolean;
+  isNativeAvailable: boolean;
+  clearError: () => void;
+  errorSource: SubscriptionErrorSource | null;
+  restore: () => Promise<boolean>;
+}
+
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 const SubscriptionStatusContext = createContext<SubscriptionStatusContextValue | null>(null);
 const SubscriptionNavigationContext = createContext<SubscriptionNavigationContextValue | null>(null);
+const SubscriptionAccountActionsContext = createContext<SubscriptionAccountActionsContextValue | null>(null);
 
 function productSortValue(productId: string): number {
   if (productId === SUBSCRIPTION_PRODUCT_IDS.annual) return 0;
@@ -357,11 +367,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     [openSubscriptionPage],
   );
 
+  const accountActionsValue = useMemo<SubscriptionAccountActionsContextValue>(
+    () => ({ error, restoring, isNativeAvailable: nativeAvailable, clearError, errorSource, restore }),
+    [clearError, error, errorSource, nativeAvailable, restore, restoring],
+  );
+
   return (
     <SubscriptionContext.Provider value={value}>
       <SubscriptionStatusContext.Provider value={statusValue}>
         <SubscriptionNavigationContext.Provider value={navigationValue}>
-          {children}
+          <SubscriptionAccountActionsContext.Provider value={accountActionsValue}>
+            {children}
+          </SubscriptionAccountActionsContext.Provider>
         </SubscriptionNavigationContext.Provider>
       </SubscriptionStatusContext.Provider>
     </SubscriptionContext.Provider>
@@ -383,5 +400,11 @@ export function useSubscriptionStatus(): SubscriptionStatusContextValue {
 export function useSubscriptionNavigation(): SubscriptionNavigationContextValue {
   const context = useContext(SubscriptionNavigationContext);
   if (!context) throw new Error("useSubscriptionNavigation must be used inside SubscriptionProvider");
+  return context;
+}
+
+export function useSubscriptionAccountActions(): SubscriptionAccountActionsContextValue {
+  const context = useContext(SubscriptionAccountActionsContext);
+  if (!context) throw new Error("useSubscriptionAccountActions must be used inside SubscriptionProvider");
   return context;
 }
