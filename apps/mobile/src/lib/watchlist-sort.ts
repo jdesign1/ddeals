@@ -52,6 +52,17 @@ function dodgyDealFirst(a: CurrentDeal, b: CurrentDeal): number {
   return bPriceChange - aPriceChange || a.price - b.price;
 }
 
+function bestCandidate(
+  deals: readonly CurrentDeal[],
+  compare: (a: CurrentDeal, b: CurrentDeal) => number,
+): CurrentDeal | undefined {
+  let best: CurrentDeal | undefined;
+  for (const deal of deals) {
+    if (!best || compare(deal, best) < 0) best = deal;
+  }
+  return best;
+}
+
 /**
  * Selects the offer that should represent a saved product in the Watchlist.
  * The default view ranks the assessment before the shelf price, so a genuine
@@ -71,8 +82,8 @@ export function watchlistItemDeal(
     const preferredDeal = deals.find((deal) => canonicalStoreKey(deal.store) === preferredStore);
     if (preferredDeal) return preferredDeal;
   }
-  if (sortMode === "best") return [...deals].sort(bestDealFirst)[0];
-  if (sortMode === "dodgy") return [...deals].sort(dodgyDealFirst)[0];
+  if (sortMode === "best") return bestCandidate(deals, bestDealFirst);
+  if (sortMode === "dodgy") return bestCandidate(deals, dodgyDealFirst);
   return deals[0];
 }
 
@@ -84,12 +95,17 @@ export function sortWatchlistItems<T extends WatchlistSortItem>(
   preferredStoreIds?: ReadonlyMap<string, string>,
   priorityProductIds?: ReadonlySet<string>,
 ): T[] {
-  return [...items].sort((a, b) => {
-    const pulsePriorityDifference = Number(priorityProductIds?.has(b.productId) ?? false) - Number(priorityProductIds?.has(a.productId) ?? false);
+  const rankedItems = items.map((item) => ({
+    item,
+    deal: watchlistItemDeal(item, itemCards, selectedSupermarkets, preferredStoreIds?.get(item.productId), sortMode),
+  }));
+
+  rankedItems.sort((aEntry, bEntry) => {
+    const pulsePriorityDifference = Number(priorityProductIds?.has(bEntry.item.productId) ?? false) - Number(priorityProductIds?.has(aEntry.item.productId) ?? false);
     if (pulsePriorityDifference !== 0) return pulsePriorityDifference;
 
-    const dealA = watchlistItemDeal(a, itemCards, selectedSupermarkets, preferredStoreIds?.get(a.productId), sortMode);
-    const dealB = watchlistItemDeal(b, itemCards, selectedSupermarkets, preferredStoreIds?.get(b.productId), sortMode);
+    const dealA = aEntry.deal;
+    const dealB = bEntry.deal;
     const inactiveDifference = Number(dealA?.isOnSpecial !== true) - Number(dealB?.isOnSpecial !== true);
     if (inactiveDifference !== 0) return inactiveDifference;
 
@@ -109,6 +125,8 @@ export function sortWatchlistItems<T extends WatchlistSortItem>(
       if (priceIncreaseDifference !== 0) return priceIncreaseDifference;
     }
 
-    return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+    return new Date(bEntry.item.addedAt).getTime() - new Date(aEntry.item.addedAt).getTime();
   });
+
+  return rankedItems.map(({ item }) => item);
 }
