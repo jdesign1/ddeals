@@ -321,11 +321,14 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const detectiveCasePlayedPublicationKey = storageReady ? stored.detectiveCasePlayedPublicationKey : null;
   const detectiveCasePlayedQuestionKind = storageReady ? stored.detectiveCasePlayedQuestionKind : null;
   const detectiveCase = storedDetectiveCase?.quizCase ?? null;
+  const shouldBuildCurrentQuizCase = !storedDetectiveCase
+    || !cataloguePublicationKey
+    || storedDetectiveCase.publicationKey !== cataloguePublicationKey;
   // The profile-menu game can use the current catalogue when there is no
   // unread new-specials batch. This keeps the game discoverable for returning
   // users without making the automatic new-deals popup reappear.
   const catalogueCaseSummary = useMemo(() => {
-    if (!storageReady || !playedPairHistoryReady || products.length === 0) return EMPTY_CATALOGUE_CASE_SUMMARY;
+    if (!shouldBuildCurrentQuizCase || !storageReady || !playedPairHistoryReady || products.length === 0) return EMPTY_CATALOGUE_CASE_SUMMARY;
     const realDealKeys: string[] = [];
     const dodgyDealKeys: string[] = [];
     for (const product of products) {
@@ -337,7 +340,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       }
     }
     return { realDealKeys, dodgyDealKeys };
-  }, [playedPairHistoryReady, products, storageReady]);
+  }, [playedPairHistoryReady, products, shouldBuildCurrentQuizCase, storageReady]);
   const buildCurrentQuizCase = useCallback((rotationIndex = 0) => {
     const summaries = [
       detectedSummary?.total ? detectedSummary : activePending?.summary,
@@ -350,8 +353,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     return null;
   }, [activePending, catalogueCaseSummary, detectedSummary, playedPairKeys, products, profile?.preferred_categories]);
   const currentQuizCase = useMemo(
-    () => (storageReady && playedPairHistoryReady && products.length > 0 ? buildCurrentQuizCase() : null),
-    [buildCurrentQuizCase, playedPairHistoryReady, products.length, storageReady],
+    () => (shouldBuildCurrentQuizCase && storageReady && playedPairHistoryReady && products.length > 0 ? buildCurrentQuizCase() : null),
+    [buildCurrentQuizCase, playedPairHistoryReady, products.length, shouldBuildCurrentQuizCase, storageReady],
   );
 
   useEffect(() => {
