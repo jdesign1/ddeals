@@ -175,7 +175,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const [openRequested, setOpenRequested] = useState(false);
   const [previewOpenRequested, setPreviewOpenRequested] = useState(false);
   const [detectiveCaseOpenRequested, setDetectiveCaseOpenRequested] = useState(false);
-  const lastProcessedPublicationRef = useRef<string | null>(null);
+  const [lastProcessedPublicationKey, setLastProcessedPublicationKey] = useState<string | null>(null);
   const [sessionPopupState, setSessionPopupState] = useState<NewSpecialsPopupState | null>(null);
   const [popupSuppressedUntilHomeExit, setPopupSuppressedUntilHomeExit] = useState(false);
   const suppressionReachedHomeRef = useRef(false);
@@ -186,7 +186,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!scope) return;
-    lastProcessedPublicationRef.current = null;
+    setLastProcessedPublicationKey(null);
     setSessionPopupState(null);
     const hydratedPending = readNewSpecialsPending(scope);
     let hydratedPopupState = readNewSpecialsPopupState(scope);
@@ -287,8 +287,19 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   ) ? sessionPopupState : persistedPopupState;
   const currentSnapshot = useMemo(() => createNewSpecialsSnapshot(products), [products]);
   const detectedSummary = useMemo(
-    () => (previousSnapshot ? summarizeNewSpecials(products, previousSnapshot) : null),
-    [previousSnapshot, products],
+    () => {
+      if (!previousSnapshot) return null;
+      // Once a publication has been reconciled, later local expiry/detail
+      // updates cannot create another batch for that same publication. Avoid
+      // rescanning the full catalogue until the publication marker advances.
+      if (
+        cataloguePublicationComplete
+        && cataloguePublicationKey
+        && lastProcessedPublicationKey === cataloguePublicationKey
+      ) return null;
+      return summarizeNewSpecials(products, previousSnapshot);
+    },
+    [cataloguePublicationComplete, cataloguePublicationKey, lastProcessedPublicationKey, previousSnapshot, products],
   );
   // The preview is opened only after an explicit profile-menu tap. Keep a
   // stable empty value during background catalogue refreshes and build the
@@ -336,7 +347,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
-    if (lastProcessedPublicationRef.current === cataloguePublicationKey) return;
+    if (lastProcessedPublicationKey === cataloguePublicationKey) return;
 
     // A stale unread batch should not be resurrected by the same catalogue
     // snapshot. Advance the baseline and wait for a genuinely newer
@@ -345,7 +356,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const wroteSnapshot = writeNewSpecialsSnapshot(currentSnapshot, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
-        lastProcessedPublicationRef.current = cataloguePublicationKey;
+        setLastProcessedPublicationKey(cataloguePublicationKey);
         setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
       }
       return;
@@ -355,7 +366,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       const wroteSnapshot = writeNewSpecialsSnapshot(currentSnapshot, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
-        lastProcessedPublicationRef.current = cataloguePublicationKey;
+        setLastProcessedPublicationKey(cataloguePublicationKey);
         setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
       }
       return;
@@ -364,13 +375,13 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!detectedSummary || detectedSummary.total === 0) {
       const snapshotChanged = snapshotFingerprint(previousSnapshot) !== snapshotFingerprint(currentSnapshot);
       if (!snapshotChanged && !pending) {
-        lastProcessedPublicationRef.current = cataloguePublicationKey;
+        setLastProcessedPublicationKey(cataloguePublicationKey);
         return;
       }
       const wroteSnapshot = writeNewSpecialsSnapshot(currentSnapshot, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
-        lastProcessedPublicationRef.current = cataloguePublicationKey;
+        setLastProcessedPublicationKey(cataloguePublicationKey);
         setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
       }
       return;
@@ -383,15 +394,15 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       && getNewSpecialsSummaryFingerprint(pending.summary) === getNewSpecialsSummaryFingerprint(detectedSummary)
       && snapshotFingerprint(pending.snapshot) === snapshotFingerprint(currentSnapshot);
     if (pendingUnchanged) {
-      lastProcessedPublicationRef.current = cataloguePublicationKey;
+      setLastProcessedPublicationKey(cataloguePublicationKey);
       return;
     }
 
     if (writeNewSpecialsPending(nextPending, scope)) {
-      lastProcessedPublicationRef.current = cataloguePublicationKey;
+      setLastProcessedPublicationKey(cataloguePublicationKey);
       setStored((current) => ({ ...current, scope, snapshot: previousSnapshot, pending: nextPending, popupState: persistedPopupState }));
     }
-  }, [cataloguePublicationComplete, cataloguePublicationKey, currentSnapshot, detectedSummary, loadingProducts, pending, persistedPopupState, previousSnapshot, products.length, scope, storageReady]);
+  }, [cataloguePublicationComplete, cataloguePublicationKey, currentSnapshot, detectedSummary, lastProcessedPublicationKey, loadingProducts, pending, persistedPopupState, previousSnapshot, products.length, scope, storageReady]);
 
   // The detective case is intentionally separate from the unread-deals batch.
   // Reviewing or dismissing the batch must not make an unanswered case
