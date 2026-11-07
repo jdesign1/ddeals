@@ -101,6 +101,16 @@ export interface AuthActionsContextValue {
   signOut: () => Promise<void>;
 }
 
+export interface AuthOverlayContextValue {
+  isAuthSheetOpen: boolean;
+  hasOpenedAuthSheet: boolean;
+  authSheetPrompt: string | undefined;
+  authSheetReturnPath: string | undefined;
+  closeAuthSheet: () => void;
+  onboardingTourRequest: "new" | "replay" | null;
+  dismissOnboardingTour: () => void;
+}
+
 export interface AuthCategoryInterestsActionsContextValue {
   updateCategoryInterests: (categories: string[]) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   dismissCategoryInterestsPrompt: () => Promise<{ error: string | null; profile: AccountProfile | null }>;
@@ -109,6 +119,7 @@ export interface AuthCategoryInterestsActionsContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AuthStatusContext = createContext<AuthStatusContextValue | null>(null);
 const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
+const AuthOverlayContext = createContext<AuthOverlayContextValue | null>(null);
 const AuthCategoryInterestsActionsContext = createContext<AuthCategoryInterestsActionsContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
@@ -565,6 +576,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [closeAuthSheet, dismissOnboardingTour, openAuthSheet, requestOnboardingTour, signOut]
   );
 
+  const overlayValue = useMemo<AuthOverlayContextValue>(
+    () => ({
+      isAuthSheetOpen,
+      hasOpenedAuthSheet,
+      authSheetPrompt,
+      authSheetReturnPath,
+      closeAuthSheet,
+      onboardingTourRequest,
+      dismissOnboardingTour,
+    }),
+    [authSheetPrompt, authSheetReturnPath, closeAuthSheet, dismissOnboardingTour, hasOpenedAuthSheet, isAuthSheetOpen, onboardingTourRequest]
+  );
+
   const categoryInterestsActionsValue = useMemo<AuthCategoryInterestsActionsContextValue>(
     () => ({ updateCategoryInterests, dismissCategoryInterestsPrompt }),
     [dismissCategoryInterestsPrompt, updateCategoryInterests]
@@ -574,9 +598,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={value}>
       <AuthStatusContext.Provider value={statusValue}>
         <AuthActionsContext.Provider value={actionsValue}>
-          <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
-            {children}
-          </AuthCategoryInterestsActionsContext.Provider>
+          <AuthOverlayContext.Provider value={overlayValue}>
+            <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
+              {children}
+            </AuthCategoryInterestsActionsContext.Provider>
+          </AuthOverlayContext.Provider>
         </AuthActionsContext.Provider>
       </AuthStatusContext.Provider>
     </AuthContext.Provider>
@@ -598,6 +624,12 @@ export function useAuthStatus(): AuthStatusContextValue {
 export function useAuthActions(): AuthActionsContextValue {
   const context = useContext(AuthActionsContext);
   if (!context) throw new Error("useAuthActions must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthOverlay(): AuthOverlayContextValue {
+  const context = useContext(AuthOverlayContext);
+  if (!context) throw new Error("useAuthOverlay must be used within AuthProvider");
   return context;
 }
 

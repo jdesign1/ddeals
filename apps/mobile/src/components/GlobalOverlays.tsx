@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchNavigation } from "@/lib/search-context";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthOverlay, useAuthStatus } from "@/lib/auth-context";
 
 function OverlayChunkFallback() {
   return (
@@ -58,8 +58,8 @@ function hasSeenOnboardingTour(userId: string): boolean {
  * `SearchProvider`) so the full-screen search overlay and the barcode
  * scanner sheet exist exactly once, globally, instead of being remounted
  * (or simply unavailable) per-route. `FullScreenSearch` reads all of its
- * own state straight from `useSearch()` now (no props), matching how
- * `AppHeader` already reaches into `useAuth()`/`useHeaderOverride()` itself
+ * own state straight from the focused search contexts now (no props), matching
+ * how `AppHeader` reaches into its focused auth/header contexts itself
  * rather than taking them as props from `layout.tsx`. `ScannerModal` stays
  * a plain, generic, prop-driven component (isOpen/onClose/onSearchForItem)
  * -- this is its one real usage site now that Home no longer mounts its own
@@ -68,24 +68,25 @@ function hasSeenOnboardingTour(userId: string): boolean {
  * `AuthSheet` (2026-08-19, per Jay: "The login/sign up screen needs it's
  * own dedicated bottom sheet, and not live on the Lists page") added here
  * the same way -- mounted once, globally, driven by `isAuthSheetOpen`/
- * `authSheetPrompt`/`closeAuthSheet` from `useAuth()` (auth-context.tsx's
- * own doc comment explains why that state lives there rather than in
- * search-context.tsx alongside the scanner). Every gated page (/lists,
+ * `authSheetPrompt`/`closeAuthSheet` from `useAuthOverlay()` plus the current
+ * user from `useAuthStatus()` (auth-context.tsx's own doc comment explains why
+ * that state lives there rather than in search-context.tsx alongside the scanner).
+ * Every gated page (/lists,
  * /me, /history, /account) now just calls `openAuthSheet(prompt)` instead
  * of rendering `AuthPanel` inline as its entire page content.
  *
  */
 export default function GlobalOverlays() {
   const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearchNavigation();
+  const { user } = useAuthStatus();
   const {
-    user,
     isAuthSheetOpen,
     hasOpenedAuthSheet,
     authSheetPrompt,
     closeAuthSheet,
     onboardingTourRequest,
     dismissOnboardingTour,
-  } = useAuth();
+  } = useAuthOverlay();
   const [isPreviewTourOpen, setIsPreviewTourOpen] = useState(
     () =>
       process.env.NODE_ENV !== "production" &&

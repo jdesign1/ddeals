@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import AuthPanel from "@/components/AuthPanel";
 import MascotImage from "@/components/MascotImage";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthOverlay, useAuthStatus } from "@/lib/auth-context";
 
 /**
  * Global log-in/sign-up bottom sheet (2026-08-19, per Jay: "The login/sign
@@ -122,7 +122,8 @@ export default function AuthSheet({
   const formScrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, profileLoading, authSheetReturnPath } = useAuth();
+  const { user, profile, profileLoading } = useAuthStatus();
+  const { authSheetReturnPath } = useAuthOverlay();
   const wasOpenRef = useRef(isOpen);
   const hasRedirectedAfterAuthRef = useRef(false);
 
