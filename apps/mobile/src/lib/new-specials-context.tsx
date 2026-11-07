@@ -179,9 +179,9 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     let hydratedPopupState = readNewSpecialsPopupState(scope);
     // Migrate the old per-batch flag conservatively. The old implementation
     // did not store the exact presentation time, so the batch detection time
-    // is the safest boundary for the first cooldown after upgrading.
+    // is the safest timestamp to retain for the migrated presentation state.
     if (!hydratedPopupState && hydratedPending?.popupPresented) {
-      hydratedPopupState = createNewSpecialsPopupState(hydratedPending.summary, hydratedPending.detectedAt);
+      hydratedPopupState = createNewSpecialsPopupState(hydratedPending.summary, null, hydratedPending.detectedAt);
       writeNewSpecialsPopupState(hydratedPopupState, scope);
     }
     const hydratedPlayedState = readStoredDealDetectivePlayedState(scope);
@@ -453,7 +453,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
 
   const popupEligible = Boolean(
     activePending
-    && canShowNewSpecialsPopup(activePending.summary, popupState),
+    && canShowNewSpecialsPopup(activePending.summary, popupState, cataloguePublicationKey),
   );
 
   const requestOpen = useCallback(() => {
@@ -560,12 +560,12 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const markPopupShown = useCallback(() => {
     if (!scope || !storageReady || !activePending) return;
     const nextPending = { ...activePending, popupPresented: true };
-    const nextPopupState = createNewSpecialsPopupState(activePending.summary);
+    const nextPopupState = createNewSpecialsPopupState(activePending.summary, cataloguePublicationKey);
     const wrotePending = writeNewSpecialsPending(nextPending, scope);
     const wrotePopupState = writeNewSpecialsPopupState(nextPopupState, scope);
     // Keep a session-only fallback when storage is unavailable. This does not
-    // claim the cooldown was persisted, but it prevents repeated interruption
-    // during the current session.
+    // claim the presentation state was persisted, but it prevents repeated
+    // interruption during the current session.
     setSessionPopupState(nextPopupState);
     setStored((current) => ({
       ...current,
@@ -575,7 +575,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       popupState: wrotePopupState ? nextPopupState : persistedPopupState,
     }));
     setOpenRequested(false);
-  }, [activePending, persistedPopupState, previousSnapshot, scope, storageReady]);
+  }, [activePending, cataloguePublicationKey, persistedPopupState, previousSnapshot, scope, storageReady]);
 
   const markReviewed = useCallback((dealKeys?: string[], filter: DealFilter = "all") => {
     if (!scope || !storageReady || !activePending) return;
@@ -601,6 +601,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
           version: NEW_SPECIALS_POPUP_STATE_VERSION,
           lastShownAt: null,
           lastShownFingerprint: getNewSpecialsSummaryFingerprint(remainingSummary),
+          lastShownPublicationKey: cataloguePublicationKey,
         };
     const wroteBaseline = writeNewSpecialsSnapshot(nextBaseline, scope);
     const wrotePending = wroteBaseline && writeNewSpecialsPending(nextPending, scope);
@@ -616,7 +617,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       }));
     }
     setOpenRequested(false);
-  }, [activePending, currentSnapshot, persistedPopupState, popupState, previousSnapshot, scope, storageReady]);
+  }, [activePending, cataloguePublicationKey, currentSnapshot, persistedPopupState, popupState, previousSnapshot, scope, storageReady]);
 
   const value = useMemo<NewSpecialsContextValue>(
     () => ({

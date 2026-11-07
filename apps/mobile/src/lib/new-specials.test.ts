@@ -9,9 +9,9 @@ import {
   createNewSpecialsSnapshot,
   getNewSpecialDealKey,
   getNewSpecialsStorageScope,
-  NEW_SPECIALS_POPUP_COOLDOWN_MS,
   isNewSpecialsPendingActive,
   isNewSpecialsPopupPresented,
+  readNewSpecialsPopupState,
   removeReviewedNewSpecials,
   summarizeNewSpecials,
 } from "./new-specials.ts";
@@ -143,13 +143,13 @@ test("new batches keep the popup state separate from the unread deal state", () 
   assert.equal(isNewSpecialsPendingActive(pending, pending.expiresAt), false);
 });
 
-test("popup cooldown only resets for changed unread data", () => {
+test("popup opens once for each published batch, even when the summary is unchanged", () => {
   const now = Date.parse("2026-10-01T12:00:00.000Z");
   const initialSummary = summarizeNewSpecials([product("p1", [deal()])], createNewSpecialsSnapshot([]));
-  const shown = createNewSpecialsPopupState(initialSummary, now);
+  const shown = createNewSpecialsPopupState(initialSummary, "publication-1", now);
 
-  assert.equal(canShowNewSpecialsPopup(initialSummary, shown, now + 1), false);
-  assert.equal(canShowNewSpecialsPopup(initialSummary, shown, now + NEW_SPECIALS_POPUP_COOLDOWN_MS), false);
+  assert.equal(canShowNewSpecialsPopup(initialSummary, shown, "publication-1"), false);
+  assert.equal(canShowNewSpecialsPopup(initialSummary, shown, "publication-2"), true);
 
   const newSummary = summarizeNewSpecials(
     [
@@ -158,13 +158,36 @@ test("popup cooldown only resets for changed unread data", () => {
     ],
     createNewSpecialsSnapshot([]),
   );
-  assert.equal(canShowNewSpecialsPopup(newSummary, shown, now + NEW_SPECIALS_POPUP_COOLDOWN_MS - 1), false);
-  assert.equal(canShowNewSpecialsPopup(newSummary, shown, now + NEW_SPECIALS_POPUP_COOLDOWN_MS), true);
+  assert.equal(canShowNewSpecialsPopup(newSummary, shown, "publication-1"), false);
+  assert.equal(canShowNewSpecialsPopup(newSummary, createNewSpecialsPopupState(newSummary, "publication-2", now + 1), "publication-2"), false);
 });
 
 test("popup never opens for an empty summary", () => {
   const empty = summarizeNewSpecials([], createNewSpecialsSnapshot([]));
   assert.equal(canShowNewSpecialsPopup(empty, null), false);
+});
+
+test("existing popup state without a publication key remains compatible", () => {
+  const originalWindow = globalThis.window;
+  const values = new Map<string, string>([
+    ["dd-semantic-specials-popup-state-v1:device", JSON.stringify({ version: 1, lastShownAt: 123, lastShownFingerprint: "fingerprint" })],
+  ]);
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { localStorage: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    } },
+  });
+
+  assert.deepEqual(readNewSpecialsPopupState(), {
+    version: 1,
+    lastShownAt: 123,
+    lastShownFingerprint: "fingerprint",
+    lastShownPublicationKey: null,
+  });
+
+  Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
 });
 
 test("a presented batch remains unread without requesting the popup again", () => {

@@ -5,7 +5,6 @@ const SNAPSHOT_VERSION = 2;
 const SNAPSHOT_STORAGE_PREFIX = "dd-semantic-specials-snapshot-v2:";
 export const NEW_SPECIALS_PENDING_TTL_MS = 48 * 60 * 60 * 1000;
 export const NEW_SPECIALS_PENDING_VERSION = 3;
-export const NEW_SPECIALS_POPUP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 export const NEW_SPECIALS_POPUP_STATE_VERSION = 1;
 export const NEW_SPECIALS_POPUP_SUPPRESS_EVENT = "dd:suppress-new-specials-popup-until-home-exit";
 const PENDING_STORAGE_PREFIX = "dd-semantic-specials-pending-v3:";
@@ -56,20 +55,21 @@ export type NewSpecialsPending = {
 };
 
 /**
- * Popup throttling is deliberately separate from the unread batch. A batch
+ * Popup presentation is deliberately separate from the unread batch. A batch
  * can remain useful for 48 hours, while the modal should interrupt a user at
- * most once per rolling 24-hour window and only when its contents changed.
+ * most once for each meaningful published batch.
  */
 export type NewSpecialsPopupState = {
   version: number;
   lastShownAt: number | null;
   lastShownFingerprint: string | null;
+  lastShownPublicationKey: string | null;
 };
 
 /**
  * Build a non-persisted summary for the profile-menu UI preview. The empty
  * baseline makes every currently active special visible without changing the
- * user's unread batch, snapshot, or popup cooldown state.
+ * user's unread batch, snapshot, or popup presentation state.
  */
 export function createNewSpecialsPreviewSummary(products: ProductCard[]): NewSpecialsSummary {
   return summarizeNewSpecials(products, { version: SNAPSHOT_VERSION, deals: {} });
@@ -113,7 +113,7 @@ export function isNewSpecialsPendingActive(pending: NewSpecialsPending, now = Da
   return pending.summary.total > 0 && pending.expiresAt > now;
 }
 
-/** Legacy v3 compatibility helper; new popup eligibility uses the separate cooldown state. */
+/** Legacy v3 compatibility helper; new popup eligibility uses separate presentation state. */
 export function isNewSpecialsPopupPresented(
   pending: Pick<NewSpecialsPending, "batchId" | "popupPresented"> | null,
   sessionPresentedBatchId: string | null,
@@ -135,12 +135,14 @@ export function getNewSpecialsSummaryFingerprint(summary: NewSpecialsSummary): s
 
 export function createNewSpecialsPopupState(
   summary: NewSpecialsSummary,
+  publicationKey: string | null = null,
   now = Date.now(),
 ): NewSpecialsPopupState {
   return {
     version: NEW_SPECIALS_POPUP_STATE_VERSION,
     lastShownAt: now,
     lastShownFingerprint: getNewSpecialsSummaryFingerprint(summary),
+    lastShownPublicationKey: publicationKey,
   };
 }
 
@@ -154,11 +156,15 @@ export function readNewSpecialsPopupState(scope = "device"): NewSpecialsPopupSta
       parsed.version !== NEW_SPECIALS_POPUP_STATE_VERSION
       || (parsed.lastShownAt !== null && typeof parsed.lastShownAt !== "number")
       || (parsed.lastShownFingerprint !== null && typeof parsed.lastShownFingerprint !== "string")
+      || (parsed.lastShownPublicationKey !== null
+        && parsed.lastShownPublicationKey !== undefined
+        && typeof parsed.lastShownPublicationKey !== "string")
     ) return null;
     return {
       version: NEW_SPECIALS_POPUP_STATE_VERSION,
       lastShownAt: parsed.lastShownAt ?? null,
       lastShownFingerprint: parsed.lastShownFingerprint ?? null,
+      lastShownPublicationKey: parsed.lastShownPublicationKey ?? null,
     };
   } catch {
     return null;
@@ -177,18 +183,21 @@ export function writeNewSpecialsPopupState(state: NewSpecialsPopupState, scope =
 
 /**
  * A popup is eligible only for unread data that was not in the last popup.
- * The cooldown is measured from actual presentation, not scrape time.
+ * A new published batch can appear immediately; the fingerprint prevents the
+ * same batch from interrupting the user again.
  */
 export function canShowNewSpecialsPopup(
   summary: NewSpecialsSummary,
   state: NewSpecialsPopupState | null,
-  now = Date.now(),
+  publicationKey: string | null = null,
 ): boolean {
   if (summary.total <= 0) return false;
+  if (state?.lastShownPublicationKey && publicationKey) {
+    return state.lastShownPublicationKey !== publicationKey;
+  }
   const fingerprint = getNewSpecialsSummaryFingerprint(summary);
   const hasNewData = !state?.lastShownFingerprint || state.lastShownFingerprint !== fingerprint;
-  const cooldownExpired = !state?.lastShownAt || now - state.lastShownAt >= NEW_SPECIALS_POPUP_COOLDOWN_MS;
-  return hasNewData && cooldownExpired;
+  return hasNewData;
 }
 
 function storeKeyFromDealKey(dealKey: string): string {
