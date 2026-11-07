@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Plus, X } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { useWatchlistActions, useWatchlistData } from "@/lib/watchlist-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import ButtonSpinner from "@/components/ButtonSpinner";
@@ -30,7 +30,8 @@ function AddToListButton({
   iconClassName?: string;
   dataOnboarding?: string;
 }) {
-  const { user, openAuthSheet } = useAuth();
+  const { user } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const { savedProductIds, selectedProductIds, removingProductIds, savedItemsReady } = useWatchlistData();
   const { toggleProduct, removeProduct } = useWatchlistActions();
   const [isRemoveSheetOpen, setIsRemoveSheetOpen] = useState(false);

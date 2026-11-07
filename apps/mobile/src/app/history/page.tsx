@@ -13,7 +13,7 @@ import {
   productMatchesSearch,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { useSearchCatalogue } from "@/lib/search-context";
@@ -67,7 +67,8 @@ import StickySubscriptionCta from "@/components/StickySubscriptionCta";
  * search input), plus the month filter described above.
  */
 export default function HistoryPage() {
-  const { user, session, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { user, session, isAnonymousSession, loading: authLoading } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const { isPremium, openSubscriptionPage } = useSubscriptions();
   const router = useRouter();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearchCatalogue();

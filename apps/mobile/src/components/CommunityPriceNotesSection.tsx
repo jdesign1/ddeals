@@ -13,7 +13,7 @@ import CommunityPublicProfileSheet from "@/components/CommunityPublicProfileShee
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
-import { useAuth, useAuthStatus } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import {
   fetchCommunityPriceNotes,
   submitCommunityPriceNote,
@@ -553,7 +553,8 @@ function CommunityPriceNotesSection({
   currentPrice?: number | null;
 }) {
   const pathname = usePathname();
-  const { user, session, isAnonymousSession, openAuthSheet } = useAuth();
+  const { user, session, isAnonymousSession } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const addNoteButtonRef = useRef<HTMLButtonElement>(null);
   const [notes, setNotes] = useState<CommunityPriceNote[]>([]);
   const [loadedProductId, setLoadedProductId] = useState<string | null>(null);

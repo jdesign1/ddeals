@@ -9,7 +9,7 @@ import {
   SUBSCRIPTION_PRODUCT_IDS,
   type SubscriptionEntitlementRecord,
 } from "@dodgey-deals/shared";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { chooseCurrentSubscription } from "@/lib/subscription-display";
 import {
@@ -65,7 +65,8 @@ function productSortValue(productId: string): number {
 const PREMIUM_REFRESH_DELAYS_MS = [250, 750, 1500, 3000, 5000, 5000];
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
-  const { user, session, openAuthSheet } = useAuth();
+  const { user, session } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const router = useRouter();
   const client = getAccountsSupabaseClient();
   const [entitlements, setEntitlements] = useState<SubscriptionEntitlementRecord[]>([]);

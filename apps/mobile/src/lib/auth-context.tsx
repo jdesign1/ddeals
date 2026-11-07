@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@dodgey-deals/shared";
 import { getAccountsSupabaseClient } from "./accounts-supabase-client";
 import { authRedirectUrl } from "./accounts-config";
@@ -93,8 +93,17 @@ export interface AuthStatusContextValue {
   isAnonymousSession: boolean;
 }
 
+export interface AuthActionsContextValue {
+  openAuthSheet: (prompt?: string, returnPath?: string) => void;
+  closeAuthSheet: () => void;
+  requestOnboardingTour: () => void;
+  dismissOnboardingTour: () => void;
+  signOut: () => Promise<void>;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AuthStatusContext = createContext<AuthStatusContextValue | null>(null);
+const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
 async function readProfile(
@@ -231,6 +240,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [client]);
 
+  const openAuthSheet = useCallback((prompt?: string, returnPath?: string) => {
+    setHasOpenedAuthSheet(true);
+    setAuthSheetPrompt(prompt);
+    setAuthSheetReturnPath(returnPath);
+    setIsAuthSheetOpen(true);
+  }, []);
+
+  const closeAuthSheet = useCallback(() => {
+    setIsAuthSheetOpen(false);
+    setAuthSheetReturnPath(undefined);
+  }, []);
+
+  const requestOnboardingTour = useCallback(() => setOnboardingTourRequest("replay"), []);
+  const dismissOnboardingTour = useCallback(() => setOnboardingTourRequest(null), []);
+
+  const signOut = useCallback(async () => {
+    if (!client) return;
+    // Prevent the automatic new-deals popup from interrupting the logout
+    // transition, including while push-device cleanup is in flight.
+    suppressNewSpecialsPopupUntilHomeExit();
+    // Push tokens are unique to this installed app. Remove this account's
+    // server registration before clearing its auth session, so a signed-out
+    // device does not keep receiving list updates for the previous user.
+    try {
+      await client.rpc("unregister_push_devices");
+    } catch {
+      // A transient API failure must never strand the user signed in.
+    }
+    await client.auth.signOut();
+  }, [client]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -245,18 +285,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authSheetPrompt,
       authSheetReturnPath,
       onboardingTourRequest,
-      openAuthSheet: (prompt, returnPath) => {
-        setHasOpenedAuthSheet(true);
-        setAuthSheetPrompt(prompt);
-        setAuthSheetReturnPath(returnPath);
-        setIsAuthSheetOpen(true);
-      },
-      closeAuthSheet: () => {
-        setIsAuthSheetOpen(false);
-        setAuthSheetReturnPath(undefined);
-      },
-      requestOnboardingTour: () => setOnboardingTourRequest("replay"),
-      dismissOnboardingTour: () => setOnboardingTourRequest(null),
+      openAuthSheet,
+      closeAuthSheet,
+      requestOnboardingTour,
+      dismissOnboardingTour,
       requestOtp: async (email, shouldCreateUser) => {
         if (!client) return { error: configurationError() };
         const { error } = await client.auth.signInWithOtp({
@@ -470,21 +502,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfileLoading(false);
         }
       },
-      signOut: async () => {
-        if (!client) return;
-        // Prevent the automatic new-deals popup from interrupting the logout
-        // transition, including while push-device cleanup is in flight.
-        suppressNewSpecialsPopupUntilHomeExit();
-        // Push tokens are unique to this installed app. Remove this account's
-        // server registration before clearing its auth session, so a signed-out
-        // device does not keep receiving list updates for the previous user.
-        try {
-          await client.rpc("unregister_push_devices");
-        } catch {
-          // A transient API failure must never strand the user signed in.
-        }
-        await client.auth.signOut();
-      },
+      signOut,
       isAnonymousSession: !!user?.is_anonymous,
       signInAsDevUser: async () => {
         if (process.env.NODE_ENV === "production") return { error: null };
@@ -508,6 +526,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authSheetPrompt,
       authSheetReturnPath,
       onboardingTourRequest,
+      closeAuthSheet,
+      dismissOnboardingTour,
+      openAuthSheet,
+      requestOnboardingTour,
+      signOut,
     ]
   );
 
@@ -525,9 +548,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [client, user, session, profile, loading, profileLoading, profileError]
   );
 
+  const actionsValue = useMemo<AuthActionsContextValue>(
+    () => ({ openAuthSheet, closeAuthSheet, requestOnboardingTour, dismissOnboardingTour, signOut }),
+    [closeAuthSheet, dismissOnboardingTour, openAuthSheet, requestOnboardingTour, signOut]
+  );
+
   return (
     <AuthContext.Provider value={value}>
-      <AuthStatusContext.Provider value={statusValue}>{children}</AuthStatusContext.Provider>
+      <AuthStatusContext.Provider value={statusValue}>
+        <AuthActionsContext.Provider value={actionsValue}>{children}</AuthActionsContext.Provider>
+      </AuthStatusContext.Provider>
     </AuthContext.Provider>
   );
 }
@@ -541,5 +571,11 @@ export function useAuth(): AuthContextValue {
 export function useAuthStatus(): AuthStatusContextValue {
   const context = useContext(AuthStatusContext);
   if (!context) throw new Error("useAuthStatus must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthActions(): AuthActionsContextValue {
+  const context = useContext(AuthActionsContext);
+  if (!context) throw new Error("useAuthActions must be used within AuthProvider");
   return context;
 }

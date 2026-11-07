@@ -9,7 +9,7 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CommunityHelpfulButton from "@/components/CommunityHelpfulButton";
 import CommunityNoteAuthor from "@/components/CommunityNoteAuthor";
 import ButtonSpinner from "@/components/ButtonSpinner";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import {
   blockCommunityNote,
   fetchCommunityPriceNotes,
@@ -95,7 +95,8 @@ export default function CommunityPriceNotesSheet({
   onExitComplete?: () => void;
 }) {
   const pathname = usePathname();
-  const { session, user, isAnonymousSession, openAuthSheet } = useAuth();
+  const { session, user, isAnonymousSession } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const prefersReducedMotion = useReducedMotion();
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstControlRef = useRef<HTMLButtonElement>(null);

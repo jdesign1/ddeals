@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import LoadingMascot from "@/components/LoadingMascot";
 import ButtonSpinner from "@/components/ButtonSpinner";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
 
 type ModerationReport = {
@@ -62,7 +62,8 @@ function formatDate(value: string): string {
 
 export default function CommunityModerationPage() {
   const router = useRouter();
-  const { user, loading: authLoading, session, isAnonymousSession, openAuthSheet } = useAuth();
+  const { user, loading: authLoading, session, isAnonymousSession } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const [notes, setNotes] = useState<ModerationNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

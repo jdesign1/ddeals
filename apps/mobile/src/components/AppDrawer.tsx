@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell, FlaskConical, Gamepad2, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getAccountDisplayName } from "@/lib/account-display";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNotificationsData } from "@/lib/notifications-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
@@ -27,7 +27,8 @@ export default function AppDrawer() {
     completeSettingsNavigation,
     closeDrawer,
   } = useNavigationDrawer();
-  const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
+  const { user, profile, loading, profileLoading } = useAuthStatus();
+  const { openAuthSheet, requestOnboardingTour } = useAuthActions();
   const { unreadAlerts } = useNotificationsData();
   const { canOpenDetectiveCase } = useNewSpecialsData();
   const { requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecialsActions();

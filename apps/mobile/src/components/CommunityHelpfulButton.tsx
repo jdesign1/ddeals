@@ -3,7 +3,7 @@
 import { LoaderCircle, ThumbsUp } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { memo, useState } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { setCommunityPriceNoteHelpful, type CommunityPriceNote } from "@/lib/community-notes-api";
 
 function CommunityHelpfulButton({
@@ -14,7 +14,8 @@ function CommunityHelpfulButton({
   onChanged: (noteId: string, helpful: boolean, helpfulCount: number) => void;
 }) {
   const pathname = usePathname();
-  const { user, session, isAnonymousSession, openAuthSheet } = useAuth();
+  const { user, session, isAnonymousSession } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

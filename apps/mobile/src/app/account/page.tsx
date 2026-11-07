@@ -8,7 +8,7 @@ import LoadingMascot from "@/components/LoadingMascot";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import MascotImage from "@/components/MascotImage";
 import ButtonSpinner from "@/components/ButtonSpinner";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { getAccountEmailDisplay } from "@/lib/account-display";
 import { usePageHeader } from "@/lib/header-context";
 import { useSubscriptions } from "@/lib/subscription-context";
@@ -42,7 +42,8 @@ import { useSubscriptions } from "@/lib/subscription-context";
  */
 export default function AccountPage() {
   const router = useRouter();
-  const { user, loading, signOut, openAuthSheet } = useAuth();
+  const { user, loading } = useAuthStatus();
+  const { signOut, openAuthSheet } = useAuthActions();
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);

@@ -19,7 +19,7 @@ import { SUBSCRIPTION_PRODUCT_IDS } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
 import ButtonSpinner from "@/components/ButtonSpinner";
 import SubscriptionRecoverySheet from "@/components/SubscriptionRecoverySheet";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { usePageHeader } from "@/lib/header-context";
 import { useSubscriptions } from "@/lib/subscription-context";
 import {
@@ -58,7 +58,8 @@ const SUBSCRIPTION_BENEFITS: { label: string; detail: string; icon: LucideIcon }
 
 export default function SubscribePage() {
   const router = useRouter();
-  const { user, loading: authLoading, openAuthSheet } = useAuth();
+  const { user, loading: authLoading } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const {
     isPremium,
     loading: subscriptionLoading,

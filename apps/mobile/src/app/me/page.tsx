@@ -10,7 +10,7 @@ import MascotImage from "@/components/MascotImage";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import StickySubscriptionCta from "@/components/StickySubscriptionCta";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import type { DealFilter } from "@/lib/deal-filters";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
@@ -26,7 +26,8 @@ const MarketWatchPanel = dynamic(() => import("@/components/MarketWatchPanel"), 
 
 /** Deal Stats — personal Watchlist insights and market-wide live value. */
 export default function MePage() {
-  const { user, isAnonymousSession, loading: authLoading, openAuthSheet } = useAuth();
+  const { user, isAnonymousSession, loading: authLoading } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const { products, loadingProducts } = useSearchCatalogue();
   const { openSearchForFilter } = useSearchNavigation();

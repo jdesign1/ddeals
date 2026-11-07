@@ -23,7 +23,7 @@ import {
   type CurrentDeal,
   type ProductCard as ProductCardData,
 } from "@dodgey-deals/shared";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
 import { useSubscriptions } from "@/lib/subscription-context";
@@ -211,7 +211,8 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
 });
 
 export default function ListsPage() {
-  const { user, loading: authLoading, openAuthSheet } = useAuth();
+  const { user, loading: authLoading } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const userId = user?.id;
   const prefersReducedMotion = useReducedMotion();

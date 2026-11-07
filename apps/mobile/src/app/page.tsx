@@ -22,7 +22,7 @@ import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, useAuthActions } from "@/lib/auth-context";
 import { useNewSpecialsData } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
 import {
@@ -1326,7 +1326,7 @@ function MyListSection({
     },
     [authLoading, error, loading, signedIn, sorted],
   );
-  const { openAuthSheet } = useAuth();
+  const { openAuthSheet } = useAuthActions();
 
   if (authLoading) return <LoadingMascot loading />;
 
