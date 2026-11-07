@@ -101,9 +101,15 @@ export interface AuthActionsContextValue {
   signOut: () => Promise<void>;
 }
 
+export interface AuthCategoryInterestsActionsContextValue {
+  updateCategoryInterests: (categories: string[]) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  dismissCategoryInterestsPrompt: () => Promise<{ error: string | null; profile: AccountProfile | null }>;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AuthStatusContext = createContext<AuthStatusContextValue | null>(null);
 const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
+const AuthCategoryInterestsActionsContext = createContext<AuthCategoryInterestsActionsContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
 async function readProfile(
@@ -271,6 +277,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await client.auth.signOut();
   }, [client]);
 
+  const updateCategoryInterests = useCallback(async (categories: string[]) => {
+    if (!client) return { error: configurationError(), profile: null };
+    if (!user) return { error: "Please sign in before choosing deal interests.", profile: null };
+    const preferredCategories = normalizeCategoryInterests(categories);
+    const { data, error } = await client
+      .from("profiles")
+      .update({
+        preferred_categories: preferredCategories,
+        category_interests_prompted_at: new Date().toISOString(),
+      })
+      .eq("id", user.id)
+      .select("*")
+      .single();
+    if (error) return { error: error.message, profile: null };
+    const nextProfile = data as AccountProfile;
+    setProfile(nextProfile);
+    return { error: null, profile: nextProfile };
+  }, [client, user]);
+
+  const dismissCategoryInterestsPrompt = useCallback(async () => {
+    if (!client) return { error: configurationError(), profile: null };
+    if (!user) return { error: "Please sign in before updating deal interests.", profile: null };
+    const { data, error } = await client
+      .from("profiles")
+      .update({ category_interests_prompted_at: new Date().toISOString() })
+      .eq("id", user.id)
+      .select("*")
+      .single();
+    if (error) return { error: error.message, profile: null };
+    const nextProfile = data as AccountProfile;
+    setProfile(nextProfile);
+    return { error: null, profile: nextProfile };
+  }, [client, user]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -426,38 +466,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(nextProfile);
         return { error: null, profile: nextProfile };
       },
-      updateCategoryInterests: async (categories) => {
-        if (!client) return { error: configurationError(), profile: null };
-        if (!user) return { error: "Please sign in before choosing deal interests.", profile: null };
-        const preferredCategories = normalizeCategoryInterests(categories);
-        const { data, error } = await client
-          .from("profiles")
-          .update({
-            preferred_categories: preferredCategories,
-            category_interests_prompted_at: new Date().toISOString(),
-          })
-          .eq("id", user.id)
-          .select("*")
-          .single();
-        if (error) return { error: error.message, profile: null };
-        const nextProfile = data as AccountProfile;
-        setProfile(nextProfile);
-        return { error: null, profile: nextProfile };
-      },
-      dismissCategoryInterestsPrompt: async () => {
-        if (!client) return { error: configurationError(), profile: null };
-        if (!user) return { error: "Please sign in before updating deal interests.", profile: null };
-        const { data, error } = await client
-          .from("profiles")
-          .update({ category_interests_prompted_at: new Date().toISOString() })
-          .eq("id", user.id)
-          .select("*")
-          .single();
-        if (error) return { error: error.message, profile: null };
-        const nextProfile = data as AccountProfile;
-        setProfile(nextProfile);
-        return { error: null, profile: nextProfile };
-      },
+      updateCategoryInterests,
+      dismissCategoryInterestsPrompt,
       updateProfile: async (details) => {
         if (!client) return { error: configurationError(), profile: null };
         if (!user) return { error: "Please sign in before updating your profile.", profile: null };
@@ -531,6 +541,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openAuthSheet,
       requestOnboardingTour,
       signOut,
+      updateCategoryInterests,
+      dismissCategoryInterestsPrompt,
     ]
   );
 
@@ -553,10 +565,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [closeAuthSheet, dismissOnboardingTour, openAuthSheet, requestOnboardingTour, signOut]
   );
 
+  const categoryInterestsActionsValue = useMemo<AuthCategoryInterestsActionsContextValue>(
+    () => ({ updateCategoryInterests, dismissCategoryInterestsPrompt }),
+    [dismissCategoryInterestsPrompt, updateCategoryInterests]
+  );
+
   return (
     <AuthContext.Provider value={value}>
       <AuthStatusContext.Provider value={statusValue}>
-        <AuthActionsContext.Provider value={actionsValue}>{children}</AuthActionsContext.Provider>
+        <AuthActionsContext.Provider value={actionsValue}>
+          <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
+            {children}
+          </AuthCategoryInterestsActionsContext.Provider>
+        </AuthActionsContext.Provider>
       </AuthStatusContext.Provider>
     </AuthContext.Provider>
   );
@@ -577,5 +598,11 @@ export function useAuthStatus(): AuthStatusContextValue {
 export function useAuthActions(): AuthActionsContextValue {
   const context = useContext(AuthActionsContext);
   if (!context) throw new Error("useAuthActions must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthCategoryInterestsActions(): AuthCategoryInterestsActionsContextValue {
+  const context = useContext(AuthCategoryInterestsActionsContext);
+  if (!context) throw new Error("useAuthCategoryInterestsActions must be used within AuthProvider");
   return context;
 }

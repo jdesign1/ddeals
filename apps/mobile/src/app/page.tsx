@@ -23,7 +23,7 @@ import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
-import { useAuth, useAuthActions } from "@/lib/auth-context";
+import { useAuthActions, useAuthCategoryInterestsActions, useAuthStatus } from "@/lib/auth-context";
 import { useNewSpecialsData } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
 import {
@@ -426,14 +426,8 @@ export default function HomePage() {
   } = useSearchCatalogue();
   const { isActive: isSearchActive, openSearchForFilter } = useSearchNavigation();
   const { selectedStores, toggleStore, dealFilter, setDealFilter } = useSearchBrowse();
-  const {
-    session,
-    user,
-    profile,
-    isAnonymousSession,
-    updateCategoryInterests,
-    dismissCategoryInterestsPrompt,
-  } = useAuth();
+  const { session, user, profile, isAnonymousSession } = useAuthStatus();
+  const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
   const { digest } = useNewSpecialsData();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
