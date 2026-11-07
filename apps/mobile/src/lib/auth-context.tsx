@@ -120,6 +120,14 @@ export interface AuthProfileActionsContextValue {
   updateProfile: (details: AccountProfileUpdate) => Promise<{ error: string | null; profile: AccountProfile | null }>;
 }
 
+export interface AuthFormActionsContextValue {
+  requestOtp: (email: string, shouldCreateUser: boolean) => Promise<{ error: string | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  signInWithProvider: (provider: AuthProviderName) => Promise<{ error: string | null }>;
+  completeProfile: (details: AccountDetails) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+  refreshProfile: () => Promise<AccountProfile | null>;
+}
+
 export interface AuthCategoryInterestsActionsContextValue {
   updateCategoryInterests: (categories: string[]) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   dismissCategoryInterestsPrompt: () => Promise<{ error: string | null; profile: AccountProfile | null }>;
@@ -131,6 +139,7 @@ const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
 const AuthOverlayContext = createContext<AuthOverlayContextValue | null>(null);
 const AuthIdentityActionsContext = createContext<AuthIdentityActionsContextValue | null>(null);
 const AuthProfileActionsContext = createContext<AuthProfileActionsContextValue | null>(null);
+const AuthFormActionsContext = createContext<AuthFormActionsContextValue | null>(null);
 const AuthCategoryInterestsActionsContext = createContext<AuthCategoryInterestsActionsContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
@@ -394,6 +403,118 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null, profile: nextProfile };
   }, [client, user]);
 
+  const requestOtp = useCallback(async (email: string, shouldCreateUser: boolean) => {
+    if (!client) return { error: configurationError() };
+    const { error } = await client.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: { shouldCreateUser },
+    });
+    return { error: error?.message ?? null };
+  }, [client]);
+
+  const verifyOtp = useCallback(async (email: string, token: string) => {
+    if (!client) return { error: configurationError(), profile: null };
+    setProfileError(null);
+    const { data, error } = await client.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: token.trim(),
+      type: "email",
+    });
+    if (error || !data.user) {
+      return { error: error?.message ?? "That code could not be verified.", profile: null };
+    }
+    try {
+      const nextProfile = await readProfile(client, data.user.id);
+      setProfile(nextProfile);
+      return { error: null, profile: nextProfile };
+    } catch (profileReadError) {
+      setProfile(null);
+      setProfileError(profileLoadErrorMessage(profileReadError));
+      return { error: null, profile: null };
+    }
+  }, [client]);
+
+  const signInWithProvider = useCallback(async (provider: AuthProviderName) => {
+    if (!client) return { error: configurationError() };
+
+    if (provider === "apple" && isNativeAppleSignInAvailable()) {
+      pendingProviderProfileRef.current = true;
+      try {
+        const authResult = await signInWithNativeApple(client);
+        if (authResult.error) pendingProviderProfileRef.current = false;
+        return { error: authResult.error?.message ?? null };
+      } catch (error) {
+        pendingProviderProfileRef.current = false;
+        return { error: error instanceof Error ? error.message : "Apple sign-in failed." };
+      }
+    }
+
+    if (provider === "google" && isNativeGoogleSignInAvailable()) {
+      pendingProviderProfileRef.current = true;
+      try {
+        const authResult = await signInWithNativeGoogle(client);
+        if (authResult.error) pendingProviderProfileRef.current = false;
+        return { error: authResult.error?.message ?? null };
+      } catch (error) {
+        pendingProviderProfileRef.current = false;
+        return { error: error instanceof Error ? error.message : "Google sign-in failed." };
+      }
+    }
+
+    if (typeof window !== "undefined") window.sessionStorage.setItem(PROVIDER_RETURN_STORAGE_KEY, "1");
+    const { error } = await client.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: authRedirectUrl },
+    });
+    if (error && typeof window !== "undefined") window.sessionStorage.removeItem(PROVIDER_RETURN_STORAGE_KEY);
+    return { error: error?.message ?? null };
+  }, [client]);
+
+  const completeProfile = useCallback(async (details: AccountDetails) => {
+    if (!client) return { error: configurationError(), profile: null };
+    // OTP verification updates Supabase's session before React receives the
+    // auth-state event. Read the current user as a fallback so the signup
+    // details can be saved immediately after verification instead of
+    // forcing the user through the same form a second time.
+    if (!user) {
+      const { data, error } = await client.auth.getUser();
+      if (error || !data.user) {
+        return {
+          error: error?.message ?? "Please verify your sign-in before completing your account.",
+          profile: null,
+        };
+      }
+    }
+    const { data, error } = await client.rpc("complete_onboarding", {
+      p_full_name: details.full_name.trim(),
+      p_date_of_birth: details.date_of_birth,
+      p_zip_code: details.zip_code.trim() || null,
+    });
+    if (error) return { error: error.message, profile: null };
+    const nextProfile = data as AccountProfile;
+    setProfile(nextProfile);
+    return { error: null, profile: nextProfile };
+  }, [client, user]);
+
+  const refreshProfile = useCallback(async () => {
+    if (!client || !user) return null;
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+      if (refreshError) throw new Error(refreshError.message);
+      const nextProfile = await readProfile(client, refreshed.user?.id ?? user.id);
+      setProfile(nextProfile);
+      return nextProfile;
+    } catch (error) {
+      setProfile(null);
+      setProfileError(profileLoadErrorMessage(error));
+      return null;
+    } finally {
+      setProfileLoading(false);
+    }
+  }, [client, user]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -412,97 +533,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeAuthSheet,
       requestOnboardingTour,
       dismissOnboardingTour,
-      requestOtp: async (email, shouldCreateUser) => {
-        if (!client) return { error: configurationError() };
-        const { error } = await client.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: { shouldCreateUser },
-        });
-        return { error: error?.message ?? null };
-      },
-      verifyOtp: async (email, token) => {
-        if (!client) return { error: configurationError(), profile: null };
-        setProfileError(null);
-        const { data, error } = await client.auth.verifyOtp({
-          email: email.trim().toLowerCase(),
-          token: token.trim(),
-          type: "email",
-        });
-        if (error || !data.user) {
-          return { error: error?.message ?? "That code could not be verified.", profile: null };
-        }
-        try {
-          const nextProfile = await readProfile(client, data.user.id);
-          setProfile(nextProfile);
-          return { error: null, profile: nextProfile };
-        } catch (profileReadError) {
-          setProfile(null);
-          setProfileError(profileLoadErrorMessage(profileReadError));
-          return { error: null, profile: null };
-        }
-      },
-      signInWithProvider: async (provider) => {
-        if (!client) return { error: configurationError() };
-
-        if (provider === "apple" && isNativeAppleSignInAvailable()) {
-          pendingProviderProfileRef.current = true;
-          try {
-            const authResult = await signInWithNativeApple(client);
-            if (authResult.error) pendingProviderProfileRef.current = false;
-            return { error: authResult.error?.message ?? null };
-          } catch (error) {
-            pendingProviderProfileRef.current = false;
-            return { error: error instanceof Error ? error.message : "Apple sign-in failed." };
-          }
-        }
-
-        if (provider === "google" && isNativeGoogleSignInAvailable()) {
-          pendingProviderProfileRef.current = true;
-          try {
-            const authResult = await signInWithNativeGoogle(client);
-            if (authResult.error) pendingProviderProfileRef.current = false;
-            return { error: authResult.error?.message ?? null };
-          } catch (error) {
-            pendingProviderProfileRef.current = false;
-            return { error: error instanceof Error ? error.message : "Google sign-in failed." };
-          }
-        }
-
-        if (typeof window !== "undefined") window.sessionStorage.setItem(PROVIDER_RETURN_STORAGE_KEY, "1");
-        const { error } = await client.auth.signInWithOAuth({
-          provider,
-          options: { redirectTo: authRedirectUrl },
-        });
-        if (error && typeof window !== "undefined") window.sessionStorage.removeItem(PROVIDER_RETURN_STORAGE_KEY);
-        return { error: error?.message ?? null };
-      },
+      requestOtp,
+      verifyOtp,
+      signInWithProvider,
       getLinkedIdentities,
       linkAppleIdentity,
-      completeProfile: async (details) => {
-        if (!client) return { error: configurationError(), profile: null };
-        // OTP verification updates Supabase's session before React receives the
-        // auth-state event. Read the current user as a fallback so the signup
-        // details can be saved immediately after verification instead of
-        // forcing the user through the same form a second time.
-        if (!user) {
-          const { data, error } = await client.auth.getUser();
-          if (error || !data.user) {
-            return {
-              error: error?.message ?? "Please verify your sign-in before completing your account.",
-              profile: null,
-            };
-          }
-        }
-        const { data, error } = await client.rpc("complete_onboarding", {
-          p_full_name: details.full_name.trim(),
-          p_date_of_birth: details.date_of_birth,
-          p_zip_code: details.zip_code.trim() || null,
-        });
-        if (error) return { error: error.message, profile: null };
-        const nextProfile = data as AccountProfile;
-        setProfile(nextProfile);
-        return { error: null, profile: nextProfile };
-      },
+      completeProfile,
       updateProfileName: async (name) => {
         if (!client) return { error: configurationError(), profile: null };
         if (!user) return { error: "Please sign in before updating your name.", profile: null };
@@ -522,24 +558,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateCategoryInterests,
       dismissCategoryInterestsPrompt,
       updateProfile,
-      refreshProfile: async () => {
-        if (!client || !user) return null;
-        setProfileLoading(true);
-        setProfileError(null);
-        try {
-          const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
-          if (refreshError) throw new Error(refreshError.message);
-          const nextProfile = await readProfile(client, refreshed.user?.id ?? user.id);
-          setProfile(nextProfile);
-          return nextProfile;
-        } catch (error) {
-          setProfile(null);
-          setProfileError(profileLoadErrorMessage(error));
-          return null;
-        } finally {
-          setProfileLoading(false);
-        }
-      },
+      refreshProfile,
       signOut,
       isAnonymousSession: !!user?.is_anonymous,
       signInAsDevUser: async () => {
@@ -571,7 +590,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       getLinkedIdentities,
       linkAppleIdentity,
+      requestOtp,
+      verifyOtp,
+      signInWithProvider,
+      completeProfile,
       updateProfile,
+      refreshProfile,
       updateCategoryInterests,
       dismissCategoryInterestsPrompt,
     ]
@@ -619,6 +643,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [updateProfile]
   );
 
+  const formActionsValue = useMemo<AuthFormActionsContextValue>(
+    () => ({ requestOtp, verifyOtp, signInWithProvider, completeProfile, refreshProfile }),
+    [completeProfile, refreshProfile, requestOtp, signInWithProvider, verifyOtp]
+  );
+
   const categoryInterestsActionsValue = useMemo<AuthCategoryInterestsActionsContextValue>(
     () => ({ updateCategoryInterests, dismissCategoryInterestsPrompt }),
     [dismissCategoryInterestsPrompt, updateCategoryInterests]
@@ -631,9 +660,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           <AuthOverlayContext.Provider value={overlayValue}>
             <AuthIdentityActionsContext.Provider value={identityActionsValue}>
               <AuthProfileActionsContext.Provider value={profileActionsValue}>
-                <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
-                  {children}
-                </AuthCategoryInterestsActionsContext.Provider>
+                <AuthFormActionsContext.Provider value={formActionsValue}>
+                  <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
+                    {children}
+                  </AuthCategoryInterestsActionsContext.Provider>
+                </AuthFormActionsContext.Provider>
               </AuthProfileActionsContext.Provider>
             </AuthIdentityActionsContext.Provider>
           </AuthOverlayContext.Provider>
@@ -676,6 +707,12 @@ export function useAuthIdentityActions(): AuthIdentityActionsContextValue {
 export function useAuthProfileActions(): AuthProfileActionsContextValue {
   const context = useContext(AuthProfileActionsContext);
   if (!context) throw new Error("useAuthProfileActions must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthFormActions(): AuthFormActionsContextValue {
+  const context = useContext(AuthFormActionsContext);
+  if (!context) throw new Error("useAuthFormActions must be used within AuthProvider");
   return context;
 }
 

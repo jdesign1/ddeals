@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
-import { useAuth, type AccountDetails } from "@/lib/auth-context";
+import { useAuthActions, useAuthFormActions, useAuthStatus, type AccountDetails } from "@/lib/auth-context";
 import { getAccountMetadataName } from "@/lib/account-display";
 import ButtonSpinner from "@/components/ButtonSpinner";
 
@@ -60,18 +60,9 @@ export default function AuthPanel({
   onOtpView: (otpInput: HTMLInputElement | null) => void;
   mode: AuthMode;
 }) {
-  const {
-    user,
-    profile,
-    profileLoading,
-    profileError,
-    refreshProfile,
-    requestOtp,
-    verifyOtp,
-    signInWithProvider,
-    completeProfile,
-    signOut,
-  } = useAuth();
+  const { user, profile, profileLoading, profileError } = useAuthStatus();
+  const { signOut } = useAuthActions();
+  const { refreshProfile, requestOtp, verifyOtp, signInWithProvider, completeProfile } = useAuthFormActions();
   const [view, setView] = useState<AuthView>("details");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
