@@ -63,10 +63,14 @@ export default function SpecialsPage() {
   const { products, loadingProducts: loading, error, retry } = useSearchCatalogue();
   const [storeFilter, setStoreFilter] = useState("all");
 
-  const flatDeals = useMemo<FlatDeal[]>(() => {
+  const filteredDeals = useMemo<FlatDeal[]>(() => {
     const all: FlatDeal[] = [];
     for (const product of products) {
       for (const deal of product.currentDeals) {
+        // Apply the store scope before sorting. A selected supermarket can
+        // otherwise make us allocate and sort every retailer's deal just to
+        // discard most of them in the next memo.
+        if (!storeMatchesFilter(deal.store, storeFilter)) continue;
         all.push({ product, deal });
       }
     }
@@ -76,7 +80,7 @@ export default function SpecialsPage() {
       const latest = compareLatestSpecials(a.deal, b.deal);
       return latest !== 0 ? latest : b.deal.discountPercentage - a.deal.discountPercentage;
     });
-  }, [products]);
+  }, [products, storeFilter]);
 
   // deriveAvailableStoreKeys (packages/shared/src/data.ts) — was a local
   // `present.has(key)` exact-match check until this session's full-screen
@@ -87,10 +91,6 @@ export default function SpecialsPage() {
   // separately caught here. Substring `.includes()` match fixes it.
   const availableStoreKeys = useMemo(() => deriveAvailableStoreKeys(products), [products]);
 
-  const filteredDeals = useMemo(
-    () => flatDeals.filter(({ deal }) => storeMatchesFilter(deal.store, storeFilter)),
-    [flatDeals, storeFilter]
-  );
   // Infinite-scroll reveal, added 2026-08-21 -- this page previously had NO
   // cap at all (`filteredDeals.map(...)` rendered straight into the grid),
   // the worst offender found in that day's "Show all X deals" discussion:
