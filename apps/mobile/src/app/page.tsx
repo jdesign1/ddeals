@@ -357,11 +357,25 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
   return sorted;
 }
 
+interface SnapshotDealGroups {
+  savings: FlatDeal[];
+  dodgy: FlatDeal[];
+  newSavings: FlatDeal[];
+  newDodgy: FlatDeal[];
+}
+
+const EMPTY_SNAPSHOT_DEAL_GROUPS: SnapshotDealGroups = {
+  savings: [],
+  dodgy: [],
+  newSavings: [],
+  newDodgy: [],
+};
+
 function buildSnapshotDealGroups(
   products: ProductCard[],
   selectedStores: string[],
   newDealKeys?: ReadonlySet<string>,
-): { savings: FlatDeal[]; dodgy: FlatDeal[]; newSavings: FlatDeal[]; newDodgy: FlatDeal[] } {
+): SnapshotDealGroups {
   const savings: FlatDeal[] = [];
   const dodgy: FlatDeal[] = [];
   const newSavings: FlatDeal[] = [];
@@ -689,8 +703,14 @@ export default function HomePage() {
   }, []);
   const activeSnapshotNewDealKeys = newForYouFilterActive ? newDealKeySet : undefined;
   const snapshotDealGroups = useMemo(
-    () => buildSnapshotDealGroups(products, selectedStores, activeSnapshotNewDealKeys),
-    [activeSnapshotNewDealKeys, products, selectedStores],
+    () => {
+      // Snapshot rails are only rendered on the default Check Deals view.
+      // Avoid scanning the full catalogue while the user is in Real/Dodgy
+      // results or while the full-screen search overlay is active.
+      if (isSearchActive || dealFilter !== "all") return EMPTY_SNAPSHOT_DEAL_GROUPS;
+      return buildSnapshotDealGroups(products, selectedStores, activeSnapshotNewDealKeys);
+    },
+    [activeSnapshotNewDealKeys, dealFilter, isSearchActive, products, selectedStores],
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
   const forYouCategoryDeals = useMemo(
