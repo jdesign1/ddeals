@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, Menu, RefreshCw, Share2 } from "lucide-react";
 import NewSpecialsModal from "@/components/NewSpecialsModal";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthStatus } from "@/lib/auth-context";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -43,7 +43,7 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { isAnonymousSession, user, profile, profileLoading, session } = useAuth();
+  const { isAnonymousSession, user, profile, profileLoading, session } = useAuthStatus();
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
   const { query, setQuery, openSearch, openSearchForFilter } = useSearchInput();

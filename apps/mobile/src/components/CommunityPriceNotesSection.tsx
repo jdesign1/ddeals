@@ -13,7 +13,7 @@ import CommunityPublicProfileSheet from "@/components/CommunityPublicProfileShee
 import CommunityPriceNotesSheet from "@/components/CommunityPriceNotesSheet";
 import InsightCarousel from "@/components/InsightCarousel";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, useAuthStatus } from "@/lib/auth-context";
 import {
   fetchCommunityPriceNotes,
   submitCommunityPriceNote,
@@ -143,7 +143,7 @@ function NoteComposer({
   onRemoved: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
-  const { session } = useAuth();
+  const { session } = useAuthStatus();
   const prefersReducedMotion = useReducedMotion();
   const contextStore = editingNote?.store_name || currentStore;
   const contextPrice = editingNote?.price ?? currentPrice;

@@ -82,7 +82,19 @@ interface AuthContextValue {
   signInAsDevUser: () => Promise<{ error: string | null }>;
 }
 
+export interface AuthStatusContextValue {
+  user: User | null;
+  session: Session | null;
+  profile: AccountProfile | null;
+  loading: boolean;
+  profileLoading: boolean;
+  profileError: string | null;
+  authConfigured: boolean;
+  isAnonymousSession: boolean;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthStatusContext = createContext<AuthStatusContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
 async function readProfile(
@@ -499,11 +511,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const statusValue = useMemo<AuthStatusContextValue>(
+    () => ({
+      user,
+      session,
+      profile,
+      loading,
+      profileLoading,
+      profileError,
+      authConfigured: Boolean(client),
+      isAnonymousSession: !!user?.is_anonymous,
+    }),
+    [client, user, session, profile, loading, profileLoading, profileError]
+  );
+
+  return (
+    <AuthContext.Provider value={value}>
+      <AuthStatusContext.Provider value={statusValue}>{children}</AuthStatusContext.Provider>
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthStatus(): AuthStatusContextValue {
+  const context = useContext(AuthStatusContext);
+  if (!context) throw new Error("useAuthStatus must be used within AuthProvider");
   return context;
 }

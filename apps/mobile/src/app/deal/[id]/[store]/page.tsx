@@ -37,7 +37,7 @@ import {
   describeFetchError,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthStatus } from "@/lib/auth-context";
 import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
@@ -223,7 +223,7 @@ export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
-  const { user } = useAuth();
+  const { user } = useAuthStatus();
   const { products: catalogueProducts } = useSearchCatalogue();
   const { returnToSearch, resumeAfterDealBack } = useSearchNavigation();
 

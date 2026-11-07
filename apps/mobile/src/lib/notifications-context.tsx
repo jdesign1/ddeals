@@ -6,7 +6,7 @@ import { Capacitor, type PermissionState } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fetchItemsForLists, fetchUserLists } from "@dodgey-deals/shared";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthStatus } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { useSubscriptions } from "@/lib/subscription-context";
 import { getUnlockedWatchlistProductIdsFromRows } from "@/lib/watchlist-upgrade";
@@ -57,7 +57,7 @@ function isNativeIos(): boolean {
 }
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user } = useAuthStatus();
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const userId = user?.id;
   const client = getAccountsSupabaseClient();

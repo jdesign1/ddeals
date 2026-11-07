@@ -13,7 +13,7 @@ import {
   removeItemFromList,
   type ListRow,
 } from "@dodgey-deals/shared";
-import { useAuth } from "@/lib/auth-context";
+import { useAuthStatus } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useSubscriptionStatus } from "@/lib/subscription-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
@@ -53,7 +53,7 @@ function isWatchlist(list: ListRow): boolean {
  * processor continues to work without a schema migration.
  */
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuthStatus();
   const userId = user?.id;
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const {

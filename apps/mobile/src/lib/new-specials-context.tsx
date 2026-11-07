@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { useAuth } from "./auth-context";
+import { useAuthStatus } from "./auth-context";
 import { useSearchCatalogue } from "./search-context";
 import { useSubscriptionStatus } from "./subscription-context";
 import {
@@ -151,7 +151,7 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
-  const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuth();
+  const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuthStatus();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const detectiveAccessToken = session?.access_token ?? null;
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
