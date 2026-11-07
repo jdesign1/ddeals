@@ -16,6 +16,7 @@ import {
 } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
 import CheckDealsSummary from "@/components/CheckDealsSummary";
+import CheckDealsVerdictSummary from "@/components/CheckDealsVerdictSummary";
 import CheckDealsBeltOrderSheet from "@/components/CheckDealsBeltOrderSheet";
 import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
@@ -610,6 +611,23 @@ export default function HomePage() {
 
   const currentSpecialSummary = useMemo(() => buildCurrentSpecialSummary(products), [products]);
   const currentSpecialCounts = currentSpecialSummary.counts;
+  const dealVerdictSummary = useMemo(() => {
+    const realSaverProductIds = new Set<string>();
+    const dodgyDealProductIds = new Set<string>();
+
+    for (const product of products) {
+      for (const deal of product.currentDeals) {
+        if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, selectedStores)) continue;
+        if (matchesDealFilter(deal, "real")) realSaverProductIds.add(product.id);
+        if (matchesDealFilter(deal, "dodgy")) dodgyDealProductIds.add(product.id);
+      }
+    }
+
+    return {
+      realSavers: realSaverProductIds.size,
+      dodgyDeals: dodgyDealProductIds.size,
+    };
+  }, [products, selectedStores]);
   const didYouKnowCards = useMemo(
     () => buildDidYouKnowCards(products, selectedStores),
     [products, selectedStores],
@@ -710,6 +728,9 @@ export default function HomePage() {
   const handleDodgyDealsSeeAll = useCallback(() => {
     openRailSearch("dodgy", newDealsDodgySearchOptions);
   }, [newDealsDodgySearchOptions, openRailSearch]);
+  const handleDealVerdictSelect = useCallback((filter: "real" | "dodgy") => {
+    openSearchForFilter(filter, { focus: false });
+  }, [openSearchForFilter]);
 
   const topDealsCategorySummary = useMemo(() => {
     const categories = new Set<string>();
@@ -1076,6 +1097,11 @@ export default function HomePage() {
                 deals={visiblePreviouslyCheckedDeals}
                 tone="history"
                 onDismiss={handleOpenWorthAnotherLookSheet}
+              />
+              <CheckDealsVerdictSummary
+                realSavers={dealVerdictSummary.realSavers}
+                dodgyDeals={dealVerdictSummary.dodgyDeals}
+                onOpenFilter={handleDealVerdictSelect}
               />
               <div className="px-5 pb-24 pt-1">
                 <button
