@@ -3,8 +3,11 @@ import test from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import {
   buildDidYouKnowCards,
+  createDidYouKnowSeenState,
   getDidYouKnowFingerprint,
   getDidYouKnowScope,
+  hasNewDidYouKnowCardData,
+  markDidYouKnowCardSeen,
   readDidYouKnowSeenState,
   writeDidYouKnowSeenState,
 } from "./did-you-know.ts";
@@ -110,9 +113,28 @@ test("seen state storage is versioned and scoped", () => {
   });
 
   const scope = getDidYouKnowScope("user:test", ["woolworths", "newworld"]);
-  assert.equal(writeDidYouKnowSeenState({ version: 1, publicationKey: "pub-1", fingerprint: "a" }, scope), true);
-  assert.deepEqual(readDidYouKnowSeenState(scope), { version: 1, publicationKey: "pub-1", fingerprint: "a" });
+  assert.equal(writeDidYouKnowSeenState({ version: 2, publicationKey: "pub-1", cardFingerprints: { pantry: "a" } }, scope), true);
+  assert.deepEqual(readDidYouKnowSeenState(scope), { version: 2, publicationKey: "pub-1", cardFingerprints: { pantry: "a" } });
   assert.notEqual(getDidYouKnowScope("user:test", ["woolworths"]), scope);
 
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
+});
+
+test("Did you know unread state is tracked per card until that card is selected", () => {
+  const cards = buildDidYouKnowCards([
+    ...productsFor("Pantry", 20),
+    ...productsFor("Body Wash", 20, { dealType: "Dodgy Deal", ninetyDayPriceChanges: null }),
+  ], ["all"], NOW, 2);
+  assert.equal(cards.length, 2);
+
+  const initial = createDidYouKnowSeenState(cards, "pub-1");
+  const changedCards = cards.map((card, index) => index === 0 ? { ...card, metric: card.metric + 1 } : card);
+  const changedState = { ...initial, publicationKey: "pub-2" };
+
+  assert.equal(hasNewDidYouKnowCardData(changedCards[0], changedState), true);
+  assert.equal(hasNewDidYouKnowCardData(changedCards[1], changedState), false);
+
+  const afterSelection = markDidYouKnowCardSeen(changedState, changedCards[0], "pub-2");
+  assert.equal(hasNewDidYouKnowCardData(changedCards[0], afterSelection), false);
+  assert.equal(hasNewDidYouKnowCardData(changedCards[1], afterSelection), false);
 });

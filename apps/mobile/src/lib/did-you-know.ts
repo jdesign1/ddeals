@@ -357,24 +357,35 @@ export function buildDidYouKnowCards(
   return cards;
 }
 
+export function getDidYouKnowCardKey(card: DidYouKnowCard): string {
+  return JSON.stringify([card.id, card.category]);
+}
+
+export function getDidYouKnowCardFingerprint(card: DidYouKnowCard): string {
+  return JSON.stringify([
+    card.id,
+    card.kind,
+    card.category,
+    card.metricFormat,
+    card.metric,
+    card.metricLabel,
+    card.supportingText,
+  ]);
+}
+
 export function getDidYouKnowFingerprint(cards: readonly DidYouKnowCard[]): string {
   return cards
-    .map((card) => [
-      card.id,
-      card.category,
-      card.metricFormat,
-      card.metric.toFixed(1),
-    ].join(":"))
+    .map((card) => `${getDidYouKnowCardKey(card)}:${getDidYouKnowCardFingerprint(card)}`)
     .join("|");
 }
 
 export interface DidYouKnowSeenState {
-  version: 1;
+  version: 2;
   publicationKey: string;
-  fingerprint: string;
+  cardFingerprints: Record<string, string>;
 }
 
-const DID_YOU_KNOW_STORAGE_PREFIX = "dodgey-deals:did-you-know-seen:v1:";
+const DID_YOU_KNOW_STORAGE_PREFIX = "dodgey-deals:did-you-know-seen:v2:";
 
 function storageKey(scope: string): string {
   return `${DID_YOU_KNOW_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
@@ -386,8 +397,19 @@ export function readDidYouKnowSeenState(scope = "device"): DidYouKnowSeenState |
     const raw = window.localStorage.getItem(storageKey(scope));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<DidYouKnowSeenState>;
-    if (parsed.version !== 1 || typeof parsed.publicationKey !== "string" || typeof parsed.fingerprint !== "string") return null;
-    return { version: 1, publicationKey: parsed.publicationKey, fingerprint: parsed.fingerprint };
+    if (
+      parsed.version !== 2
+      || typeof parsed.publicationKey !== "string"
+      || !parsed.cardFingerprints
+      || typeof parsed.cardFingerprints !== "object"
+      || Array.isArray(parsed.cardFingerprints)
+      || Object.values(parsed.cardFingerprints).some((fingerprint) => typeof fingerprint !== "string")
+    ) return null;
+    return {
+      version: 2,
+      publicationKey: parsed.publicationKey,
+      cardFingerprints: parsed.cardFingerprints as Record<string, string>,
+    };
   } catch {
     return null;
   }
@@ -401,6 +423,42 @@ export function writeDidYouKnowSeenState(state: DidYouKnowSeenState, scope = "de
   } catch {
     return false;
   }
+}
+
+export function createDidYouKnowSeenState(
+  cards: readonly DidYouKnowCard[],
+  publicationKey: string,
+): DidYouKnowSeenState {
+  return {
+    version: 2,
+    publicationKey,
+    cardFingerprints: Object.fromEntries(
+      cards.map((card) => [getDidYouKnowCardKey(card), getDidYouKnowCardFingerprint(card)]),
+    ),
+  };
+}
+
+export function hasNewDidYouKnowCardData(
+  card: DidYouKnowCard,
+  seenState: DidYouKnowSeenState | null,
+): boolean {
+  if (!seenState) return false;
+  return seenState.cardFingerprints[getDidYouKnowCardKey(card)] !== getDidYouKnowCardFingerprint(card);
+}
+
+export function markDidYouKnowCardSeen(
+  seenState: DidYouKnowSeenState | null,
+  card: DidYouKnowCard,
+  publicationKey: string,
+): DidYouKnowSeenState {
+  return {
+    version: 2,
+    publicationKey,
+    cardFingerprints: {
+      ...(seenState?.cardFingerprints ?? {}),
+      [getDidYouKnowCardKey(card)]: getDidYouKnowCardFingerprint(card),
+    },
+  };
 }
 
 export function getDidYouKnowScope(baseScope: string, selectedStores: readonly string[]): string {

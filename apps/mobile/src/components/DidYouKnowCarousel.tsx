@@ -1,18 +1,19 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import InsightCarousel from "@/components/InsightCarousel";
 import {
-  getDidYouKnowFingerprint,
+  createDidYouKnowSeenState,
+  getDidYouKnowCardKey,
+  hasNewDidYouKnowCardData,
+  markDidYouKnowCardSeen,
   readDidYouKnowSeenState,
   writeDidYouKnowSeenState,
   type DidYouKnowAccent,
   type DidYouKnowCard,
 } from "@/lib/did-you-know";
-
-const SEEN_VIEW_DELAY_MS = 850;
 
 const CATEGORY_IMAGES: Record<string, string> = {
   "Fruit & Veg": "/did-you-know/fruit-veg.webp",
@@ -70,7 +71,7 @@ function formatMetric(card: DidYouKnowCard): string {
   return card.metricFormat === "percentage" ? `${value}%` : value;
 }
 
-const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, onBrowse }: { card: DidYouKnowCard; onBrowse: (card: DidYouKnowCard) => void }) {
+const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, hasNewData, onBrowse }: { card: DidYouKnowCard; hasNewData: boolean; onBrowse: (card: DidYouKnowCard) => void }) {
   const styles = ACCENT_STYLES[card.accent];
   const categoryImage = CATEGORY_IMAGES[card.category] ?? CATEGORY_IMAGES.Pantry;
 
@@ -78,9 +79,12 @@ const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, onBrowse }: 
     <button
       type="button"
       onClick={() => onBrowse(card)}
-      aria-label={`${card.supportingText} Explore ${card.category} deals.`}
-      className={`group flex h-[11rem] w-full cursor-pointer flex-col rounded-3xl border px-5 py-4 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
+      aria-label={`${hasNewData ? "New insight. " : ""}${card.supportingText} Explore ${card.category} deals.`}
+      className={`group relative flex h-[11rem] w-full cursor-pointer flex-col rounded-3xl border px-5 py-4 text-left shadow-xs transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 ${styles.card}`}
     >
+      {hasNewData && (
+        <span className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-alert-600 ring-4 ring-white/80" aria-hidden="true" />
+      )}
       <span className="flex h-14 w-14 shrink-0 items-center">
         <Image
           src={categoryImage}
@@ -108,12 +112,10 @@ const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, onBrowse }: 
 });
 
 function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storageScope, flushTop = false, onBrowse }: DidYouKnowCarouselProps) {
-  const sectionRef = useRef<HTMLElement>(null);
   const [seenState, setSeenState] = useState<ReturnType<typeof readDidYouKnowSeenState>>(null);
   const [storageReady, setStorageReady] = useState(false);
-  const fingerprint = useMemo(() => getDidYouKnowFingerprint(cards), [cards]);
 
-  // These effects hydrate and reconcile a localStorage-backed unread cue.
+  // These effects hydrate and initialise a localStorage-backed unread cue.
   // The state writes are the subscription bridge for that external store.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -123,68 +125,43 @@ function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storag
   }, [storageScope]);
 
   useEffect(() => {
-    if (!storageReady || !publicationComplete || !publicationKey || !fingerprint) return;
+    if (!storageReady || !publicationComplete || !publicationKey || cards.length === 0) return;
     if (!seenState) {
-      const initialState = { version: 1 as const, publicationKey, fingerprint };
+      const initialState = createDidYouKnowSeenState(cards, publicationKey);
       if (writeDidYouKnowSeenState(initialState, storageScope)) setSeenState(initialState);
-      return;
     }
-    if (seenState.publicationKey !== publicationKey && seenState.fingerprint === fingerprint) {
-      const currentState = { version: 1 as const, publicationKey, fingerprint };
-      if (writeDidYouKnowSeenState(currentState, storageScope)) setSeenState(currentState);
-    }
-  }, [fingerprint, publicationComplete, publicationKey, seenState, storageReady, storageScope]);
+  }, [cards, publicationComplete, publicationKey, seenState, storageReady, storageScope]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const hasNewInsight = Boolean(
-    storageReady
-    && publicationComplete
-    && publicationKey
-    && seenState
-    && seenState.publicationKey !== publicationKey
-    && seenState.fingerprint !== fingerprint,
-  );
+  const newCardKeys = useMemo(() => new Set(
+    storageReady && publicationComplete && publicationKey && seenState
+      ? cards.filter((card) => hasNewDidYouKnowCardData(card, seenState)).map(getDidYouKnowCardKey)
+      : [],
+  ), [cards, publicationComplete, publicationKey, seenState, storageReady]);
+  const orderedCards = useMemo(() => {
+    if (newCardKeys.size === 0) return cards;
+    const unreadCards = cards.filter((card) => newCardKeys.has(getDidYouKnowCardKey(card)));
+    const readCards = cards.filter((card) => !newCardKeys.has(getDidYouKnowCardKey(card)));
+    return [...unreadCards, ...readCards];
+  }, [cards, newCardKeys]);
 
-  const markSeen = useCallback(() => {
-    if (!publicationComplete || !publicationKey || !fingerprint) return;
-    const nextState = { version: 1 as const, publicationKey, fingerprint };
+  const markSeen = useCallback((card: DidYouKnowCard) => {
+    if (!storageReady || !publicationComplete || !publicationKey) return;
+    const nextState = markDidYouKnowCardSeen(seenState, card, publicationKey);
     if (writeDidYouKnowSeenState(nextState, storageScope)) setSeenState(nextState);
-  }, [fingerprint, publicationComplete, publicationKey, storageScope]);
+  }, [publicationComplete, publicationKey, seenState, storageReady, storageScope]);
   const handleBrowse = useCallback((card: DidYouKnowCard) => {
-    markSeen();
+    markSeen(card);
     onBrowse(card);
   }, [markSeen, onBrowse]);
-
-  useEffect(() => {
-    if (!hasNewInsight) return;
-    const section = sectionRef.current;
-    if (!section || typeof IntersectionObserver === "undefined") return;
-
-    let timer: number | null = null;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting || entry.intersectionRatio < 0.65 || timer !== null) return;
-      timer = window.setTimeout(markSeen, SEEN_VIEW_DELAY_MS);
-    }, { threshold: [0.65] });
-    observer.observe(section);
-    return () => {
-      observer.disconnect();
-      if (timer !== null) window.clearTimeout(timer);
-    };
-  }, [hasNewInsight, markSeen]);
 
   if (cards.length === 0) return null;
 
   return (
-    <section ref={sectionRef} className={`flex flex-col gap-3 bg-white py-4 ${flushTop ? "-mt-2" : ""}`} aria-labelledby="did-you-know-title">
+    <section className={`flex flex-col gap-3 bg-white py-4 ${flushTop ? "-mt-2" : ""}`} aria-labelledby="did-you-know-title">
       <div className="mx-5 flex items-center gap-3">
         <h2 id="did-you-know-title" className="flex items-center gap-2 dd-type-section text-stone-900">
           Did you know?
-          {hasNewInsight && (
-            <span className="relative inline-flex h-2.5 w-2.5 shrink-0" title="New insight">
-              <span className="relative h-2.5 w-2.5 rounded-full bg-alert-600" aria-hidden="true" />
-              <span className="sr-only">New insight</span>
-            </span>
-          )}
         </h2>
       </div>
       <InsightCarousel
@@ -192,8 +169,8 @@ function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storag
         slideWidthClassName="w-[92%]"
         trackPaddingClassName="px-5"
       >
-        {cards.map((card) => (
-          <DidYouKnowCardView key={`${card.id}-${card.category}`} card={card} onBrowse={handleBrowse} />
+        {orderedCards.map((card) => (
+          <DidYouKnowCardView key={`${card.id}-${card.category}`} card={card} hasNewData={newCardKeys.has(getDidYouKnowCardKey(card))} onBrowse={handleBrowse} />
         ))}
       </InsightCarousel>
     </section>
