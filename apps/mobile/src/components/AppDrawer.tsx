@@ -43,7 +43,10 @@ export default function AppDrawer() {
   const prefersReducedMotion = useReducedMotion();
 
   const currentSpecialUnreadItemCount = useMemo(() => {
-    if (!catalogueLiveLoaded || !savedItemsReady) return 0;
+    // This count is only rendered while the drawer is open. Avoid scanning the
+    // full catalogue on every background refresh while the global drawer is
+    // hidden; the next open recomputes it from the latest data.
+    if (!isOpen || !catalogueLiveLoaded || !savedItemsReady) return 0;
     const currentSpecialProductIds = new Set(
       products
         .filter((product) => savedProductIds.has(product.id) && product.currentDeals.some((deal) => deal.isOnSpecial === true))
@@ -54,7 +57,7 @@ export default function AppDrawer() {
         .filter((alert) => currentSpecialProductIds.has(alert.product_id))
         .map((alert) => alert.product_id),
     ).size;
-  }, [catalogueLiveLoaded, products, savedItemsReady, savedProductIds, unreadAlerts]);
+  }, [catalogueLiveLoaded, isOpen, products, savedItemsReady, savedProductIds, unreadAlerts]);
 
   useEffect(() => {
     settingsNavigationStartedRef.current = false;
