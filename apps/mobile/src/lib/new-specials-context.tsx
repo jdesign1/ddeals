@@ -164,6 +164,7 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
+  const latestProductsRef = useRef(products);
   const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuthStatus();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const detectiveAccessToken = session?.access_token ?? null;
@@ -179,6 +180,10 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const [sessionPopupState, setSessionPopupState] = useState<NewSpecialsPopupState | null>(null);
   const [popupSuppressedUntilHomeExit, setPopupSuppressedUntilHomeExit] = useState(false);
   const suppressionReachedHomeRef = useRef(false);
+
+  useEffect(() => {
+    latestProductsRef.current = products;
+  }, [products]);
 
   /* These effects hydrate and reconcile the localStorage-backed external
    * batch store. The state writes are the subscription bridge for that store,
@@ -285,7 +290,6 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     !persistedPopupState
     || (sessionPopupState.lastShownAt ?? -1) >= (persistedPopupState.lastShownAt ?? -1)
   ) ? sessionPopupState : persistedPopupState;
-  const currentSnapshot = useMemo(() => createNewSpecialsSnapshot(products), [products]);
   const detectedSummary = useMemo(
     () => {
       if (!previousSnapshot) return null;
@@ -349,6 +353,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
     if (lastProcessedPublicationKey === cataloguePublicationKey) return;
 
+    // Snapshot creation is only needed when reconciling a new publication.
+    // Local expiry/detail updates keep the same publication key and should not
+    // rescan every product just to discover that no new batch exists.
+    const currentSnapshot = createNewSpecialsSnapshot(products);
+
     // A stale unread batch should not be resurrected by the same catalogue
     // snapshot. Advance the baseline and wait for a genuinely newer
     // publication before showing another badge or popup.
@@ -402,7 +411,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       setLastProcessedPublicationKey(cataloguePublicationKey);
       setStored((current) => ({ ...current, scope, snapshot: previousSnapshot, pending: nextPending, popupState: persistedPopupState }));
     }
-  }, [cataloguePublicationComplete, cataloguePublicationKey, currentSnapshot, detectedSummary, lastProcessedPublicationKey, loadingProducts, pending, persistedPopupState, previousSnapshot, products.length, scope, storageReady]);
+  }, [cataloguePublicationComplete, cataloguePublicationKey, detectedSummary, lastProcessedPublicationKey, loadingProducts, pending, persistedPopupState, previousSnapshot, products, scope, storageReady]);
 
   // The detective case is intentionally separate from the unread-deals batch.
   // Reviewing or dismissing the batch must not make an unanswered case
@@ -471,12 +480,13 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     const expiryTimer = window.setTimeout(() => {
       const latestPending = readNewSpecialsPending(scope);
       if (!latestPending || latestPending.batchId !== pending.batchId || isNewSpecialsPendingActive(latestPending)) return;
+      const currentSnapshot = createNewSpecialsSnapshot(latestProductsRef.current);
       const wroteSnapshot = writeNewSpecialsSnapshot(currentSnapshot, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) setStored((current) => ({ ...current, scope, snapshot: currentSnapshot, pending: null, popupState: persistedPopupState }));
     }, Math.max(0, pending.expiresAt - Date.now()));
     return () => window.clearTimeout(expiryTimer);
-  }, [currentSnapshot, pending, persistedPopupState, scope, storageReady]);
+  }, [pending, persistedPopupState, scope, storageReady]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const popupEligible = Boolean(
@@ -613,7 +623,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (reviewedKeys.length === 0) return;
     const remainingSummary = removeReviewedNewSpecials(activePending.summary, reviewedKeys);
     if (!remainingSummary) {
-      const snapshotToKeep = activePending.snapshot ?? currentSnapshot;
+      const snapshotToKeep = activePending.snapshot ?? createNewSpecialsSnapshot(products);
       const wroteSnapshot = writeNewSpecialsSnapshot(snapshotToKeep, scope);
       const clearedPending = wroteSnapshot && clearNewSpecialsPending(scope);
       if (wroteSnapshot && clearedPending) {
@@ -647,7 +657,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       }));
     }
     setOpenRequested(false);
-  }, [activePending, cataloguePublicationKey, currentSnapshot, persistedPopupState, popupState, previousSnapshot, scope, storageReady]);
+  }, [activePending, cataloguePublicationKey, persistedPopupState, popupState, previousSnapshot, products, scope, storageReady]);
 
   const value = useMemo<NewSpecialsContextValue>(
     () => ({
