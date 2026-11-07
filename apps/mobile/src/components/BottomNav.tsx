@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useSearchNavigation } from "@/lib/search-context";
-import { useNotifications } from "@/lib/notifications-context";
+import { useNotificationsData } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useRouter } from "next/navigation";
@@ -324,7 +324,7 @@ export default function BottomNav() {
   const router = useRouter();
   const prefetchedRoutesRef = useRef(new Set<string>());
   const { isActive: isSearchActive, closeSearch } = useSearchNavigation();
-  const { hasUnreadWatchlistUpdates } = useNotifications();
+  const { hasUnreadWatchlistUpdates } = useNotificationsData();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest } = useNewSpecialsData();
   const { requestOpen } = useNewSpecialsActions();

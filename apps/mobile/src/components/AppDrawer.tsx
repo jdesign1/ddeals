@@ -9,7 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
-import { useNotifications } from "@/lib/notifications-context";
+import { useNotificationsData } from "@/lib/notifications-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useSearchCatalogue } from "@/lib/search-context";
 import { useSubscriptionStatus } from "@/lib/subscription-context";
@@ -28,7 +28,7 @@ export default function AppDrawer() {
     closeDrawer,
   } = useNavigationDrawer();
   const { user, profile, loading, profileLoading, openAuthSheet, requestOnboardingTour } = useAuth();
-  const { unreadAlerts } = useNotifications();
+  const { unreadAlerts } = useNotificationsData();
   const { canOpenDetectiveCase } = useNewSpecialsData();
   const { requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecialsActions();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();

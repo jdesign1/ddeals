@@ -44,7 +44,32 @@ interface NotificationsContextValue {
   refreshNotifications: () => Promise<void>;
 }
 
+export type NotificationsDataContextValue = Pick<
+  NotificationsContextValue,
+  | "pushEnabled"
+  | "pushReady"
+  | "pushAvailableOnDevice"
+  | "pushPermissionState"
+  | "notificationError"
+  | "unreadCount"
+  | "unreadAlerts"
+  | "unreadListItemKeys"
+  | "unreadVerdictChangeListItemKeys"
+  | "hasUnreadWatchlistUpdates"
+>;
+
+export type NotificationsActionsContextValue = Pick<
+  NotificationsContextValue,
+  | "setPushEnabled"
+  | "openNotificationSettings"
+  | "markListItemViewed"
+  | "markWatchlistVisited"
+  | "refreshNotifications"
+>;
+
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
+const NotificationsDataContext = createContext<NotificationsDataContextValue | null>(null);
+const NotificationsActionsContext = createContext<NotificationsActionsContextValue | null>(null);
 const alertKey = (listId: string, listItemId: string) => `${listId}:${listItemId}`;
 const watchlistNavSeenAtKey = (userId: string) => `dodgey-deals:watchlist-nav-seen-at-v1:${userId}`;
 // Verdict changes have a separate derived set for callers that need to style
@@ -520,11 +545,56 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     unreadVerdictChangeListItemKeys,
   ]);
 
-  return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
+  const dataValue = useMemo<NotificationsDataContextValue>(
+    () => ({
+      pushEnabled,
+      pushReady,
+      pushAvailableOnDevice,
+      pushPermissionState,
+      notificationError,
+      unreadCount: unreadAlerts.length,
+      unreadAlerts,
+      unreadListItemKeys,
+      unreadVerdictChangeListItemKeys,
+      hasUnreadWatchlistUpdates,
+    }),
+    [hasUnreadWatchlistUpdates, notificationError, pushAvailableOnDevice, pushEnabled, pushPermissionState, pushReady, unreadAlerts, unreadListItemKeys, unreadVerdictChangeListItemKeys],
+  );
+
+  const actionsValue = useMemo<NotificationsActionsContextValue>(
+    () => ({
+      setPushEnabled,
+      openNotificationSettings,
+      markListItemViewed,
+      markWatchlistVisited,
+      refreshNotifications,
+    }),
+    [markListItemViewed, markWatchlistVisited, openNotificationSettings, refreshNotifications, setPushEnabled],
+  );
+
+  return (
+    <NotificationsContext.Provider value={value}>
+      <NotificationsDataContext.Provider value={dataValue}>
+        <NotificationsActionsContext.Provider value={actionsValue}>{children}</NotificationsActionsContext.Provider>
+      </NotificationsDataContext.Provider>
+    </NotificationsContext.Provider>
+  );
 }
 
 export function useNotifications(): NotificationsContextValue {
   const context = useContext(NotificationsContext);
   if (!context) throw new Error("useNotifications must be used within NotificationsProvider");
+  return context;
+}
+
+export function useNotificationsData(): NotificationsDataContextValue {
+  const context = useContext(NotificationsDataContext);
+  if (!context) throw new Error("useNotificationsData must be used within NotificationsProvider");
+  return context;
+}
+
+export function useNotificationsActions(): NotificationsActionsContextValue {
+  const context = useContext(NotificationsActionsContext);
+  if (!context) throw new Error("useNotificationsActions must be used within NotificationsProvider");
   return context;
 }
