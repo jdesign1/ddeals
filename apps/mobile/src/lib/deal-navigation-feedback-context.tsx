@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import PageLoader from "@/components/PageLoader";
 
@@ -47,9 +47,10 @@ export function DealNavigationFeedbackProvider({ children }: { children: ReactNo
   }, [clearTimers]);
 
   const showLoader = feedback.visible && feedback.path === pathname;
+  const contextValue = useMemo(() => ({ startNavigationFeedback }), [startNavigationFeedback]);
 
   return (
-    <DealNavigationFeedbackContext.Provider value={{ startNavigationFeedback }}>
+    <DealNavigationFeedbackContext.Provider value={contextValue}>
       {children}
       <PageLoader loading={showLoader} immediate />
     </DealNavigationFeedbackContext.Provider>
