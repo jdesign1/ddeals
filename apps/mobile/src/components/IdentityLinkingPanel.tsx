@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth, type AccountIdentity } from "@/lib/auth-context";
+import { useAuthIdentityActions, useAuthStatus, type AccountIdentity } from "@/lib/auth-context";
 import ButtonSpinner from "@/components/ButtonSpinner";
 
 function hasProvider(identities: AccountIdentity[], provider: string): boolean {
@@ -25,11 +25,8 @@ function describeAppleIdentityError(message: string): string {
 }
 
 export default function IdentityLinkingPanel() {
-  const {
-    user,
-    getLinkedIdentities,
-    linkAppleIdentity,
-  } = useAuth();
+  const { user } = useAuthStatus();
+  const { getLinkedIdentities, linkAppleIdentity } = useAuthIdentityActions();
   const [identities, setIdentities] = useState<AccountIdentity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);

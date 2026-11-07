@@ -111,6 +111,11 @@ export interface AuthOverlayContextValue {
   dismissOnboardingTour: () => void;
 }
 
+export interface AuthIdentityActionsContextValue {
+  getLinkedIdentities: () => Promise<{ error: string | null; identities: AccountIdentity[] }>;
+  linkAppleIdentity: () => Promise<{ error: string | null }>;
+}
+
 export interface AuthCategoryInterestsActionsContextValue {
   updateCategoryInterests: (categories: string[]) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   dismissCategoryInterestsPrompt: () => Promise<{ error: string | null; profile: AccountProfile | null }>;
@@ -120,6 +125,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const AuthStatusContext = createContext<AuthStatusContextValue | null>(null);
 const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
 const AuthOverlayContext = createContext<AuthOverlayContextValue | null>(null);
+const AuthIdentityActionsContext = createContext<AuthIdentityActionsContextValue | null>(null);
 const AuthCategoryInterestsActionsContext = createContext<AuthCategoryInterestsActionsContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
@@ -322,6 +328,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null, profile: nextProfile };
   }, [client, user]);
 
+  const getLinkedIdentities = useCallback(async () => {
+    if (!client) return { error: configurationError(), identities: [] };
+    if (!user) return { error: "Please sign in before managing sign-in methods.", identities: [] };
+    const { data, error } = await client.auth.getUserIdentities();
+    return {
+      error: error?.message ?? null,
+      identities: (data?.identities ?? []) as AccountIdentity[],
+    };
+  }, [client, user]);
+
+  const linkAppleIdentity = useCallback(async () => {
+    if (!client) return { error: configurationError() };
+    if (!user) return { error: "Please sign in before linking Apple." };
+
+    if (isNativeAppleSignInAvailable()) {
+      try {
+        const authResult = await linkWithNativeApple(client);
+        if (!authResult.error) {
+          const { data: refreshedUser } = await client.auth.getUser();
+          if (refreshedUser.user) setUser(refreshedUser.user);
+        }
+        return { error: authResult.error?.message ?? null };
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : "Apple linking failed." };
+      }
+    }
+
+    const { error } = await client.auth.linkIdentity({
+      provider: "apple",
+      options: { redirectTo: authRedirectUrl },
+    });
+    return { error: error?.message ?? null };
+  }, [client, user]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -404,38 +444,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error && typeof window !== "undefined") window.sessionStorage.removeItem(PROVIDER_RETURN_STORAGE_KEY);
         return { error: error?.message ?? null };
       },
-      getLinkedIdentities: async () => {
-        if (!client) return { error: configurationError(), identities: [] };
-        if (!user) return { error: "Please sign in before managing sign-in methods.", identities: [] };
-        const { data, error } = await client.auth.getUserIdentities();
-        return {
-          error: error?.message ?? null,
-          identities: (data?.identities ?? []) as AccountIdentity[],
-        };
-      },
-      linkAppleIdentity: async () => {
-        if (!client) return { error: configurationError() };
-        if (!user) return { error: "Please sign in before linking Apple." };
-
-        if (isNativeAppleSignInAvailable()) {
-          try {
-            const authResult = await linkWithNativeApple(client);
-            if (!authResult.error) {
-              const { data: refreshedUser } = await client.auth.getUser();
-              if (refreshedUser.user) setUser(refreshedUser.user);
-            }
-            return { error: authResult.error?.message ?? null };
-          } catch (error) {
-            return { error: error instanceof Error ? error.message : "Apple linking failed." };
-          }
-        }
-
-        const { error } = await client.auth.linkIdentity({
-          provider: "apple",
-          options: { redirectTo: authRedirectUrl },
-        });
-        return { error: error?.message ?? null };
-      },
+      getLinkedIdentities,
+      linkAppleIdentity,
       completeProfile: async (details) => {
         if (!client) return { error: configurationError(), profile: null };
         // OTP verification updates Supabase's session before React receives the
@@ -552,6 +562,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openAuthSheet,
       requestOnboardingTour,
       signOut,
+      getLinkedIdentities,
+      linkAppleIdentity,
       updateCategoryInterests,
       dismissCategoryInterestsPrompt,
     ]
@@ -589,6 +601,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [authSheetPrompt, authSheetReturnPath, closeAuthSheet, dismissOnboardingTour, hasOpenedAuthSheet, isAuthSheetOpen, onboardingTourRequest]
   );
 
+  const identityActionsValue = useMemo<AuthIdentityActionsContextValue>(
+    () => ({ getLinkedIdentities, linkAppleIdentity }),
+    [getLinkedIdentities, linkAppleIdentity]
+  );
+
   const categoryInterestsActionsValue = useMemo<AuthCategoryInterestsActionsContextValue>(
     () => ({ updateCategoryInterests, dismissCategoryInterestsPrompt }),
     [dismissCategoryInterestsPrompt, updateCategoryInterests]
@@ -599,9 +616,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <AuthStatusContext.Provider value={statusValue}>
         <AuthActionsContext.Provider value={actionsValue}>
           <AuthOverlayContext.Provider value={overlayValue}>
-            <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
-              {children}
-            </AuthCategoryInterestsActionsContext.Provider>
+            <AuthIdentityActionsContext.Provider value={identityActionsValue}>
+              <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
+                {children}
+              </AuthCategoryInterestsActionsContext.Provider>
+            </AuthIdentityActionsContext.Provider>
           </AuthOverlayContext.Provider>
         </AuthActionsContext.Provider>
       </AuthStatusContext.Provider>
@@ -630,6 +649,12 @@ export function useAuthActions(): AuthActionsContextValue {
 export function useAuthOverlay(): AuthOverlayContextValue {
   const context = useContext(AuthOverlayContext);
   if (!context) throw new Error("useAuthOverlay must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthIdentityActions(): AuthIdentityActionsContextValue {
+  const context = useContext(AuthIdentityActionsContext);
+  if (!context) throw new Error("useAuthIdentityActions must be used within AuthProvider");
   return context;
 }
 
