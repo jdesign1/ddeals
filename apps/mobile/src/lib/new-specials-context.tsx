@@ -116,6 +116,19 @@ interface StoredNewSpecialsState {
 const NewSpecialsContext = createContext<NewSpecialsContextValue | null>(null);
 const NewSpecialsDataContext = createContext<NewSpecialsDataContextValue | null>(null);
 const NewSpecialsActionsContext = createContext<NewSpecialsActionsContextValue | null>(null);
+const EMPTY_PREVIEW_SUMMARY: NewSpecialsSummary = {
+  byStore: { woolworths: 0, newworld: 0, paknsave: 0, foursquare: 0 },
+  realDeals: 0,
+  dodgyDeals: 0,
+  total: 0,
+  newlyStarted: 0,
+  priceDrops: 0,
+  allDealKeys: [],
+  realDealKeys: [],
+  dodgyDealKeys: [],
+  newlyStartedDealKeys: [],
+  priceDropDealKeys: [],
+};
 
 function snapshotFingerprint(snapshot: NewSpecialsSnapshot): string {
   return JSON.stringify(snapshot.deals);
@@ -277,7 +290,11 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     () => (previousSnapshot ? summarizeNewSpecials(products, previousSnapshot) : null),
     [previousSnapshot, products],
   );
-  const previewSummary = useMemo(() => createNewSpecialsPreviewSummary(products), [products]);
+  // The preview is opened only after an explicit profile-menu tap. Keep a
+  // stable empty value during background catalogue refreshes and build the
+  // real summary at that tap instead of scanning the full catalogue globally
+  // on every refresh.
+  const [previewSummary, setPreviewSummary] = useState<NewSpecialsSummary>(EMPTY_PREVIEW_SUMMARY);
   // Only expose a summary once its persisted batch exists. This prevents the
   // launch popup from racing the storage write on a cold load.
   const digest = activePending?.summary ?? null;
@@ -463,6 +480,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const requestPreviewOpen = useCallback(() => {
     if (!storageReady || loadingProducts) return;
 
+    setPreviewSummary(createNewSpecialsPreviewSummary(products));
+
     // The test preview should include the game card even when the normal
     // publication-driven reconciliation has not persisted a case yet.
     if (!detectiveCase && currentQuizCase && playedPairHistoryReady && scope) {
@@ -482,7 +501,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     }
 
     setPreviewOpenRequested(true);
-  }, [buildCurrentQuizCase, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedQuestionKind, loadingProducts, playedPairHistoryReady, scope, storageReady]);
+  }, [buildCurrentQuizCase, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedQuestionKind, loadingProducts, playedPairHistoryReady, products, scope, storageReady]);
 
   // A valid case can be recovered from the current catalogue even when an
   // earlier render missed the localStorage write. Do not recreate a case that
