@@ -38,7 +38,31 @@ interface WatchlistContextValue {
   refreshSavedItems: () => Promise<void>;
 }
 
+export type WatchlistDataContextValue = Pick<
+  WatchlistContextValue,
+  | "savedProductIds"
+  | "selectedProductIds"
+  | "loadingSavedItems"
+  | "savedItemsReady"
+  | "isCommitting"
+  | "removingProductIds"
+  | "error"
+  | "confirmation"
+>;
+
+export type WatchlistActionsContextValue = Pick<
+  WatchlistContextValue,
+  | "toggleProduct"
+  | "removeProduct"
+  | "clearSelection"
+  | "dismissSelectionBar"
+  | "commitSelection"
+  | "refreshSavedItems"
+>;
+
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
+const WatchlistDataContext = createContext<WatchlistDataContextValue | null>(null);
+const WatchlistActionsContext = createContext<WatchlistActionsContextValue | null>(null);
 
 function isWatchlist(list: ListRow): boolean {
   return list.name.trim().toLocaleLowerCase() === "watchlist";
@@ -299,6 +323,32 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     toggleProduct,
   ]);
 
+  const dataValue = useMemo<WatchlistDataContextValue>(
+    () => ({
+      savedProductIds,
+      selectedProductIds,
+      loadingSavedItems,
+      savedItemsReady,
+      isCommitting,
+      removingProductIds,
+      error,
+      confirmation,
+    }),
+    [confirmation, error, isCommitting, loadingSavedItems, removingProductIds, savedItemsReady, savedProductIds, selectedProductIds],
+  );
+
+  const actionsValue = useMemo<WatchlistActionsContextValue>(
+    () => ({
+      toggleProduct,
+      removeProduct,
+      clearSelection,
+      dismissSelectionBar,
+      commitSelection,
+      refreshSavedItems,
+    }),
+    [clearSelection, commitSelection, dismissSelectionBar, refreshSavedItems, removeProduct, toggleProduct],
+  );
+
   const handleEnableNotifications = async () => {
     setIsSavingNotifications(true);
     try {
@@ -321,18 +371,22 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
   return (
     <WatchlistContext.Provider value={value}>
-      {children}
-      <WatchlistSelectionBar />
-      <WatchlistNotificationSheet
-        open={Boolean(user && !pushEnabled && isNotificationPromptOpen && notificationPromptUserId === user.id)}
-        itemCount={notificationPromptItemCount}
-        permissionState={pushPermissionState}
-        isSaving={isSavingNotifications}
-        error={notificationError}
-        onClose={() => setIsNotificationPromptOpen(false)}
-        onEnable={() => void handleEnableNotifications()}
-        onOpenSettings={() => void handleOpenNotificationSettings()}
-      />
+      <WatchlistDataContext.Provider value={dataValue}>
+        <WatchlistActionsContext.Provider value={actionsValue}>
+          {children}
+          <WatchlistSelectionBar />
+          <WatchlistNotificationSheet
+            open={Boolean(user && !pushEnabled && isNotificationPromptOpen && notificationPromptUserId === user.id)}
+            itemCount={notificationPromptItemCount}
+            permissionState={pushPermissionState}
+            isSaving={isSavingNotifications}
+            error={notificationError}
+            onClose={() => setIsNotificationPromptOpen(false)}
+            onEnable={() => void handleEnableNotifications()}
+            onOpenSettings={() => void handleOpenNotificationSettings()}
+          />
+        </WatchlistActionsContext.Provider>
+      </WatchlistDataContext.Provider>
     </WatchlistContext.Provider>
   );
 }
@@ -340,7 +394,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 function WatchlistSelectionBar() {
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
-  const { selectedProductIds, isCommitting, error, confirmation, clearSelection, dismissSelectionBar, commitSelection } = useWatchlist();
+  const { selectedProductIds, isCommitting, error, confirmation } = useWatchlistData();
+  const { clearSelection, dismissSelectionBar, commitSelection } = useWatchlistActions();
   const prefersReducedMotion = useReducedMotion() ?? false;
   const count = selectedProductIds.size;
   const navIsHidden = pathname.startsWith("/deal/") || pathname === "/settings" || pathname === "/support" || pathname === "/report-deal";
@@ -428,5 +483,17 @@ function WatchlistSelectionBar() {
 export function useWatchlist(): WatchlistContextValue {
   const context = useContext(WatchlistContext);
   if (!context) throw new Error("useWatchlist must be used inside WatchlistProvider");
+  return context;
+}
+
+export function useWatchlistData(): WatchlistDataContextValue {
+  const context = useContext(WatchlistDataContext);
+  if (!context) throw new Error("useWatchlistData must be used inside WatchlistProvider");
+  return context;
+}
+
+export function useWatchlistActions(): WatchlistActionsContextValue {
+  const context = useContext(WatchlistActionsContext);
+  if (!context) throw new Error("useWatchlistActions must be used inside WatchlistProvider");
   return context;
 }

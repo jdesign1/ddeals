@@ -4,7 +4,7 @@ import { memo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Plus, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useWatchlist } from "@/lib/watchlist-context";
+import { useWatchlistActions, useWatchlistData } from "@/lib/watchlist-context";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import ButtonSpinner from "@/components/ButtonSpinner";
 
@@ -31,7 +31,8 @@ function AddToListButton({
   dataOnboarding?: string;
 }) {
   const { user, openAuthSheet } = useAuth();
-  const { savedProductIds, selectedProductIds, toggleProduct, removeProduct, removingProductIds, savedItemsReady } = useWatchlist();
+  const { savedProductIds, selectedProductIds, removingProductIds, savedItemsReady } = useWatchlistData();
+  const { toggleProduct, removeProduct } = useWatchlistActions();
   const [isRemoveSheetOpen, setIsRemoveSheetOpen] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const isSaved = savedProductIds.has(productId);

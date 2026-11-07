@@ -15,7 +15,7 @@ import type { DealFilter } from "@/lib/deal-filters";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useSubscriptions } from "@/lib/subscription-context";
-import { useWatchlist } from "@/lib/watchlist-context";
+import { useWatchlistData } from "@/lib/watchlist-context";
 import { buildMarketWatchStats } from "@/lib/market-watch";
 import { buildWatchlistStats, type WatchlistStats, type WatchlistTopMode } from "@/lib/watchlist-stats";
 
@@ -30,7 +30,7 @@ export default function MePage() {
   const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
   const { products, loadingProducts } = useSearchCatalogue();
   const { openSearchForFilter } = useSearchNavigation();
-  const { savedProductIds, loadingSavedItems } = useWatchlist();
+  const { savedProductIds, loadingSavedItems } = useWatchlistData();
   const [isSavingsOpen, setIsSavingsOpen] = useState(false);
   const [activeStatsTab, setActiveStatsTab] = useState<"watchlist" | "market">("watchlist");
   const deferredStatsTab = useDeferredValue(activeStatsTab);

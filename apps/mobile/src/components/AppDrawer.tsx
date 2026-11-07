@@ -13,7 +13,7 @@ import { useNotificationsData } from "@/lib/notifications-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useSearchCatalogue } from "@/lib/search-context";
 import { useSubscriptionStatus } from "@/lib/subscription-context";
-import { useWatchlist } from "@/lib/watchlist-context";
+import { useWatchlistData } from "@/lib/watchlist-context";
 
 const SETTINGS_ROUTE_FALLBACK_MS = 1600;
 
@@ -33,7 +33,7 @@ export default function AppDrawer() {
   const { requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecialsActions();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const { products, catalogueLiveLoaded } = useSearchCatalogue();
-  const { savedProductIds, savedItemsReady } = useWatchlist();
+  const { savedProductIds, savedItemsReady } = useWatchlistData();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
   const settingsNavigationStartedRef = useRef(false);

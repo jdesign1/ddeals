@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchNavigation } from "@/lib/search-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
-import { useWatchlist } from "@/lib/watchlist-context";
+import { useWatchlistData } from "@/lib/watchlist-context";
 
 export const SUBSCRIBE_BUTTON_CLASS_NAME = "pointer-events-auto flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-stone-500 bg-transparent px-4 py-2.5 text-center text-sm font-bold text-stone-700 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2";
 
@@ -40,7 +40,7 @@ export default function StickySubscriptionCta({
   const isClientMounted = useSyncExternalStore(subscribeToMount, getClientMounted, getServerMounted);
   const { isActive: isSearchActive } = useSearchNavigation();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
-  const { selectedProductIds, confirmation, error } = useWatchlist();
+  const { selectedProductIds, confirmation, error } = useWatchlistData();
   const isSelectionBarVisible = selectedProductIds.size > 0 || Boolean(confirmation) || Boolean(error);
   const isStickyVisible = showSticky && !isSearchActive && !isDrawerOpen && !isSelectionBarVisible;
 
