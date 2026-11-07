@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   matchesAnySelectedStore,
@@ -468,6 +468,12 @@ export default function HomePage() {
     () => normalizeCategoryInterests(profile?.preferred_categories),
     [profile?.preferred_categories],
   );
+  // The summary and primary deal rails are the first-paint path. Keep the
+  // catalogue snapshot that feeds the secondary discovery/history belts at a
+  // lower priority so a fresh 10k-item publication does not make the first
+  // frame wait for several more catalogue-wide derivations. Filters still
+  // apply immediately; the deferred value only softens publication refreshes.
+  const deferredCatalogueProducts = useDeferredValue(products);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -623,8 +629,8 @@ export default function HomePage() {
     };
   }, [products, selectedStores]);
   const didYouKnowCards = useMemo(
-    () => buildDidYouKnowCards(products, selectedStores),
-    [products, selectedStores],
+    () => buildDidYouKnowCards(deferredCatalogueProducts, selectedStores),
+    [deferredCatalogueProducts, selectedStores],
   );
   const latestPublishedAt = currentSpecialSummary.latestPublishedAt;
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
@@ -635,8 +641,8 @@ export default function HomePage() {
   const newDealsCount = digest?.total ?? 0;
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const previouslyCheckedDeals = useMemo(
-    () => buildPreviouslyCheckedChangedDeals(products, checkedHistory, selectedStores),
-    [checkedHistory, products, selectedStores],
+    () => buildPreviouslyCheckedChangedDeals(deferredCatalogueProducts, checkedHistory, selectedStores),
+    [checkedHistory, deferredCatalogueProducts, selectedStores],
   );
   const visiblePreviouslyCheckedDeals = useMemo(
     () => previouslyCheckedDeals.filter((item) => !dismissedWorthAnotherLookKeys.has(getPreviouslyCheckedDealKey(item))),
