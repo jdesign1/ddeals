@@ -39,6 +39,7 @@ import {
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getPreviouslyCheckedDealKey,
+  type CheckDealsRailItem,
   type CurrentSpecialSummary,
   type CheckDealsSummaryStore,
 } from "@/lib/check-deals-home";
@@ -78,6 +79,9 @@ const EMPTY_CURRENT_SPECIAL_SUMMARY: CurrentSpecialSummary = {
   counts: { newworld: 0, paknsave: 0, woolworths: 0 },
   latestPublishedAt: null,
 };
+const EMPTY_DEAL_VERDICT_SUMMARY = { realSavers: 0, dodgyDeals: 0 };
+const EMPTY_DID_YOU_KNOW_CARDS: DidYouKnowCard[] = [];
+const EMPTY_PREVIOUSLY_CHECKED_DEALS: CheckDealsRailItem[] = [];
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -658,6 +662,8 @@ export default function HomePage() {
   );
   const currentSpecialCounts = currentSpecialSummary.counts;
   const dealVerdictSummary = useMemo(() => {
+    if (isSearchActive) return EMPTY_DEAL_VERDICT_SUMMARY;
+
     const realSaverProductIds = new Set<string>();
     const dodgyDealProductIds = new Set<string>();
 
@@ -673,10 +679,10 @@ export default function HomePage() {
       realSavers: realSaverProductIds.size,
       dodgyDeals: dodgyDealProductIds.size,
     };
-  }, [deferredCatalogueProducts, selectedStores]);
+  }, [deferredCatalogueProducts, isSearchActive, selectedStores]);
   const didYouKnowCards = useMemo(
-    () => buildDidYouKnowCards(deferredCatalogueProducts, selectedStores),
-    [deferredCatalogueProducts, selectedStores],
+    () => isSearchActive ? EMPTY_DID_YOU_KNOW_CARDS : buildDidYouKnowCards(deferredCatalogueProducts, selectedStores),
+    [deferredCatalogueProducts, isSearchActive, selectedStores],
   );
   const latestPublishedAt = currentSpecialSummary.latestPublishedAt;
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
@@ -687,8 +693,10 @@ export default function HomePage() {
   const newDealsCount = digest?.total ?? 0;
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const previouslyCheckedDeals = useMemo(
-    () => buildPreviouslyCheckedChangedDeals(deferredCatalogueProducts, checkedHistory, selectedStores),
-    [checkedHistory, deferredCatalogueProducts, selectedStores],
+    () => isSearchActive
+      ? EMPTY_PREVIOUSLY_CHECKED_DEALS
+      : buildPreviouslyCheckedChangedDeals(deferredCatalogueProducts, checkedHistory, selectedStores),
+    [checkedHistory, deferredCatalogueProducts, isSearchActive, selectedStores],
   );
   const visiblePreviouslyCheckedDeals = useMemo(
     () => previouslyCheckedDeals.filter((item) => !dismissedWorthAnotherLookKeys.has(getPreviouslyCheckedDealKey(item))),
