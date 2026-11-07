@@ -8,7 +8,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCardLayout } from "@/lib/card-layout-context";
 import { useTheme } from "@/lib/theme-context";
 import { usePageHeader } from "@/lib/header-context";
-import { useAuth, type AccountProfileUpdate } from "@/lib/auth-context";
+import {
+  useAuthActions,
+  useAuthCategoryInterestsActions,
+  useAuthProfileActions,
+  useAuthStatus,
+  type AccountProfileUpdate,
+} from "@/lib/auth-context";
 import { PUBLIC_PROFILE_QUOTE_CONTACT_ERROR } from "@/lib/public-profile-fields";
 import { getAccountDisplayName, getAccountEmailDisplay, getAccountSignInMethodDisplay } from "@/lib/account-display";
 import { captureSettingsScrollPosition } from "@/lib/scroll-events";
@@ -368,17 +374,10 @@ export default function SettingsPage() {
   const { isTransitioningToSettings, completeSettingsNavigation } = useNavigationDrawer();
   const { cardLayout, setCardLayout } = useCardLayout();
   const { isDarkMode, setTheme } = useTheme();
-  const {
-    user,
-    session,
-    profile,
-    loading: authLoading,
-    profileLoading,
-    signOut,
-    updateProfile,
-    updateCategoryInterests,
-    openAuthSheet,
-  } = useAuth();
+  const { user, session, profile, loading: authLoading, profileLoading } = useAuthStatus();
+  const { signOut, openAuthSheet } = useAuthActions();
+  const { updateProfile } = useAuthProfileActions();
+  const { updateCategoryInterests } = useAuthCategoryInterestsActions();
   const {
     pushEnabled,
     pushReady,

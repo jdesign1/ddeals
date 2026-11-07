@@ -116,6 +116,10 @@ export interface AuthIdentityActionsContextValue {
   linkAppleIdentity: () => Promise<{ error: string | null }>;
 }
 
+export interface AuthProfileActionsContextValue {
+  updateProfile: (details: AccountProfileUpdate) => Promise<{ error: string | null; profile: AccountProfile | null }>;
+}
+
 export interface AuthCategoryInterestsActionsContextValue {
   updateCategoryInterests: (categories: string[]) => Promise<{ error: string | null; profile: AccountProfile | null }>;
   dismissCategoryInterestsPrompt: () => Promise<{ error: string | null; profile: AccountProfile | null }>;
@@ -126,6 +130,7 @@ const AuthStatusContext = createContext<AuthStatusContextValue | null>(null);
 const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
 const AuthOverlayContext = createContext<AuthOverlayContextValue | null>(null);
 const AuthIdentityActionsContext = createContext<AuthIdentityActionsContextValue | null>(null);
+const AuthProfileActionsContext = createContext<AuthProfileActionsContextValue | null>(null);
 const AuthCategoryInterestsActionsContext = createContext<AuthCategoryInterestsActionsContextValue | null>(null);
 const PROVIDER_RETURN_STORAGE_KEY = "dd-provider-auth-return";
 
@@ -362,6 +367,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }, [client, user]);
 
+  const updateProfile = useCallback(async (details: AccountProfileUpdate) => {
+    if (!client) return { error: configurationError(), profile: null };
+    if (!user) return { error: "Please sign in before updating your profile.", profile: null };
+    const trimmedName = details.full_name.trim();
+    if (!trimmedName) return { error: "Enter your name.", profile: null };
+    const profileQuote = normalizePublicProfileDraft(details.profile_quote, PUBLIC_PROFILE_FIELD_LIMITS.profile_quote);
+    if (containsPublicProfileContactDetails(profileQuote)) {
+      return { error: PUBLIC_PROFILE_QUOTE_CONTACT_ERROR, profile: null };
+    }
+
+    const { data, error } = await client
+      .from("profiles")
+      .update({
+        full_name: trimmedName,
+        city: normalizePublicProfileDraft(details.city, PUBLIC_PROFILE_FIELD_LIMITS.city) || null,
+        favorite_store_branch: normalizePublicProfileDraft(details.favorite_store_branch, PUBLIC_PROFILE_FIELD_LIMITS.favorite_store_branch) || null,
+        profile_quote: profileQuote || null,
+      })
+      .eq("id", user.id)
+      .select("*")
+      .single();
+    if (error) return { error: error.message, profile: null };
+    const nextProfile = data as AccountProfile;
+    setProfile(nextProfile);
+    return { error: null, profile: nextProfile };
+  }, [client, user]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -489,32 +521,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       updateCategoryInterests,
       dismissCategoryInterestsPrompt,
-      updateProfile: async (details) => {
-        if (!client) return { error: configurationError(), profile: null };
-        if (!user) return { error: "Please sign in before updating your profile.", profile: null };
-        const trimmedName = details.full_name.trim();
-        if (!trimmedName) return { error: "Enter your name.", profile: null };
-        const profileQuote = normalizePublicProfileDraft(details.profile_quote, PUBLIC_PROFILE_FIELD_LIMITS.profile_quote);
-        if (containsPublicProfileContactDetails(profileQuote)) {
-          return { error: PUBLIC_PROFILE_QUOTE_CONTACT_ERROR, profile: null };
-        }
-
-        const { data, error } = await client
-          .from("profiles")
-          .update({
-            full_name: trimmedName,
-            city: normalizePublicProfileDraft(details.city, PUBLIC_PROFILE_FIELD_LIMITS.city) || null,
-            favorite_store_branch: normalizePublicProfileDraft(details.favorite_store_branch, PUBLIC_PROFILE_FIELD_LIMITS.favorite_store_branch) || null,
-            profile_quote: profileQuote || null,
-          })
-          .eq("id", user.id)
-          .select("*")
-          .single();
-        if (error) return { error: error.message, profile: null };
-        const nextProfile = data as AccountProfile;
-        setProfile(nextProfile);
-        return { error: null, profile: nextProfile };
-      },
+      updateProfile,
       refreshProfile: async () => {
         if (!client || !user) return null;
         setProfileLoading(true);
@@ -564,6 +571,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       getLinkedIdentities,
       linkAppleIdentity,
+      updateProfile,
       updateCategoryInterests,
       dismissCategoryInterestsPrompt,
     ]
@@ -606,6 +614,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [getLinkedIdentities, linkAppleIdentity]
   );
 
+  const profileActionsValue = useMemo<AuthProfileActionsContextValue>(
+    () => ({ updateProfile }),
+    [updateProfile]
+  );
+
   const categoryInterestsActionsValue = useMemo<AuthCategoryInterestsActionsContextValue>(
     () => ({ updateCategoryInterests, dismissCategoryInterestsPrompt }),
     [dismissCategoryInterestsPrompt, updateCategoryInterests]
@@ -617,9 +630,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <AuthActionsContext.Provider value={actionsValue}>
           <AuthOverlayContext.Provider value={overlayValue}>
             <AuthIdentityActionsContext.Provider value={identityActionsValue}>
-              <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
-                {children}
-              </AuthCategoryInterestsActionsContext.Provider>
+              <AuthProfileActionsContext.Provider value={profileActionsValue}>
+                <AuthCategoryInterestsActionsContext.Provider value={categoryInterestsActionsValue}>
+                  {children}
+                </AuthCategoryInterestsActionsContext.Provider>
+              </AuthProfileActionsContext.Provider>
             </AuthIdentityActionsContext.Provider>
           </AuthOverlayContext.Provider>
         </AuthActionsContext.Provider>
@@ -655,6 +670,12 @@ export function useAuthOverlay(): AuthOverlayContextValue {
 export function useAuthIdentityActions(): AuthIdentityActionsContextValue {
   const context = useContext(AuthIdentityActionsContext);
   if (!context) throw new Error("useAuthIdentityActions must be used within AuthProvider");
+  return context;
+}
+
+export function useAuthProfileActions(): AuthProfileActionsContextValue {
+  const context = useContext(AuthProfileActionsContext);
+  if (!context) throw new Error("useAuthProfileActions must be used within AuthProvider");
   return context;
 }
 
