@@ -566,7 +566,10 @@ export default function HomePage() {
   }, [forYouCategoryStorageKey]);
 
   useEffect(() => {
-    if (!accessToken || !catalogueLiveLoaded) return;
+    // The history rail is hidden behind the global search overlay. Defer its
+    // account-scoped fetch until Home is visible again so opening Search does
+    // not compete with the catalogue/ranking work needed by the active view.
+    if (!accessToken || !catalogueLiveLoaded || isSearchActive) return;
 
     let cancelled = false;
     const cancelScheduledLoad = scheduleIdleWork(() => {
@@ -586,7 +589,7 @@ export default function HomePage() {
       cancelled = true;
       cancelScheduledLoad();
     };
-  }, [accessToken, catalogueLiveLoaded]);
+  }, [accessToken, catalogueLiveLoaded, isSearchActive]);
 
   const checkedHistory = useMemo(
     () => checkedHistoryState.accessToken === accessToken ? checkedHistoryState.rows : [],
