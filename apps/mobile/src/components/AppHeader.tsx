@@ -11,7 +11,7 @@ import { useAuthStatus } from "@/lib/auth-context";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
-import { useNewSpecials } from "@/lib/new-specials-context";
+import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
 import { useSearchInput } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
@@ -54,14 +54,16 @@ export default function AppHeader({
     openRequested,
     detectiveCase,
     detectiveCaseOpenRequested,
+    previewSummary,
+    previewOpenRequested,
+  } = useNewSpecialsData();
+  const {
     consumeOpenRequest,
     consumePreviewOpenRequest,
     consumeDetectiveCaseOpenRequest,
     markPopupShown,
     markDetectiveCasePlayed,
-    previewSummary,
-    previewOpenRequested,
-  } = useNewSpecials();
+  } = useNewSpecialsActions();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
