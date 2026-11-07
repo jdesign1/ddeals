@@ -4,7 +4,7 @@ import {
   type CurrentDeal,
   type ProductCard,
 } from "@dodgey-deals/shared";
-import type { DealFilter } from "./deal-filters.ts";
+import { matchesDealFilter, type DealFilter } from "./deal-filters.ts";
 import type { CheckDealsSortBy } from "./deal-sorting.ts";
 import { getNewSpecialDealKey } from "./new-specials.ts";
 
@@ -63,6 +63,14 @@ interface CategoryBucket {
   trackedHistoryProducts: Set<string>;
 }
 
+export interface DidYouKnowCardsWithVerdictSummary {
+  cards: DidYouKnowCard[];
+  verdictSummary: {
+    realSavers: number;
+    dodgyDeals: number;
+  };
+}
+
 function isCurrentSpecial(deal: CurrentDeal): boolean {
   return deal.isOnSpecial !== false;
 }
@@ -114,9 +122,11 @@ function createBuckets(
   products: readonly ProductCard[],
   selectedStores: readonly string[],
   now: number,
-): CategoryBucket[] {
+): { buckets: CategoryBucket[]; verdictSummary: DidYouKnowCardsWithVerdictSummary["verdictSummary"] } {
   const buckets = new Map<string, CategoryBucket>();
   const storeFilters = [...selectedStores];
+  const realSaverProductIds = new Set<string>();
+  const dodgyDealProductIds = new Set<string>();
 
   for (const product of products) {
     const category = groupCategory(product.category, product.name);
@@ -139,7 +149,10 @@ function createBuckets(
     let bestHistoricalValue: number | null = null;
     let bestPriceChangeCount: number | null = null;
     for (const deal of product.currentDeals) {
-      if (!isCurrentSpecial(deal) || !matchesAnySelectedStore(deal.store, storeFilters)) continue;
+      if (!matchesAnySelectedStore(deal.store, storeFilters)) continue;
+      if (matchesDealFilter(deal, "real")) realSaverProductIds.add(product.id);
+      if (matchesDealFilter(deal, "dodgy")) dodgyDealProductIds.add(product.id);
+      if (!isCurrentSpecial(deal)) continue;
       if (!isAssessedDeal(deal)) continue;
       hasAssessedDeal = true;
       if (deal.dealType === "Real Deal") hasRealDeal = true;
@@ -182,7 +195,13 @@ function createBuckets(
     }
   }
 
-  return [...buckets.values()];
+  return {
+    buckets: [...buckets.values()],
+    verdictSummary: {
+      realSavers: realSaverProductIds.size,
+      dodgyDeals: dodgyDealProductIds.size,
+    },
+  };
 }
 
 function realSaverLeader(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
@@ -316,22 +335,12 @@ function dodgyAlertCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
     }));
 }
 
-/**
- * Builds a small, deterministic discovery set from the already-loaded live
- * catalogue. Counts are unique product groups so the card's number matches
- * the product-grouped Search results users land on. Weak/unknown evidence is
- * excluded and history cards disappear quietly when their sample gates are
- * not met; the UI never needs a "needs more history" placeholder.
- */
-export function buildDidYouKnowCards(
-  products: readonly ProductCard[],
-  selectedStores: readonly string[] = ["all"],
-  now = Date.now(),
-  maxCards = 4,
+function buildCardsFromBuckets(
+  buckets: readonly CategoryBucket[],
+  maxCards: number,
 ): DidYouKnowCard[] {
-  if (products.length === 0 || maxCards <= 0) return [];
+  if (maxCards <= 0) return [];
 
-  const buckets = createBuckets(products, selectedStores, now);
   const candidateBuilders = [
     () => realSaverLeader(buckets),
     // Keep a qualified Dodgy discovery card ahead of secondary discovery
@@ -355,6 +364,40 @@ export function buildDidYouKnowCards(
   }
 
   return cards;
+}
+
+/**
+ * Builds the discovery cards and verdict counts from one deferred catalogue
+ * traversal. Counts are unique product groups so the summary matches the
+ * product-grouped Search results users land on. Weak/unknown evidence is
+ * excluded and history cards disappear quietly when their sample gates are
+ * not met; the UI never needs a "needs more history" placeholder.
+ */
+export function buildDidYouKnowCardsWithVerdictSummary(
+  products: readonly ProductCard[],
+  selectedStores: readonly string[] = ["all"],
+  now = Date.now(),
+  maxCards = 4,
+): DidYouKnowCardsWithVerdictSummary {
+  if (products.length === 0) {
+    return { cards: [], verdictSummary: { realSavers: 0, dodgyDeals: 0 } };
+  }
+
+  const { buckets, verdictSummary } = createBuckets(products, selectedStores, now);
+  return {
+    cards: buildCardsFromBuckets(buckets, maxCards),
+    verdictSummary,
+  };
+}
+
+export function buildDidYouKnowCards(
+  products: readonly ProductCard[],
+  selectedStores: readonly string[] = ["all"],
+  now = Date.now(),
+  maxCards = 4,
+): DidYouKnowCard[] {
+  if (products.length === 0 || maxCards <= 0) return [];
+  return buildDidYouKnowCardsWithVerdictSummary(products, selectedStores, now, maxCards).cards;
 }
 
 export function getDidYouKnowCardKey(card: DidYouKnowCard): string {

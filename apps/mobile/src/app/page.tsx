@@ -69,7 +69,12 @@ import {
 import { useCardLayout } from "@/lib/card-layout-context";
 import { compareLatestSpecials } from "@/lib/special-freshness";
 import { normalizeCategoryInterests } from "@/lib/category-interests";
-import { buildDidYouKnowCards, getDidYouKnowScope, type DidYouKnowCard } from "@/lib/did-you-know";
+import {
+  buildDidYouKnowCardsWithVerdictSummary,
+  getDidYouKnowScope,
+  type DidYouKnowCard,
+  type DidYouKnowCardsWithVerdictSummary,
+} from "@/lib/did-you-know";
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 const FOR_YOU_CATEGORY_STORAGE_PREFIX = "dodgey-deals:for-you-category:v1";
@@ -80,6 +85,10 @@ const EMPTY_CURRENT_SPECIAL_SUMMARY: CurrentSpecialSummary = {
 };
 const EMPTY_DEAL_VERDICT_SUMMARY = { realSavers: 0, dodgyDeals: 0 };
 const EMPTY_DID_YOU_KNOW_CARDS: DidYouKnowCard[] = [];
+const EMPTY_DID_YOU_KNOW_SUMMARY: DidYouKnowCardsWithVerdictSummary = {
+  cards: EMPTY_DID_YOU_KNOW_CARDS,
+  verdictSummary: EMPTY_DEAL_VERDICT_SUMMARY,
+};
 const EMPTY_PREVIOUSLY_CHECKED_DEALS: CheckDealsRailItem[] = [];
 
 /**
@@ -663,29 +672,17 @@ export default function HomePage() {
 
   const currentSpecialSummary = homePrimarySummary.currentSpecialSummary;
   const currentSpecialCounts = currentSpecialSummary.counts;
-  const dealVerdictSummary = useMemo(() => {
-    if (isSearchActive) return EMPTY_DEAL_VERDICT_SUMMARY;
-
-    const realSaverProductIds = new Set<string>();
-    const dodgyDealProductIds = new Set<string>();
-
-    for (const product of deferredCatalogueProducts) {
-      for (const deal of product.currentDeals) {
-        if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, selectedStores)) continue;
-        if (matchesDealFilter(deal, "real")) realSaverProductIds.add(product.id);
-        if (matchesDealFilter(deal, "dodgy")) dodgyDealProductIds.add(product.id);
-      }
-    }
-
-    return {
-      realSavers: realSaverProductIds.size,
-      dodgyDeals: dodgyDealProductIds.size,
-    };
-  }, [deferredCatalogueProducts, isSearchActive, selectedStores]);
-  const didYouKnowCards = useMemo(
-    () => isSearchActive ? EMPTY_DID_YOU_KNOW_CARDS : buildDidYouKnowCards(deferredCatalogueProducts, selectedStores),
+  // Discovery cards and the compact verdict summary intentionally share the
+  // same deferred catalogue traversal. Both are secondary to the first paint,
+  // and both use the same selected-store/unique-product scope.
+  const didYouKnowSummary = useMemo(
+    () => isSearchActive
+      ? EMPTY_DID_YOU_KNOW_SUMMARY
+      : buildDidYouKnowCardsWithVerdictSummary(deferredCatalogueProducts, selectedStores),
     [deferredCatalogueProducts, isSearchActive, selectedStores],
   );
+  const didYouKnowCards = didYouKnowSummary.cards;
+  const dealVerdictSummary = didYouKnowSummary.verdictSummary;
   const latestPublishedAt = currentSpecialSummary.latestPublishedAt;
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
   const updatedLabel = latestPublishedAt

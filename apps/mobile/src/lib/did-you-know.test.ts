@@ -3,6 +3,7 @@ import test from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import {
   buildDidYouKnowCards,
+  buildDidYouKnowCardsWithVerdictSummary,
   createDidYouKnowSeenState,
   getDidYouKnowFingerprint,
   getDidYouKnowScope,
@@ -99,6 +100,23 @@ test("store scope changes card facts without counting unselected supermarkets", 
   ], ["woolworths"], NOW);
 
   assert.equal(cards.length, 0);
+});
+
+test("discovery summary counts unique selected-store verdict products", () => {
+  const result = buildDidYouKnowCardsWithVerdictSummary([
+    product("real-1", "Pantry", [deal({ store: "New World", dealType: "Real Deal" })]),
+    product("real-2", "Pantry", [
+      deal({ store: "New World", dealType: "Real Deal" }),
+      deal({ store: "New World", dealType: "Real Deal", price: 7 }),
+    ]),
+    product("dodgy-review", "Household", [
+      deal({ store: "Woolworths NZ", dealType: "Fair Price", isDodgyReviewCandidate: true }),
+    ]),
+    product("ignored-store", "Drinks", [deal({ store: "PAK'nSAVE", dealType: "Real Deal" })]),
+  ], ["newworld", "woolworths"], NOW, 0);
+
+  assert.deepEqual(result.verdictSummary, { realSavers: 2, dodgyDeals: 1 });
+  assert.deepEqual(result.cards, []);
 });
 
 test("seen state storage is versioned and scoped", () => {
