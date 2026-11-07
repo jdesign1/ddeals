@@ -1,0 +1,49 @@
+name: Verify Vercel production deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Optional full main-branch commit SHA to verify; select main when running manually"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production-main
+  cancel-in-progress: true
+
+jobs:
+  ensure-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_gt0hpnf1HDHpqX5UYQLjZZZd
+      VERCEL_PROJECT_ID: prj_Pui0K5UHesUSkNyoE9fhaLIoK1Ng
+      VERCEL_PROJECT_NAME: dodgy-deal-mobile
+      VERCEL_REPOSITORY: jdesign1/ddeals
+      VERCEL_GIT_REF: ${{ github.ref_name }}
+      VERCEL_TARGET_SHA: ${{ github.event.inputs.sha || github.sha }}
+
+    steps:
+      - name: Check out the workflow revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Verify Vercel token is configured
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Add the VERCEL_TOKEN secret to the repository before enabling the Vercel deployment guard."
+            exit 1
+          fi
+
+      - name: Ensure the commit is deployed to Vercel
+        run: node tools/ensure-vercel-deployment.mjs
