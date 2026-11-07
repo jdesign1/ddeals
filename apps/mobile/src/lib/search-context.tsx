@@ -294,19 +294,25 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const catalogueLoadAttemptRef = useRef<number | null>(null);
   const catalogueLoadInFlightRef = useRef<Promise<void> | null>(null);
   const catalogueLoadSucceededRef = useRef(false);
+  const cataloguePublicationRef = useRef<CataloguePublicationState>({ key: null, complete: false });
+
+  const setCataloguePublication = useCallback((publication: CataloguePublicationState) => {
+    cataloguePublicationRef.current = publication;
+    setCataloguePublicationKey(publication.key);
+    setCataloguePublicationComplete(publication.complete);
+  }, []);
 
   const refreshCatalogue = useCallback(async (): Promise<RefreshLiveProductsResult> => {
     const result = await refreshLiveProducts(supabaseConfig);
     catalogueLoadSucceededRef.current = true;
     setProducts(result.products);
     const publication = await readCurrentCataloguePublication();
-    setCataloguePublicationKey(publication.key);
-    setCataloguePublicationComplete(publication.complete);
+    setCataloguePublication(publication);
     setCatalogueLiveLoaded(true);
     setError(null);
     publishCatalogueUpdate(result.products);
     return result;
-  }, []);
+  }, [setCataloguePublication]);
 
   const toggleStore = useCallback((storeId: string) => {
     if (storeId === "all") {
@@ -411,8 +417,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setError(null);
         setLoadingProducts(false);
         const publication = await readCurrentCataloguePublication();
-        setCataloguePublicationKey(publication.key);
-        setCataloguePublicationComplete(publication.complete);
+        setCataloguePublication(publication);
       } catch (err: unknown) {
         if (!displayedCachedProducts) setError(describeFetchError(err, "Failed to load specials"));
       } finally {
@@ -424,7 +429,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     void loadRequest.finally(() => {
       catalogueLoadInFlightRef.current = null;
     });
-  }, [retryTick, shouldLoadCatalogue]);
+  }, [retryTick, setCataloguePublication, shouldLoadCatalogue]);
 
   useEffect(() => {
     // If a catalogue attempt failed while this provider was off a catalogue
@@ -475,12 +480,23 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           const result = await loadLiveProducts(supabaseConfig);
           const publication = await readCurrentCataloguePublication();
           if (!cancelled) {
-            setProducts(result);
-            setCataloguePublicationKey(publication.key);
-            setCataloguePublicationComplete(publication.complete);
+            const publicationUnchanged = publication.complete
+              && publication.key !== null
+              && cataloguePublicationRef.current.complete
+              && cataloguePublicationRef.current.key === publication.key;
+            if (publicationUnchanged) {
+              // The loader may return a fresh IndexedDB clone even when the
+              // publication is unchanged. Preserve the current array so all
+              // catalogue consumers avoid a full derivation pass; the local
+              // expiry filter still removes deals that age out while open.
+              setProducts((current) => filterRecentlyVerifiedSpecials(current));
+            } else {
+              setProducts(result);
+              setCataloguePublication(publication);
+              publishCatalogueUpdate(result);
+            }
             setCatalogueLiveLoaded(true);
             setError(null);
-            publishCatalogueUpdate(result);
           }
         } catch {
           // Keep the current catalogue visible during a background refresh
@@ -519,7 +535,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pageshow", handlePageShow);
       if (checkpointTimer !== null) window.clearTimeout(checkpointTimer);
     };
-  }, [shouldLoadCatalogue]);
+  }, [setCataloguePublication, shouldLoadCatalogue]);
 
   const retry = useCallback(() => {
     setError(null);
