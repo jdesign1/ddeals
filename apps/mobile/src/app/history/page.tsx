@@ -15,7 +15,7 @@ import {
 import { supabaseConfig } from "@/lib/config";
 import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionNavigation, useSubscriptionStatus } from "@/lib/subscription-context";
 import { useSearchCatalogue } from "@/lib/search-context";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import ErrorState from "@/components/ErrorState";
@@ -69,7 +69,8 @@ import StickySubscriptionCta from "@/components/StickySubscriptionCta";
 export default function HistoryPage() {
   const { user, session, isAnonymousSession, loading: authLoading } = useAuthStatus();
   const { openAuthSheet } = useAuthActions();
-  const { isPremium, openSubscriptionPage } = useSubscriptions();
+  const { isPremium } = useSubscriptionStatus();
+  const { openSubscriptionPage } = useSubscriptionNavigation();
   const router = useRouter();
   const { products: liveProducts, loadingProducts: liveProductsLoading } = useSearchCatalogue();
   const [verdictFilter, setVerdictFilter] = useState<"real" | "dodgy" | null>(null);

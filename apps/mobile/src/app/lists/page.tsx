@@ -26,7 +26,7 @@ import {
 import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { supabaseConfig } from "@/lib/config";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionNavigation, useSubscriptionStatus } from "@/lib/subscription-context";
 import { useNotificationsActions, useNotificationsData, type UnreadListAlert } from "@/lib/notifications-context";
 import ErrorState from "@/components/ErrorState";
 import MascotImage from "@/components/MascotImage";
@@ -213,7 +213,8 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
 export default function ListsPage() {
   const { user, loading: authLoading } = useAuthStatus();
   const { openAuthSheet } = useAuthActions();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
+  const { openSubscriptionPage } = useSubscriptionNavigation();
   const userId = user?.id;
   const prefersReducedMotion = useReducedMotion();
   const {

@@ -14,7 +14,7 @@ import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import type { DealFilter } from "@/lib/deal-filters";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionNavigation, useSubscriptionStatus } from "@/lib/subscription-context";
 import { useWatchlistData } from "@/lib/watchlist-context";
 import { buildMarketWatchStats } from "@/lib/market-watch";
 import { buildWatchlistStats, type WatchlistStats, type WatchlistTopMode } from "@/lib/watchlist-stats";
@@ -28,7 +28,8 @@ const MarketWatchPanel = dynamic(() => import("@/components/MarketWatchPanel"), 
 export default function MePage() {
   const { user, isAnonymousSession, loading: authLoading } = useAuthStatus();
   const { openAuthSheet } = useAuthActions();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
+  const { openSubscriptionPage } = useSubscriptionNavigation();
   const { products, loadingProducts } = useSearchCatalogue();
   const { openSearchForFilter } = useSearchNavigation();
   const { savedProductIds, loadingSavedItems } = useWatchlistData();

@@ -51,10 +51,15 @@ export interface SubscriptionStatusContextValue {
   currentSubscription: SubscriptionEntitlementRecord | null;
 }
 
+export interface SubscriptionNavigationContextValue {
+  openSubscriptionPage: () => void;
+}
+
 type SubscriptionErrorSource = "purchase" | "restore" | "product_loading" | "entitlement_sync";
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 const SubscriptionStatusContext = createContext<SubscriptionStatusContextValue | null>(null);
+const SubscriptionNavigationContext = createContext<SubscriptionNavigationContextValue | null>(null);
 
 function productSortValue(productId: string): number {
   if (productId === SUBSCRIPTION_PRODUCT_IDS.annual) return 0;
@@ -318,6 +323,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [clearError, nativeAvailable, openAuthSheet, refreshUntilPremium, restoring, router, session, setMappedSubscriptionError, setSubscriptionError, unavailableMessage, user]);
 
+  const openSubscriptionPage = useCallback(() => {
+    clearError();
+    router.push("/subscribe");
+  }, [clearError, router]);
+
   const value = useMemo<SubscriptionContextValue>(() => ({
     entitlements,
     isPremium,
@@ -331,24 +341,28 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     currentSubscription,
     clearError,
     errorSource,
-    openSubscriptionPage: () => {
-      clearError();
-      router.push("/subscribe");
-    },
+    openSubscriptionPage,
     refresh,
     purchase,
     restore,
-  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loadedUserId, loading, nativeAvailable, products, productsLoading, purchase, refresh, restore, restoring, router, subscriptionLoading]);
+  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loadedUserId, loading, nativeAvailable, openSubscriptionPage, products, productsLoading, purchase, refresh, restore, restoring, subscriptionLoading]);
 
   const statusValue = useMemo<SubscriptionStatusContextValue>(
     () => ({ isPremium, loading: subscriptionLoading, currentSubscription }),
     [currentSubscription, isPremium, subscriptionLoading],
   );
 
+  const navigationValue = useMemo<SubscriptionNavigationContextValue>(
+    () => ({ openSubscriptionPage }),
+    [openSubscriptionPage],
+  );
+
   return (
     <SubscriptionContext.Provider value={value}>
       <SubscriptionStatusContext.Provider value={statusValue}>
-        {children}
+        <SubscriptionNavigationContext.Provider value={navigationValue}>
+          {children}
+        </SubscriptionNavigationContext.Provider>
       </SubscriptionStatusContext.Provider>
     </SubscriptionContext.Provider>
   );
@@ -363,5 +377,11 @@ export function useSubscriptions(): SubscriptionContextValue {
 export function useSubscriptionStatus(): SubscriptionStatusContextValue {
   const context = useContext(SubscriptionStatusContext);
   if (!context) throw new Error("useSubscriptionStatus must be used inside SubscriptionProvider");
+  return context;
+}
+
+export function useSubscriptionNavigation(): SubscriptionNavigationContextValue {
+  const context = useContext(SubscriptionNavigationContext);
+  if (!context) throw new Error("useSubscriptionNavigation must be used inside SubscriptionProvider");
   return context;
 }

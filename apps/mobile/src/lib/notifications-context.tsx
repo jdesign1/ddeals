@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { fetchItemsForLists, fetchUserLists } from "@dodgey-deals/shared";
 import { useAuthStatus } from "@/lib/auth-context";
 import { getAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionNavigation, useSubscriptionStatus } from "@/lib/subscription-context";
 import { getUnlockedWatchlistProductIdsFromRows } from "@/lib/watchlist-upgrade";
 
 export interface UnreadListAlert {
@@ -98,7 +98,8 @@ function isNativeIos(): boolean {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuthStatus();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
+  const { openSubscriptionPage } = useSubscriptionNavigation();
   const userId = user?.id;
   const client = getAccountsSupabaseClient();
   const [pushEnabled, setPushEnabledState] = useState(false);

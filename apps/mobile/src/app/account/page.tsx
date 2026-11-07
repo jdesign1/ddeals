@@ -11,7 +11,7 @@ import ButtonSpinner from "@/components/ButtonSpinner";
 import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { getAccountEmailDisplay } from "@/lib/account-display";
 import { usePageHeader } from "@/lib/header-context";
-import { useSubscriptions } from "@/lib/subscription-context";
+import { useSubscriptionNavigation, useSubscriptionStatus } from "@/lib/subscription-context";
 
 /**
  * "Manage Account" -- ported (in spirit, not verbatim) from
@@ -44,7 +44,8 @@ export default function AccountPage() {
   const router = useRouter();
   const { user, loading } = useAuthStatus();
   const { signOut, openAuthSheet } = useAuthActions();
-  const { isPremium, loading: subscriptionLoading, openSubscriptionPage } = useSubscriptions();
+  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
+  const { openSubscriptionPage } = useSubscriptionNavigation();
   const [isLogoutSheetOpen, setIsLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   usePageHeader("Manage Account", () => router.back());
