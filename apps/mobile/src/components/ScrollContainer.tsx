@@ -12,7 +12,6 @@ import {
   CHECK_DEALS_SCROLL_TO_TOP_EVENT,
   getCapturedSettingsScrollPosition,
   publishCheckDealsHeaderVisibility,
-  publishCheckDealsScrollPosition,
 } from "@/lib/scroll-events";
 
 const PULL_TRIGGER_PX = 72;
@@ -188,7 +187,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       const top = Math.min(checkDealsScrollTopRef.current, Math.max(0, element.scrollHeight - element.clientHeight));
       element.scrollTop = top;
       lastScrollTopRef.current = top;
-      publishCheckDealsScrollPosition(top);
     };
 
     restore();
@@ -229,7 +227,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       headerScrollAnchorRef.current = 0;
       headerHiddenRef.current = false;
       publishCheckDealsHeaderVisibility(false);
-      publishCheckDealsScrollPosition(0);
     };
 
     resetToTop();
@@ -278,7 +275,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       setIsHeaderHidden(false);
       publishCheckDealsHeaderVisibility(false);
-      publishCheckDealsScrollPosition(lastScrollTopRef.current);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [dealFilter, pathname]);
@@ -296,7 +292,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       headerHiddenRef.current = false;
       setIsHeaderHidden(false);
       publishCheckDealsHeaderVisibility(false);
-      publishCheckDealsScrollPosition(0);
     };
 
     window.addEventListener(CHECK_DEALS_SCROLL_TO_TOP_EVENT, resetCheckDealsScrollPosition);
@@ -323,7 +318,6 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     const currentScrollTop = scrollRef.current?.scrollTop ?? 0;
     lastScrollTopRef.current = currentScrollTop;
     if (pathname === "/") checkDealsScrollTopRef.current = currentScrollTop;
-    publishCheckDealsScrollPosition(currentScrollTop);
 
     if (pathname !== "/") return;
 
