@@ -24,7 +24,13 @@ import FilterTrigger from "@/components/FilterTrigger";
 import NativeSelectFilter from "@/components/NativeSelectFilter";
 import DealFilterTabs from "@/components/DealFilterTabs";
 import DealFilterSummary from "@/components/DealFilterSummary";
-import { useSearch } from "@/lib/search-context";
+import {
+  useSearchBrowse,
+  useSearchCatalogue,
+  useSearchInput,
+  useSearchNavigation,
+  useSearchOverlay,
+} from "@/lib/search-context";
 import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
 import {
   CHECK_DEALS_SORT_OPTIONS,
@@ -52,9 +58,9 @@ import { getNewSpecialDealKey } from "@/lib/new-specials";
  * just Home — see `lib/search-context.tsx`.
  *
  * Mounted exactly once, globally, in `layout.tsx` via
- * `components/GlobalOverlays.tsx` (2026-08-09) — reads every bit of its
- * state from `useSearch()` (products/loading/error, query, isActive/
- * close) instead of taking props, matching how `AppHeader`
+ * `components/GlobalOverlays.tsx` (2026-08-09) — reads its state from the
+ * focused search contexts (catalogue, browse, input, navigation, and
+ * overlay-transition slices) instead of taking props, matching how `AppHeader`
  * already reaches into `useAuth()`/`useHeaderOverride()` directly rather
  * than being prop-driven from `layout.tsx`. An earlier version of this
  * file was mounted only inside Home's own `page.tsx` and took all of this
@@ -280,31 +286,22 @@ function alsoSpecialStoresForPopular(product: ProductCardData, shownDeal: Curren
 }
 
 export default function FullScreenSearch() {
+  const { products, loadingProducts: loading, error, retry } = useSearchCatalogue();
+  const { selectedStores, toggleStore, dealFilter, setDealFilter } = useSearchBrowse();
+  const { query, setQuery, isActive: isOpen } = useSearchInput();
+  const { closeSearch, returnToSearch, resumeAfterDealBack } = useSearchNavigation();
   const {
-    products,
-    loadingProducts: loading,
-    error,
-    retry,
-    query,
-    setQuery,
-    isActive: isOpen,
     focusSearchOnOpen,
-    closeSearch,
     pauseForDealNavigation,
     finishDealNavigation,
-    returnToSearch,
     preserveSearchStateOnOpen,
     clearNewSpecialsFilter,
     newSpecialsSearchMode,
     newSpecialsShowTab,
-    selectedStores,
-    toggleStore,
-    dealFilter,
-    setDealFilter,
     newSpecialDealKeys,
     searchSortOverride,
     searchCategoryOverride,
-  } = useSearch();
+  } = useSearchOverlay();
   const { markReviewed } = useNewSpecialsActions();
   const { isGridLayout } = useCardLayout();
   const pathname = usePathname();

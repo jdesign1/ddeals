@@ -177,6 +177,20 @@ interface SearchNavigationContextValue {
 }
 
 const SearchNavigationContext = createContext<SearchNavigationContextValue | null>(null);
+export interface SearchOverlayContextValue {
+  focusSearchOnOpen: boolean;
+  newSpecialDealKeys: string[] | null;
+  newSpecialsSearchMode: NewSpecialsSearchMode;
+  newSpecialsShowTab: boolean;
+  searchSortOverride: CheckDealsSortBy | null;
+  searchCategoryOverride: string | null;
+  clearNewSpecialsFilter: () => void;
+  pauseForDealNavigation: (productId: string, store: string) => void;
+  finishDealNavigation: () => void;
+  preserveSearchStateOnOpen: boolean;
+}
+
+const SearchOverlayContext = createContext<SearchOverlayContextValue | null>(null);
 interface SearchInputContextValue {
   query: string;
   setQuery: (value: string) => void;
@@ -601,6 +615,32 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     () => ({ isActive, closeSearch, openSearch, openSearchForFilter, returnToSearch, resumeAfterDealBack, isScannerOpen, hasOpenedScanner, openScanner, closeScanner }),
     [isActive, closeSearch, openSearch, openSearchForFilter, returnToSearch, resumeAfterDealBack, isScannerOpen, hasOpenedScanner, openScanner, closeScanner],
   );
+  const overlayValue = useMemo<SearchOverlayContextValue>(
+    () => ({
+      focusSearchOnOpen,
+      newSpecialDealKeys,
+      newSpecialsSearchMode,
+      newSpecialsShowTab,
+      searchSortOverride,
+      searchCategoryOverride,
+      clearNewSpecialsFilter,
+      pauseForDealNavigation,
+      finishDealNavigation,
+      preserveSearchStateOnOpen,
+    }),
+    [
+      clearNewSpecialsFilter,
+      finishDealNavigation,
+      focusSearchOnOpen,
+      newSpecialDealKeys,
+      newSpecialsSearchMode,
+      newSpecialsShowTab,
+      pauseForDealNavigation,
+      preserveSearchStateOnOpen,
+      searchCategoryOverride,
+      searchSortOverride,
+    ],
+  );
   const inputValue = useMemo<SearchInputContextValue>(
     () => ({ query, setQuery, isActive, openSearch, openSearchForFilter }),
     [query, setQuery, isActive, openSearch, openSearchForFilter],
@@ -616,9 +656,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         <SearchBrowseContext.Provider value={browseValue}>
           <SearchNavigationContext.Provider value={navigationValue}>
             <SearchInputContext.Provider value={inputValue}>
-              <SearchShellContext.Provider value={shellValue}>
-                {children}
-              </SearchShellContext.Provider>
+              <SearchOverlayContext.Provider value={overlayValue}>
+                <SearchShellContext.Provider value={shellValue}>
+                  {children}
+                </SearchShellContext.Provider>
+              </SearchOverlayContext.Provider>
             </SearchInputContext.Provider>
           </SearchNavigationContext.Provider>
         </SearchBrowseContext.Provider>
@@ -654,6 +696,12 @@ export function useSearchNavigation(): SearchNavigationContextValue {
 export function useSearchInput(): SearchInputContextValue {
   const ctx = useContext(SearchInputContext);
   if (!ctx) throw new Error("useSearchInput must be used within a SearchProvider");
+  return ctx;
+}
+
+export function useSearchOverlay(): SearchOverlayContextValue {
+  const ctx = useContext(SearchOverlayContext);
+  if (!ctx) throw new Error("useSearchOverlay must be used within a SearchProvider");
   return ctx;
 }
 
