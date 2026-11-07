@@ -615,7 +615,7 @@ export default function HomePage() {
     const realSaverProductIds = new Set<string>();
     const dodgyDealProductIds = new Set<string>();
 
-    for (const product of products) {
+    for (const product of deferredCatalogueProducts) {
       for (const deal of product.currentDeals) {
         if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, selectedStores)) continue;
         if (matchesDealFilter(deal, "real")) realSaverProductIds.add(product.id);
@@ -627,7 +627,7 @@ export default function HomePage() {
       realSavers: realSaverProductIds.size,
       dodgyDeals: dodgyDealProductIds.size,
     };
-  }, [products, selectedStores]);
+  }, [deferredCatalogueProducts, selectedStores]);
   const didYouKnowCards = useMemo(
     () => buildDidYouKnowCards(deferredCatalogueProducts, selectedStores),
     [deferredCatalogueProducts, selectedStores],
