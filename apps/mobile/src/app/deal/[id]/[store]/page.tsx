@@ -1421,7 +1421,7 @@ export default function DealAssessmentPage() {
                     />
                   )}
                 </AnimatePresence>
-                Insights
+                Average
               </button>
             </div>
             {priceHistoryViewTab === "90-day-view" ? (
