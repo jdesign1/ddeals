@@ -380,14 +380,37 @@ interface SnapshotDealGroups {
   dodgy: FlatDeal[];
   newSavings: FlatDeal[];
   newDodgy: FlatDeal[];
+  categorySummary: SnapshotCategorySummary;
+  newCategorySummary: SnapshotCategorySummary;
 }
+
+interface SnapshotCategorySummary {
+  availableCategories: string[];
+  categoryCounts: Map<string, number>;
+}
+
+const EMPTY_SNAPSHOT_CATEGORY_SUMMARY: SnapshotCategorySummary = {
+  availableCategories: [],
+  categoryCounts: new Map<string, number>(),
+};
 
 const EMPTY_SNAPSHOT_DEAL_GROUPS: SnapshotDealGroups = {
   savings: [],
   dodgy: [],
   newSavings: [],
   newDodgy: [],
+  categorySummary: EMPTY_SNAPSHOT_CATEGORY_SUMMARY,
+  newCategorySummary: EMPTY_SNAPSHOT_CATEGORY_SUMMARY,
 };
+
+function addSnapshotCategory(
+  summary: SnapshotCategorySummary,
+  product: ProductCard,
+): void {
+  const category = groupCategory(product.category, product.name);
+  if (!summary.categoryCounts.has(category)) summary.availableCategories.push(category);
+  summary.categoryCounts.set(category, (summary.categoryCounts.get(category) ?? 0) + 1);
+}
 
 function buildSnapshotDealGroups(
   products: ProductCard[],
@@ -398,6 +421,14 @@ function buildSnapshotDealGroups(
   const dodgy: FlatDeal[] = [];
   const newSavings: FlatDeal[] = [];
   const newDodgy: FlatDeal[] = [];
+  const categorySummary: SnapshotCategorySummary = {
+    availableCategories: [],
+    categoryCounts: new Map<string, number>(),
+  };
+  const newCategorySummary: SnapshotCategorySummary = {
+    availableCategories: [],
+    categoryCounts: new Map<string, number>(),
+  };
   for (const product of products) {
     let bestSavings: CurrentDeal | undefined;
     let bestDodgy: CurrentDeal | undefined;
@@ -427,12 +458,24 @@ function buildSnapshotDealGroups(
         }
       }
     }
-    if (bestSavings) savings.push({ product, deal: bestSavings });
-    if (bestDodgy) dodgy.push({ product, deal: bestDodgy });
-    if (bestNewSavings) newSavings.push({ product, deal: bestNewSavings });
-    if (bestNewDodgy) newDodgy.push({ product, deal: bestNewDodgy });
+    if (bestSavings) {
+      savings.push({ product, deal: bestSavings });
+      addSnapshotCategory(categorySummary, product);
+    }
+    if (bestDodgy) {
+      dodgy.push({ product, deal: bestDodgy });
+      addSnapshotCategory(categorySummary, product);
+    }
+    if (bestNewSavings) {
+      newSavings.push({ product, deal: bestNewSavings });
+      addSnapshotCategory(newCategorySummary, product);
+    }
+    if (bestNewDodgy) {
+      newDodgy.push({ product, deal: bestNewDodgy });
+      addSnapshotCategory(newCategorySummary, product);
+    }
   }
-  return { savings, dodgy, newSavings, newDodgy };
+  return { savings, dodgy, newSavings, newDodgy, categorySummary, newCategorySummary };
 }
 
 const TRENDING_PAGE_SIZE = 12;
@@ -791,21 +834,11 @@ export default function HomePage() {
     openSearchForFilter(filter, { focus: false });
   }, [openSearchForFilter]);
 
-  const topDealsCategorySummary = useMemo(() => {
-    const categories = new Set<string>();
-    const counts = new Map<string, number>();
-    for (const deals of [topSavingsDeals, worstDodgyDeals]) {
-      for (const { product } of deals) {
-        const category = groupCategory(product.category, product.name);
-        categories.add(category);
-        counts.set(category, (counts.get(category) ?? 0) + 1);
-      }
-    }
-    return {
-      availableCategories: [...categories],
-      categoryCounts: counts,
-    };
-  }, [topSavingsDeals, worstDodgyDeals]);
+  // The snapshot pass already sees the best savings/dodgy deal per product;
+  // reuse its category metadata instead of traversing both rails again.
+  const topDealsCategorySummary = newForYouFilterActive
+    ? snapshotDealGroups.newCategorySummary
+    : snapshotDealGroups.categorySummary;
   const topDealsAvailableCategories = topDealsCategorySummary.availableCategories;
   const topDealsCategoryCounts = topDealsCategorySummary.categoryCounts;
 
