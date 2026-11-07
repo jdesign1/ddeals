@@ -627,7 +627,10 @@ export default function HomePage() {
     // The "All" view is composed from snapshot rails below. The full
     // catalogue summary is only consumed by the Real/Dodgy trending view and
     // its category toolbar, so avoid scanning every product on first paint.
-    if (dealFilter === "all") return EMPTY_DEAL_CATALOGUE_SUMMARY;
+    // The same view is covered by the full-screen search overlay while it is
+    // open; keep that hidden Home work paused even when Search has selected a
+    // Real/Dodgy filter of its own.
+    if (isSearchActive || dealFilter === "all") return EMPTY_DEAL_CATALOGUE_SUMMARY;
 
     const all: FlatDeal[] = [];
     const counts = new Map<string, number>();
@@ -651,7 +654,7 @@ export default function HomePage() {
       categoryCounts: counts,
       availableCategories: [...categories],
     };
-  }, [products, selectedStores, dealFilter]);
+  }, [products, selectedStores, dealFilter, isSearchActive]);
   const dealsAllCategories = dealCatalogueSummary.deals;
   const categoryCounts = dealCatalogueSummary.categoryCounts;
   const availableCategories = dealCatalogueSummary.availableCategories;
