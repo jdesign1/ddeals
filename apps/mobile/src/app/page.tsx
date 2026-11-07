@@ -4,7 +4,6 @@ import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useSta
 import Link from "next/link";
 import {
   matchesAnySelectedStore,
-  deriveAvailableStoreKeys,
   STORE_DISPLAY_FALLBACK,
   groupCategory,
   compareDealSnapshotEntries,
@@ -34,7 +33,7 @@ import {
 } from "@/lib/check-deals-belt-order";
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
-  buildCurrentSpecialSummary,
+  buildHomePrimarySummary,
   buildForYouCategoryDealsByCategory,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
@@ -611,16 +610,16 @@ export default function HomePage() {
     };
   }, []);
 
-  // deriveAvailableStoreKeys (packages/shared/src/data.ts) -- extracted this
-  // session (2026-08-09, full-screen search build) from this exact inline
-  // memo (originally fixed live the same day after Jay reported the
-  // Woolworths pill missing -- see that fix's own history in project.md),
-  // now shared with /specials and the new full-screen search view instead
-  // of each keeping its own copy.
-  const availableStoreKeys = useMemo(
-    () => isSearchActive ? EMPTY_AVAILABLE_STORE_KEYS : deriveAvailableStoreKeys(products),
+  // Keep the store pills and the live supermarket summary on the same
+  // immediate catalogue traversal. The combined helper preserves the
+  // shared store-order/substr-match semantics used by the other surfaces.
+  const homePrimarySummary = useMemo(
+    () => isSearchActive
+      ? { currentSpecialSummary: EMPTY_CURRENT_SPECIAL_SUMMARY, availableStoreKeys: EMPTY_AVAILABLE_STORE_KEYS }
+      : buildHomePrimarySummary(products),
     [isSearchActive, products],
   );
+  const availableStoreKeys = homePrimarySummary.availableStoreKeys;
 
   // Build one best matching special per product for the selected shared deal
   // tab. Real Deals deliberately includes both Real Deal and Fair Price.
@@ -662,10 +661,7 @@ export default function HomePage() {
   const categoryCounts = dealCatalogueSummary.categoryCounts;
   const availableCategories = dealCatalogueSummary.availableCategories;
 
-  const currentSpecialSummary = useMemo(
-    () => isSearchActive ? EMPTY_CURRENT_SPECIAL_SUMMARY : buildCurrentSpecialSummary(products),
-    [isSearchActive, products],
-  );
+  const currentSpecialSummary = homePrimarySummary.currentSpecialSummary;
   const currentSpecialCounts = currentSpecialSummary.counts;
   const dealVerdictSummary = useMemo(() => {
     if (isSearchActive) return EMPTY_DEAL_VERDICT_SUMMARY;

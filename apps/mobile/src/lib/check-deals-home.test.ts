@@ -7,6 +7,7 @@ import {
   buildForYouCategoryDealsByCategory,
   buildCurrentSpecialCounts,
   buildCurrentSpecialSummary,
+  buildHomePrimarySummary,
   buildNewSinceLastVisitDeals,
   buildPreviouslyCheckedChangedDeals,
   buildWatchlistSpecialDeals,
@@ -75,6 +76,22 @@ test("current special summary shares counts and freshness from one catalogue", (
   assert.deepEqual(buildCurrentSpecialSummary(products), {
     counts: { newworld: 1, paknsave: 0, woolworths: 0 },
     latestPublishedAt: "2026-10-16T03:00:00.000Z",
+  });
+});
+
+test("home primary summary keeps store-pill availability independent from active counts", () => {
+  const products = [
+    product("active", "Active", [deal({ store: "New World", isOnSpecial: true })]),
+    product("inactive", "Inactive", [deal({ store: "Woolworths NZ", isOnSpecial: false })]),
+    product("other", "Other", [deal({ store: "Chemist Warehouse", isOnSpecial: false })]),
+  ];
+
+  assert.deepEqual(buildHomePrimarySummary(products), {
+    currentSpecialSummary: {
+      counts: { newworld: 1, paknsave: 0, woolworths: 0 },
+      latestPublishedAt: "2026-10-16T00:00:00.000Z",
+    },
+    availableStoreKeys: ["newworld", "woolworths", "chemistwarehouse"],
   });
 });
 

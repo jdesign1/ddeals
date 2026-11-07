@@ -4,6 +4,7 @@ import {
   groupCategory,
   matchesAnySelectedStore,
   normalizeStoreKey,
+  STORE_PILL_ORDER,
   type CurrentDeal,
   type ProductCard,
 } from "@dodgey-deals/shared";
@@ -179,21 +180,27 @@ export interface CurrentSpecialSummary {
   latestPublishedAt: string | null;
 }
 
-/**
- * Build the Check Deals supermarket counts and freshness timestamp together.
- * Both values come from the same catalogue-wide traversal on the home page.
- */
-export function buildCurrentSpecialSummary(
+export interface HomePrimarySummary {
+  currentSpecialSummary: CurrentSpecialSummary;
+  availableStoreKeys: string[];
+}
+
+function buildSummaryParts(
   products: readonly ProductCard[],
-): CurrentSpecialSummary {
+  includeAvailableStoreKeys: boolean,
+): HomePrimarySummary {
   const productIdsByStore = new Map<CheckDealsSummaryStore, Set<string>>(
     CHECK_DEALS_SUMMARY_STORES.map((store) => [store, new Set<string>()]),
   );
+  const presentStores = includeAvailableStoreKeys ? new Set<string>() : null;
   let latestTimestamp = Number.NEGATIVE_INFINITY;
   let latestPublishedAt: string | null = null;
 
   for (const product of products) {
     for (const deal of product.currentDeals) {
+      const normalizedStore = normalizeStoreKey(deal.store);
+      presentStores?.add(normalizedStore);
+
       if (deal.isOnSpecial) {
         const store = storeKeyForSummary(deal.store);
         if (store) productIdsByStore.get(store)?.add(product.id);
@@ -213,11 +220,42 @@ export function buildCurrentSpecialSummary(
   }
 
   return {
-    counts: Object.fromEntries(
-      CHECK_DEALS_SUMMARY_STORES.map((store) => [store, productIdsByStore.get(store)?.size ?? 0]),
-    ) as Record<CheckDealsSummaryStore, number>,
-    latestPublishedAt,
+    currentSpecialSummary: {
+      counts: Object.fromEntries(
+        CHECK_DEALS_SUMMARY_STORES.map((store) => [store, productIdsByStore.get(store)?.size ?? 0]),
+      ) as Record<CheckDealsSummaryStore, number>,
+      latestPublishedAt,
+    },
+    availableStoreKeys: presentStores
+      ? STORE_PILL_ORDER.filter((key) => [...presentStores].some((store) => store.includes(key)))
+      : [],
   };
+}
+
+/**
+ * Build the two immediate Home-page catalogue summaries in one traversal.
+ *
+ * The supermarket counts/freshness and the store-pill availability both read
+ * every current deal, so keeping them together avoids a second full catalogue
+ * pass during the first render. Their semantics stay deliberately separate:
+ * counts only include active specials and dedupe by product, while store-pill
+ * availability includes any observed current-deal store (including inactive
+ * rows), matching deriveAvailableStoreKeys().
+ */
+export function buildHomePrimarySummary(
+  products: readonly ProductCard[],
+): HomePrimarySummary {
+  return buildSummaryParts(products, true);
+}
+
+/**
+ * Build the Check Deals supermarket counts and freshness timestamp together.
+ * Both values come from the same catalogue-wide traversal on the home page.
+ */
+export function buildCurrentSpecialSummary(
+  products: readonly ProductCard[],
+): CurrentSpecialSummary {
+  return buildSummaryParts(products, false).currentSpecialSummary;
 }
 
 export function getLatestPublishedAt(products: readonly ProductCard[]): string | null {
