@@ -151,6 +151,21 @@ interface FlatDeal {
   deal: CurrentDeal;
 }
 
+interface DealCatalogueSummary {
+  deals: FlatDeal[];
+  categoryCounts: Map<string, number>;
+  availableCategories: string[];
+}
+
+// The default Check Deals view renders snapshot rails instead of the full
+// filtered catalogue. Keep this empty result stable so the default path can
+// skip a catalogue-wide pass without creating new collection references.
+const EMPTY_DEAL_CATALOGUE_SUMMARY: DealCatalogueSummary = {
+  deals: [],
+  categoryCounts: new Map<string, number>(),
+  availableCategories: [],
+};
+
 type DealSortBy = CheckDealsSortBy;
 type SortBy = CheckDealsSortBy;
 
@@ -582,6 +597,11 @@ export default function HomePage() {
   // Keep the category summary alongside this pass so the large catalogue is
   // only traversed once for the belts that depend on it.
   const dealCatalogueSummary = useMemo(() => {
+    // The "All" view is composed from snapshot rails below. The full
+    // catalogue summary is only consumed by the Real/Dodgy trending view and
+    // its category toolbar, so avoid scanning every product on first paint.
+    if (dealFilter === "all") return EMPTY_DEAL_CATALOGUE_SUMMARY;
+
     const all: FlatDeal[] = [];
     const counts = new Map<string, number>();
     const categories = new Set<string>();
