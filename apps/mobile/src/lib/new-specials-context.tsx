@@ -129,6 +129,7 @@ const EMPTY_PREVIEW_SUMMARY: NewSpecialsSummary = {
   newlyStartedDealKeys: [],
   priceDropDealKeys: [],
 };
+const EMPTY_CATALOGUE_CASE_SUMMARY = { realDealKeys: [], dodgyDealKeys: [] };
 
 function snapshotFingerprint(snapshot: NewSpecialsSnapshot): string {
   return JSON.stringify(snapshot.deals);
@@ -324,6 +325,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // unread new-specials batch. This keeps the game discoverable for returning
   // users without making the automatic new-deals popup reappear.
   const catalogueCaseSummary = useMemo(() => {
+    if (!storageReady || !playedPairHistoryReady || products.length === 0) return EMPTY_CATALOGUE_CASE_SUMMARY;
     const realDealKeys: string[] = [];
     const dodgyDealKeys: string[] = [];
     for (const product of products) {
@@ -335,7 +337,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       }
     }
     return { realDealKeys, dodgyDealKeys };
-  }, [products]);
+  }, [playedPairHistoryReady, products, storageReady]);
   const buildCurrentQuizCase = useCallback((rotationIndex = 0) => {
     const summaries = [
       detectedSummary?.total ? detectedSummary : activePending?.summary,
@@ -347,7 +349,10 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     }
     return null;
   }, [activePending, catalogueCaseSummary, detectedSummary, playedPairKeys, products, profile?.preferred_categories]);
-  const currentQuizCase = useMemo(() => buildCurrentQuizCase(), [buildCurrentQuizCase]);
+  const currentQuizCase = useMemo(
+    () => (storageReady && playedPairHistoryReady && products.length > 0 ? buildCurrentQuizCase() : null),
+    [buildCurrentQuizCase, playedPairHistoryReady, products.length, storageReady],
+  );
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
