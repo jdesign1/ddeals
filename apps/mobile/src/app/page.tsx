@@ -466,7 +466,9 @@ function buildSnapshotDealGroups(
     let bestNewSavings: CurrentDeal | undefined;
     let bestNewDodgy: CurrentDeal | undefined;
     for (const deal of product.currentDeals) {
-      if (!matchesAnySelectedStore(deal.store, selectedStores)) continue;
+      // Snapshot rails only contain active specials. Reject inactive rows
+      // before deriving keys or running the two eligibility checks.
+      if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, selectedStores)) continue;
       const isNewDeal = Boolean(newDealKeys?.has(getNewSpecialDealKey(product.id, deal.store)));
       const snapshotEntry = { deal };
       const isSavingsEligible = isEligibleForDealSnapshot(deal, "savings");
