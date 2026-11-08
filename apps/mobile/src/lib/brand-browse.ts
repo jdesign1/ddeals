@@ -69,6 +69,25 @@ function hasUsableImage(image: string | null | undefined): image is string {
   return Boolean(image && !image.includes("placehold.co"));
 }
 
+function compareBrandSummaries(left: BrandSummary, right: BrandSummary): number {
+  return right.realSaverCount - left.realSaverCount
+    || right.currentSpecialCount - left.currentSpecialCount
+    || left.name.localeCompare(right.name);
+}
+
+function takeTopBrandSummaries(summaries: BrandSummary[], limit: number): BrandSummary[] {
+  if (limit <= 0) return [];
+  const top: BrandSummary[] = [];
+  for (const summary of summaries) {
+    let insertAt = 0;
+    while (insertAt < top.length && compareBrandSummaries(top[insertAt]!, summary) <= 0) insertAt += 1;
+    if (insertAt >= limit) continue;
+    top.splice(insertAt, 0, summary);
+    if (top.length > limit) top.pop();
+  }
+  return top;
+}
+
 /**
  * Builds brand discovery counts from the current specials catalogue.
  * Products are counted once per brand even when they are on special at
@@ -128,14 +147,12 @@ export function buildBrandSummaries(
       supermarketCount: brand.supermarketKeys.size,
       representativeImage: brand.representativeImage,
     }))
-    .filter((brand) => !options.onlyWithRealSavers || brand.realSaverCount > 0)
-    .sort((a, b) => (
-      b.realSaverCount - a.realSaverCount
-      || b.currentSpecialCount - a.currentSpecialCount
-      || a.name.localeCompare(b.name)
-    ));
+    .filter((brand) => !options.onlyWithRealSavers || brand.realSaverCount > 0);
 
-  return options.limit == null ? summaries : summaries.slice(0, Math.max(0, options.limit));
+  if (options.limit == null) return summaries.sort(compareBrandSummaries);
+  const limit = Math.max(0, Math.floor(options.limit));
+  if (!Number.isFinite(limit)) return limit === Infinity ? summaries.sort(compareBrandSummaries) : [];
+  return takeTopBrandSummaries(summaries, limit);
 }
 
 export function brandMatchesProduct(product: ProductCard, brandKey: string | null): boolean {

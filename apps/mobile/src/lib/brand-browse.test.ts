@@ -88,6 +88,20 @@ test("respects the selected supermarket and excludes unusable brands", () => {
   ]);
 });
 
+test("limits brand rankings without changing the top-brand order", () => {
+  const brands = buildBrandSummaries([
+    product("anchor-1", "Anchor", ["New World", "Woolworths NZ"]),
+    product("anchor-2", "Anchor", "Woolworths"),
+    product("pams-1", "Pams", "New World"),
+    product("coca-1", "Coca-Cola", "New World"),
+  ], ["all"], { limit: 2 });
+
+  assert.deepEqual(brands.map(({ name, realSaverCount, currentSpecialCount }) => ({ name, realSaverCount, currentSpecialCount })), [
+    { name: "Anchor", realSaverCount: 2, currentSpecialCount: 2 },
+    { name: "Coca-Cola", realSaverCount: 1, currentSpecialCount: 1 },
+  ]);
+});
+
 test("suggests a brand for exact and longer queries", () => {
   const brands = buildBrandSummaries([
     product("anchor-1", "Anchor", "New World"),
