@@ -245,6 +245,19 @@ function cheapestDeal(deals: CurrentDeal[]): CurrentDeal {
   return lowest;
 }
 
+function cheapestApplicableDeal(
+  product: ProductCardData,
+  selectedStores: string[],
+  filter: DealFilter,
+): CurrentDeal | undefined {
+  let lowest: CurrentDeal | undefined;
+  for (const deal of product.currentDeals) {
+    if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, filter)) continue;
+    if (!lowest || deal.price < lowest.price) lowest = deal;
+  }
+  return lowest;
+}
+
 function compareDealsForSort(a: CurrentDeal, b: CurrentDeal, sortBy: CheckDealsSortBy): number {
   if (sortBy === "price-asc") return a.price - b.price;
   if (sortBy === "biggest-saver" || sortBy === "worst-dodgy") {
@@ -687,13 +700,14 @@ export default function FullScreenSearch() {
     const out: PopularEntry[] = [];
     for (const product of products) {
       if (activeBrandKey && !brandMatchesProduct(product, activeBrandKey)) continue;
-      const qualifyingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
-      if (qualifyingDeals.length === 0) continue;
       if (newSpecialDealKeySet) {
+        const qualifyingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
+        if (qualifyingDeals.length === 0) continue;
         for (const deal of qualifyingDeals) out.push({ product, bestDeal: deal });
         continue;
       }
-      const bestDeal = cheapestDeal(qualifyingDeals);
+      const bestDeal = cheapestApplicableDeal(product, selectedStores, dealFilter);
+      if (!bestDeal) continue;
       out.push({ product, bestDeal });
     }
     return out;
