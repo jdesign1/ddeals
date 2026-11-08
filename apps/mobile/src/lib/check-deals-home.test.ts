@@ -165,6 +165,17 @@ test("For you grouping keeps category order, empty categories, and new-first ran
   assert.equal(result[2]?.deals[0]?.isNew, true);
 });
 
+test("For you grouping skips the source rail when no categories are selected", () => {
+  const item = product("pantry-1", "Pantry item", [deal()], "Pantry");
+  const result = buildForYouCategoryDealsByCategory(
+    [{ product: item, deal: item.currentDeals[0]! }],
+    [],
+    [getNewSpecialDealKey("pantry-1", "New World")],
+  );
+
+  assert.deepEqual(result, []);
+});
+
 test("For you grouping caps each category without mutating the source rail", () => {
   const deals = Array.from({ length: 12 }, (_, index) => {
     const item = product(`pantry-${index}`, `Item ${index}`, [deal({ price: index + 1 })], "Pantry");

@@ -48,6 +48,8 @@ export function buildForYouCategoryDealsByCategory(
   categories: readonly string[],
   newDealKeys: readonly string[] = [],
 ): Array<{ category: string; deals: CheckDealsRailItem[] }> {
+  if (categories.length === 0) return [];
+
   const newKeys = new Set(newDealKeys);
   const categorySet = new Set(categories);
   const grouped = new Map<string, CheckDealsRailItem[]>();
