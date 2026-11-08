@@ -17,11 +17,13 @@ export default function WatchlistUpdateSheet({
   open,
   updates,
   onClose,
+  onExited,
   onOpenAssessment,
 }: {
   open: boolean;
   updates: ReadonlyArray<UnreadListAlert>;
   onClose: () => void;
+  onExited?: () => void;
   onOpenAssessment?: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -61,6 +63,9 @@ export default function WatchlistUpdateSheet({
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
+              onAnimationComplete={() => {
+                if (!open) onExited?.();
+              }}
               transition={{ type: "spring", stiffness: 380, damping: 32 }}
             >
               <div className="dd-bottom-sheet-titlebar flex items-center justify-between border-b border-stone-100 px-5 py-4">

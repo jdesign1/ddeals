@@ -36,6 +36,9 @@ export default function UnreadListItem({
     onUpdateClick?.();
   };
 
+  const closeSheet = () => setIsSheetOpen(false);
+  const clearSheet = () => setVisibleUpdates([]);
+
   const showUpdateButton = Boolean(onUpdateClick && isUnread && !hasViewedLatestUpdate);
 
   return (
@@ -62,7 +65,14 @@ export default function UnreadListItem({
           </span>
         </button>
       ) : null}
-      <WatchlistUpdateSheet open={isSheetOpen} updates={visibleUpdates} onClose={() => setIsSheetOpen(false)} />
+      {(isSheetOpen || visibleUpdates.length > 0) && (
+        <WatchlistUpdateSheet
+          open={isSheetOpen}
+          updates={visibleUpdates}
+          onClose={closeSheet}
+          onExited={clearSheet}
+        />
+      )}
     </div>
   );
 }
