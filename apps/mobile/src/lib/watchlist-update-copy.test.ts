@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { UnreadListAlert } from "./notifications-context.tsx";
-import { getWatchlistUpdateCopy } from "./watchlist-update-copy.ts";
+import { collapseWatchlistUpdates, getWatchlistUpdateCopy } from "./watchlist-update-copy.ts";
 
 function update(overrides: Partial<UnreadListAlert> = {}): UnreadListAlert {
   return {
@@ -56,4 +56,35 @@ test("watchlist update copy explains all verdict transitions", () => {
     description: "Real Deal → Fair Price at New World.",
     toneClass: "text-stone-700",
   });
+});
+
+test("collapses duplicate supermarket updates and keeps price direction", () => {
+  const updates = collapseWatchlistUpdates([
+    update({
+      id: "verdict",
+      event_type: "verdict_changed",
+      previous_price: 8.99,
+      price: 8.99,
+      created_at: "2026-10-28T00:05:00.000Z",
+    }),
+    update({
+      id: "increase",
+      event_type: "price_changed",
+      previous_price: 8.99,
+      price: 9.99,
+      created_at: "2026-10-28T00:04:00.000Z",
+    }),
+    update({
+      id: "woolworths-drop",
+      store_name: "Woolworths",
+      event_type: "price_changed",
+      previous_price: 9.99,
+      price: 8.99,
+      created_at: "2026-10-28T00:03:00.000Z",
+    }),
+  ]);
+
+  assert.deepEqual(updates.map((item) => item.id), ["increase", "woolworths-drop"]);
+  assert.equal(getWatchlistUpdateCopy(updates[0]!).title, "Price increased");
+  assert.equal(getWatchlistUpdateCopy(updates[1]!).title, "Price dropped");
 });

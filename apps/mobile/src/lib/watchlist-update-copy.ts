@@ -10,11 +10,20 @@ function formatPrice(value: number | null): string | null {
   return typeof value === "number" && Number.isFinite(value) ? `$${value.toFixed(2)}` : null;
 }
 
-function priceChange(previousPrice: string | null, previousPriceValue: number | null, currentPrice: number): string {
-  if (!previousPrice) return "";
-  if (previousPriceValue != null && currentPrice < previousPriceValue) return ` Down from ${previousPrice}.`;
-  if (previousPriceValue != null && currentPrice > previousPriceValue) return ` Up from ${previousPrice}.`;
-  return "";
+function storeKey(update: UnreadListAlert): string {
+  return update.store_name.trim().toLocaleLowerCase() || "unknown-store";
+}
+
+function updatePriority(update: UnreadListAlert): number {
+  if (typeof update.previous_price === "number" && update.price !== update.previous_price) return 100;
+  if (update.event_type === "verdict_changed" || update.event_type === "became_real_saver" || update.event_type === "became_dodgy") return 80;
+  if (update.event_type === "returned_to_special" || update.event_type === "better_special_price" || update.event_type === "dodgy_special") return 60;
+  return 10;
+}
+
+function updateTimestamp(update: UnreadListAlert): number {
+  const timestamp = Date.parse(update.created_at);
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
 }
 
 function verdictLabel(verdict: UnreadListAlert["verdict"] | null): string {
@@ -27,29 +36,32 @@ function verdictLabel(verdict: UnreadListAlert["verdict"] | null): string {
 export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdateCopy {
   const price = formatPrice(update.price);
   const previousPrice = formatPrice(update.previous_price);
-  const priceDescription = `${price ?? "The price changed"} at ${update.store_name}.`;
+  const priceDescription = `${price ?? "The price was updated"} at ${update.store_name}.`;
 
-  if (update.event_type === "returned_to_special") {
-    return {
-      title: "Back on special",
-      description: `${priceDescription}${priceChange(previousPrice, update.previous_price, update.price)}`,
-      toneClass: "text-fair-700",
-    };
-  }
-  if (update.event_type === "better_special_price") {
+  if (typeof update.previous_price === "number" && update.price < update.previous_price) {
     return {
       title: "Price dropped",
-      description: `${priceDescription}${priceChange(previousPrice, update.previous_price, update.price)}`,
+      description: `${priceDescription} Down from ${previousPrice ?? "the previous price"}.`,
       toneClass: "text-fair-700",
     };
   }
-  if (update.event_type === "price_changed") {
-    const priceWentUp = update.previous_price != null && update.price > update.previous_price;
+
+  if (typeof update.previous_price === "number" && update.price > update.previous_price) {
     return {
-      title: priceWentUp ? "Price increased" : "Price changed",
-      description: `${priceDescription}${priceChange(previousPrice, update.previous_price, update.price)}`,
-      toneClass: priceWentUp ? "text-alert-700" : "text-fair-700",
+      title: "Price increased",
+      description: `${priceDescription} Up from ${previousPrice ?? "the previous price"}.`,
+      toneClass: "text-alert-700",
     };
+  }
+
+  if (update.event_type === "returned_to_special") {
+    return { title: "Back on special", description: priceDescription, toneClass: "text-fair-700" };
+  }
+  if (update.event_type === "better_special_price") {
+    return { title: "Price dropped", description: priceDescription, toneClass: "text-fair-700" };
+  }
+  if (update.event_type === "price_changed") {
+    return { title: "Price updated", description: priceDescription, toneClass: "text-stone-700" };
   }
   if (update.event_type === "verdict_changed") {
     return {
@@ -73,4 +85,23 @@ export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdate
     };
   }
   return { title: "Deal updated", description: priceDescription, toneClass: "text-stone-700" };
+}
+
+/**
+ * Keeps one useful update per supermarket. A price direction is more useful
+ * than a generic status/verdict event, while newer events win ties.
+ */
+export function collapseWatchlistUpdates(updates: ReadonlyArray<UnreadListAlert>): UnreadListAlert[] {
+  const byStore = new Map<string, UnreadListAlert>();
+  for (const update of updates) {
+    const key = storeKey(update);
+    const current = byStore.get(key);
+    if (!current || updatePriority(update) > updatePriority(current) || (
+      updatePriority(update) === updatePriority(current)
+      && updateTimestamp(update) > updateTimestamp(current)
+    )) {
+      byStore.set(key, update);
+    }
+  }
+  return [...byStore.values()].sort((left, right) => updateTimestamp(right) - updateTimestamp(left));
 }
