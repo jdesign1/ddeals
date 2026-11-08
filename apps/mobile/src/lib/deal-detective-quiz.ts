@@ -329,7 +329,7 @@ function dealKeyFor(product: ProductCard, deal: CurrentDeal): string {
 }
 
 function candidateForKey(
-  products: readonly ProductCard[],
+  productsById: ReadonlyMap<string, ProductCard>,
   dealKey: string,
   kind: DealDetectiveQuizKind,
 ): Omit<DealDetectiveQuizCandidate, "side"> | null {
@@ -337,7 +337,7 @@ function candidateForKey(
   if (separatorIndex <= 0) return null;
   const productId = dealKey.slice(0, separatorIndex);
   const storeKey = dealKey.slice(separatorIndex + 2);
-  const product = products.find((item) => item.id === productId);
+  const product = productsById.get(productId);
   if (!product) return null;
   const deal = product.currentDeals.find((item) => (
     item.isOnSpecial
@@ -355,12 +355,12 @@ function candidateForKey(
 }
 
 function sortedCandidates(
-  products: readonly ProductCard[],
+  productsById: ReadonlyMap<string, ProductCard>,
   dealKeys: readonly string[],
   kind: DealDetectiveQuizKind,
 ): Array<Omit<DealDetectiveQuizCandidate, "side">> {
   return dealKeys
-    .map((dealKey) => candidateForKey(products, dealKey, kind))
+    .map((dealKey) => candidateForKey(productsById, dealKey, kind))
     .filter((candidate): candidate is Omit<DealDetectiveQuizCandidate, "side"> => candidate !== null)
     .sort((left, right) => left.dealKey.localeCompare(right.dealKey));
 }
@@ -426,8 +426,14 @@ export function buildDealDetectiveQuizCase(
   rotationIndex = 0,
   excludedPairKeys: readonly string[] = [],
 ): DealDetectiveQuizCase | null {
-  const realCandidates = sortedCandidates(products, summary.realDealKeys, "real");
-  const dodgyCandidates = sortedCandidates(products, summary.dodgyDealKeys, "dodgy");
+  // Preserve products.find()'s first-match behavior for any duplicate IDs
+  // while making each deal-key lookup constant-time.
+  const productsById = new Map<string, ProductCard>();
+  for (const product of products) {
+    if (!productsById.has(product.id)) productsById.set(product.id, product);
+  }
+  const realCandidates = sortedCandidates(productsById, summary.realDealKeys, "real");
+  const dodgyCandidates = sortedCandidates(productsById, summary.dodgyDealKeys, "dodgy");
   if (realCandidates.length === 0 || dodgyCandidates.length === 0) return null;
 
   const excludedPairs = new Set(excludedPairKeys);

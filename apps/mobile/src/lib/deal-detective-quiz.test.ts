@@ -108,6 +108,23 @@ test("stale, regular-price, and same-verdict keys cannot create a case", () => {
   }), null);
 });
 
+test("duplicate product IDs keep the first product for detective lookup", () => {
+  const products = [
+    product("duplicate", "First duplicate", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("duplicate", "Second duplicate", "Dairy & Eggs", [deal({ dealType: "Real Deal" })]),
+    product("other-dodgy", "Other dodgy", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+  ];
+
+  const result = buildDealDetectiveQuizCase(products, {
+    realDealKeys: ["duplicate::newworld"],
+    dodgyDealKeys: ["other-dodgy::woolworths"],
+  }, ["Pantry"]);
+
+  assert.ok(result);
+  assert.equal(result.category, "Pantry");
+  assert.equal(result.left.product.name, "First duplicate");
+});
+
 test("the case never pairs two verdicts from the same product", () => {
   const products = [
     product("shared", "Shared product", "Pantry", [
