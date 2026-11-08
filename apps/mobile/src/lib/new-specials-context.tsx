@@ -6,6 +6,7 @@ import { useAuthStatus } from "./auth-context";
 import { useSearchCatalogue } from "./search-context";
 import { useSubscriptionStatus } from "./subscription-context";
 import {
+  buildCurrentDealDetectiveQuizCase,
   buildDealDetectiveQuizCase,
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
@@ -29,7 +30,6 @@ import {
   createNewSpecialsSnapshot,
   createNewSpecialsPreviewSummary,
   canShowNewSpecialsPopup,
-  getNewSpecialDealKey,
   getNewSpecialsStorageScope,
   getNewSpecialsSummaryFingerprint,
   isNewSpecialsPendingActive,
@@ -129,8 +129,6 @@ const EMPTY_PREVIEW_SUMMARY: NewSpecialsSummary = {
   newlyStartedDealKeys: [],
   priceDropDealKeys: [],
 };
-const EMPTY_CATALOGUE_CASE_SUMMARY = { realDealKeys: [], dodgyDealKeys: [] };
-
 function snapshotFingerprint(snapshot: NewSpecialsSnapshot): string {
   return JSON.stringify(snapshot.deals);
 }
@@ -327,31 +325,22 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // The profile-menu game can use the current catalogue when there is no
   // unread new-specials batch. This keeps the game discoverable for returning
   // users without making the automatic new-deals popup reappear.
-  const catalogueCaseSummary = useMemo(() => {
-    if (!shouldBuildCurrentQuizCase || !storageReady || !playedPairHistoryReady || products.length === 0) return EMPTY_CATALOGUE_CASE_SUMMARY;
-    const realDealKeys: string[] = [];
-    const dodgyDealKeys: string[] = [];
-    for (const product of products) {
-      for (const deal of product.currentDeals) {
-        if (!deal.isOnSpecial) continue;
-        const dealKey = getNewSpecialDealKey(product.id, deal.store);
-        if (deal.dealType === "Real Deal") realDealKeys.push(dealKey);
-        if (deal.dealType === "Dodgy Deal") dodgyDealKeys.push(dealKey);
-      }
-    }
-    return { realDealKeys, dodgyDealKeys };
-  }, [playedPairHistoryReady, products, shouldBuildCurrentQuizCase, storageReady]);
   const buildCurrentQuizCase = useCallback((rotationIndex = 0) => {
     const summaries = [
       detectedSummary?.total ? detectedSummary : activePending?.summary,
-      catalogueCaseSummary,
     ].filter((summary): summary is NonNullable<typeof summary> => Boolean(summary));
     for (const summary of summaries) {
       const quizCase = buildDealDetectiveQuizCase(products, summary, profile?.preferred_categories ?? [], rotationIndex, playedPairKeys);
       if (quizCase) return quizCase;
     }
-    return null;
-  }, [activePending, catalogueCaseSummary, detectedSummary, playedPairKeys, products, profile?.preferred_categories]);
+    if (!shouldBuildCurrentQuizCase) return null;
+    return buildCurrentDealDetectiveQuizCase(
+      products,
+      profile?.preferred_categories ?? [],
+      rotationIndex,
+      playedPairKeys,
+    );
+  }, [activePending, detectedSummary, playedPairKeys, products, profile?.preferred_categories, shouldBuildCurrentQuizCase]);
   const currentQuizCase = useMemo(
     () => (shouldBuildCurrentQuizCase && storageReady && playedPairHistoryReady && products.length > 0 ? buildCurrentQuizCase() : null),
     [buildCurrentQuizCase, playedPairHistoryReady, products.length, shouldBuildCurrentQuizCase, storageReady],

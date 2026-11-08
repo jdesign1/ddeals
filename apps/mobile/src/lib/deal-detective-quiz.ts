@@ -331,6 +331,30 @@ function dealKeyFor(product: ProductCard, deal: CurrentDeal): string {
 type DealDetectiveDealMatches = Partial<Record<DealDetectiveQuizKind, CurrentDeal>>;
 type DealDetectiveDealIndex = ReadonlyMap<string, ReadonlyMap<string, DealDetectiveDealMatches>>;
 
+function indexProductDeals(
+  product: ProductCard,
+  realDealKeys?: string[],
+  dodgyDealKeys?: string[],
+): Map<string, DealDetectiveDealMatches> {
+  const dealsByStore = new Map<string, DealDetectiveDealMatches>();
+  for (const deal of product.currentDeals) {
+    if (!deal.isOnSpecial) continue;
+
+    if (realDealKeys && deal.dealType === "Real Deal") realDealKeys.push(dealKeyFor(product, deal));
+    if (dodgyDealKeys && deal.dealType === "Dodgy Deal") dodgyDealKeys.push(dealKeyFor(product, deal));
+
+    const storeKey = normalizeStoreKey(deal.store);
+    const matches = dealsByStore.get(storeKey) ?? {};
+    if (deal.dealType === "Real Deal") {
+      if (!matches.real) matches.real = deal;
+    } else if (deal.dealType === "Dodgy Deal" && !matches.dodgy) {
+      matches.dodgy = deal;
+    }
+    dealsByStore.set(storeKey, matches);
+  }
+  return dealsByStore;
+}
+
 function candidateForKey(
   productsById: ReadonlyMap<string, ProductCard>,
   dealsByProductAndStore: DealDetectiveDealIndex,
@@ -431,42 +455,14 @@ function allDealDetectivePairs(
   return pairs;
 }
 
-/**
- * Selects a stable, verified Real Saver/Dodgy Deal pair from the unread batch.
- * Category preference is a preference order, not a promise: if no preferred
- * category has both verdicts, the first valid pair from the batch is used.
- */
-export function buildDealDetectiveQuizCase(
-  products: readonly ProductCard[],
+function buildDealDetectiveQuizCaseFromIndexes(
+  productsById: ReadonlyMap<string, ProductCard>,
+  dealsByProductAndStore: DealDetectiveDealIndex,
   summary: Pick<NewSpecialsSummary, "realDealKeys" | "dodgyDealKeys">,
-  preferredCategories: readonly string[] = [],
-  rotationIndex = 0,
-  excludedPairKeys: readonly string[] = [],
+  preferredCategories: readonly string[],
+  rotationIndex: number,
+  excludedPairKeys: readonly string[],
 ): DealDetectiveQuizCase | null {
-  // Preserve products.find()'s first-match behavior for any duplicate IDs
-  // while making each deal-key lookup constant-time.
-  const productsById = new Map<string, ProductCard>();
-  for (const product of products) {
-    if (!productsById.has(product.id)) productsById.set(product.id, product);
-  }
-  // Preserve each product's first active deal for a store/verdict while making
-  // each summary key lookup constant-time instead of rescanning currentDeals.
-  const dealsByProductAndStore = new Map<string, Map<string, DealDetectiveDealMatches>>();
-  for (const product of productsById.values()) {
-    const dealsByStore = new Map<string, DealDetectiveDealMatches>();
-    for (const deal of product.currentDeals) {
-      if (!deal.isOnSpecial) continue;
-      const storeKey = normalizeStoreKey(deal.store);
-      const matches = dealsByStore.get(storeKey) ?? {};
-      if (deal.dealType === "Real Deal") {
-        if (!matches.real) matches.real = deal;
-      } else if (deal.dealType === "Dodgy Deal" && !matches.dodgy) {
-        matches.dodgy = deal;
-      }
-      dealsByStore.set(storeKey, matches);
-    }
-    dealsByProductAndStore.set(product.id, dealsByStore);
-  }
   const realCandidates = sortedCandidates(productsById, dealsByProductAndStore, summary.realDealKeys, "real");
   const dodgyCandidates = sortedCandidates(productsById, dealsByProductAndStore, summary.dodgyDealKeys, "dodgy");
   if (realCandidates.length === 0 || dodgyCandidates.length === 0) return null;
@@ -485,4 +481,81 @@ export function buildDealDetectiveQuizCase(
     left: { ...(realOnLeft ? pair.real : pair.dodgy), side: "left" },
     right: { ...(realOnLeft ? pair.dodgy : pair.real), side: "right" },
   };
+}
+
+/**
+ * Selects a stable, verified Real Saver/Dodgy Deal pair from the unread batch.
+ * Category preference is a preference order, not a promise: if no preferred
+ * category has both verdicts, the first valid pair from the batch is used.
+ */
+export function buildDealDetectiveQuizCase(
+  products: readonly ProductCard[],
+  summary: Pick<NewSpecialsSummary, "realDealKeys" | "dodgyDealKeys">,
+  preferredCategories: readonly string[] = [],
+  rotationIndex = 0,
+  excludedPairKeys: readonly string[] = [],
+): DealDetectiveQuizCase | null {
+  // Preserve products.find()'s first-match behavior for any duplicate IDs
+  // while making each deal-key lookup constant-time.
+  const productsById = new Map<string, ProductCard>();
+  const dealsByProductAndStore = new Map<string, Map<string, DealDetectiveDealMatches>>();
+  for (const product of products) {
+    if (!productsById.has(product.id)) {
+      productsById.set(product.id, product);
+      dealsByProductAndStore.set(product.id, indexProductDeals(product));
+    }
+  }
+  return buildDealDetectiveQuizCaseFromIndexes(
+    productsById,
+    dealsByProductAndStore,
+    summary,
+    preferredCategories,
+    rotationIndex,
+    excludedPairKeys,
+  );
+}
+
+/**
+ * Builds a current-catalogue fallback case while collecting its summary keys
+ * during the same first-product/index pass. This avoids a second full-catalogue
+ * traversal when no stored or unread case is available.
+ */
+export function buildCurrentDealDetectiveQuizCase(
+  products: readonly ProductCard[],
+  preferredCategories: readonly string[] = [],
+  rotationIndex = 0,
+  excludedPairKeys: readonly string[] = [],
+): DealDetectiveQuizCase | null {
+  const productsById = new Map<string, ProductCard>();
+  const dealsByProductAndStore = new Map<string, Map<string, DealDetectiveDealMatches>>();
+  const realDealKeys: string[] = [];
+  const dodgyDealKeys: string[] = [];
+
+  for (const product of products) {
+    if (!productsById.has(product.id)) {
+      productsById.set(product.id, product);
+      dealsByProductAndStore.set(
+        product.id,
+        indexProductDeals(product, realDealKeys, dodgyDealKeys),
+      );
+      continue;
+    }
+
+    // Keep collecting duplicate-product keys exactly as the old catalogue
+    // summary did, while retaining the first product for deal resolution.
+    for (const deal of product.currentDeals) {
+      if (!deal.isOnSpecial) continue;
+      if (deal.dealType === "Real Deal") realDealKeys.push(dealKeyFor(product, deal));
+      if (deal.dealType === "Dodgy Deal") dodgyDealKeys.push(dealKeyFor(product, deal));
+    }
+  }
+
+  return buildDealDetectiveQuizCaseFromIndexes(
+    productsById,
+    dealsByProductAndStore,
+    { realDealKeys, dodgyDealKeys },
+    preferredCategories,
+    rotationIndex,
+    excludedPairKeys,
+  );
 }

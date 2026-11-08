@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
 import {
+  buildCurrentDealDetectiveQuizCase,
   buildDealDetectiveQuizCase,
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
@@ -73,6 +74,20 @@ test("the case uses the first selected category with both verdicts", () => {
   assert.equal(result?.right.kind, "dodgy");
   assert.equal(result?.left.product.id, "dairy-real");
   assert.equal(result?.right.product.id, "dairy-dodgy");
+});
+
+test("the current catalogue fallback collects keys while indexing products", () => {
+  const products = [
+    product("pantry-real", "Pantry real", "Pantry", [deal({ dealType: "Real Deal" })]),
+    product("pantry-dodgy", "Pantry dodgy", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+  ];
+
+  const result = buildCurrentDealDetectiveQuizCase(products, ["Pantry"]);
+
+  assert.ok(result);
+  assert.equal(result.category, "Pantry");
+  assert.equal(result.left.kind, "real");
+  assert.equal(result.right.kind, "dodgy");
 });
 
 test("the case falls back to a valid category when preferences have no pair", () => {
