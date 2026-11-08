@@ -63,7 +63,18 @@ function BackToTopButton({
       observer.observe(element);
       if (element.firstElementChild) observer.observe(element.firstElementChild);
     }
-    const mutationObserver = element ? new MutationObserver(update) : null;
+    // Card hydration and infinite reveal can append many nodes in one frame.
+    // Coalesce mutation notifications so scrollHeight is measured once per
+    // frame instead of once per appended node.
+    let mutationFrame: number | null = null;
+    const scheduleMutationUpdate = () => {
+      if (mutationFrame !== null) return;
+      mutationFrame = window.requestAnimationFrame(() => {
+        mutationFrame = null;
+        update();
+      });
+    };
+    const mutationObserver = element ? new MutationObserver(scheduleMutationUpdate) : null;
     if (mutationObserver && element) mutationObserver.observe(element, { childList: true, subtree: true });
 
     return () => {
@@ -71,6 +82,10 @@ function BackToTopButton({
       window.removeEventListener("resize", update);
       observer?.disconnect();
       mutationObserver?.disconnect();
+      if (mutationFrame !== null) {
+        window.cancelAnimationFrame(mutationFrame);
+        mutationFrame = null;
+      }
       if (scrollAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(scrollAnimationFrameRef.current);
       }
