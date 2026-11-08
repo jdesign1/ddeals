@@ -175,7 +175,29 @@ test("For you grouping caps each category without mutating the source rail", () 
   const result = buildForYouCategoryDealsByCategory(deals, ["Pantry"]);
 
   assert.equal(result[0]?.deals.length, 10);
+  assert.deepEqual(
+    result[0]?.deals.map(({ product: item }) => item.id),
+    [...Array.from({ length: 9 }, (_, index) => `pantry-${index}`), "pantry-10"],
+  );
   assert.deepEqual(deals.map(({ product: item }) => item.id), originalOrder);
+});
+
+test("For you bounded ranking keeps new deals ahead without collecting the full category", () => {
+  const deals = Array.from({ length: 11 }, (_, index) => {
+    const item = product(`pantry-${index}`, `Item ${index}`, [deal({ price: index + 1 })], "Pantry");
+    return { product: item, deal: item.currentDeals[0]! };
+  });
+
+  const result = buildForYouCategoryDealsByCategory(
+    deals,
+    ["Pantry"],
+    [getNewSpecialDealKey("pantry-10", "New World")],
+  );
+
+  assert.deepEqual(
+    result[0]?.deals.map(({ product: item }) => item.id),
+    ["pantry-10", ...Array.from({ length: 9 }, (_, index) => `pantry-${index}`)],
+  );
 });
 
 test("watchlist belt only includes saved active specials and picks the strongest offer", () => {

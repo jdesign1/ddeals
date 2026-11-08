@@ -57,26 +57,40 @@ export function buildForYouCategoryDealsByCategory(
   for (const { product, deal } of deals) {
     const category = groupCategory(product.category, product.name);
     if (!categorySet.has(category)) continue;
-    grouped.get(category)?.push({
+    const categoryDeals = grouped.get(category);
+    if (!categoryDeals) continue;
+
+    insertForYouDeal(categoryDeals, {
       product,
       deal,
-      isNew: newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
+      isNew: newKeys.size > 0 && newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
     });
   }
 
   return categories.map((category) => {
-    const categoryDeals = grouped.get(category) ?? [];
-    categoryDeals.sort((left, right) => {
-      const newDifference = Number(right.isNew) - Number(left.isNew);
-      return newDifference
-        || compareDealSnapshotEntries(left, right, "savings")
-        || left.product.name.localeCompare(right.product.name);
-    });
     return {
       category,
-      deals: categoryDeals.slice(0, MAX_FOR_YOU_CATEGORY_PRODUCTS),
+      deals: grouped.get(category) ?? [],
     };
   });
+}
+
+function compareForYouDeals(left: CheckDealsRailItem, right: CheckDealsRailItem): number {
+  const newDifference = Number(right.isNew) - Number(left.isNew);
+  return newDifference
+    || compareDealSnapshotEntries(left, right, "savings")
+    || left.product.name.localeCompare(right.product.name);
+}
+
+function insertForYouDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem): void {
+  let insertAt = 0;
+  while (insertAt < items.length && compareForYouDeals(items[insertAt]!, candidate) <= 0) {
+    insertAt += 1;
+  }
+  if (insertAt >= MAX_FOR_YOU_CATEGORY_PRODUCTS) return;
+
+  items.splice(insertAt, 0, candidate);
+  if (items.length > MAX_FOR_YOU_CATEGORY_PRODUCTS) items.pop();
 }
 
 /**
