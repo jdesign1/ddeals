@@ -412,6 +412,29 @@ function addSnapshotCategory(
   summary.categoryCounts.set(category, (summary.categoryCounts.get(category) ?? 0) + 1);
 }
 
+function mergeSnapshotCategorySummaries(
+  summaries: readonly SnapshotCategorySummary[],
+): SnapshotCategorySummary {
+  // Merge in rail order (savings before Dodgy) so the picker keeps its
+  // previous first-seen category ordering without rescanning the deal rails.
+  const merged: SnapshotCategorySummary = {
+    availableCategories: [],
+    categoryCounts: new Map<string, number>(),
+  };
+
+  for (const summary of summaries) {
+    for (const category of summary.availableCategories) {
+      if (!merged.categoryCounts.has(category)) merged.availableCategories.push(category);
+      merged.categoryCounts.set(
+        category,
+        (merged.categoryCounts.get(category) ?? 0) + (summary.categoryCounts.get(category) ?? 0),
+      );
+    }
+  }
+
+  return merged;
+}
+
 function buildSnapshotDealGroups(
   products: ProductCard[],
   selectedStores: string[],
@@ -421,11 +444,19 @@ function buildSnapshotDealGroups(
   const dodgy: FlatDeal[] = [];
   const newSavings: FlatDeal[] = [];
   const newDodgy: FlatDeal[] = [];
-  const categorySummary: SnapshotCategorySummary = {
+  const savingsCategorySummary: SnapshotCategorySummary = {
     availableCategories: [],
     categoryCounts: new Map<string, number>(),
   };
-  const newCategorySummary: SnapshotCategorySummary = {
+  const dodgyCategorySummary: SnapshotCategorySummary = {
+    availableCategories: [],
+    categoryCounts: new Map<string, number>(),
+  };
+  const newSavingsCategorySummary: SnapshotCategorySummary = {
+    availableCategories: [],
+    categoryCounts: new Map<string, number>(),
+  };
+  const newDodgyCategorySummary: SnapshotCategorySummary = {
     availableCategories: [],
     categoryCounts: new Map<string, number>(),
   };
@@ -460,22 +491,29 @@ function buildSnapshotDealGroups(
     }
     if (bestSavings) {
       savings.push({ product, deal: bestSavings });
-      addSnapshotCategory(categorySummary, product);
+      addSnapshotCategory(savingsCategorySummary, product);
     }
     if (bestDodgy) {
       dodgy.push({ product, deal: bestDodgy });
-      addSnapshotCategory(categorySummary, product);
+      addSnapshotCategory(dodgyCategorySummary, product);
     }
     if (bestNewSavings) {
       newSavings.push({ product, deal: bestNewSavings });
-      addSnapshotCategory(newCategorySummary, product);
+      addSnapshotCategory(newSavingsCategorySummary, product);
     }
     if (bestNewDodgy) {
       newDodgy.push({ product, deal: bestNewDodgy });
-      addSnapshotCategory(newCategorySummary, product);
+      addSnapshotCategory(newDodgyCategorySummary, product);
     }
   }
-  return { savings, dodgy, newSavings, newDodgy, categorySummary, newCategorySummary };
+  return {
+    savings,
+    dodgy,
+    newSavings,
+    newDodgy,
+    categorySummary: mergeSnapshotCategorySummaries([savingsCategorySummary, dodgyCategorySummary]),
+    newCategorySummary: mergeSnapshotCategorySummaries([newSavingsCategorySummary, newDodgyCategorySummary]),
+  };
 }
 
 const TRENDING_PAGE_SIZE = 12;
@@ -735,7 +773,7 @@ export default function HomePage() {
   const newDealsCount = digest?.total ?? 0;
   const newForYouFilterActive = isNewForYouFilter && newDealsCount > 0;
   const previouslyCheckedDeals = useMemo(
-    () => isSearchActive
+    () => isSearchActive || checkedHistory.length === 0 || deferredCatalogueProducts.length === 0
       ? EMPTY_PREVIOUSLY_CHECKED_DEALS
       : buildPreviouslyCheckedChangedDeals(deferredCatalogueProducts, checkedHistory, selectedStores),
     [checkedHistory, deferredCatalogueProducts, isSearchActive, selectedStores],
