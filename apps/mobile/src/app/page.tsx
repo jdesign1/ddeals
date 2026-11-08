@@ -382,6 +382,7 @@ interface SnapshotDealGroups {
   newDodgy: FlatDeal[];
   categorySummary: SnapshotCategorySummary;
   newCategorySummary: SnapshotCategorySummary;
+  railLatestPublishedAt: SnapshotRailLatestPublishedAt;
 }
 
 interface SnapshotCategorySummary {
@@ -389,9 +390,23 @@ interface SnapshotCategorySummary {
   categoryCounts: Map<string, number>;
 }
 
+interface SnapshotRailLatestPublishedAt {
+  savings: string | null;
+  dodgy: string | null;
+  newSavings: string | null;
+  newDodgy: string | null;
+}
+
 const EMPTY_SNAPSHOT_CATEGORY_SUMMARY: SnapshotCategorySummary = {
   availableCategories: [],
   categoryCounts: new Map<string, number>(),
+};
+
+const EMPTY_SNAPSHOT_RAIL_LATEST_PUBLISHED_AT: SnapshotRailLatestPublishedAt = {
+  savings: null,
+  dodgy: null,
+  newSavings: null,
+  newDodgy: null,
 };
 
 const EMPTY_SNAPSHOT_DEAL_GROUPS: SnapshotDealGroups = {
@@ -401,6 +416,7 @@ const EMPTY_SNAPSHOT_DEAL_GROUPS: SnapshotDealGroups = {
   newDodgy: [],
   categorySummary: EMPTY_SNAPSHOT_CATEGORY_SUMMARY,
   newCategorySummary: EMPTY_SNAPSHOT_CATEGORY_SUMMARY,
+  railLatestPublishedAt: EMPTY_SNAPSHOT_RAIL_LATEST_PUBLISHED_AT,
 };
 
 function addSnapshotCategory(
@@ -435,6 +451,25 @@ function mergeSnapshotCategorySummaries(
   return merged;
 }
 
+function updateLatestPublishedAt(
+  currentPublishedAt: string | null,
+  deal: CurrentDeal,
+): string | null {
+  const currentTimestamp = Date.parse(currentPublishedAt ?? "");
+  let latestTimestamp = Number.isFinite(currentTimestamp) ? currentTimestamp : Number.NEGATIVE_INFINITY;
+  let latestPublishedAt = currentPublishedAt;
+
+  for (const timestamp of [deal.scrapedAt, deal.specialsVerifiedAt]) {
+    const parsedTimestamp = Date.parse(timestamp ?? "");
+    if (Number.isFinite(parsedTimestamp) && parsedTimestamp > latestTimestamp) {
+      latestTimestamp = parsedTimestamp;
+      latestPublishedAt = new Date(parsedTimestamp).toISOString();
+    }
+  }
+
+  return latestPublishedAt;
+}
+
 function buildSnapshotDealGroups(
   products: ProductCard[],
   selectedStores: string[],
@@ -460,6 +495,10 @@ function buildSnapshotDealGroups(
     availableCategories: [],
     categoryCounts: new Map<string, number>(),
   };
+  let savingsLatestPublishedAt: string | null = null;
+  let dodgyLatestPublishedAt: string | null = null;
+  let newSavingsLatestPublishedAt: string | null = null;
+  let newDodgyLatestPublishedAt: string | null = null;
   for (const product of products) {
     let bestSavings: CurrentDeal | undefined;
     let bestDodgy: CurrentDeal | undefined;
@@ -494,18 +533,22 @@ function buildSnapshotDealGroups(
     if (bestSavings) {
       savings.push({ product, deal: bestSavings });
       addSnapshotCategory(savingsCategorySummary, product);
+      savingsLatestPublishedAt = updateLatestPublishedAt(savingsLatestPublishedAt, bestSavings);
     }
     if (bestDodgy) {
       dodgy.push({ product, deal: bestDodgy });
       addSnapshotCategory(dodgyCategorySummary, product);
+      dodgyLatestPublishedAt = updateLatestPublishedAt(dodgyLatestPublishedAt, bestDodgy);
     }
     if (bestNewSavings) {
       newSavings.push({ product, deal: bestNewSavings });
       addSnapshotCategory(newSavingsCategorySummary, product);
+      newSavingsLatestPublishedAt = updateLatestPublishedAt(newSavingsLatestPublishedAt, bestNewSavings);
     }
     if (bestNewDodgy) {
       newDodgy.push({ product, deal: bestNewDodgy });
       addSnapshotCategory(newDodgyCategorySummary, product);
+      newDodgyLatestPublishedAt = updateLatestPublishedAt(newDodgyLatestPublishedAt, bestNewDodgy);
     }
   }
   return {
@@ -515,6 +558,12 @@ function buildSnapshotDealGroups(
     newDodgy,
     categorySummary: mergeSnapshotCategorySummaries([savingsCategorySummary, dodgyCategorySummary]),
     newCategorySummary: mergeSnapshotCategorySummaries([newSavingsCategorySummary, newDodgyCategorySummary]),
+    railLatestPublishedAt: {
+      savings: savingsLatestPublishedAt,
+      dodgy: dodgyLatestPublishedAt,
+      newSavings: newSavingsLatestPublishedAt,
+      newDodgy: newDodgyLatestPublishedAt,
+    },
   };
 }
 
@@ -1206,6 +1255,9 @@ export default function HomePage() {
                       refreshKey={selectedStores.join(",")}
                       showingNewOnly={newForYouFilterActive}
                       updatedText={updatedText}
+                      latestPublishedAt={newForYouFilterActive
+                        ? snapshotDealGroups.railLatestPublishedAt.newSavings
+                        : snapshotDealGroups.railLatestPublishedAt.savings}
                       onSeeAll={handleTopSavingsSeeAll}
                       onSeeMore={handleTopSavingsSeeMore}
                     />
@@ -1216,6 +1268,9 @@ export default function HomePage() {
                       refreshKey={selectedStores.join(",")}
                       showingNewOnly={newForYouFilterActive}
                       updatedText={updatedText}
+                      latestPublishedAt={newForYouFilterActive
+                        ? snapshotDealGroups.railLatestPublishedAt.newDodgy
+                        : snapshotDealGroups.railLatestPublishedAt.dodgy}
                       onSeeAll={handleDodgyDealsSeeAll}
                       onSeeMore={handleDodgyDealsSeeAll}
                     />

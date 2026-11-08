@@ -61,26 +61,6 @@ function buildRankedDeals(
   return ranked;
 }
 
-function getLatestPublishedAt(deals: readonly FlatDeal[]): string | null {
-  let latestTimestamp = Number.NEGATIVE_INFINITY;
-  let latestPublishedAt: string | null = null;
-
-  for (const { deal } of deals) {
-    const scrapedTimestamp = Date.parse(deal.scrapedAt ?? "");
-    if (Number.isFinite(scrapedTimestamp) && scrapedTimestamp > latestTimestamp) {
-      latestTimestamp = scrapedTimestamp;
-      latestPublishedAt = new Date(scrapedTimestamp).toISOString();
-    }
-    const verifiedTimestamp = Date.parse(deal.specialsVerifiedAt ?? "");
-    if (Number.isFinite(verifiedTimestamp) && verifiedTimestamp > latestTimestamp) {
-      latestTimestamp = verifiedTimestamp;
-      latestPublishedAt = new Date(verifiedTimestamp).toISOString();
-    }
-  }
-
-  return latestPublishedAt;
-}
-
 function arraysMatch(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
   if (!left || !right || left.length !== right.length) return false;
   return left.every((value, index) => value === right[index]);
@@ -93,6 +73,7 @@ function DealSnapshotRail({
   refreshKey,
   showingNewOnly,
   updatedText,
+  latestPublishedAt,
   onSeeAll,
   onSeeMore,
 }: {
@@ -102,6 +83,7 @@ function DealSnapshotRail({
   refreshKey: string;
   showingNewOnly: boolean;
   updatedText: string | null;
+  latestPublishedAt: string | null;
   onSeeAll: () => void;
   onSeeMore: () => void;
 }) {
@@ -127,7 +109,6 @@ function DealSnapshotRail({
     () => getTop20StorageKey(kind, snapshotScopeKey),
     [kind, snapshotScopeKey],
   );
-  const latestPublishedAt = useMemo(() => getLatestPublishedAt(deals), [deals]);
   const snapshotDeals = useMemo(
     () => rankedDeals.filter(({ deal }) => getDealSnapshotAmount(deal, kind) != null),
     [kind, rankedDeals],
