@@ -34,7 +34,7 @@ export const MAX_FOR_YOU_CATEGORY_PRODUCTS = 10;
 export function buildForYouCategoryDeals(
   deals: readonly Pick<CheckDealsRailItem, "product" | "deal">[],
   category: string,
-  newDealKeys: readonly string[] = [],
+  newDealKeys: readonly string[] | ReadonlySet<string> = [],
 ): CheckDealsRailItem[] {
   return buildForYouCategoryDealsByCategory(deals, [category], newDealKeys)[0]?.deals ?? [];
 }
@@ -47,11 +47,11 @@ export function buildForYouCategoryDeals(
 export function buildForYouCategoryDealsByCategory(
   deals: readonly Pick<CheckDealsRailItem, "product" | "deal">[],
   categories: readonly string[],
-  newDealKeys: readonly string[] = [],
+  newDealKeys: readonly string[] | ReadonlySet<string> = [],
 ): Array<{ category: string; deals: CheckDealsRailItem[] }> {
   if (categories.length === 0) return [];
 
-  const newKeys = new Set(newDealKeys);
+  const newKeys = newDealKeys instanceof Set ? newDealKeys : new Set(newDealKeys);
   const categorySet = new Set(categories);
   const grouped = new Map<string, CheckDealsRailItem[]>();
 

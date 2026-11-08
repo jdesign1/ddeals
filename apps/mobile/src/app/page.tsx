@@ -876,8 +876,8 @@ export default function HomePage() {
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
   const forYouCategoryDeals = useMemo(
-    () => buildForYouCategoryDealsByCategory(allTopSavingsDeals, preferredCategories, newDealKeys),
-    [allTopSavingsDeals, newDealKeys, preferredCategories],
+    () => buildForYouCategoryDealsByCategory(allTopSavingsDeals, preferredCategories, newDealKeySet),
+    [allTopSavingsDeals, newDealKeySet, preferredCategories],
   );
   const visibleForYouCategory = activeForYouCategory && preferredCategories.includes(activeForYouCategory)
     ? activeForYouCategory

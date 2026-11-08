@@ -174,7 +174,7 @@ test("For you grouping keeps category order, empty categories, and new-first ran
   const result = buildForYouCategoryDealsByCategory(
     deals,
     ["Dairy & Eggs", "Pantry", "Fruit & Veg"],
-    [getNewSpecialDealKey("fruit-2", "New World")],
+    new Set([getNewSpecialDealKey("fruit-2", "New World")]),
   );
 
   assert.deepEqual(result.map(({ category }) => category), ["Dairy & Eggs", "Pantry", "Fruit & Veg"]);
