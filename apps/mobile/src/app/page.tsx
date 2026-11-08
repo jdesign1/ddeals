@@ -19,6 +19,7 @@ import CheckDealsVerdictSummary from "@/components/CheckDealsVerdictSummary";
 import CheckDealsBeltOrderSheet from "@/components/CheckDealsBeltOrderSheet";
 import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
+import BrandRail from "@/components/BrandRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
@@ -76,6 +77,7 @@ import {
   type DidYouKnowCard,
   type DidYouKnowCardsWithVerdictSummary,
 } from "@/lib/did-you-know";
+import { buildBrandSummaries, type BrandSummary } from "@/lib/brand-browse";
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 const FOR_YOU_CATEGORY_STORAGE_PREFIX = "dodgey-deals:for-you-category:v1";
@@ -91,6 +93,7 @@ const EMPTY_DID_YOU_KNOW_SUMMARY: DidYouKnowCardsWithVerdictSummary = {
   verdictSummary: EMPTY_DEAL_VERDICT_SUMMARY,
 };
 const EMPTY_PREVIOUSLY_CHECKED_DEALS: CheckDealsRailItem[] = [];
+const EMPTY_BRAND_SUMMARIES: BrandSummary[] = [];
 
 /**
  * Home tab. Ported from Prototype/index.html's `SearchTab` (its
@@ -817,6 +820,12 @@ export default function HomePage() {
   );
   const didYouKnowCards = didYouKnowSummary.cards;
   const dealVerdictSummary = didYouKnowSummary.verdictSummary;
+  const topRealSaverBrands = useMemo(
+    () => isSearchActive || dealFilter !== "all"
+      ? EMPTY_BRAND_SUMMARIES
+      : buildBrandSummaries(deferredCatalogueProducts, selectedStores, { onlyWithRealSavers: true, limit: 8 }),
+    [dealFilter, deferredCatalogueProducts, isSearchActive, selectedStores],
+  );
   const latestPublishedAt = currentSpecialSummary.latestPublishedAt;
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
   const updatedLabel = latestPublishedAt
@@ -923,6 +932,9 @@ export default function HomePage() {
   }, [newDealsDodgySearchOptions, openRailSearch]);
   const handleDealVerdictSelect = useCallback((filter: "real" | "dodgy") => {
     openSearchForFilter(filter, { focus: false });
+  }, [openSearchForFilter]);
+  const handleBrandSelect = useCallback((brand: BrandSummary) => {
+    openSearchForFilter("all", { focus: false, brandKey: brand.key });
   }, [openSearchForFilter]);
 
   // The snapshot pass already sees the best savings/dodgy deal per product;
@@ -1279,6 +1291,7 @@ export default function HomePage() {
                   </section>
                 );
               })}
+              <BrandRail brands={topRealSaverBrands} onSelectBrand={handleBrandSelect} />
               <PersonalDealRail
                 id="previously-checked-rail"
                 title="Deals you might have missed"

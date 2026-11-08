@@ -18,6 +18,7 @@ import {
   getProductSearchRelevance,
 } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
+import BrandSearchTile from "@/components/BrandSearchTile";
 import LoadingMascot from "@/components/LoadingMascot";
 import BackToTopButton from "@/components/BackToTopButton";
 import ErrorState from "@/components/ErrorState";
@@ -48,6 +49,13 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import { isNearScrollBottom } from "@/lib/scroll-events";
 import { compareLatestSpecials, isNewSpecial } from "@/lib/special-freshness";
 import { getNewSpecialDealKey } from "@/lib/new-specials";
+import {
+  brandMatchesProduct,
+  buildBrandSummaries,
+  findBrandByKey,
+  findBrandSuggestion,
+  type BrandSummary,
+} from "@/lib/brand-browse";
 
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
@@ -186,6 +194,7 @@ const EMPTY_AVAILABLE_STORE_KEYS: string[] = [];
 const EMPTY_SEARCH_CATEGORIES: string[] = [];
 const EMPTY_CATEGORY_DEAL_COUNTS = new Map<string, number>();
 const EMPTY_POPULAR_ENTRIES: PopularEntry[] = [];
+const EMPTY_BRAND_SUMMARIES: BrandSummary[] = [];
 
 // Scroll-direction toolbar show/hide tuning -- see `isToolbarVisible`'s own
 // comment below for what these gate.
@@ -313,6 +322,7 @@ export default function FullScreenSearch() {
     newSpecialDealKeys,
     searchSortOverride,
     searchCategoryOverride,
+    searchBrandOverride,
   } = useSearchOverlay();
   const { markReviewed } = useNewSpecialsActions();
   const { isGridLayout } = useCardLayout();
@@ -479,6 +489,7 @@ export default function FullScreenSearch() {
   const [popularSortBy, setPopularSortBy] = useState<PopularSortBy>(() => getDefaultDealSort(dealFilter));
   const [popularCategoryFilter, setPopularCategoryFilter] = useState<string[]>([]);
   const [sessionNewSpecialDealKeys, setSessionNewSpecialDealKeys] = useState<string[] | null>(null);
+  const [activeBrandKey, setActiveBrandKey] = useState<string | null>(null);
 
   // Track the open transition for scroll restoration. The shared deal filter
   // deliberately is not reset here: it must survive full-screen search
@@ -497,8 +508,13 @@ export default function FullScreenSearch() {
       const initialCategoryFilter = searchCategoryOverride ? [searchCategoryOverride] : [];
       setPopularCategoryFilter(initialCategoryFilter);
       setResultsCategoryFilter(initialCategoryFilter);
+      setActiveBrandKey(searchBrandOverride);
     } else if (!isOpen) {
       setSessionNewSpecialDealKeys(null);
+      // A deal-card navigation temporarily hides this overlay before the
+      // router lands on the deal page. Keep the brand scope for the matching
+      // Back action; a normal close clears `returnToSearch` and resets it.
+      if (!returnToSearch) setActiveBrandKey(null);
     }
   }
 
@@ -508,7 +524,7 @@ export default function FullScreenSearch() {
     setResultsSortBy(getDefaultDealSort(filter));
   };
 
-  const resetSearchScrollForCategoryChange = () => {
+  const resetSearchScrollForCategoryChange = useCallback(() => {
     const element = scrollContainerRef.current;
     if (element) {
       element.scrollTop = 0;
@@ -517,7 +533,7 @@ export default function FullScreenSearch() {
     lastScrollTopRef.current = 0;
     toolbarScrollAnchorRef.current = 0;
     setToolbarVisible(true);
-  };
+  }, [setToolbarVisible]);
 
   const updateCategoryFilter = (target: "popular" | "results", next: string[]) => {
     if (target === "results") setResultsCategoryFilter(next);
@@ -549,6 +565,21 @@ export default function FullScreenSearch() {
   // same deferred query snapshot.
   const deferredTrimmedQuery = useDeferredValue(trimmedQuery);
   const [searchNow] = useState(() => Date.now());
+
+  const searchBrandSummaries = useMemo(() => {
+    if (!shouldRenderOverlay) return EMPTY_BRAND_SUMMARIES;
+    return buildBrandSummaries(products, selectedStores);
+  }, [products, selectedStores, shouldRenderOverlay]);
+  const activeBrandSummary = useMemo(
+    () => findBrandByKey(searchBrandSummaries, activeBrandKey),
+    [activeBrandKey, searchBrandSummaries],
+  );
+  const brandSuggestion = useMemo(
+    () => activeBrandKey || deferredTrimmedQuery.length < 3
+      ? null
+      : findBrandSuggestion(deferredTrimmedQuery, searchBrandSummaries),
+    [activeBrandKey, deferredTrimmedQuery, searchBrandSummaries],
+  );
 
   // The old dedicated "reset show-all expansion" effect that used to live
   // here (keyed on this exact same dep list: trimmedQuery, selectedStores,
@@ -650,6 +681,7 @@ export default function FullScreenSearch() {
     if (!shouldRenderOverlay || deferredTrimmedQuery.length >= 3) return EMPTY_POPULAR_ENTRIES;
     const out: PopularEntry[] = [];
     for (const product of products) {
+      if (activeBrandKey && !brandMatchesProduct(product, activeBrandKey)) continue;
       const qualifyingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
       if (qualifyingDeals.length === 0) continue;
       if (newSpecialDealKeySet) {
@@ -660,7 +692,7 @@ export default function FullScreenSearch() {
       out.push({ product, bestDeal });
     }
     return out;
-  }, [products, selectedStores, dealFilter, newSpecialDealKeySet, shouldRenderOverlay, deferredTrimmedQuery]);
+  }, [activeBrandKey, products, selectedStores, dealFilter, newSpecialDealKeySet, shouldRenderOverlay, deferredTrimmedQuery]);
 
   const popularCategoryFilterSet = useMemo(() => new Set(popularCategoryFilter), [popularCategoryFilter]);
   const sortedPopularSpecials = useMemo(() => {
@@ -692,9 +724,10 @@ export default function FullScreenSearch() {
       selectedStores.join(","),
       popularSortBy,
       popularCategoryFilter.join(","),
+      activeBrandKey ?? "all-brands",
       sessionNewSpecialDealKeys?.join(",") ?? "all",
     ].join("|"),
-    [dealFilter, popularCategoryFilter, popularSortBy, selectedStores, sessionNewSpecialDealKeys],
+    [activeBrandKey, dealFilter, popularCategoryFilter, popularSortBy, selectedStores, sessionNewSpecialDealKeys],
   );
   // Infinite-scroll reveal replaced the old "Show all N deals" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
@@ -727,6 +760,7 @@ export default function FullScreenSearch() {
     const matched: Array<SearchResultEntry & { bestPrice: number }> = [];
 
     for (const product of products) {
+      if (activeBrandKey && !brandMatchesProduct(product, activeBrandKey)) continue;
       if (!productMatchesSearch(product, deferredTrimmedQuery)) continue;
       const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
       if (matchingDeals.length === 0) continue;
@@ -773,7 +807,7 @@ export default function FullScreenSearch() {
       return b.latestStart - a.latestStart;
     });
     return matched;
-  }, [products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet, searchNow, shouldRenderOverlay]);
+  }, [activeBrandKey, products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet, searchNow, shouldRenderOverlay]);
 
   const sortedProducts = useMemo(
     () => sortedSearchEntries.map(({ product }) => product),
@@ -792,9 +826,10 @@ export default function FullScreenSearch() {
       selectedStores.join(","),
       resultsSortBy,
       resultsCategoryFilter.join(","),
+      activeBrandKey ?? "all-brands",
       sessionNewSpecialDealKeys?.join(",") ?? "all",
     ].join("|"),
-    [dealFilter, deferredTrimmedQuery, resultsCategoryFilter, resultsSortBy, selectedStores, sessionNewSpecialDealKeys],
+    [activeBrandKey, dealFilter, deferredTrimmedQuery, resultsCategoryFilter, resultsSortBy, selectedStores, sessionNewSpecialDealKeys],
   );
   const {
     visibleCount: visibleSearchResultsCount,
@@ -859,7 +894,27 @@ export default function FullScreenSearch() {
     markReviewed(displayedNewDealKeys, dealFilter);
   }, [dealFilter, displayedNewDealKeys, isNewToYouMode, isOpen, loading, markReviewed, newSpecialDealKeySet]);
 
-  const handleClearText = () => setQuery("");
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+    if (value.trim() && activeBrandKey) setActiveBrandKey(null);
+  }, [activeBrandKey, setQuery]);
+  const handleClearText = useCallback(() => {
+    setQuery("");
+    setActiveBrandKey(null);
+  }, [setQuery]);
+  const handleBrandSelect = useCallback((brand: BrandSummary) => {
+    setQuery("");
+    setActiveBrandKey(brand.key);
+    setDealFilter("all");
+    setPopularSortBy(getDefaultDealSort("all"));
+    setResultsSortBy(getDefaultDealSort("all"));
+    setPopularCategoryFilter([]);
+    setResultsCategoryFilter([]);
+    setCategorySheetTarget(null);
+    clearNewSpecialsFilter();
+    setSessionNewSpecialDealKeys(null);
+    resetSearchScrollForCategoryChange();
+  }, [clearNewSpecialsFilter, resetSearchScrollForCategoryChange, setDealFilter, setQuery]);
   const fullSearchInputRef = useRef<HTMLInputElement>(null);
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1085,7 +1140,7 @@ export default function FullScreenSearch() {
                 placeholder="Search for a product or brand"
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => handleQueryChange(e.target.value)}
                 enterKeyHint="search"
               />
               {query && (
@@ -1328,6 +1383,18 @@ export default function FullScreenSearch() {
                   </div>
                 </div>
 
+                {activeBrandSummary && (
+                  <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-fair-50 px-4 py-3">
+                    <div className="min-w-0">
+                      <h2 className="dd-type-section truncate text-fair-900">{activeBrandSummary.name}</h2>
+                      <p className="dd-type-meta mt-0.5 text-stone-600">All current specials from this brand</p>
+                    </div>
+                    <span className="shrink-0 dd-type-meta font-bold text-fair-800">
+                      {activeBrandSummary.currentSpecialCount} item{activeBrandSummary.currentSpecialCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                )}
+
                 <div className="mt-4">
                   <DealFilterSummary filter={dealFilter} />
                 </div>
@@ -1559,6 +1626,13 @@ export default function FullScreenSearch() {
                   </div>
 
                   <DealFilterSummary filter={dealFilter} />
+
+                  {brandSuggestion && (
+                    <div className="space-y-2">
+                      <p className="dd-type-meta dd-type-meta-strong text-stone-500">Browse by brand</p>
+                      <BrandSearchTile brand={brandSuggestion} onSelect={handleBrandSelect} />
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-center gap-3 text-center">
                     <span className="dd-type-meta dd-type-meta-strong text-stone-500">

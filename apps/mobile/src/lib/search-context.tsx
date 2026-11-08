@@ -88,7 +88,15 @@ interface SearchContextValue {
    * destination opens ready to browse without summoning the keyboard. */
   openSearchForFilter: (
     filter: DealFilter,
-    options?: { focus?: boolean; dealKeys?: string[]; sortBy?: CheckDealsSortBy; category?: string; showNewToYouTab?: boolean; preserveSelectedStores?: boolean },
+    options?: {
+      focus?: boolean;
+      dealKeys?: string[];
+      sortBy?: CheckDealsSortBy;
+      category?: string;
+      brandKey?: string;
+      showNewToYouTab?: boolean;
+      preserveSelectedStores?: boolean;
+    },
   ) => void;
   /** Clears the temporary new-specials scope while keeping the search open. */
   clearNewSpecialsFilter: () => void;
@@ -106,6 +114,8 @@ interface SearchContextValue {
   searchSortOverride: CheckDealsSortBy | null;
   /** Optional category used only for the next fresh search opening. */
   searchCategoryOverride: string | null;
+  /** Optional exact brand used only for the next fresh search opening. */
+  searchBrandOverride: string | null;
   /** Back arrow / dedicated close button -- clears the query AND exits,
    * same as the prototype's `handleClearSearch`. */
   closeSearch: () => void;
@@ -184,6 +194,7 @@ export interface SearchOverlayContextValue {
   newSpecialsShowTab: boolean;
   searchSortOverride: CheckDealsSortBy | null;
   searchCategoryOverride: string | null;
+  searchBrandOverride: string | null;
   clearNewSpecialsFilter: () => void;
   pauseForDealNavigation: (productId: string, store: string) => void;
   finishDealNavigation: () => void;
@@ -277,6 +288,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [cataloguePublicationComplete, setCataloguePublicationComplete] = useState(false);
   const [searchSortOverride, setSearchSortOverride] = useState<CheckDealsSortBy | null>(null);
   const [searchCategoryOverride, setSearchCategoryOverride] = useState<string | null>(null);
+  const [searchBrandOverride, setSearchBrandOverride] = useState<string | null>(null);
   const [returnToSearch, setReturnToSearch] = useState<PendingDealReturn | null>(null);
   const [preserveSearchStateOnOpen, setPreserveSearchStateOnOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -340,6 +352,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setNewSpecialsShowTab(false);
     setSearchSortOverride(null);
     setSearchCategoryOverride(null);
+    setSearchBrandOverride(null);
     setPreserveSearchStateOnOpen(false);
     setFocusSearchOnOpen(true);
     setIsActive(true);
@@ -355,6 +368,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setNewSpecialDealKeys(hasDealKeys ? options?.dealKeys ?? null : null);
     setSearchSortOverride(options?.sortBy ?? null);
     setSearchCategoryOverride(options?.category ?? null);
+    setSearchBrandOverride(options?.brandKey ?? null);
     // The digest count spans every supermarket. Reset a previous search
     // preference here so its "View all" promise cannot land on a
     // smaller, hidden subset of the selected deals.
@@ -371,6 +385,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setNewSpecialsShowTab(false);
     setSearchSortOverride(null);
     setSearchCategoryOverride(null);
+    setSearchBrandOverride(null);
     setSelectedStores(["all"]);
     setDealFilter("all");
     setFocusSearchOnOpen(true);
@@ -585,6 +600,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       cataloguePublicationComplete,
       searchSortOverride,
       searchCategoryOverride,
+      searchBrandOverride,
       query,
       setQuery,
       isActive,
@@ -606,7 +622,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openScanner,
       closeScanner,
     }),
-    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, retry, refreshCatalogue, openSearch, openSearchForFilter, clearNewSpecialsFilter, closeSearch, pauseForDealNavigation, finishDealNavigation, resumeAfterDealBack, openScanner, closeScanner]
+    [products, loadingProducts, catalogueLiveLoaded, error, selectedStores, toggleStore, dealFilter, query, isActive, hasOpenedSearch, focusSearchOnOpen, newSpecialDealKeys, newSpecialsSearchMode, newSpecialsShowTab, cataloguePublicationKey, cataloguePublicationComplete, searchSortOverride, searchCategoryOverride, searchBrandOverride, returnToSearch, preserveSearchStateOnOpen, isScannerOpen, hasOpenedScanner, retry, refreshCatalogue, openSearch, openSearchForFilter, clearNewSpecialsFilter, closeSearch, pauseForDealNavigation, finishDealNavigation, resumeAfterDealBack, openScanner, closeScanner]
   );
 
   const catalogueValue = useMemo<SearchCatalogueContextValue>(
@@ -639,6 +655,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       newSpecialsShowTab,
       searchSortOverride,
       searchCategoryOverride,
+      searchBrandOverride,
       clearNewSpecialsFilter,
       pauseForDealNavigation,
       finishDealNavigation,
@@ -654,6 +671,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       pauseForDealNavigation,
       preserveSearchStateOnOpen,
       searchCategoryOverride,
+      searchBrandOverride,
       searchSortOverride,
     ],
   );
