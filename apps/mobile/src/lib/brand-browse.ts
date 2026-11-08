@@ -107,12 +107,12 @@ export function buildBrandSummaries(
 
     let hasSelectedDeal = false;
     let hasRealSaver = false;
-    const selectedSupermarketKeys: string[] = [];
+    let selectedSupermarketKeys: string[] | null = null;
     for (const deal of product.currentDeals) {
       if (deal.isOnSpecial === false || !matchesAnySelectedStore(deal.store, selectedStoreList)) continue;
       hasSelectedDeal = true;
       const supermarketKey = canonicalStoreKey(deal.store);
-      if (supermarketKey) selectedSupermarketKeys.push(supermarketKey);
+      if (supermarketKey) (selectedSupermarketKeys ??= []).push(supermarketKey);
       if (matchesDealFilter(deal, "real")) hasRealSaver = true;
     }
     if (!hasSelectedDeal) continue;
@@ -131,7 +131,9 @@ export function buildBrandSummaries(
     }
 
     accumulator.productIds.add(product.id);
-    for (const supermarketKey of selectedSupermarketKeys) accumulator.supermarketKeys.add(supermarketKey);
+    if (selectedSupermarketKeys) {
+      for (const supermarketKey of selectedSupermarketKeys) accumulator.supermarketKeys.add(supermarketKey);
+    }
     if (hasRealSaver) accumulator.realSaverProductIds.add(product.id);
     if (!accumulator.representativeImage && hasUsableImage(product.image)) {
       accumulator.representativeImage = product.image;
