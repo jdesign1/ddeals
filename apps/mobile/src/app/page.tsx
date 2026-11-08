@@ -620,14 +620,20 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
-  const [dismissedWorthAnotherLookKeys, setDismissedWorthAnotherLookKeys] = useState<Set<string>>(() => new Set());
+  const [dismissedWorthAnotherLookOverride, setDismissedWorthAnotherLookOverride] = useState<{
+    scope: string | null;
+    keys: Set<string>;
+  }>({ scope: null, keys: new Set() });
   const [isWorthAnotherLookSheetOpen, setIsWorthAnotherLookSheetOpen] = useState(false);
   const [isBeltOrderSheetOpen, setIsBeltOrderSheetOpen] = useState(false);
   const [isCategoryInterestsSheetOpen, setIsCategoryInterestsSheetOpen] = useState(false);
   const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
   const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
   const categoryInterestsPromptedForRef = useRef<string | null>(null);
-  const [activeForYouCategory, setActiveForYouCategory] = useState<string | null>(null);
+  const [activeForYouCategoryOverride, setActiveForYouCategoryOverride] = useState<{
+    scope: string | null;
+    category: string | null;
+  }>({ scope: null, category: null });
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
@@ -646,6 +652,32 @@ export default function HomePage() {
   const forYouCategoryStorageKey = session?.user?.id && !isAnonymousSession
     ? `${FOR_YOU_CATEGORY_STORAGE_PREFIX}:${session.user.id}`
     : null;
+  const storedDismissedWorthAnotherLookKeys = useMemo(() => {
+    if (typeof window === "undefined" || !worthAnotherLookStorageKey) return new Set<string>();
+
+    try {
+      const stored = window.localStorage.getItem(worthAnotherLookStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : []);
+    } catch {
+      return new Set<string>();
+    }
+  }, [worthAnotherLookStorageKey]);
+  const dismissedWorthAnotherLookKeys = dismissedWorthAnotherLookOverride.scope === worthAnotherLookStorageKey
+    ? dismissedWorthAnotherLookOverride.keys
+    : storedDismissedWorthAnotherLookKeys;
+  const storedForYouCategory = useMemo(() => {
+    if (typeof window === "undefined" || !forYouCategoryStorageKey) return null;
+
+    try {
+      return window.localStorage.getItem(forYouCategoryStorageKey) || null;
+    } catch {
+      return null;
+    }
+  }, [forYouCategoryStorageKey]);
+  const activeForYouCategory = activeForYouCategoryOverride.scope === forYouCategoryStorageKey
+    ? activeForYouCategoryOverride.category
+    : storedForYouCategory;
   const beltOrderScope = getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const didYouKnowStorageScope = getDidYouKnowScope(beltOrderScope, selectedStores);
   const [checkDealsBeltOrder, setCheckDealsBeltOrder] = useState<CheckDealsBeltId[]>(() => [...DEFAULT_CHECK_DEALS_BELT_ORDER]);
@@ -683,33 +715,6 @@ export default function HomePage() {
     setCategoryInterestsError(null);
     setIsCategoryInterestsSheetOpen(true);
   }, [isAnonymousSession, profile?.category_interests_prompted_at, profile?.id, profile?.onboarding_complete, user]);
-
-  useEffect(() => {
-    if (!worthAnotherLookStorageKey) {
-      setDismissedWorthAnotherLookKeys(new Set());
-      return;
-    }
-
-    try {
-      const stored = window.localStorage.getItem(worthAnotherLookStorageKey);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setDismissedWorthAnotherLookKeys(new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : []));
-    } catch {
-      setDismissedWorthAnotherLookKeys(new Set());
-    }
-  }, [worthAnotherLookStorageKey]);
-
-  useEffect(() => {
-    setActiveForYouCategory(null);
-    if (!forYouCategoryStorageKey) return;
-
-    try {
-      const stored = window.localStorage.getItem(forYouCategoryStorageKey);
-      if (stored) setActiveForYouCategory(stored);
-    } catch {
-      // The first preferred category remains the safe fallback when storage is unavailable.
-    }
-  }, [forYouCategoryStorageKey]);
 
   useEffect(() => {
     // The history rail is hidden behind the global search overlay. Defer its
@@ -848,20 +853,18 @@ export default function HomePage() {
   );
   const dismissWorthAnotherLook = useCallback(() => {
     const keysToDismiss = visiblePreviouslyCheckedDeals.map(getPreviouslyCheckedDealKey);
-    setDismissedWorthAnotherLookKeys((current) => {
-      const next = new Set(current);
-      keysToDismiss.forEach((key) => next.add(key));
-      if (worthAnotherLookStorageKey) {
-        try {
-          window.localStorage.setItem(worthAnotherLookStorageKey, JSON.stringify([...next]));
-        } catch {
-          // The in-memory dismissal still keeps the belt hidden for this session.
-        }
+    const next = new Set(dismissedWorthAnotherLookKeys);
+    keysToDismiss.forEach((key) => next.add(key));
+    setDismissedWorthAnotherLookOverride({ scope: worthAnotherLookStorageKey, keys: next });
+    if (worthAnotherLookStorageKey) {
+      try {
+        window.localStorage.setItem(worthAnotherLookStorageKey, JSON.stringify([...next]));
+      } catch {
+        // The in-memory dismissal still keeps the belt hidden for this session.
       }
-      return next;
-    });
+    }
     setIsWorthAnotherLookSheetOpen(false);
-  }, [visiblePreviouslyCheckedDeals, worthAnotherLookStorageKey]);
+  }, [dismissedWorthAnotherLookKeys, visiblePreviouslyCheckedDeals, worthAnotherLookStorageKey]);
   const handleOpenWorthAnotherLookSheet = useCallback(() => {
     setIsWorthAnotherLookSheetOpen(true);
   }, []);
@@ -974,7 +977,7 @@ export default function HomePage() {
 
   const handleForYouCategorySelect = useCallback((category: string) => {
     if (!preferredCategories.includes(category)) return;
-    setActiveForYouCategory(category);
+    setActiveForYouCategoryOverride({ scope: forYouCategoryStorageKey, category });
     if (!forYouCategoryStorageKey) return;
 
     try {
