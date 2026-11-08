@@ -160,6 +160,15 @@ interface PopularEntry {
   bestDeal: CurrentDeal;
 }
 
+interface SearchResultEntry {
+  product: ProductCardData;
+  matchingDeals: CurrentDeal[];
+  bestDeal: CurrentDeal;
+  relevance: number;
+  latestStart: number;
+  hasNewSpecial: boolean;
+}
+
 type PopularSortBy = CheckDealsSortBy;
 type ResultsSortBy = CheckDealsSortBy;
 
@@ -536,6 +545,7 @@ export default function FullScreenSearch() {
   // large, while the result heading/list/empty state all move together on the
   // same deferred query snapshot.
   const deferredTrimmedQuery = useDeferredValue(trimmedQuery);
+  const [searchNow] = useState(() => Date.now());
 
   // The old dedicated "reset show-all expansion" effect that used to live
   // here (keyed on this exact same dep list: trimmedQuery, selectedStores,
@@ -692,18 +702,10 @@ export default function FullScreenSearch() {
   // 3+ character results -- tokenized AND search across brand/name/category,
   // followed by store/deal filters and relevance sorting. The matcher lives
   // in shared code so browser and mobile surfaces cannot drift apart.
-  const sortedProducts = useMemo<ProductCardData[]>(() => {
+  const sortedSearchEntries = useMemo<SearchResultEntry[]>(() => {
     if (!shouldRenderOverlay || deferredTrimmedQuery.length < 3) return [];
     const resultCategorySet = new Set(resultsCategoryFilter);
-    const now = Date.now();
-    const matched: Array<{
-      product: ProductCardData;
-      relevance: number;
-      bestDeal: CurrentDeal;
-      bestPrice: number;
-      latestStart: number;
-      hasNewSpecial: boolean;
-    }> = [];
+    const matched: Array<SearchResultEntry & { bestPrice: number }> = [];
 
     for (const product of products) {
       if (!productMatchesSearch(product, deferredTrimmedQuery)) continue;
@@ -720,39 +722,44 @@ export default function FullScreenSearch() {
         const start = new Date(deal.saleStartedAt || 0).getTime();
         if (Number.isNaN(start)) latestStart = Number.NaN;
         else if (!Number.isNaN(latestStart) && start > latestStart) latestStart = start;
-        if (isNewSpecial(deal, now)) hasNewSpecial = true;
+        if (isNewSpecial(deal, searchNow)) hasNewSpecial = true;
       }
       matched.push({
         product,
-        relevance: getProductSearchRelevance(product, deferredTrimmedQuery),
+        matchingDeals,
         bestDeal,
+        relevance: getProductSearchRelevance(product, deferredTrimmedQuery),
         bestPrice: bestDeal.price,
         latestStart,
         hasNewSpecial,
       });
     }
 
-    return matched
-      .sort((a, b) => {
-        if (resultsSortBy === "price-asc") {
-          const priceDifference = a.bestPrice - b.bestPrice;
-          if (priceDifference !== 0) return priceDifference;
-        }
-        if (resultsSortBy === "biggest-saver" || resultsSortBy === "worst-dodgy") {
-          const sortDifference = (
-            getDealSortScore(b.bestDeal, resultsSortBy) ?? Number.NEGATIVE_INFINITY
-          ) - (
-            getDealSortScore(a.bestDeal, resultsSortBy) ?? Number.NEGATIVE_INFINITY
-          );
-          if (sortDifference !== 0) return sortDifference;
-        }
-        if (b.relevance !== a.relevance) return b.relevance - a.relevance;
-        const newFirst = Number(b.hasNewSpecial) - Number(a.hasNewSpecial);
-        if (newFirst !== 0) return newFirst;
-        return b.latestStart - a.latestStart;
-      })
-      .map((x) => x.product);
-  }, [products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet, shouldRenderOverlay]);
+    matched.sort((a, b) => {
+      if (resultsSortBy === "price-asc") {
+        const priceDifference = a.bestPrice - b.bestPrice;
+        if (priceDifference !== 0) return priceDifference;
+      }
+      if (resultsSortBy === "biggest-saver" || resultsSortBy === "worst-dodgy") {
+        const sortDifference = (
+          getDealSortScore(b.bestDeal, resultsSortBy) ?? Number.NEGATIVE_INFINITY
+        ) - (
+          getDealSortScore(a.bestDeal, resultsSortBy) ?? Number.NEGATIVE_INFINITY
+        );
+        if (sortDifference !== 0) return sortDifference;
+      }
+      if (b.relevance !== a.relevance) return b.relevance - a.relevance;
+      const newFirst = Number(b.hasNewSpecial) - Number(a.hasNewSpecial);
+      if (newFirst !== 0) return newFirst;
+      return b.latestStart - a.latestStart;
+    });
+    return matched;
+  }, [products, deferredTrimmedQuery, selectedStores, resultsSortBy, dealFilter, resultsCategoryFilter, newSpecialDealKeySet, searchNow, shouldRenderOverlay]);
+
+  const sortedProducts = useMemo(
+    () => sortedSearchEntries.map(({ product }) => product),
+    [sortedSearchEntries],
+  );
 
   // Infinite-scroll reveal replaced the old "Show all N items" button,
   // 2026-08-21 -- see useInfiniteReveal.ts's own doc comment. `resetKey:
@@ -781,9 +788,12 @@ export default function FullScreenSearch() {
     resetKey: sortedProducts,
     persistenceKey: searchResultsRevealPersistenceKey,
   });
-  const visibleSearchResults = useMemo(
-    () => sortedProducts.slice(0, visibleSearchResultsCount),
-    [sortedProducts, visibleSearchResultsCount],
+  // The ranking pass already selected each result's matching deals and best
+  // offer. Slice those entries directly so reveal/scroll updates do not scan
+  // each product's currentDeals again.
+  const visibleSearchEntries = useMemo(
+    () => sortedSearchEntries.slice(0, visibleSearchResultsCount),
+    [sortedSearchEntries, visibleSearchResultsCount],
   );
   const visiblePopularCards = useMemo(
     () => visiblePopularSpecials.map(({ product, bestDeal }) => ({
@@ -795,20 +805,14 @@ export default function FullScreenSearch() {
     [newSpecialDealKeySet, pauseForDealNavigation, visiblePopularSpecials],
   );
   const visibleSearchCards = useMemo(
-    () => visibleSearchResults.map((product) => {
-      const matchingDeals = applicableDigestDeals(product, selectedStores, dealFilter, newSpecialDealKeySet);
-      const bestDeal = newSpecialDealKeySet
-        ? representativeDeal(matchingDeals, resultsSortBy)
-        : cheapestDeal(matchingDeals);
-      return {
-        product,
-        bestDeal,
-        matchingDeals,
-        relatedStores: alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet),
-        onNavigate: () => pauseForDealNavigation(product.id, bestDeal.store),
-      };
-    }),
-    [dealFilter, newSpecialDealKeySet, pauseForDealNavigation, resultsSortBy, selectedStores, visibleSearchResults],
+    () => visibleSearchEntries.map(({ product, matchingDeals, bestDeal }) => ({
+      product,
+      bestDeal,
+      matchingDeals,
+      relatedStores: alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet),
+      onNavigate: () => pauseForDealNavigation(product.id, bestDeal.store),
+    })),
+    [dealFilter, newSpecialDealKeySet, pauseForDealNavigation, selectedStores, visibleSearchEntries],
   );
   const displayedNewDealKeys = useMemo(() => {
     if (!shouldRenderOverlay || !newSpecialDealKeySet) return [];
@@ -825,7 +829,7 @@ export default function FullScreenSearch() {
       }
     }
     return [...keys];
-  }, [dealFilter, newSpecialDealKeySet, selectedStores, deferredTrimmedQuery, visiblePopularSpecials, visibleSearchCards, shouldRenderOverlay]);
+  }, [deferredTrimmedQuery, newSpecialDealKeySet, shouldRenderOverlay, visiblePopularSpecials, visibleSearchCards]);
 
   // Do not clear the unread cue when navigation starts. Keep it until the
   // exact-key search has actually produced a result, so a failed load or a
