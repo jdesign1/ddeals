@@ -241,6 +241,10 @@ export default function ListsPage() {
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
   const [isWatchlistUpgradePromptOpen, setIsWatchlistUpgradePromptOpen] = useState(false);
   const [prioritizeUpdates, setPrioritizeUpdates] = useState(false);
+  const [prioritizedUpdateState, setPrioritizedUpdateState] = useState<{
+    userId: string | null;
+    productIds: Set<string>;
+  }>({ userId: null, productIds: new Set() });
   const watchlistVisitRecordedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -394,7 +398,19 @@ export default function ListsPage() {
     [itemCards, lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
   );
   const newUpdateItemCount = updateProductIds.size;
-  const shouldPrioritizeUpdates = prioritizeUpdates || newUpdateItemCount > 0;
+  const prioritizedProductIds = useMemo(() => {
+    if (!prioritizeUpdates) return undefined;
+    const currentWatchlistProductIds = new Set(watchlistItems.map((item) => item.productId));
+    const next = new Set<string>();
+    const rememberedProductIds = prioritizedUpdateState.userId === (userId ?? null)
+      ? prioritizedUpdateState.productIds
+      : [];
+    for (const productId of rememberedProductIds) {
+      if (currentWatchlistProductIds.has(productId)) next.add(productId);
+    }
+    for (const productId of updateProductIds) next.add(productId);
+    return next;
+  }, [prioritizeUpdates, prioritizedUpdateState, updateProductIds, userId, watchlistItems]);
 
   const filterSupermarkets = selectedSupermarkets;
 
@@ -443,9 +459,9 @@ export default function ListsPage() {
       itemCards,
       filterSupermarkets,
       undefined,
-      shouldPrioritizeUpdates ? updateProductIds : undefined,
+      prioritizedProductIds,
     ),
-    [filterSupermarkets, itemCards, productMeta, selectedCategories, selectedSupermarkets, shouldPrioritizeUpdates, updateProductIds, watchlistItems],
+    [filterSupermarkets, itemCards, prioritizedProductIds, productMeta, selectedCategories, selectedSupermarkets, watchlistItems],
   );
 
   const allDealTypeFilteredItems = useMemo(
@@ -550,6 +566,15 @@ export default function ListsPage() {
     openSubscriptionPage();
   }, [openSubscriptionPage]);
 
+  const handleUpdatesClick = useCallback(() => {
+    setPrioritizedUpdateState((current) => {
+      const next = new Set(current.userId === (userId ?? null) ? current.productIds : []);
+      for (const productId of updateProductIds) next.add(productId);
+      return { userId: userId ?? null, productIds: next };
+    });
+    setPrioritizeUpdates(true);
+  }, [updateProductIds, userId]);
+
   const activeItems = useMemo(
     () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, selectedDealType)?.isOnSpecial === true),
     [dealTypeFilteredItems, filterSupermarkets, itemCards, selectedDealType],
@@ -617,7 +642,7 @@ export default function ListsPage() {
             dealTypeCounts={dealTypeCounts}
             selectedDealType={selectedDealType}
             onDealTypeChange={setSelectedDealType}
-            onUpdatesClick={() => setPrioritizeUpdates(true)}
+            onUpdatesClick={handleUpdatesClick}
           />
         )}
       </div>

@@ -8,6 +8,7 @@ import { getWatchlistUpdateCopy } from "@/lib/watchlist-update-copy";
 
 const POPOVER_WIDTH = 288;
 const VIEWPORT_MARGIN = 16;
+const POPOVER_GAP = 4;
 
 function popoverPosition(trigger: DOMRect): CSSProperties {
   const width = Math.min(POPOVER_WIDTH, Math.max(0, window.innerWidth - VIEWPORT_MARGIN * 2));
@@ -24,8 +25,8 @@ function popoverPosition(trigger: DOMRect): CSSProperties {
   );
 
   return placeBelow
-    ? { top: trigger.bottom + 8, left, width, maxHeight: availableHeight }
-    : { bottom: window.innerHeight - trigger.top + 8, left, width, maxHeight: availableHeight };
+    ? { top: trigger.bottom + POPOVER_GAP, left, width, maxHeight: availableHeight }
+    : { bottom: window.innerHeight - trigger.top + POPOVER_GAP, left, width, maxHeight: availableHeight };
 }
 
 export default function UnreadListItem({
