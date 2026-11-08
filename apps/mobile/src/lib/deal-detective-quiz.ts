@@ -370,13 +370,27 @@ type DealDetectivePair = {
   dodgy: Omit<DealDetectiveQuizCandidate, "side">;
 };
 
+type DealDetectiveCandidate = Omit<DealDetectiveQuizCandidate, "side">;
+
+function indexCandidatesByCategory(
+  candidates: readonly DealDetectiveCandidate[],
+): Map<string, DealDetectiveCandidate[]> {
+  const indexed = new Map<string, DealDetectiveCandidate[]>();
+  for (const candidate of candidates) {
+    const categoryCandidates = indexed.get(candidate.category) ?? [];
+    categoryCandidates.push(candidate);
+    indexed.set(candidate.category, categoryCandidates);
+  }
+  return indexed;
+}
+
 function findPairsInCategory(
-  realCandidates: readonly Omit<DealDetectiveQuizCandidate, "side">[],
-  dodgyCandidates: readonly Omit<DealDetectiveQuizCandidate, "side">[],
+  realCandidatesByCategory: ReadonlyMap<string, readonly DealDetectiveCandidate[]>,
+  dodgyCandidatesByCategory: ReadonlyMap<string, readonly DealDetectiveCandidate[]>,
   category: string,
 ): DealDetectivePair[] {
-  const realCandidatesInCategory = realCandidates.filter((candidate) => candidate.category === category);
-  const dodgyCandidatesInCategory = dodgyCandidates.filter((candidate) => candidate.category === category);
+  const realCandidatesInCategory = realCandidatesByCategory.get(category) ?? [];
+  const dodgyCandidatesInCategory = dodgyCandidatesByCategory.get(category) ?? [];
   const pairs: DealDetectivePair[] = [];
   for (const real of realCandidatesInCategory) {
     for (const dodgy of dodgyCandidatesInCategory) {
@@ -392,10 +406,12 @@ function allDealDetectivePairs(
   preferredCategories: readonly string[],
 ): DealDetectivePair[] {
   const categories = preferredCategories.filter((category, index, values) => values.indexOf(category) === index);
+  const realCandidatesByCategory = indexCandidatesByCategory(realCandidates);
+  const dodgyCandidatesByCategory = indexCandidatesByCategory(dodgyCandidates);
   const pairs: DealDetectivePair[] = [];
   const seen = new Set<string>();
   for (const category of categories) {
-    for (const pair of findPairsInCategory(realCandidates, dodgyCandidates, category)) {
+    for (const pair of findPairsInCategory(realCandidatesByCategory, dodgyCandidatesByCategory, category)) {
       const pairKey = `${pair.real.dealKey}|${pair.dodgy.dealKey}`;
       if (seen.has(pairKey)) continue;
       seen.add(pairKey);
