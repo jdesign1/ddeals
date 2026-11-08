@@ -10,6 +10,8 @@ import {
   STORE_DISPLAY_FALLBACK,
   matchesAnySelectedStore,
   deriveAvailableStoreKeys,
+  normalizeStoreKey,
+  STORE_PILL_ORDER,
   groupCategory,
   CATEGORY_SECTIONS,
   productMatchesSearch,
@@ -180,6 +182,7 @@ type ResultsSortBy = CheckDealsSortBy;
 const POPULAR_PAGE_SIZE_SPECIALS = 6;
 const POPULAR_PAGE_SIZE_DODGY = 24;
 const SEARCH_RESULTS_PAGE_SIZE = 30;
+const EMPTY_AVAILABLE_STORE_KEYS: string[] = [];
 const EMPTY_SEARCH_CATEGORIES: string[] = [];
 const EMPTY_CATEGORY_DEAL_COUNTS = new Map<string, number>();
 const EMPTY_POPULAR_ENTRIES: PopularEntry[] = [];
@@ -566,26 +569,23 @@ export default function FullScreenSearch() {
   // changes. Avoid doing catalogue-wide derivation while it is hidden; the
   // first visible render will recompute these values from the current shared
   // catalogue without competing with Check Deals or background refreshes.
-  const availableStoreKeys = useMemo(
-    () => (shouldRenderOverlay ? deriveAvailableStoreKeys(products) : []),
-    [products, shouldRenderOverlay],
-  );
-  const availableStores = useMemo(
-    () => availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key })),
-    [availableStoreKeys],
-  );
-  // Build the category sheet's labels and enabled counts in one catalogue
-  // pass. Both values use the same shopper-category normalization, so doing
-  // this together avoids repeating the full product walk whenever the live
-  // catalogue refreshes or a store/deal filter changes.
+  // When the category sheet is open, build its category data and the
+  // available supermarket pills from one catalogue pass. Keep the lighter
+  // shared store-only path while the sheet is closed.
   const categoryDealFilter = dealFilter;
   const searchFilterData = useMemo(() => {
     if (!shouldRenderOverlay || categorySheetTarget === null) {
-      return { homeCategories: EMPTY_SEARCH_CATEGORIES, categoryDealCounts: EMPTY_CATEGORY_DEAL_COUNTS };
+      return {
+        availableStoreKeys: EMPTY_AVAILABLE_STORE_KEYS,
+        homeCategories: EMPTY_SEARCH_CATEGORIES,
+        categoryDealCounts: EMPTY_CATEGORY_DEAL_COUNTS,
+      };
     }
+    const presentStores = new Set<string>();
     const categories = new Set<string>();
     const categoryDealCounts = new Map<string, number>();
     for (const product of products) {
+      for (const deal of product.currentDeals) presentStores.add(normalizeStoreKey(deal.store));
       const cat = groupCategory(product.category, product.name);
       if (!cat) continue;
       categories.add(cat);
@@ -594,8 +594,24 @@ export default function FullScreenSearch() {
       );
       if (hasMatchingDeal) categoryDealCounts.set(cat, (categoryDealCounts.get(cat) ?? 0) + 1);
     }
-    return { homeCategories: [...categories].sort(), categoryDealCounts };
+    return {
+      availableStoreKeys: STORE_PILL_ORDER.filter((key) => [...presentStores].some((store) => store.includes(key))),
+      homeCategories: [...categories].sort(),
+      categoryDealCounts,
+    };
   }, [products, selectedStores, categoryDealFilter, shouldRenderOverlay, categorySheetTarget]);
+  const availableStoreKeys = useMemo(
+    () => {
+      if (!shouldRenderOverlay) return EMPTY_AVAILABLE_STORE_KEYS;
+      if (categorySheetTarget !== null) return searchFilterData.availableStoreKeys;
+      return deriveAvailableStoreKeys(products);
+    },
+    [categorySheetTarget, products, searchFilterData.availableStoreKeys, shouldRenderOverlay],
+  );
+  const availableStores = useMemo(
+    () => availableStoreKeys.map((key) => ({ id: key, label: STORE_DISPLAY_FALLBACK[key] || key })),
+    [availableStoreKeys],
+  );
   const { homeCategories, categoryDealCounts } = searchFilterData;
 
   const handleStoreToggle = useCallback((storeId: string) => {
