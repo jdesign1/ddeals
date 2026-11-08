@@ -34,6 +34,7 @@ import {
 import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildHomePrimarySummary,
+  buildHomeDealBrowseSummary,
   buildForYouCategoryDealsByCategory,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
@@ -42,7 +43,7 @@ import {
   type CurrentSpecialSummary,
   type CheckDealsSummaryStore,
 } from "@/lib/check-deals-home";
-import { matchesDealFilter, type DealFilter } from "@/lib/deal-filters";
+import type { DealFilter } from "@/lib/deal-filters";
 import ProductListCard from "@/components/ProductListCard";
 import CategoryPicker from "@/components/CategoryPicker";
 import DealSnapshotRail from "@/components/DealSnapshotRail";
@@ -754,11 +755,29 @@ export default function HomePage() {
   // Keep the store pills and the live supermarket summary on the same
   // immediate catalogue traversal. The combined helper preserves the
   // shared store-order/substr-match semantics used by the other surfaces.
+  // Real/Dodgy views need both the global summary and their filtered deal
+  // metadata. Build those together so the large catalogue is traversed once;
+  // the default All-deals path keeps its lighter summary-only dependencies.
+  const combinedBrowseSummary = useMemo(
+    () => isSearchActive || dealFilter === "all"
+      ? null
+      : buildHomeDealBrowseSummary(products, selectedStores, dealFilter),
+    [dealFilter, isSearchActive, products, selectedStores],
+  );
   const homePrimarySummary = useMemo(
-    () => isSearchActive
-      ? { currentSpecialSummary: EMPTY_CURRENT_SPECIAL_SUMMARY, availableStoreKeys: EMPTY_AVAILABLE_STORE_KEYS }
-      : buildHomePrimarySummary(products),
-    [isSearchActive, products],
+    () => {
+      if (isSearchActive) {
+        return { currentSpecialSummary: EMPTY_CURRENT_SPECIAL_SUMMARY, availableStoreKeys: EMPTY_AVAILABLE_STORE_KEYS };
+      }
+      if (combinedBrowseSummary) {
+        return {
+          currentSpecialSummary: combinedBrowseSummary.currentSpecialSummary,
+          availableStoreKeys: combinedBrowseSummary.availableStoreKeys,
+        };
+      }
+      return buildHomePrimarySummary(products);
+    },
+    [combinedBrowseSummary, isSearchActive, products],
   );
   const availableStoreKeys = homePrimarySummary.availableStoreKeys;
 
@@ -773,31 +792,14 @@ export default function HomePage() {
     // The same view is covered by the full-screen search overlay while it is
     // open; keep that hidden Home work paused even when Search has selected a
     // Real/Dodgy filter of its own.
-    if (isSearchActive || dealFilter === "all") return EMPTY_DEAL_CATALOGUE_SUMMARY;
-
-    const all: FlatDeal[] = [];
-    const counts = new Map<string, number>();
-    const categories = new Set<string>();
-    for (const product of products) {
-      let best: CurrentDeal | undefined;
-      for (const deal of product.currentDeals) {
-        if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, dealFilter)) continue;
-        if (!best || deal.price < best.price) best = deal;
-      }
-      if (!best) continue;
-      all.push({ product, deal: best });
-
-      const category = groupCategory(product.category, product.name);
-      counts.set(category, (counts.get(category) ?? 0) + 1);
-      categories.add(category);
-    }
+    if (isSearchActive || dealFilter === "all" || !combinedBrowseSummary) return EMPTY_DEAL_CATALOGUE_SUMMARY;
 
     return {
-      deals: all,
-      categoryCounts: counts,
-      availableCategories: [...categories],
+      deals: combinedBrowseSummary.deals,
+      categoryCounts: combinedBrowseSummary.categoryCounts,
+      availableCategories: combinedBrowseSummary.availableCategories,
     };
-  }, [products, selectedStores, dealFilter, isSearchActive]);
+  }, [combinedBrowseSummary, dealFilter, isSearchActive]);
   const dealsAllCategories = dealCatalogueSummary.deals;
   const categoryCounts = dealCatalogueSummary.categoryCounts;
   const availableCategories = dealCatalogueSummary.availableCategories;

@@ -10,6 +10,7 @@ import {
 } from "@dodgey-deals/shared";
 import type { DealCheckRow } from "@dodgey-deals/shared";
 import { getNewSpecialDealKey } from "./new-specials.ts";
+import { matchesDealFilter, type DealFilter } from "./deal-filters.ts";
 
 export const CHECK_DEALS_SUMMARY_STORES = ["newworld", "paknsave", "woolworths"] as const;
 
@@ -201,51 +202,82 @@ export interface HomePrimarySummary {
   availableStoreKeys: string[];
 }
 
+export interface HomeDealBrowseSummary extends HomePrimarySummary {
+  deals: Array<{ product: ProductCard; deal: CurrentDeal }>;
+  categoryCounts: Map<string, number>;
+  availableCategories: string[];
+}
+
+interface HomeSummaryAccumulator {
+  productIdsByStore: Map<CheckDealsSummaryStore, Set<string>>;
+  presentStores: Set<string> | null;
+  latestTimestamp: number;
+  latestPublishedAt: string | null;
+}
+
+function createHomeSummaryAccumulator(includeAvailableStoreKeys: boolean): HomeSummaryAccumulator {
+  return {
+    productIdsByStore: new Map<CheckDealsSummaryStore, Set<string>>(
+      CHECK_DEALS_SUMMARY_STORES.map((store) => [store, new Set<string>()]),
+    ),
+    presentStores: includeAvailableStoreKeys ? new Set<string>() : null,
+    latestTimestamp: Number.NEGATIVE_INFINITY,
+    latestPublishedAt: null,
+  };
+}
+
+function addHomeSummaryDeal(
+  accumulator: HomeSummaryAccumulator,
+  product: ProductCard,
+  deal: CurrentDeal,
+): void {
+  const normalizedStore = normalizeStoreKey(deal.store);
+  accumulator.presentStores?.add(normalizedStore);
+
+  if (deal.isOnSpecial) {
+    const store = storeKeyForSummary(deal.store);
+    if (store) accumulator.productIdsByStore.get(store)?.add(product.id);
+  }
+
+  const scrapedTimestamp = Date.parse(deal.scrapedAt ?? "");
+  if (Number.isFinite(scrapedTimestamp) && scrapedTimestamp > accumulator.latestTimestamp) {
+    accumulator.latestTimestamp = scrapedTimestamp;
+    accumulator.latestPublishedAt = new Date(scrapedTimestamp).toISOString();
+  }
+  const verifiedTimestamp = Date.parse(deal.specialsVerifiedAt ?? "");
+  if (Number.isFinite(verifiedTimestamp) && verifiedTimestamp > accumulator.latestTimestamp) {
+    accumulator.latestTimestamp = verifiedTimestamp;
+    accumulator.latestPublishedAt = new Date(verifiedTimestamp).toISOString();
+  }
+}
+
+function finalizeHomePrimarySummary(accumulator: HomeSummaryAccumulator): HomePrimarySummary {
+  return {
+    currentSpecialSummary: {
+      counts: Object.fromEntries(
+        CHECK_DEALS_SUMMARY_STORES.map((store) => [store, accumulator.productIdsByStore.get(store)?.size ?? 0]),
+      ) as Record<CheckDealsSummaryStore, number>,
+      latestPublishedAt: accumulator.latestPublishedAt,
+    },
+    availableStoreKeys: accumulator.presentStores
+      ? STORE_PILL_ORDER.filter((key) => [...accumulator.presentStores!].some((store) => store.includes(key)))
+      : [],
+  };
+}
+
 function buildSummaryParts(
   products: readonly ProductCard[],
   includeAvailableStoreKeys: boolean,
 ): HomePrimarySummary {
-  const productIdsByStore = new Map<CheckDealsSummaryStore, Set<string>>(
-    CHECK_DEALS_SUMMARY_STORES.map((store) => [store, new Set<string>()]),
-  );
-  const presentStores = includeAvailableStoreKeys ? new Set<string>() : null;
-  let latestTimestamp = Number.NEGATIVE_INFINITY;
-  let latestPublishedAt: string | null = null;
+  const accumulator = createHomeSummaryAccumulator(includeAvailableStoreKeys);
 
   for (const product of products) {
     for (const deal of product.currentDeals) {
-      const normalizedStore = normalizeStoreKey(deal.store);
-      presentStores?.add(normalizedStore);
-
-      if (deal.isOnSpecial) {
-        const store = storeKeyForSummary(deal.store);
-        if (store) productIdsByStore.get(store)?.add(product.id);
-      }
-
-      const scrapedTimestamp = Date.parse(deal.scrapedAt ?? "");
-      if (Number.isFinite(scrapedTimestamp) && scrapedTimestamp > latestTimestamp) {
-        latestTimestamp = scrapedTimestamp;
-        latestPublishedAt = new Date(scrapedTimestamp).toISOString();
-      }
-      const verifiedTimestamp = Date.parse(deal.specialsVerifiedAt ?? "");
-      if (Number.isFinite(verifiedTimestamp) && verifiedTimestamp > latestTimestamp) {
-        latestTimestamp = verifiedTimestamp;
-        latestPublishedAt = new Date(verifiedTimestamp).toISOString();
-      }
+      addHomeSummaryDeal(accumulator, product, deal);
     }
   }
 
-  return {
-    currentSpecialSummary: {
-      counts: Object.fromEntries(
-        CHECK_DEALS_SUMMARY_STORES.map((store) => [store, productIdsByStore.get(store)?.size ?? 0]),
-      ) as Record<CheckDealsSummaryStore, number>,
-      latestPublishedAt,
-    },
-    availableStoreKeys: presentStores
-      ? STORE_PILL_ORDER.filter((key) => [...presentStores].some((store) => store.includes(key)))
-      : [],
-  };
+  return finalizeHomePrimarySummary(accumulator);
 }
 
 /**
@@ -262,6 +294,46 @@ export function buildHomePrimarySummary(
   products: readonly ProductCard[],
 ): HomePrimarySummary {
   return buildSummaryParts(products, true);
+}
+
+/**
+ * Build the primary Home summary and the filtered Real Saver/Dodgy result
+ * metadata in one catalogue traversal. The filtered view needs both values on
+ * the same render, so keeping them together avoids a second walk over every
+ * product and deal while preserving the summary's all-store semantics.
+ */
+export function buildHomeDealBrowseSummary(
+  products: readonly ProductCard[],
+  selectedStores: readonly string[],
+  dealFilter: Exclude<DealFilter, "all">,
+): HomeDealBrowseSummary {
+  const accumulator = createHomeSummaryAccumulator(true);
+  const storeFilters = [...selectedStores];
+  const deals: Array<{ product: ProductCard; deal: CurrentDeal }> = [];
+  const categoryCounts = new Map<string, number>();
+  const availableCategories: string[] = [];
+
+  for (const product of products) {
+    let best: CurrentDeal | undefined;
+    for (const deal of product.currentDeals) {
+      addHomeSummaryDeal(accumulator, product, deal);
+      if (!matchesAnySelectedStore(deal.store, storeFilters) || !matchesDealFilter(deal, dealFilter)) continue;
+      if (!best || deal.price < best.price) best = deal;
+    }
+    if (!best) continue;
+
+    deals.push({ product, deal: best });
+    const category = groupCategory(product.category, product.name);
+    if (!categoryCounts.has(category)) availableCategories.push(category);
+    categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+  }
+
+  return {
+    ...finalizeHomePrimarySummary(accumulator),
+    deals,
+    categoryCounts,
+    availableCategories,
+  };
 }
 
 /**

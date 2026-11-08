@@ -7,6 +7,7 @@ import {
   buildForYouCategoryDealsByCategory,
   buildCurrentSpecialCounts,
   buildCurrentSpecialSummary,
+  buildHomeDealBrowseSummary,
   buildHomePrimarySummary,
   buildNewSinceLastVisitDeals,
   buildPreviouslyCheckedChangedDeals,
@@ -93,6 +94,23 @@ test("home primary summary keeps store-pill availability independent from active
     },
     availableStoreKeys: ["newworld", "woolworths", "chemistwarehouse"],
   });
+});
+
+test("combined Home browse summary keeps global counts and filtered deals together", () => {
+  const products = [
+    product("real", "Real item", [deal({ price: 7, originalPrice: 10 })], "Pantry"),
+    product("fair", "Fair item", [deal({ dealType: "Fair Price", price: 8, originalPrice: 10 })], "Drinks"),
+    product("dodgy", "Dodgy item", [deal({ store: "Woolworths NZ", dealType: "Dodgy Deal", price: 12, originalPrice: 10 })], "Pantry"),
+    product("inactive", "Inactive item", [deal({ store: "PAK'nSAVE", isOnSpecial: false })], "Health & Body"),
+  ];
+
+  const result = buildHomeDealBrowseSummary(products, ["newworld"], "real");
+
+  assert.deepEqual(result.deals.map(({ product: item }) => item.id), ["real"]);
+  assert.deepEqual(result.availableCategories, ["Pantry"]);
+  assert.deepEqual([...result.categoryCounts.entries()], [["Pantry", 1]]);
+  assert.deepEqual(result.currentSpecialSummary.counts, { newworld: 2, paknsave: 0, woolworths: 1 });
+  assert.deepEqual(result.availableStoreKeys, ["newworld", "paknsave", "woolworths"]);
 });
 
 test("compact freshness text stays short and omits ago", () => {
