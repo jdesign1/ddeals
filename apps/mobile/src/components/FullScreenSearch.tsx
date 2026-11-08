@@ -585,13 +585,16 @@ export default function FullScreenSearch() {
     const categories = new Set<string>();
     const categoryDealCounts = new Map<string, number>();
     for (const product of products) {
-      for (const deal of product.currentDeals) presentStores.add(normalizeStoreKey(deal.store));
+      let hasMatchingDeal = false;
+      for (const deal of product.currentDeals) {
+        presentStores.add(normalizeStoreKey(deal.store));
+        if (!hasMatchingDeal && matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)) {
+          hasMatchingDeal = true;
+        }
+      }
       const cat = groupCategory(product.category, product.name);
       if (!cat) continue;
       categories.add(cat);
-      const hasMatchingDeal = product.currentDeals.some(
-        (deal) => matchesAnySelectedStore(deal.store, selectedStores) && matchesDealFilter(deal, categoryDealFilter)
-      );
       if (hasMatchingDeal) categoryDealCounts.set(cat, (categoryDealCounts.get(cat) ?? 0) + 1);
     }
     return {
