@@ -280,27 +280,14 @@ function representativeDeal(deals: CurrentDeal[], sortBy: CheckDealsSortBy): Cur
 /** Other applicable stores also on special right now, excluding `shownDeal`'s
  * own store -- ported from the results section's `alsoSpecialStores` calc. */
 function alsoSpecialStoresForResults(
-  product: ProductCardData,
+  matchingDeals: readonly CurrentDeal[],
   shownDeal: CurrentDeal,
-  selectedStores: string[],
-  filter: DealFilter = "all",
-  newDealKeys: Set<string> | null = null,
 ): string[] {
   const filteredStores = new Set<string>();
-  let hasFilteredDeal = false;
-  for (const deal of product.currentDeals) {
-    if (!matchesAnySelectedStore(deal.store, selectedStores) || !matchesDealFilter(deal, filter)) continue;
-    if (newDealKeys && !newDealKeys.has(getNewSpecialDealKey(product.id, deal.store))) continue;
-    hasFilteredDeal = true;
+  for (const deal of matchingDeals) {
     if (deal.isOnSpecial !== false && deal.store !== shownDeal.store) filteredStores.add(deal.store);
   }
-  if (hasFilteredDeal || newDealKeys) return [...filteredStores];
-
-  const fallbackStores = new Set<string>();
-  for (const deal of product.currentDeals) {
-    if (deal.isOnSpecial !== false && deal.store !== shownDeal.store) fallbackStores.add(deal.store);
-  }
-  return [...fallbackStores];
+  return [...filteredStores];
 }
 
 /** Same idea for the pre-3-character "Popular specials" list -- ported
@@ -882,10 +869,10 @@ export default function FullScreenSearch() {
       product,
       bestDeal,
       matchingDeals,
-      relatedStores: alsoSpecialStoresForResults(product, bestDeal, selectedStores, dealFilter, newSpecialDealKeySet),
+      relatedStores: alsoSpecialStoresForResults(matchingDeals, bestDeal),
       onNavigate: () => pauseForDealNavigation(product.id, bestDeal.store),
     })),
-    [dealFilter, newSpecialDealKeySet, pauseForDealNavigation, selectedStores, visibleSearchEntries],
+    [pauseForDealNavigation, visibleSearchEntries],
   );
   const displayedNewDealKeys = useMemo(() => {
     if (!shouldRenderOverlay || !newSpecialDealKeySet) return [];
