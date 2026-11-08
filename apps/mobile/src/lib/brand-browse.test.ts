@@ -5,6 +5,7 @@ import {
   brandMatchesProduct,
   buildBrandSummaries,
   findBrandSuggestion,
+  normalizeBrandDisplayName,
   normalizeBrandKey,
 } from "./brand-browse.ts";
 
@@ -52,6 +53,11 @@ test("normalizes punctuation and accents into one brand key", () => {
   assert.equal(normalizeBrandKey("PAM’S & Café"), "pams and cafe");
 });
 
+test("normalizes possessive brand display names", () => {
+  assert.equal(normalizeBrandDisplayName("Griffin'S"), "Griffins");
+  assert.equal(normalizeBrandDisplayName("Griffin’s"), "Griffins");
+});
+
 test("counts unique products and separates Real Saver counts", () => {
   const brands = buildBrandSummaries([
     product("anchor-1", "Anchor", ["New World", "Woolworths NZ"]),
@@ -66,7 +72,7 @@ test("counts unique products and separates Real Saver counts", () => {
     supermarketCount,
   })), [
     { name: "Anchor", currentSpecialCount: 2, realSaverCount: 1, supermarketCount: 2 },
-    { name: "PAM'S", currentSpecialCount: 1, realSaverCount: 0, supermarketCount: 1 },
+    { name: "PAMs", currentSpecialCount: 1, realSaverCount: 0, supermarketCount: 1 },
   ]);
 });
 
@@ -82,13 +88,13 @@ test("respects the selected supermarket and excludes unusable brands", () => {
   ]);
 });
 
-test("suggests a brand only when it is part of a longer query", () => {
+test("suggests a brand for exact and longer queries", () => {
   const brands = buildBrandSummaries([
     product("anchor-1", "Anchor", "New World"),
     product("anchor-2", "Anchor", "Woolworths"),
   ]);
 
+  assert.equal(findBrandSuggestion("Anchor", brands)?.key, "anchor");
   assert.equal(findBrandSuggestion("Anchor milk", brands)?.key, "anchor");
-  assert.equal(findBrandSuggestion("Anchor", brands), null);
   assert.equal(brandMatchesProduct(product("anchor-1", "ANCHOR", "New World"), "anchor"), true);
 });

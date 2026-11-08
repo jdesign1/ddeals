@@ -49,6 +49,18 @@ export function normalizeBrandKey(value: string | null | undefined): string {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Keeps apostrophe-s brand names readable after catalogue title-casing.
+ * For example, `Griffin'S` should be shown as `Griffins`, not with a
+ * capitalised possessive suffix.
+ */
+export function normalizeBrandDisplayName(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/['’]s\b/gi, "s");
+}
+
 function isUsableBrand(key: string): boolean {
   return !UNUSABLE_BRAND_KEYS.has(key);
 }
@@ -90,7 +102,7 @@ export function buildBrandSummaries(
     if (!accumulator) {
       accumulator = {
         key,
-        name: product.brand.trim(),
+        name: normalizeBrandDisplayName(product.brand),
         productIds: new Set<string>(),
         realSaverProductIds: new Set<string>(),
         supermarketKeys: new Set<string>(),
@@ -136,29 +148,57 @@ export function findBrandByKey(brands: readonly BrandSummary[], brandKey: string
 }
 
 /**
- * Finds a brand mentioned as a complete, contiguous token sequence in a
- * longer query such as `Anchor milk`. Exact brand-only queries intentionally
- * return null: the normal product results are already the clearest response,
- * while the tile is useful for escaping unrelated matches in a mixed query.
+ * Finds a brand named by a complete, contiguous token sequence in the query.
+ * This includes exact brand-only queries such as `Nivea`, so users can jump
+ * from the normal search results to every current product for that brand.
  */
 export function findBrandSuggestion(query: string, brands: readonly BrandSummary[]): BrandSummary | null {
   const queryTokens = normalizeBrandKey(query).split(" ").filter(Boolean);
-  if (queryTokens.length < 2) return null;
+  if (queryTokens.length === 0) return null;
 
-  const matches = brands.filter((brand) => {
-    const brandTokens = brand.key.split(" ").filter(Boolean);
-    if (brandTokens.length === 0 || brandTokens.length >= queryTokens.length) return false;
+  let bestMatch: BrandSummary | null = null;
+  let bestTokenCount = 0;
+  for (const brand of brands) {
+    const brandTokens = brand.key ? brand.key.split(" ") : [];
+    if (brandTokens.length === 0 || brandTokens.length > queryTokens.length) continue;
+
+    let isMatch = false;
     for (let start = 0; start <= queryTokens.length - brandTokens.length; start += 1) {
-      if (brandTokens.every((token, index) => queryTokens[start + index] === token)) return true;
+      if (brandTokens.every((token, index) => queryTokens[start + index] === token)) {
+        isMatch = true;
+        break;
+      }
     }
-    return false;
-  });
+    if (!isMatch) continue;
+    const brandTokenCount = brandTokens.length;
 
-  matches.sort((a, b) => (
-    b.key.split(" ").length - a.key.split(" ").length
-    || b.realSaverCount - a.realSaverCount
-    || b.currentSpecialCount - a.currentSpecialCount
-    || a.name.localeCompare(b.name)
-  ));
-  return matches[0] ?? null;
+    // An exact match cannot be outranked by a shorter brand match, so avoid
+    // scanning and comparing the rest of the summaries for common brand-only
+    // searches such as `Nivea`.
+    if (brandTokenCount === queryTokens.length) return brand;
+
+    if (!bestMatch) {
+      bestMatch = brand;
+      bestTokenCount = brandTokenCount;
+      continue;
+    }
+
+    if (
+      brandTokenCount > bestTokenCount
+      || brandTokenCount === bestTokenCount && (
+        brand.realSaverCount > bestMatch.realSaverCount
+        || brand.realSaverCount === bestMatch.realSaverCount
+          && (
+            brand.currentSpecialCount > bestMatch.currentSpecialCount
+            || brand.currentSpecialCount === bestMatch.currentSpecialCount
+              && brand.name.localeCompare(bestMatch.name) < 0
+          )
+      )
+    ) {
+      bestMatch = brand;
+      bestTokenCount = brandTokenCount;
+    }
+  }
+
+  return bestMatch;
 }
