@@ -47,10 +47,6 @@ export default function MePage() {
     [activeStatsTab, deferredProducts, savedProductIds, watchlistTopMode],
   );
   const watchlistStatsLocked = !subscriptionLoading && !isPremium;
-  const watchlistProductCount = useMemo(
-    () => (activeStatsTab === "watchlist" ? deferredProducts.filter((product) => savedProductIds.has(product.id)).length : 0),
-    [activeStatsTab, deferredProducts, savedProductIds],
-  );
   const marketWatchStats = useMemo(
     () => activeStatsTab === "market" && deferredStatsTab === "market" ? buildMarketWatchStats(deferredProducts) : null,
     [activeStatsTab, deferredStatsTab, deferredProducts],
@@ -87,7 +83,7 @@ export default function MePage() {
       {isAnonymousSession && <div className="mx-5 flex flex-col gap-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3"><p className="dd-type-meta dd-type-meta-strong text-amber-700">Test mode</p><p className="dd-type-secondary text-amber-700">You&rsquo;re using a test account. These stats are real, but you can&rsquo;t sign in to this account on another device.</p></div>}
       {activeStatsTab === "watchlist" ? (
         watchlistStats ? (
-          <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems || statsWaitingForCatalogue} productCount={watchlistProductCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionPage} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} />
+          <WatchlistStatsPanel loading={loadingProducts || loadingSavedItems || statsWaitingForCatalogue} productCount={watchlistStats.productCount} stats={watchlistStats} isLocked={watchlistStatsLocked} isSavingsOpen={isSavingsOpen} onSavingsToggle={() => setIsSavingsOpen((open) => !open)} onSubscribe={openSubscriptionPage} topMode={watchlistTopMode} onTopModeChange={setWatchlistTopMode} />
         ) : (
           <section id="deal-stats-panel-watchlist" role="tabpanel" aria-labelledby="deal-stats-tab-watchlist" className="relative min-h-[180px]"><LoadingMascot loading /></section>
         )

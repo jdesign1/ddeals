@@ -52,6 +52,7 @@ test("buildWatchlistStats only counts saved active specials and calculates per-s
 
   const stats = buildWatchlistStats([saved, unsaved], new Set(["saved"]));
 
+  assert.equal(stats.productCount, 1);
   assert.deepEqual(stats.stores, [
     { key: "newworld", store: "New World", realSavers: 1, fairDeals: 0, dodgyDeals: 0 },
     { key: "paknsave", store: "Pak’n Save", realSavers: 0, fairDeals: 1, dodgyDeals: 0 },

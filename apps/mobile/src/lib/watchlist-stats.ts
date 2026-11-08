@@ -48,6 +48,7 @@ export interface WatchlistTopProduct {
 }
 
 export interface WatchlistStats {
+  productCount: number;
   stores: WatchlistStoreStats[];
   savings: WatchlistStoreSavings[];
   topProducts: WatchlistTopProduct[];
@@ -192,6 +193,7 @@ export function buildWatchlistStats(products: ProductCard[], savedProductIds: Re
   });
 
   return {
+    productCount: watchlistProducts.length,
     stores,
     savings,
     topProducts: rankProducts(watchlistProducts, mode),
