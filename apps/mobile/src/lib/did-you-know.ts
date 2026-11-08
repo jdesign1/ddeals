@@ -130,17 +130,7 @@ function createBuckets(
 
   for (const product of products) {
     const category = groupCategory(product.category, product.name);
-    const bucket = buckets.get(category) ?? {
-      category,
-      assessedProducts: new Set<string>(),
-      realProducts: new Set<string>(),
-      dodgyProducts: new Set<string>(),
-      freshDealKeys: new Set<string>(),
-      historyEntries: [],
-      movementProducts: new Set<string>(),
-      trackedHistoryProducts: new Set<string>(),
-    } satisfies CategoryBucket;
-    buckets.set(category, bucket);
+    let bucket = buckets.get(category);
 
     let hasAssessedDeal = false;
     let hasRealDeal = false;
@@ -154,6 +144,19 @@ function createBuckets(
       if (matchesDealFilter(deal, "dodgy")) dodgyDealProductIds.add(product.id);
       if (!isCurrentSpecial(deal)) continue;
       if (!isAssessedDeal(deal)) continue;
+      if (!bucket) {
+        bucket = {
+          category,
+          assessedProducts: new Set<string>(),
+          realProducts: new Set<string>(),
+          dodgyProducts: new Set<string>(),
+          freshDealKeys: new Set<string>(),
+          historyEntries: [],
+          movementProducts: new Set<string>(),
+          trackedHistoryProducts: new Set<string>(),
+        } satisfies CategoryBucket;
+        buckets.set(category, bucket);
+      }
       hasAssessedDeal = true;
       if (deal.dealType === "Real Deal") hasRealDeal = true;
       if (deal.dealType === "Dodgy Deal") hasDodgyDeal = true;
@@ -173,7 +176,7 @@ function createBuckets(
         bestPriceChangeCount = changes;
       }
     }
-    if (!hasAssessedDeal) continue;
+    if (!hasAssessedDeal || !bucket) continue;
 
     bucket.assessedProducts.add(product.id);
     if (hasRealDeal) bucket.realProducts.add(product.id);
