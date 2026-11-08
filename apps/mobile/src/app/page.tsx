@@ -512,9 +512,12 @@ function buildSnapshotDealGroups(
       // Snapshot rails only contain active specials. Reject inactive rows
       // before deriving keys or running the two eligibility checks.
       if (!deal.isOnSpecial || !matchesAnySelectedStore(deal.store, selectedStores)) continue;
+      const isSavingsEligible = isEligibleForDealSnapshot(deal, "savings");
+      const isDodgyEligible = isEligibleForDealSnapshot(deal, "dodgy");
+      if (!isSavingsEligible && !isDodgyEligible) continue;
+
       const isNewDeal = Boolean(newDealKeys?.has(getNewSpecialDealKey(product.id, deal.store)));
       const snapshotEntry = { deal };
-      const isSavingsEligible = isEligibleForDealSnapshot(deal, "savings");
       if (isSavingsEligible) {
         if (!bestSavings || compareDealSnapshotEntries(snapshotEntry, { deal: bestSavings }, "savings") < 0) {
           bestSavings = deal;
@@ -524,7 +527,6 @@ function buildSnapshotDealGroups(
         }
       }
 
-      const isDodgyEligible = isEligibleForDealSnapshot(deal, "dodgy");
       if (isDodgyEligible) {
         if (!bestDodgy || compareDealSnapshotEntries(snapshotEntry, { deal: bestDodgy }, "dodgy") < 0) {
           bestDodgy = deal;
