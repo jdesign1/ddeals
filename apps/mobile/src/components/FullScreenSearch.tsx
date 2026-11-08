@@ -1633,8 +1633,7 @@ export default function FullScreenSearch() {
                   <DealFilterSummary filter={dealFilter} />
 
                   {brandSuggestion && (
-                    <div className="space-y-2">
-                      <p className="dd-type-meta dd-type-meta-strong text-stone-500">Browse by brand</p>
+                    <div>
                       <BrandSearchTile brand={brandSuggestion} onSelect={handleBrandSelect} />
                     </div>
                   )}
