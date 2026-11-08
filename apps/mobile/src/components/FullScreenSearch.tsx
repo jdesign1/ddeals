@@ -566,10 +566,15 @@ export default function FullScreenSearch() {
   const deferredTrimmedQuery = useDeferredValue(trimmedQuery);
   const [searchNow] = useState(() => Date.now());
 
+  // Brand discovery is only visible for a typed query or an active brand
+  // scope. Avoid building the full brand index on every overlay open while
+  // the user is still at the empty-query/popular view.
+  const shouldBuildBrandSummaries = shouldRenderOverlay
+    && (activeBrandKey !== null || deferredTrimmedQuery.length >= 3);
   const searchBrandSummaries = useMemo(() => {
-    if (!shouldRenderOverlay) return EMPTY_BRAND_SUMMARIES;
+    if (!shouldBuildBrandSummaries) return EMPTY_BRAND_SUMMARIES;
     return buildBrandSummaries(products, selectedStores);
-  }, [products, selectedStores, shouldRenderOverlay]);
+  }, [products, selectedStores, shouldBuildBrandSummaries]);
   const activeBrandSummary = useMemo(
     () => findBrandByKey(searchBrandSummaries, activeBrandKey),
     [activeBrandKey, searchBrandSummaries],
