@@ -328,8 +328,12 @@ function dealKeyFor(product: ProductCard, deal: CurrentDeal): string {
   return `${product.id}::${normalizeStoreKey(deal.store)}`;
 }
 
+type DealDetectiveDealMatches = Partial<Record<DealDetectiveQuizKind, CurrentDeal>>;
+type DealDetectiveDealIndex = ReadonlyMap<string, ReadonlyMap<string, DealDetectiveDealMatches>>;
+
 function candidateForKey(
   productsById: ReadonlyMap<string, ProductCard>,
+  dealsByProductAndStore: DealDetectiveDealIndex,
   dealKey: string,
   kind: DealDetectiveQuizKind,
 ): Omit<DealDetectiveQuizCandidate, "side"> | null {
@@ -339,11 +343,7 @@ function candidateForKey(
   const storeKey = dealKey.slice(separatorIndex + 2);
   const product = productsById.get(productId);
   if (!product) return null;
-  const deal = product.currentDeals.find((item) => (
-    item.isOnSpecial
-    && normalizeStoreKey(item.store) === storeKey
-    && (kind === "real" ? item.dealType === "Real Deal" : item.dealType === "Dodgy Deal")
-  ));
+  const deal = dealsByProductAndStore.get(productId)?.get(storeKey)?.[kind];
   if (!deal) return null;
   return {
     dealKey: dealKeyFor(product, deal),
@@ -356,11 +356,12 @@ function candidateForKey(
 
 function sortedCandidates(
   productsById: ReadonlyMap<string, ProductCard>,
+  dealsByProductAndStore: DealDetectiveDealIndex,
   dealKeys: readonly string[],
   kind: DealDetectiveQuizKind,
 ): Array<Omit<DealDetectiveQuizCandidate, "side">> {
   return dealKeys
-    .map((dealKey) => candidateForKey(productsById, dealKey, kind))
+    .map((dealKey) => candidateForKey(productsById, dealsByProductAndStore, dealKey, kind))
     .filter((candidate): candidate is Omit<DealDetectiveQuizCandidate, "side"> => candidate !== null)
     .sort((left, right) => left.dealKey.localeCompare(right.dealKey));
 }
@@ -448,8 +449,26 @@ export function buildDealDetectiveQuizCase(
   for (const product of products) {
     if (!productsById.has(product.id)) productsById.set(product.id, product);
   }
-  const realCandidates = sortedCandidates(productsById, summary.realDealKeys, "real");
-  const dodgyCandidates = sortedCandidates(productsById, summary.dodgyDealKeys, "dodgy");
+  // Preserve each product's first active deal for a store/verdict while making
+  // each summary key lookup constant-time instead of rescanning currentDeals.
+  const dealsByProductAndStore = new Map<string, Map<string, DealDetectiveDealMatches>>();
+  for (const product of productsById.values()) {
+    const dealsByStore = new Map<string, DealDetectiveDealMatches>();
+    for (const deal of product.currentDeals) {
+      if (!deal.isOnSpecial) continue;
+      const storeKey = normalizeStoreKey(deal.store);
+      const matches = dealsByStore.get(storeKey) ?? {};
+      if (deal.dealType === "Real Deal") {
+        if (!matches.real) matches.real = deal;
+      } else if (deal.dealType === "Dodgy Deal" && !matches.dodgy) {
+        matches.dodgy = deal;
+      }
+      dealsByStore.set(storeKey, matches);
+    }
+    dealsByProductAndStore.set(product.id, dealsByStore);
+  }
+  const realCandidates = sortedCandidates(productsById, dealsByProductAndStore, summary.realDealKeys, "real");
+  const dodgyCandidates = sortedCandidates(productsById, dealsByProductAndStore, summary.dodgyDealKeys, "dodgy");
   if (realCandidates.length === 0 || dodgyCandidates.length === 0) return null;
 
   const excludedPairs = new Set(excludedPairKeys);

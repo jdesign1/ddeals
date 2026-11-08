@@ -125,6 +125,25 @@ test("duplicate product IDs keep the first product for detective lookup", () => 
   assert.equal(result.left.product.name, "First duplicate");
 });
 
+test("duplicate active deals keep the first store/verdict match", () => {
+  const products = [
+    product("duplicate-deal", "Duplicate deal", "Pantry", [
+      deal({ price: 4, dealType: "Real Deal" }),
+      deal({ price: 3, dealType: "Real Deal" }),
+      deal({ isOnSpecial: false, price: 2, dealType: "Real Deal" }),
+    ]),
+    product("other-dodgy", "Other dodgy", "Pantry", [deal({ store: "Woolworths", dealType: "Dodgy Deal" })]),
+  ];
+
+  const result = buildDealDetectiveQuizCase(products, {
+    realDealKeys: ["duplicate-deal::newworld"],
+    dodgyDealKeys: ["other-dodgy::woolworths"],
+  }, ["Pantry"]);
+
+  assert.ok(result);
+  assert.equal(result.left.deal.price, 4);
+});
+
 test("the case never pairs two verdicts from the same product", () => {
   const products = [
     product("shared", "Shared product", "Pantry", [
