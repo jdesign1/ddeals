@@ -125,7 +125,7 @@ function joinStoreNames(stores: string[]): string {
   return `${stores.slice(0, -1).join(", ")}, and ${stores[stores.length - 1]}`;
 }
 
-function DealActions({ productId, productName, dataOnboarding }: { productId: string; productName: string; dataOnboarding?: string }) {
+function DealActions({ productId, productName, dataOnboarding, immediateAdd = false }: { productId: string; productName: string; dataOnboarding?: string; immediateAdd?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       <button
@@ -145,6 +145,7 @@ function DealActions({ productId, productName, dataOnboarding }: { productId: st
       <AddToListButton
         productId={productId}
         productName={productName}
+        immediateAdd={immediateAdd}
         dataOnboarding={dataOnboarding}
         containerClassName="relative"
         buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
@@ -828,7 +829,7 @@ export default function DealAssessmentPage() {
           <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
             Deal assessment
           </h2>
-          <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
+          <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" immediateAdd />
         </div>
         <div className="flex items-start gap-4" data-onboarding="deal-summary">
           <button
@@ -1001,7 +1002,7 @@ export default function DealAssessmentPage() {
               <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
                 {getVerdictTitle(verdict)}
               </h2>
-              <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" />
+              <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" immediateAdd />
             </div>
             {!uncertain && (
               <button

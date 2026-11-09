@@ -24,6 +24,7 @@ import ButtonSpinner from "@/components/ButtonSpinner";
 interface WatchlistContextValue {
   savedProductIds: ReadonlySet<string>;
   selectedProductIds: ReadonlySet<string>;
+  addingProductIds: ReadonlySet<string>;
   loadingSavedItems: boolean;
   savedItemsReady: boolean;
   isCommitting: boolean;
@@ -31,6 +32,7 @@ interface WatchlistContextValue {
   error: string | null;
   confirmation: string | null;
   toggleProduct: (productId: string) => void;
+  addProductImmediately: (productId: string) => Promise<void>;
   removeProduct: (productId: string) => Promise<void>;
   clearSelection: () => void;
   dismissSelectionBar: () => void;
@@ -42,6 +44,7 @@ export type WatchlistDataContextValue = Pick<
   WatchlistContextValue,
   | "savedProductIds"
   | "selectedProductIds"
+  | "addingProductIds"
   | "loadingSavedItems"
   | "savedItemsReady"
   | "isCommitting"
@@ -53,6 +56,7 @@ export type WatchlistDataContextValue = Pick<
 export type WatchlistActionsContextValue = Pick<
   WatchlistContextValue,
   | "toggleProduct"
+  | "addProductImmediately"
   | "removeProduct"
   | "clearSelection"
   | "dismissSelectionBar"
@@ -91,6 +95,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   } = useNotificationsPush();
   const [savedProductIds, setSavedProductIds] = useState<Set<string>>(new Set());
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [addingProductIds, setAddingProductIds] = useState<Set<string>>(new Set());
+  const addingProductIdsRef = useRef<Set<string>>(new Set());
   const [loadingSavedItems, setLoadingSavedItems] = useState(false);
   // The empty set is not a trustworthy membership result until the first
   // account lookup has completed. Consumers use this flag to avoid showing a
@@ -194,6 +200,48 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
   }, [savedProductIds]);
 
+  const addProductImmediately = useCallback(async (productId: string) => {
+    if (!user || savedProductIds.has(productId) || addingProductIdsRef.current.has(productId)) return;
+
+    addingProductIdsRef.current.add(productId);
+    setAddingProductIds((current) => new Set(current).add(productId));
+    setError(null);
+    setConfirmation(null);
+
+    try {
+      const client = requireAccountsSupabaseClient();
+      const lists = await fetchUserLists(client);
+      let watchlist = lists.find(isWatchlist);
+      if (!watchlist) watchlist = await createList(client, user.id, "Watchlist");
+
+      await addItemToList(client, watchlist.id, productId);
+      setSavedProductIds((current) => new Set([...current, productId]));
+      setSelectedProductIds((current) => {
+        if (!current.has(productId)) return current;
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+      invalidateListsPageCache(user.id);
+      window.dispatchEvent(new Event(LIST_MEMBERSHIP_CHANGED_EVENT));
+      setConfirmation("1 item added to Watchlist");
+      if (!pushEnabled && !subscriptionLoading && isPremium) {
+        setNotificationPromptItemCount(1);
+        setNotificationPromptUserId(user.id);
+        setNotificationPromptPending(true);
+      }
+    } catch (addError) {
+      throw new Error(describeFetchError(addError, "We couldn't update your Watchlist."));
+    } finally {
+      addingProductIdsRef.current.delete(productId);
+      setAddingProductIds((current) => {
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+    }
+  }, [addingProductIds, isPremium, pushEnabled, savedProductIds, subscriptionLoading, user]);
+
   const removeProduct = useCallback(async (productId: string) => {
     if (!user) return;
 
@@ -294,6 +342,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const value = useMemo<WatchlistContextValue>(() => ({
     savedProductIds,
     selectedProductIds,
+    addingProductIds,
     loadingSavedItems,
     savedItemsReady,
     isCommitting,
@@ -301,6 +350,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     error,
     confirmation,
     toggleProduct,
+    addProductImmediately,
     removeProduct,
     clearSelection,
     dismissSelectionBar,
@@ -320,6 +370,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     savedProductIds,
     savedItemsReady,
     selectedProductIds,
+    addingProductIds,
+    addProductImmediately,
     toggleProduct,
   ]);
 
@@ -327,6 +379,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     () => ({
       savedProductIds,
       selectedProductIds,
+      addingProductIds,
       loadingSavedItems,
       savedItemsReady,
       isCommitting,
@@ -334,19 +387,20 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       error,
       confirmation,
     }),
-    [confirmation, error, isCommitting, loadingSavedItems, removingProductIds, savedItemsReady, savedProductIds, selectedProductIds],
+    [addingProductIds, confirmation, error, isCommitting, loadingSavedItems, removingProductIds, savedItemsReady, savedProductIds, selectedProductIds],
   );
 
   const actionsValue = useMemo<WatchlistActionsContextValue>(
     () => ({
       toggleProduct,
+      addProductImmediately,
       removeProduct,
       clearSelection,
       dismissSelectionBar,
       commitSelection,
       refreshSavedItems,
     }),
-    [clearSelection, commitSelection, dismissSelectionBar, refreshSavedItems, removeProduct, toggleProduct],
+    [addProductImmediately, clearSelection, commitSelection, dismissSelectionBar, refreshSavedItems, removeProduct, toggleProduct],
   );
 
   const handleEnableNotifications = async () => {

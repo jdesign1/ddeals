@@ -22,6 +22,7 @@ function AddToListButton({
   buttonClassName = "flex h-7 w-7 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900 shadow",
   iconClassName = "h-4 w-4",
   dataOnboarding,
+  immediateAdd = false,
 }: {
   productId: string;
   productName?: string;
@@ -29,16 +30,19 @@ function AddToListButton({
   buttonClassName?: string;
   iconClassName?: string;
   dataOnboarding?: string;
+  immediateAdd?: boolean;
 }) {
   const { user } = useAuthStatus();
   const { openAuthSheet } = useAuthActions();
-  const { savedProductIds, selectedProductIds, removingProductIds, savedItemsReady } = useWatchlistData();
-  const { toggleProduct, removeProduct } = useWatchlistActions();
+  const { savedProductIds, selectedProductIds, addingProductIds, removingProductIds, savedItemsReady } = useWatchlistData();
+  const { toggleProduct, addProductImmediately, removeProduct } = useWatchlistActions();
   const [isRemoveSheetOpen, setIsRemoveSheetOpen] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const isSaved = savedProductIds.has(productId);
   const isSelected = selectedProductIds.has(productId);
   const isCheckmarkVisible = isSaved || isSelected;
+  const isAdding = addingProductIds.has(productId);
   const isRemoving = removingProductIds.has(productId);
   const isMembershipHydrating = !savedItemsReady;
   const label = productName ? `${productName} — ` : "";
@@ -72,11 +76,20 @@ function AddToListButton({
               setIsRemoveSheetOpen(true);
               return;
             }
+            if (immediateAdd) {
+              setAddError(null);
+              void addProductImmediately(productId).catch((error: unknown) => {
+                setAddError(error instanceof Error ? error.message : "We couldn't update your Watchlist.");
+              });
+              return;
+            }
             toggleProduct(productId);
           }}
           aria-label={
             isMembershipHydrating
               ? `${label}Watchlist status loading`
+              : isAdding
+                ? `${label}Adding to Watchlist`
               : isSaved
                 ? `${label}Remove from Watchlist`
                 : isSelected
@@ -84,12 +97,12 @@ function AddToListButton({
                   : `${label}Add to Watchlist`
           }
           aria-pressed={isMembershipHydrating ? undefined : isSaved || isSelected}
-          aria-busy={isMembershipHydrating || isRemoving}
-          disabled={isMembershipHydrating || isRemoving}
+          aria-busy={isMembershipHydrating || isAdding || isRemoving}
+          disabled={isMembershipHydrating || isAdding || isRemoving}
           className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 disabled:cursor-default"
         >
           <span className={`${buttonClassName} ${isMembershipHydrating ? "opacity-0" : ""}`} aria-hidden="true">
-            {isRemoving ? (
+            {isRemoving || isAdding ? (
               <ButtonSpinner className={iconClassName} />
             ) : isCheckmarkVisible ? (
               <Check className={`block ${iconClassName}`} strokeWidth={3} />
@@ -98,6 +111,7 @@ function AddToListButton({
             )}
           </span>
         </button>
+        {addError && <span role="alert" className="sr-only">{addError}</span>}
       </div>
 
       <RemoveFromWatchlistSheet
