@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Plus, Search } from "lucide-react";
 import { usePageHeader } from "@/lib/header-context";
 
 /**
@@ -124,14 +125,23 @@ export default function HowItWorksPage() {
 
         <InfoSection id="how-it-works-steps-title" title="How to use Dodgy Deal">
           <ol className="divide-y divide-stone-100">
-            <Step title="Search grocery products">
+            <Step
+              title="Search grocery products"
+              icon={<Search className="h-5 w-5" strokeWidth={2.25} />}
+            >
               Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
               across different NZ supermarkets.
             </Step>
-            <Step title="Add items to your list">
+            <Step
+              title="Add items to your list"
+              icon={<Plus className="h-5 w-5" strokeWidth={2.5} />}
+            >
               Save products you buy regularly to your own list, so you can check back on them any time.
             </Step>
-            <Step title="Check any deal">
+            <Step
+              title="Check any deal"
+              icon={<Image src="/logo.svg" alt="" width={20} height={20} className="h-5 w-5 object-contain" />}
+            >
               Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Price, or Real Saver &mdash; based on its
               actual recent price history.
             </Step>
@@ -186,14 +196,21 @@ function InfoSection({
 
 function Step({
   title,
+  icon,
   children,
 }: {
   title: string;
+  icon: ReactNode;
   children: ReactNode;
 }) {
   return (
     <li className="py-3 first:pt-0 last:pb-0">
-      <h3 className="dd-type-control text-stone-900">{title}</h3>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-700" aria-hidden="true">
+          {icon}
+        </span>
+        <h3 className="dd-type-control text-stone-900">{title}</h3>
+      </div>
       <p className="mt-1 dd-type-secondary text-stone-600">{children}</p>
     </li>
   );

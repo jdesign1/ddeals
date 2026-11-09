@@ -1148,7 +1148,7 @@ export default function FullScreenSearch() {
                 ref={fullSearchInputRef}
                 autoFocus={shouldRenderOverlay && focusSearchOnOpen}
                 className="mobile-zoom-safe-input h-11 w-full border-none bg-transparent font-sans text-base text-stone-500 placeholder:text-stone-500 focus:outline-none"
-                placeholder="Search for a product or brand"
+                placeholder="Search for products & brands"
                 type="text"
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
