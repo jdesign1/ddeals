@@ -4,6 +4,7 @@ import {
   type ProductCard,
 } from "@dodgey-deals/shared";
 import { matchesDealFilter } from "./deal-filters.ts";
+import { getNewSpecialDealKey } from "./new-specials.ts";
 
 export interface BrandSummary {
   key: string;
@@ -12,6 +13,7 @@ export interface BrandSummary {
   realSaverCount: number;
   supermarketCount: number;
   representativeImage: string | null;
+  unreadRealSaverDealKeys: string[];
 }
 
 interface BrandAccumulator {
@@ -21,6 +23,7 @@ interface BrandAccumulator {
   realSaverProductIds: Set<string>;
   supermarketKeys: Set<string>;
   representativeImage: string | null;
+  unreadRealSaverDealKeys: Set<string>;
 }
 
 export interface BuildBrandSummariesOptions {
@@ -28,6 +31,8 @@ export interface BuildBrandSummariesOptions {
   onlyWithRealSavers?: boolean;
   /** Keep the result small enough for the home rail. Omit for search lookup. */
   limit?: number;
+  /** Current unread Real Saver deal keys used to show the brand-card cue. */
+  unreadRealSaverDealKeys?: ReadonlySet<string>;
 }
 
 const UNUSABLE_BRAND_KEYS = new Set(["", "unbranded", "unknown", "na", "n a"]);
@@ -100,6 +105,7 @@ export function buildBrandSummaries(
 ): BrandSummary[] {
   const byBrand = new Map<string, BrandAccumulator>();
   const selectedStoreList = [...selectedStores];
+  const unreadRealSaverDealKeySet = options.unreadRealSaverDealKeys;
 
   for (const product of products) {
     const key = normalizeBrandKey(product.brand);
@@ -107,13 +113,20 @@ export function buildBrandSummaries(
 
     let hasSelectedDeal = false;
     let hasRealSaver = false;
+    let unreadRealSaverDealKeys: string[] | null = null;
     let selectedSupermarketKeys: string[] | null = null;
     for (const deal of product.currentDeals) {
       if (deal.isOnSpecial === false || !matchesAnySelectedStore(deal.store, selectedStoreList)) continue;
       hasSelectedDeal = true;
       const supermarketKey = canonicalStoreKey(deal.store);
       if (supermarketKey) (selectedSupermarketKeys ??= []).push(supermarketKey);
-      if (matchesDealFilter(deal, "real")) hasRealSaver = true;
+      if (matchesDealFilter(deal, "real")) {
+        hasRealSaver = true;
+        if (unreadRealSaverDealKeySet) {
+          const dealKey = getNewSpecialDealKey(product.id, deal.store);
+          if (unreadRealSaverDealKeySet.has(dealKey)) (unreadRealSaverDealKeys ??= []).push(dealKey);
+        }
+      }
     }
     if (!hasSelectedDeal) continue;
 
@@ -126,6 +139,7 @@ export function buildBrandSummaries(
         realSaverProductIds: new Set<string>(),
         supermarketKeys: new Set<string>(),
         representativeImage: null,
+        unreadRealSaverDealKeys: new Set<string>(),
       };
       byBrand.set(key, accumulator);
     }
@@ -135,6 +149,9 @@ export function buildBrandSummaries(
       for (const supermarketKey of selectedSupermarketKeys) accumulator.supermarketKeys.add(supermarketKey);
     }
     if (hasRealSaver) accumulator.realSaverProductIds.add(product.id);
+    if (unreadRealSaverDealKeys) {
+      for (const dealKey of unreadRealSaverDealKeys) accumulator.unreadRealSaverDealKeys.add(dealKey);
+    }
     if (!accumulator.representativeImage && hasUsableImage(product.image)) {
       accumulator.representativeImage = product.image;
     }
@@ -148,6 +165,7 @@ export function buildBrandSummaries(
       realSaverCount: brand.realSaverProductIds.size,
       supermarketCount: brand.supermarketKeys.size,
       representativeImage: brand.representativeImage,
+      unreadRealSaverDealKeys: [...brand.unreadRealSaverDealKeys],
     }))
     .filter((brand) => !options.onlyWithRealSavers || brand.realSaverCount > 0);
 

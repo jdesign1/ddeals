@@ -8,6 +8,7 @@ import {
   normalizeBrandDisplayName,
   normalizeBrandKey,
 } from "./brand-browse.ts";
+import { getNewSpecialDealKey } from "./new-specials.ts";
 
 function product(
   id: string,
@@ -100,6 +101,21 @@ test("limits brand rankings without changing the top-brand order", () => {
     { name: "Anchor", realSaverCount: 2, currentSpecialCount: 2 },
     { name: "Coca-Cola", realSaverCount: 1, currentSpecialCount: 1 },
   ]);
+});
+
+test("tracks unread Real Saver deals by brand without including Fair Price deals", () => {
+  const unreadRealSaverDealKey = getNewSpecialDealKey("anchor-1", "New World");
+  const brands = buildBrandSummaries([
+    product("anchor-1", "Anchor", "New World"),
+    product("anchor-2", "Anchor", "Woolworths", "Fair Price"),
+  ], ["all"], {
+    unreadRealSaverDealKeys: new Set([
+      unreadRealSaverDealKey,
+      getNewSpecialDealKey("anchor-2", "Woolworths"),
+    ]),
+  });
+
+  assert.deepEqual(brands[0]?.unreadRealSaverDealKeys, [unreadRealSaverDealKey]);
 });
 
 test("suggests a brand for exact and longer queries", () => {

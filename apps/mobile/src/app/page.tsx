@@ -24,7 +24,7 @@ import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSh
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useAuthActions, useAuthCategoryInterestsActions, useAuthStatus } from "@/lib/auth-context";
-import { useNewSpecialsData } from "@/lib/new-specials-context";
+import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
 import {
   DEFAULT_CHECK_DEALS_BELT_ORDER,
@@ -614,6 +614,7 @@ export default function HomePage() {
   const { session, user, profile, isAnonymousSession } = useAuthStatus();
   const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
   const { digest } = useNewSpecialsData();
+  const { markReviewed } = useNewSpecialsActions();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
@@ -827,11 +828,19 @@ export default function HomePage() {
   );
   const didYouKnowCards = didYouKnowSummary.cards;
   const dealVerdictSummary = didYouKnowSummary.verdictSummary;
+  const unreadRealSaverDealKeySet = useMemo(() => {
+    const realDealKeys = digest?.realDealKeys ?? [];
+    return realDealKeys.length > 0 ? new Set(realDealKeys) : null;
+  }, [digest]);
   const topRealSaverBrands = useMemo(
     () => isSearchActive || dealFilter !== "all"
       ? EMPTY_BRAND_SUMMARIES
-      : buildBrandSummaries(deferredCatalogueProducts, selectedStores, { onlyWithRealSavers: true, limit: 8 }),
-    [dealFilter, deferredCatalogueProducts, isSearchActive, selectedStores],
+      : buildBrandSummaries(deferredCatalogueProducts, selectedStores, {
+          onlyWithRealSavers: true,
+          limit: 8,
+          unreadRealSaverDealKeys: unreadRealSaverDealKeySet ?? undefined,
+        }),
+    [dealFilter, deferredCatalogueProducts, isSearchActive, selectedStores, unreadRealSaverDealKeySet],
   );
   const latestPublishedAt = currentSpecialSummary.latestPublishedAt;
   const updatedText = useMemo(() => formatCompactUpdatedText(latestPublishedAt), [latestPublishedAt]);
@@ -939,8 +948,9 @@ export default function HomePage() {
     openSearchForFilter(filter, { focus: false });
   }, [openSearchForFilter]);
   const handleBrandSelect = useCallback((brand: BrandSummary) => {
+    markReviewed(brand.unreadRealSaverDealKeys, "real");
     openSearchForFilter("all", { focus: false, brandKey: brand.key });
-  }, [openSearchForFilter]);
+  }, [markReviewed, openSearchForFilter]);
 
   // The snapshot pass already sees the best savings/dodgy deal per product;
   // reuse its category metadata instead of traversing both rails again.

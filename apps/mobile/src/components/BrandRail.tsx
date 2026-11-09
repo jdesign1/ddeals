@@ -47,9 +47,12 @@ function BrandRail({
             key={brand.key}
             type="button"
             onClick={() => onSelectBrand(brand)}
-            className="flex min-h-[142px] w-[166px] shrink-0 cursor-pointer flex-col items-start justify-between rounded-3xl bg-white p-3 text-left shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
-            aria-label={`Browse ${brand.name}, ${brand.realSaverCount} Real Saver${brand.realSaverCount === 1 ? "" : "s"}`}
+            className="relative flex min-h-[142px] w-[166px] shrink-0 cursor-pointer flex-col items-start justify-between rounded-3xl bg-white p-3 text-left shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+            aria-label={`Browse ${brand.name}, ${brand.realSaverCount} Real Saver${brand.realSaverCount === 1 ? "" : "s"}${brand.unreadRealSaverDealKeys.length > 0 ? ", includes new Real Saver items" : ""}`}
           >
+            {brand.unreadRealSaverDealKeys.length > 0 && (
+              <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white" aria-hidden="true" />
+            )}
             <BrandVisual brand={brand} />
             <span className="mt-3 line-clamp-1 w-full font-display text-base font-extrabold text-stone-900">{brand.name}</span>
             <span className="mt-1 flex items-baseline gap-1 text-fair-800">
