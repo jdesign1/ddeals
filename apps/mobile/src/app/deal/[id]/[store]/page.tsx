@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -620,17 +620,39 @@ export default function DealAssessmentPage() {
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const backNavigationStartedRef = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showProductImage) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setShowProductImage(false);
     };
-    const previousOverflow = document.body.style.overflow;
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousHtmlOverscrollBehavior = html.style.overscrollBehavior;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscrollBehavior = body.style.overscrollBehavior;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
     document.body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      html.style.overflow = previousHtmlOverflow;
+      html.style.overscrollBehavior = previousHtmlOverscrollBehavior;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscrollBehavior;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
       window.removeEventListener("keydown", handleKeyDown);
+      window.scrollTo(0, scrollY);
     };
   }, [showProductImage]);
 
@@ -1504,7 +1526,7 @@ export default function DealAssessmentPage() {
 
     {showProductImage && (
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/80 p-4"
+        className="fixed inset-0 z-[100] flex h-[100dvh] max-h-[100dvh] touch-none items-center justify-center overflow-hidden overscroll-none bg-stone-950/80 p-4"
         role="dialog"
         aria-modal="true"
         aria-label={`Larger image of ${product.name}`}
