@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
   BarChart3,
@@ -74,6 +74,14 @@ export default function SubscribePage() {
     errorSource,
   } = useSubscriptions();
   const [selectedProductId, setSelectedProductId] = useState<string>(SUBSCRIPTION_PRODUCT_IDS.monthly);
+
+  // The success route is the only destination after a verified purchase.
+  // Prefetch it while the user is choosing a plan so the route swap is
+  // immediate when StoreKit returns, rather than leaving the previous page
+  // visible while Next loads the success screen.
+  useEffect(() => {
+    router.prefetch("/subscribe/success");
+  }, [router]);
 
   usePageHeader("Dodgy Deal Plus", () => router.back());
 

@@ -256,10 +256,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     clearError();
     try {
       await purchaseAppleSubscription(productId, user.id, session.access_token);
+      // Leave the purchase page as soon as StoreKit verification succeeds.
+      // Entitlement reads can lag the verified transaction by a few seconds;
+      // keeping the old route visible during that wait makes Settings (or the
+      // subscription options page) flash before the success screen appears.
+      // The success screen stays in its confirming state while this promise
+      // completes and then renders the active subscription.
+      router.replace("/subscribe/success");
       if (!await refreshUntilPremium()) {
         throw new Error("SUBSCRIPTION_SYNC_PENDING");
       }
-      router.push("/subscribe/success");
       return true;
     } catch (purchaseError) {
       // A StoreKit purchase can complete even if the first server sync is
@@ -274,7 +280,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
         try {
           if (await refreshUntilPremium()) {
-            router.push("/subscribe/success");
+            router.replace("/subscribe/success");
             return true;
           }
         } catch {
@@ -310,15 +316,17 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     try {
       const transactionCount = await restoreAppleSubscriptions(session.access_token, user.id);
       if (transactionCount === 0) throw new Error("No active Apple subscription was found.");
+      // Keep the previous page out of view while the entitlement read catches
+      // up with the verified Apple transaction.
+      router.replace("/subscribe/success");
       if (!await refreshUntilPremium()) throw new Error("SUBSCRIPTION_SYNC_PENDING");
-      router.push("/subscribe/success");
       return true;
     } catch (restoreError) {
       if (!/USER_CANCELLED|cancelled|No active Apple subscription|not linked|linked to another Dodgy Deal account|PRODUCT_NOT_FOUND|PRODUCTS_UNAVAILABLE/i.test(String(restoreError))) {
         try {
           await syncCurrentAppleSubscriptions(session.access_token, user.id);
           if (await refreshUntilPremium()) {
-            router.push("/subscribe/success");
+            router.replace("/subscribe/success");
             return true;
           }
         } catch {
@@ -355,7 +363,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     refresh,
     purchase,
     restore,
-  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, loadedUserId, loading, nativeAvailable, openSubscriptionPage, products, productsLoading, purchase, refresh, restore, restoring, subscriptionLoading]);
+  }), [busyProductId, clearError, currentSubscription, entitlements, error, errorSource, isPremium, nativeAvailable, openSubscriptionPage, products, productsLoading, purchase, refresh, restore, restoring, subscriptionLoading]);
 
   const statusValue = useMemo<SubscriptionStatusContextValue>(
     () => ({ isPremium, loading: subscriptionLoading, currentSubscription }),

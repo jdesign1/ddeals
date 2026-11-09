@@ -11,10 +11,11 @@ import { useSubscriptions } from "@/lib/subscription-context";
 
 export default function SubscriptionSuccessPage() {
   const router = useRouter();
-  const { isPremium, loading, error, refresh } = useSubscriptions();
+  const { isPremium, loading, error, busyProductId, restoring, refresh } = useSubscriptions();
   const refreshAttemptedRef = useRef(false);
   const mountedRef = useRef(true);
   const [retrying, setRetrying] = useState(false);
+  const verificationPending = busyProductId !== null || restoring;
   usePageHeader("Subscription active", () => router.back());
 
   useEffect(() => () => {
@@ -23,7 +24,10 @@ export default function SubscriptionSuccessPage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (loading || isPremium || refreshAttemptedRef.current) return () => {
+    // Purchase/restore moves here before the entitlement read has caught up.
+    // Keep the success route visible during that handoff instead of sending
+    // the user back to the subscription page (or the Settings page behind it).
+    if (loading || isPremium || verificationPending || error || refreshAttemptedRef.current) return () => {
       cancelled = true;
     };
     refreshAttemptedRef.current = true;
@@ -35,7 +39,7 @@ export default function SubscriptionSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [isPremium, loading, refresh, router]);
+  }, [error, isPremium, loading, refresh, router, verificationPending]);
 
   if (loading || !isPremium) {
     return (
