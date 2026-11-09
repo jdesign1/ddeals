@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronDown, ExternalLink, Share, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Share, X } from "lucide-react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -14,6 +14,7 @@ import {
   updateCatalogueCacheProducts,
   type ProductCard,
   type PriceHistoryPoint,
+  type CurrentDeal,
   type AssessmentVerdict,
   isUncertainAssessment,
   getAssessmentVerdict,
@@ -33,6 +34,7 @@ import {
   canonicalStoreKey,
   getTrustedDealLocation,
   normalizeStoreKey,
+  STORE_DISPLAY_FALLBACK,
   logDealCheck,
   describeFetchError,
 } from "@dodgey-deals/shared";
@@ -152,6 +154,25 @@ function DealActions({ productId, productName, dataOnboarding }: { productId: st
   );
 }
 
+function DealStoreLink({ deal, productName }: { deal: CurrentDeal; productName: string }) {
+  const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
+  const location = getTrustedDealLocation(deal);
+  const label = `At ${storeLabel}${location ? ` ${location}` : ""}`;
+
+  return (
+    <a
+      href={deal.productUrl || getStoreProductUrl(deal.store, productName)}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Open ${label} product listing`}
+      className="mt-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-md py-2 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+    >
+      <span className="break-words">{label}</span>
+      <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+    </a>
+  );
+}
+
 /**
  * Verdict badge, ADDED 2026-08-20, per Jay: "Is there a badge we can use for
  * fair and dodge deal assessment pages? so the badge usage is consistent" --
@@ -210,14 +231,6 @@ function AnimatedVerdictBadge({
     </motion.span>
   );
 }
-
-const STORE_TEXT_COLOR: Record<string, string> = {
-  "bg-emerald-600": "text-emerald-600",
-  "bg-amber-600": "text-amber-600",
-  "bg-rose-600": "text-rose-600",
-  "bg-green-600": "text-green-600",
-  "bg-stone-600": "text-stone-600",
-};
 
 export default function DealAssessmentPage() {
   const params = useParams<{ id: string; store: string }>();
@@ -787,25 +800,6 @@ export default function DealAssessmentPage() {
       ? `The lowest special price across supermarkets is $${lowestSpecialStoreItem.price.toFixed(2)} at ${joinStoreNames(lowestSpecialStoreNames)}.`
       : null;
   const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
-  const selectedDealCents = Math.round(selectedDeal.price * 100);
-  const cheaperRealSaverDeals = product.currentDeals
-    .filter((candidate) => candidate !== selectedDeal)
-    .filter((candidate) => Math.round(candidate.price * 100) < selectedDealCents)
-    .filter((candidate) => getAssessmentVerdict(candidate) === "Real Saver")
-    .filter((candidate, index, deals) =>
-      deals.findIndex((other) => canonicalStoreKey(other.store) === canonicalStoreKey(candidate.store)) === index
-    );
-  const cheaperRealSaverDeal =
-    cheaperRealSaverDeals.length === 1 && getTrustedDealLocation(cheaperRealSaverDeals[0])
-      ? cheaperRealSaverDeals[0]
-      : null;
-  const selectedDealCanShowTrustedLocation =
-    verdict === "Real Saver"
-    && cheaperRealSaverDeals.length === 0
-    && Boolean(getTrustedDealLocation(selectedDeal));
-  const locationDeal = cheaperRealSaverDeal || (selectedDealCanShowTrustedLocation ? selectedDeal : null);
-  const locationLabel = locationDeal ? getTrustedDealLocation(locationDeal) : null;
-  const locationDealUrl = locationDeal?.productUrl ?? null;
 
   return (
     <>
@@ -957,6 +951,7 @@ export default function DealAssessmentPage() {
             </div>
             <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
           </div>
+          <DealStoreLink deal={selectedDeal} productName={product.name} />
           {!uncertain && (
             <button
               type="button"
@@ -995,34 +990,6 @@ export default function DealAssessmentPage() {
             />
           )}
         </div>
-
-        {/* `bg-white` added to both action buttons below (2026-08-17,
-            Jay: "buttons on the deal assessment page should have a white
-            fill") -- previously transparent at rest (just a
-            `verdictButtonBorderClass`-coloured border sitting directly on
-            the verdict card's white background, only turning `hover:bg-white/50` on
-            hover/tap. `hover:bg-white/50` swapped for `hover:bg-stone-50`
-            on both -- with a solid white base already, the old hover
-            class would have made hovering read as LESS white (50%
-            opacity back down to the tinted card colour showing through),
-            the opposite of the emphasis a hover state should give;
-            `hover:bg-stone-50` is the same subtle-grey hover already used
-            elsewhere in this app (e.g. the list-picker rows in
-            `AddToListButton.tsx`) for a filled element. */}
-        {selectedDeal && (
-          <a
-            href={
-              selectedDeal.productUrl ||
-              getStoreProductUrl(selectedDeal.store, product.name)
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
-          >
-            View at {selectedDeal.store}
-            <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
-          </a>
-        )}
 
       </div>
       </motion.div>
@@ -1080,21 +1047,7 @@ export default function DealAssessmentPage() {
                   Special range ${specialPriceRange.lowestPrice.toFixed(2)}–${specialPriceRange.highestPrice.toFixed(2)} across {specialPriceRange.storeCount} supermarkets
                 </p>
               )}
-              <p className={`mt-0.5 text-sm font-bold ${STORE_TEXT_COLOR[getStoreLogoMeta(selectedDeal.store).bg] || "text-stone-600"}`}>
-                at {selectedDeal.store}
-              </p>
-              {locationLabel && locationDealUrl && (
-                <a
-                  href={locationDealUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-0.5 inline-flex items-center gap-1 text-sm font-bold text-stone-700 underline decoration-stone-400 underline-offset-2"
-                  aria-label={`${cheaperRealSaverDeal ? "Cheaper at" : "Store location"} ${locationLabel}`}
-                >
-                  {cheaperRealSaverDeal ? `Cheaper at ${locationLabel}` : locationLabel}
-                  <ExternalLink className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
-                </a>
-              )}
+              <DealStoreLink deal={selectedDeal} productName={product.name} />
             </div>
           </div>
 
@@ -1114,17 +1067,6 @@ export default function DealAssessmentPage() {
             )}
           </div>
 
-          {lowestCurrentPriceItem && (
-            <a
-              href={findDealForStore(product.currentDeals, lowestCurrentPriceItem.store)?.productUrl || getStoreProductUrl(lowestCurrentPriceItem.store, product.name)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${verdictButtonBorderClass}`}
-            >
-              View at {lowestCurrentPriceItem.store}
-              <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
-            </a>
-          )}
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
             isMultiStoreDeal={false}
@@ -1368,7 +1310,7 @@ export default function DealAssessmentPage() {
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>
               <p className="mt-1 text-sm leading-relaxed text-stone-500">
                 {priceHistoryViewTab === "90-day-view"
-                  ? "See how the price has moved over the last 90 days."
+                  ? "See how the special price has changed over 90 days"
                   : "Compare current prices with each supermarket's recent average."}
               </p>
             </div>

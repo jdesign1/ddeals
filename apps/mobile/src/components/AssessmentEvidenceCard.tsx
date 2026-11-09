@@ -97,9 +97,11 @@ function AssessmentEvidenceCard({
   const hasEvidenceCounts = Boolean(days || checks || trackedDays || ninetyDayChecks || priceChanges);
   const verdictBadge = VERDICT_BADGE[verdict];
   const priceMovement = getPriceMovement(deal);
-  const evidenceFooter = deal.assessmentBasis === "NINETY_DAY_LOW"
-    ? "This read is based on repeated 90-day price history. More observations can make it even more reliable."
-    : "More history makes the assessment more reliable.";
+  const evidenceFooter = "This is based on 90 day price history, more observations will give more reliable evidence";
+  const assessmentLines = assessmentCopy.split("\n");
+  const firstNarrativeLineIndex = assessmentLines.findIndex(
+    (line) => !/^(Current price|90-day low|90-day average|Recent normal price):/.test(line),
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -148,7 +150,7 @@ function AssessmentEvidenceCard({
                 className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
               >
                 <div className="dd-bottom-sheet-titlebar flex flex-shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
-                  <h3 id={titleId} className="dd-type-sheet-title text-stone-900">How we assess this deal</h3>
+                  <h3 id={titleId} className="dd-type-sheet-title text-stone-900">Deal evidence</h3>
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
@@ -169,15 +171,15 @@ function AssessmentEvidenceCard({
                         <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200/80 text-center">
                           <div className="px-2 first:pl-0 last:pr-0">
                             <p className="text-base font-extrabold text-stone-900">{ninetyDayChecks ?? formatCount(checks, "check") ?? "—"}</p>
-                            <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">checks</p>
+                            <p className="mt-0.5 text-xs leading-4 font-normal text-stone-500">checks</p>
                           </div>
                           <div className="px-2 first:pl-0 last:pr-0">
                             <p className="text-base font-extrabold text-stone-900">{trackedDays ?? "—"}</p>
-                            <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">days tracked</p>
+                            <p className="mt-0.5 text-xs leading-4 font-normal text-stone-500">days tracked</p>
                           </div>
                           <div className="px-2 first:pl-0 last:pr-0">
                             <p className="text-base font-extrabold text-stone-900">{priceChanges ?? "—"}</p>
-                            <p className="mt-0.5 text-xs leading-4 font-semibold text-stone-500">price changes</p>
+                            <p className="mt-0.5 text-xs leading-4 font-normal text-stone-500">price changes</p>
                           </div>
                         </div>
                       </div>
@@ -191,10 +193,10 @@ function AssessmentEvidenceCard({
                         {verdictBadge.label}
                       </span>
                     </h4>
-                    <p className="mt-3 whitespace-pre-line text-[15px] leading-6 text-stone-700">
-                      {assessmentCopy.split("\n").map((line, index) => (
+                    <p className="mt-3 whitespace-pre-line text-[15px] font-normal leading-6 text-stone-700">
+                      {assessmentLines.map((line, index) => (
                         <Fragment key={`${line}-${index}`}>
-                          <span className="block">
+                          <span className={`block ${index === firstNarrativeLineIndex ? "mt-2" : ""}`}>
                             <AssessmentText text={line} />
                           </span>
                           {line.startsWith("Recent normal price:") && priceMovement && (
@@ -209,7 +211,7 @@ function AssessmentEvidenceCard({
                         </Fragment>
                       ))}
                     </p>
-                    <p className="mt-4 border-t border-stone-100 pt-3 text-[15px] font-medium leading-6 text-stone-700">
+                    <p className="mt-4 border-t border-stone-100 pt-3 text-[15px] font-normal leading-6 text-stone-700">
                       {evidenceFooter}
                     </p>
                   </div>
