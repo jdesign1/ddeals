@@ -166,9 +166,9 @@ function DealStoreLink({ deal, productName }: { deal: CurrentDeal; productName: 
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${label} product listing`}
-      className="mt-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-md py-2 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+      className="mt-0.5 inline-flex min-h-11 w-fit max-w-full items-center gap-0.5 rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
     >
-      <span className="break-words">{label}</span>
+      <span className="min-w-0 break-words">{label}</span>
       <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
     </a>
   );
@@ -996,7 +996,7 @@ export default function DealAssessmentPage() {
       </motion.div>
         </>
       ) : (
-        <div className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
+        <div className={`space-y-4 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="min-w-0" data-onboarding="deal-verdict">
             <div className="flex items-center justify-between gap-3">
               <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
@@ -1053,8 +1053,8 @@ export default function DealAssessmentPage() {
           </div>
 
           <div>
-            <h4 className="dd-type-section dd-type-assessment-heading mb-1 text-stone-900">
-              Tracking the price to see a trend
+            <h4 className="dd-type-section text-stone-900">
+              Price trend data
             </h4>
             {evidenceSummary && (
               <AssessmentEvidenceCard
