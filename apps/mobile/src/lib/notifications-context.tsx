@@ -40,7 +40,6 @@ interface NotificationsContextValue {
   setPushEnabled: (enabled: boolean) => Promise<boolean>;
   openNotificationSettings: () => Promise<void>;
   markListItemViewed: (listId: string, listItemId: string) => Promise<void>;
-  markWatchlistVisited: () => void;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -63,7 +62,6 @@ export type NotificationsActionsContextValue = Pick<
   | "setPushEnabled"
   | "openNotificationSettings"
   | "markListItemViewed"
-  | "markWatchlistVisited"
   | "refreshNotifications"
 >;
 
@@ -86,7 +84,6 @@ const NotificationsDataContext = createContext<NotificationsDataContextValue | n
 const NotificationsActionsContext = createContext<NotificationsActionsContextValue | null>(null);
 const NotificationsPushContext = createContext<NotificationsPushContextValue | null>(null);
 const alertKey = (listId: string, listItemId: string) => `${listId}:${listItemId}`;
-const watchlistNavSeenAtKey = (userId: string) => `dodgey-deals:watchlist-nav-seen-at-v1:${userId}`;
 // Verdict changes have a separate derived set for callers that need to style
 // assessment changes differently. The Watchlist unread dot is broader: it
 // represents any unread price or verdict update for a saved item.
@@ -108,8 +105,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [pushPermissionState, setPushPermissionState] = useState<PermissionState | null>(null);
   const [unreadAlerts, setUnreadAlerts] = useState<UnreadListAlert[]>([]);
   const [notificationError, setNotificationError] = useState<string | null>(null);
-  const [watchlistNavSeenAt, setWatchlistNavSeenAt] = useState<number | null>(null);
-  const [watchlistNavStateReady, setWatchlistNavStateReady] = useState(false);
   const registeredTokenRef = useRef<string | null>(null);
   const viewedRequestsRef = useRef(new Set<string>());
   const currentNotificationUserIdRef = useRef<string | undefined>(userId);
@@ -127,34 +122,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setPushEnabledState(false);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [userId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      setWatchlistNavStateReady(false);
-      if (!userId) {
-        setWatchlistNavSeenAt(null);
-        setWatchlistNavStateReady(true);
-        return;
-      }
-
-      try {
-        const raw = window.localStorage.getItem(watchlistNavSeenAtKey(userId));
-        const parsed = raw ? Number(raw) : NaN;
-        setWatchlistNavSeenAt(Number.isFinite(parsed) ? parsed : null);
-      } catch {
-        setWatchlistNavSeenAt(null);
-      } finally {
-        setWatchlistNavStateReady(true);
-      }
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
   }, [userId]);
 
   const refreshNotifications = useCallback(async () => {
@@ -507,26 +474,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [unreadAlerts]
   );
 
-  const hasUnreadWatchlistUpdates = useMemo(() => {
-    if (!watchlistNavStateReady || unreadAlerts.length === 0) return false;
-    if (watchlistNavSeenAt === null) return true;
-    return unreadAlerts.some((alert) => {
-      const createdAt = Date.parse(alert.created_at);
-      return !Number.isFinite(createdAt) || createdAt > watchlistNavSeenAt;
-    });
-  }, [unreadAlerts, watchlistNavSeenAt, watchlistNavStateReady]);
-
-  const markWatchlistVisited = useCallback(() => {
-    if (!userId) return;
-    const seenAt = Date.now();
-    setWatchlistNavSeenAt(seenAt);
-    setWatchlistNavStateReady(true);
-    try {
-      window.localStorage.setItem(watchlistNavSeenAtKey(userId), String(seenAt));
-    } catch {
-      // The in-memory state still clears the nav indicator for this session.
-    }
-  }, [userId]);
+  const hasUnreadWatchlistUpdates = unreadAlerts.length > 0;
 
   const value = useMemo<NotificationsContextValue>(() => ({
     pushEnabled,
@@ -542,12 +490,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setPushEnabled,
     openNotificationSettings,
     markListItemViewed,
-    markWatchlistVisited,
     refreshNotifications,
   }), [
     hasUnreadWatchlistUpdates,
     markListItemViewed,
-    markWatchlistVisited,
     notificationError,
     openNotificationSettings,
     pushEnabled,
@@ -582,10 +528,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setPushEnabled,
       openNotificationSettings,
       markListItemViewed,
-      markWatchlistVisited,
       refreshNotifications,
     }),
-    [markListItemViewed, markWatchlistVisited, openNotificationSettings, refreshNotifications, setPushEnabled],
+    [markListItemViewed, openNotificationSettings, refreshNotifications, setPushEnabled],
   );
 
   const pushValue = useMemo<NotificationsPushContextValue>(

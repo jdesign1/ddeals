@@ -11,6 +11,9 @@ export default function UnreadListItem({
   isUnread,
   updates,
   onUpdateClick,
+  productBrand,
+  productImage,
+  productUnit,
   updateAriaLabel = "View new deal update",
   children,
 }: {
@@ -19,6 +22,9 @@ export default function UnreadListItem({
   isUnread: boolean;
   updates: ReadonlyArray<UnreadListAlert>;
   onUpdateClick?: () => void;
+  productBrand?: string | null;
+  productImage?: string | null;
+  productUnit?: string | null;
   updateAriaLabel?: string;
   children: ReactNode;
 }) {
@@ -71,6 +77,9 @@ export default function UnreadListItem({
           updates={visibleUpdates}
           onClose={closeSheet}
           onExited={clearSheet}
+          productBrand={productBrand}
+          productImage={productImage}
+          productUnit={productUnit}
         />
       )}
     </div>

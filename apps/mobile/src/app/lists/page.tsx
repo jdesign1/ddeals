@@ -137,6 +137,7 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
   isLocked,
   unreadAlertsByListItem,
   markListItemViewed,
+  rememberPrioritizedProduct,
   removeProduct,
   reload,
 }: {
@@ -147,6 +148,7 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
   isLocked: boolean;
   unreadAlertsByListItem: ReadonlyMap<string, ReadonlyArray<UnreadListAlert>>;
   markListItemViewed: (listId: string, listItemId: string) => Promise<void>;
+  rememberPrioritizedProduct: (productId: string) => void;
   removeProduct: (productId: string) => Promise<void>;
   reload: (showLoading?: boolean) => Promise<void>;
 }) {
@@ -159,8 +161,11 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
   const isUnread = unreadUpdates.length > 0;
   const isOnSpecial = deal?.isOnSpecial === true;
   const onDealAssessmentOpen = useCallback(
-    () => void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id))),
-    [entry.sourceItems, markListItemViewed],
+    () => {
+      rememberPrioritizedProduct(entry.productId);
+      void Promise.all(entry.sourceItems.map((item) => markListItemViewed(item.list_id, item.id)));
+    },
+    [entry.productId, entry.sourceItems, markListItemViewed, rememberPrioritizedProduct],
   );
   const onRemove = useCallback(() => void removeProduct(entry.productId), [entry.productId, removeProduct]);
   const onAfterNotOnSpecial = useCallback(() => void reload(false), [reload]);
@@ -184,6 +189,9 @@ const WatchlistProductRow = memo(function WatchlistProductRow({
         isUnread={!isLocked && isOnSpecial && isUnread}
         updates={unreadUpdates}
         updateAriaLabel={`View ${unreadUpdates[0]?.product_name ?? meta?.name ?? "product"} update`}
+        productBrand={card?.brand ?? meta?.brand}
+        productImage={card?.image ?? meta?.image_url}
+        productUnit={card?.unit ?? meta?.unit_size}
         onUpdateClick={isLocked || !isOnSpecial ? undefined : onDealAssessmentOpen}
       >
         {card && deal ? (
@@ -221,10 +229,7 @@ export default function ListsPage() {
     unreadListItemKeys,
     unreadAlerts,
   } = useNotificationsData();
-  const {
-    markListItemViewed,
-    markWatchlistVisited,
-  } = useNotificationsActions();
+  const { markListItemViewed } = useNotificationsActions();
   const [itemsByList, setItemsByList] = useState<Map<string, ListItemRow[]>>(new Map());
   const [productMeta, setProductMeta] = useState<Map<string, ListItemProductMeta>>(new Map());
   const [itemCards, setItemCards] = useState<Map<string, ProductCardData>>(new Map());
@@ -240,7 +245,7 @@ export default function ListsPage() {
   const [isClearWatchlistSheetOpen, setIsClearWatchlistSheetOpen] = useState(false);
   const [isClearingWatchlist, setIsClearingWatchlist] = useState(false);
   const [isWatchlistUpgradePromptOpen, setIsWatchlistUpgradePromptOpen] = useState(false);
-  const [prioritizeUpdates, setPrioritizeUpdates] = useState(false);
+  const [prioritizeUpdates, setPrioritizeUpdates] = useState(true);
   const [prioritizedUpdateState, setPrioritizedUpdateState] = useState<{
     userId: string | null;
     productIds: Set<string>;
@@ -349,7 +354,6 @@ export default function ListsPage() {
     }
     if (loadingWatchlist || subscriptionLoading || error || watchlistVisitRecordedRef.current === userId) return;
     watchlistVisitRecordedRef.current = userId;
-    markWatchlistVisited();
     if (isPremium) return;
 
     const storageKey = watchlistVisitCountStorageKey(userId);
@@ -366,7 +370,7 @@ export default function ListsPage() {
     if (!shouldShowWatchlistUpgradePrompt(watchlistItems.length, visitCount, isPremium)) return;
     const timer = window.setTimeout(() => setIsWatchlistUpgradePromptOpen(true), 350);
     return () => window.clearTimeout(timer);
-  }, [error, isPremium, loadingWatchlist, markWatchlistVisited, subscriptionLoading, userId, watchlistItems.length]);
+  }, [error, isPremium, loadingWatchlist, subscriptionLoading, userId, watchlistItems.length]);
 
   const unreadAlertsByListItem = useMemo(() => {
     const grouped = new Map<string, UnreadListAlert[]>();
@@ -398,6 +402,26 @@ export default function ListsPage() {
     [itemCards, lockedWatchlistProductIds, unreadListItemKeys, watchlistItems],
   );
   const newUpdateItemCount = updateProductIds.size;
+
+  const rememberPrioritizedProducts = useCallback((productIds: Iterable<string>) => {
+    if (!userId) return;
+    setPrioritizedUpdateState((current) => {
+      const next = new Set(current.userId === userId ? current.productIds : []);
+      let changed = current.userId !== userId;
+      for (const productId of productIds) {
+        if (!next.has(productId)) changed = true;
+        next.add(productId);
+      }
+      if (!changed) return current;
+      return { userId, productIds: next };
+    });
+    setPrioritizeUpdates(true);
+  }, [userId]);
+
+  const prioritizeCurrentUpdates = useCallback(() => {
+    rememberPrioritizedProducts(updateProductIds);
+  }, [rememberPrioritizedProducts, updateProductIds]);
+
   const prioritizedProductIds = useMemo(() => {
     if (!prioritizeUpdates) return undefined;
     const currentWatchlistProductIds = new Set(watchlistItems.map((item) => item.productId));
@@ -567,13 +591,8 @@ export default function ListsPage() {
   }, [openSubscriptionPage]);
 
   const handleUpdatesClick = useCallback(() => {
-    setPrioritizedUpdateState((current) => {
-      const next = new Set(current.userId === (userId ?? null) ? current.productIds : []);
-      for (const productId of updateProductIds) next.add(productId);
-      return { userId: userId ?? null, productIds: next };
-    });
-    setPrioritizeUpdates(true);
-  }, [updateProductIds, userId]);
+    prioritizeCurrentUpdates();
+  }, [prioritizeCurrentUpdates]);
 
   const activeItems = useMemo(
     () => dealTypeFilteredItems.filter((item) => watchlistItemDealForFilter(item, itemCards, filterSupermarkets, selectedDealType)?.isOnSpecial === true),
@@ -597,6 +616,7 @@ export default function ListsPage() {
         isLocked={isLocked}
         unreadAlertsByListItem={unreadAlertsByListItem}
         markListItemViewed={markListItemViewed}
+        rememberPrioritizedProduct={rememberPrioritizedProducts}
         removeProduct={removeProduct}
         reload={reload}
       />

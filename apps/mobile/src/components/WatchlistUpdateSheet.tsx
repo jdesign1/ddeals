@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
+import CompactProductInfoCard from "@/components/CompactProductInfoCard";
 import type { UnreadListAlert } from "@/lib/notifications-context";
 import { collapseWatchlistUpdates, getWatchlistUpdateCopy } from "@/lib/watchlist-update-copy";
 
@@ -19,12 +20,18 @@ export default function WatchlistUpdateSheet({
   onClose,
   onExited,
   onOpenAssessment,
+  productBrand,
+  productImage,
+  productUnit,
 }: {
   open: boolean;
   updates: ReadonlyArray<UnreadListAlert>;
   onClose: () => void;
   onExited?: () => void;
   onOpenAssessment?: () => void;
+  productBrand?: string | null;
+  productImage?: string | null;
+  productUnit?: string | null;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const collapsedUpdates = collapseWatchlistUpdates(updates);
@@ -57,7 +64,6 @@ export default function WatchlistUpdateSheet({
               role="dialog"
               aria-modal="true"
               aria-labelledby="watchlist-update-title"
-              aria-describedby="watchlist-update-description"
               className="dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-0 bottom-0 z-[61] mx-auto flex w-full max-w-[480px] flex-col rounded-t-3xl shadow-2xl"
               onClick={(event) => event.stopPropagation()}
               initial={{ y: "100%" }}
@@ -75,24 +81,35 @@ export default function WatchlistUpdateSheet({
                 </button>
               </div>
 
+              <CompactProductInfoCard
+                productName={productName}
+                productBrand={productBrand}
+                productImage={productImage}
+                productUnit={productUnit}
+                currentStore={firstUpdate?.store_name}
+                currentPrice={firstUpdate?.price}
+              />
+
               <div className="flex flex-col gap-5 px-5 py-6 pb-safe-sm">
-                <div>
-                  <p className="dd-type-body font-bold text-stone-900">{productName}</p>
-                  <p id="watchlist-update-description" className="mt-1 dd-type-secondary text-stone-600">
-                    {collapsedUpdates.length === 1 ? "There is one new update on your Watchlist." : `${collapsedUpdates.length} supermarket updates on your Watchlist.`}
-                  </p>
-                </div>
 
                 <ul className="flex flex-col divide-y divide-stone-100 rounded-2xl border border-stone-200/80 bg-white" aria-label={`Updates for ${productName}`}>
                   {visibleUpdates.map((update) => {
                     const copy = getWatchlistUpdateCopy(update);
                     return (
-                      <li key={update.id} className="flex items-start justify-between gap-3 px-4 py-3 first:pt-4 last:pb-4">
+                      <li key={update.id} className="px-4 py-3 first:pt-4 last:pb-4">
                         <div className="min-w-0">
-                          <p className={`text-sm font-extrabold ${copy.toneClass}`}>{copy.title}</p>
-                          <p className="mt-0.5 text-[13px] leading-5 text-stone-700">{copy.description}</p>
+                          <div className="flex min-w-0 items-baseline justify-between gap-2">
+                            <p className={`min-w-0 truncate text-sm font-extrabold ${copy.toneClass}`}>{copy.title}</p>
+                            <time dateTime={update.created_at} className="shrink-0 text-[11px] font-semibold text-stone-400">{formatUpdateTime(update.created_at)}</time>
+                          </div>
+                          <p className="mt-0.5 max-w-full truncate whitespace-nowrap text-[13px] leading-5 text-stone-700">
+                            {copy.description.split(/(\$\d+\.\d{2})/g).map((part, index) => (
+                              /^\$\d+\.\d{2}$/.test(part)
+                                ? <strong key={`${update.id}-price-${index}`} className="font-extrabold text-stone-900">{part}</strong>
+                                : <span key={`${update.id}-text-${index}`}>{part}</span>
+                            ))}
+                          </p>
                         </div>
-                        <time dateTime={update.created_at} className="shrink-0 text-[11px] font-semibold text-stone-400">{formatUpdateTime(update.created_at)}</time>
                       </li>
                     );
                   })}
