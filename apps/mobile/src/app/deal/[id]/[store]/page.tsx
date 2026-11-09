@@ -166,10 +166,10 @@ function DealStoreLink({ deal, productName }: { deal: CurrentDeal; productName: 
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${label} product listing`}
-      className="mt-0.5 inline-flex min-h-11 w-fit max-w-full items-center gap-0.5 rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+      className="mt-0.5 inline-block min-h-11 max-w-full rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
     >
-      <span className="min-w-0 break-words">{label}</span>
-      <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      <span className="break-words">{label}</span>
+      <ChevronRight className="ml-0.5 inline-block h-4 w-4 align-[-0.2em]" aria-hidden="true" />
     </a>
   );
 }
