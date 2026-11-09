@@ -6,8 +6,31 @@ export interface WatchlistUpdateCopy {
   toneClass: string;
 }
 
+export type WatchlistPriceDirection = "down" | "up" | null;
+
+export interface WatchlistPriceChange {
+  direction: WatchlistPriceDirection;
+  currentPrice: string | null;
+  previousPrice: string | null;
+}
+
 function formatPrice(value: number | null): string | null {
   return typeof value === "number" && Number.isFinite(value) ? `$${value.toFixed(2)}` : null;
+}
+
+export function getWatchlistPriceChange(update: UnreadListAlert): WatchlistPriceChange {
+  const direction = typeof update.previous_price === "number"
+    ? update.price < update.previous_price
+      ? "down"
+      : update.price > update.previous_price
+        ? "up"
+        : null
+    : null;
+  return {
+    direction,
+    currentPrice: formatPrice(update.price),
+    previousPrice: formatPrice(update.previous_price),
+  };
 }
 
 function storeKey(update: UnreadListAlert): string {
@@ -34,22 +57,27 @@ function verdictLabel(verdict: UnreadListAlert["verdict"] | null): string {
 }
 
 export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdateCopy {
-  const price = formatPrice(update.price);
-  const previousPrice = formatPrice(update.previous_price);
+  const priceChange = getWatchlistPriceChange(update);
+  const price = priceChange.currentPrice;
+  const previousPrice = priceChange.previousPrice;
   const priceDescription = `${price ?? "The price was updated"} at ${update.store_name}.`;
 
-  if (typeof update.previous_price === "number" && update.price < update.previous_price) {
+  if (priceChange.direction === "down") {
     return {
       title: "Price dropped",
-      description: `${priceDescription} Down from ${previousPrice ?? "the previous price"}.`,
+      description: previousPrice && price
+        ? `Was ${previousPrice}, now dropped to ${price}.`
+        : priceDescription,
       toneClass: "text-fair-700",
     };
   }
 
-  if (typeof update.previous_price === "number" && update.price > update.previous_price) {
+  if (priceChange.direction === "up") {
     return {
       title: "Price increased",
-      description: `${priceDescription} Up from ${previousPrice ?? "the previous price"}.`,
+      description: previousPrice && price
+        ? `Was ${previousPrice}, now increased to ${price}.`
+        : priceDescription,
       toneClass: "text-alert-700",
     };
   }

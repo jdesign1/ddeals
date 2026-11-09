@@ -9,6 +9,8 @@ interface CompactProductInfoCardProps {
   productUnit?: string | null;
   currentStore?: string | null;
   currentPrice?: number | null;
+  currentPriceClassName?: string;
+  className?: string;
 }
 
 /** Compact product context shared by shopper-tip and evidence sheets. */
@@ -19,11 +21,13 @@ function CompactProductInfoCard({
   productUnit,
   currentStore,
   currentPrice,
+  currentPriceClassName = "text-stone-900",
+  className = "",
 }: CompactProductInfoCardProps) {
   const productMeta = [productBrand, productUnit].filter(Boolean).join(" · ");
 
   return (
-    <div role="group" aria-label="Item details" className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-stone-100 bg-stone-50 px-5 py-3">
+    <div role="group" aria-label="Item details" className={`flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-stone-100 bg-stone-50 px-5 py-3 ${className}`}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white">
           <ProductImage src={productImage} alt="" width={48} height={48} className="h-full w-full object-contain" />
@@ -34,7 +38,7 @@ function CompactProductInfoCard({
           {((currentPrice !== null && currentPrice !== undefined) || currentStore) && (
             <div className="mt-1 flex min-w-0 items-center gap-2">
               {currentPrice !== null && currentPrice !== undefined && (
-                <span className="font-display text-lg font-extrabold leading-5 text-stone-900">${currentPrice.toFixed(2)}</span>
+                <span className={`font-display text-lg font-extrabold leading-5 ${currentPriceClassName}`}>${currentPrice.toFixed(2)}</span>
               )}
               {currentStore && <StoreLogoBadge store={currentStore} variant="compact" className="shadow-none" />}
             </div>

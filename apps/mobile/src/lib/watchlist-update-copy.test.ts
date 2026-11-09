@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { UnreadListAlert } from "./notifications-context.tsx";
-import { collapseWatchlistUpdates, getWatchlistUpdateCopy } from "./watchlist-update-copy.ts";
+import { collapseWatchlistUpdates, getWatchlistPriceChange, getWatchlistUpdateCopy } from "./watchlist-update-copy.ts";
 
 function update(overrides: Partial<UnreadListAlert> = {}): UnreadListAlert {
   return {
@@ -24,7 +24,7 @@ function update(overrides: Partial<UnreadListAlert> = {}): UnreadListAlert {
 test("watchlist update copy explains a price drop simply", () => {
   assert.deepEqual(getWatchlistUpdateCopy(update()), {
     title: "Price dropped",
-    description: "$7.99 at New World. Down from $8.99.",
+    description: "Was $8.99, now dropped to $7.99.",
     toneClass: "text-fair-700",
   });
 });
@@ -40,9 +40,18 @@ test("watchlist update copy explains verdict changes", () => {
 test("watchlist update copy explains any price direction", () => {
   assert.deepEqual(getWatchlistUpdateCopy(update({ event_type: "price_changed", price: 9.99, previous_price: 8.99 })), {
     title: "Price increased",
-    description: "$9.99 at New World. Up from $8.99.",
+    description: "Was $8.99, now increased to $9.99.",
     toneClass: "text-alert-700",
   });
+});
+
+test("watchlist price changes expose direction and both prices for the sheet", () => {
+  assert.deepEqual(getWatchlistPriceChange(update()), {
+    direction: "down",
+    currentPrice: "$7.99",
+    previousPrice: "$8.99",
+  });
+  assert.equal(getWatchlistPriceChange(update({ price: 9.99, previous_price: 8.99 })).direction, "up");
 });
 
 test("watchlist update copy explains all verdict transitions", () => {

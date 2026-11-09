@@ -1,17 +1,17 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import CompactProductInfoCard from "@/components/CompactProductInfoCard";
 import type { UnreadListAlert } from "@/lib/notifications-context";
-import { collapseWatchlistUpdates, getWatchlistUpdateCopy } from "@/lib/watchlist-update-copy";
+import { collapseWatchlistUpdates, getWatchlistPriceChange, getWatchlistUpdateCopy } from "@/lib/watchlist-update-copy";
 
 function formatUpdateTime(value: string): string {
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) return "Recently";
-  return new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(timestamp);
+  return new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short" }).format(timestamp);
 }
 
 export default function WatchlistUpdateSheet({
@@ -39,6 +39,8 @@ export default function WatchlistUpdateSheet({
   const productName = firstUpdate?.product_name ?? "This watched item";
   const visibleUpdates = collapsedUpdates.slice(0, 4);
   const remainingCount = Math.max(0, collapsedUpdates.length - visibleUpdates.length);
+  const firstPriceChange = firstUpdate ? getWatchlistPriceChange(firstUpdate) : null;
+  const firstPriceTone = firstPriceChange?.direction === "down" ? "text-fair-700" : firstPriceChange?.direction === "up" ? "text-alert-700" : "text-stone-900";
 
   useEffect(() => {
     if (!open) return;
@@ -81,31 +83,41 @@ export default function WatchlistUpdateSheet({
                 </button>
               </div>
 
-              <CompactProductInfoCard
-                productName={productName}
-                productBrand={productBrand}
-                productImage={productImage}
-                productUnit={productUnit}
-                currentStore={firstUpdate?.store_name}
-                currentPrice={firstUpdate?.price}
-              />
-
-              <div className="flex flex-col gap-5 px-5 py-6 pb-safe-sm">
-
+              <div className="flex flex-col gap-5 px-5 py-5 pb-safe-sm">
+                <CompactProductInfoCard
+                  className="-mx-5 rounded-none border-y border-stone-100"
+                  productName={productName}
+                  productBrand={productBrand}
+                  productImage={productImage}
+                  productUnit={productUnit}
+                  currentStore={firstUpdate?.store_name}
+                  currentPrice={firstUpdate?.price}
+                  currentPriceClassName={firstPriceTone}
+                />
                 <ul className="flex flex-col divide-y divide-stone-100 rounded-2xl border border-stone-200/80 bg-white" aria-label={`Updates for ${productName}`}>
                   {visibleUpdates.map((update) => {
                     const copy = getWatchlistUpdateCopy(update);
+                    const priceChange = getWatchlistPriceChange(update);
+                    const PriceDirectionIcon = priceChange.direction === "down" ? ArrowDown : priceChange.direction === "up" ? ArrowUp : null;
+                    const currentPriceTone = priceChange.direction === "down" ? "text-fair-700" : priceChange.direction === "up" ? "text-alert-700" : "text-stone-900";
                     return (
                       <li key={update.id} className="px-4 py-3 first:pt-4 last:pb-4">
                         <div className="min-w-0">
                           <div className="flex min-w-0 items-baseline justify-between gap-2">
-                            <p className={`min-w-0 truncate text-sm font-extrabold ${copy.toneClass}`}>{copy.title}</p>
+                            <p className={`flex min-w-0 items-center gap-1 truncate text-sm font-extrabold ${copy.toneClass}`}>
+                              {PriceDirectionIcon && <PriceDirectionIcon className="h-4 w-4 shrink-0" strokeWidth={2.75} aria-hidden="true" />}
+                              <span className="truncate">{copy.title}</span>
+                            </p>
                             <time dateTime={update.created_at} className="shrink-0 text-[11px] font-semibold text-stone-400">{formatUpdateTime(update.created_at)}</time>
                           </div>
                           <p className="mt-0.5 max-w-full truncate whitespace-nowrap text-[13px] leading-5 text-stone-700">
-                            {copy.description.split(/(\$\d+\.\d{2})/g).map((part, index) => (
+                            {priceChange.direction && priceChange.previousPrice && priceChange.currentPrice ? (
+                              <>
+                                Was <strong className="font-extrabold text-stone-900">{priceChange.previousPrice}</strong>, now {priceChange.direction === "down" ? "dropped" : "increased"} to <strong className={`font-extrabold ${currentPriceTone}`}>{priceChange.currentPrice}</strong>.
+                              </>
+                            ) : copy.description.split(/(\$\d+\.\d{2})/g).map((part, index) => (
                               /^\$\d+\.\d{2}$/.test(part)
-                                ? <strong key={`${update.id}-price-${index}`} className="font-extrabold text-stone-900">{part}</strong>
+                                ? <strong key={`${update.id}-price-${index}`} className={`font-extrabold ${part === priceChange.currentPrice ? currentPriceTone : "text-stone-900"}`}>{part}</strong>
                                 : <span key={`${update.id}-text-${index}`}>{part}</span>
                             ))}
                           </p>
