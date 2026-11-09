@@ -221,7 +221,7 @@ function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllN
                   onDone={handleClose}
                   onAnswered={() => setConsumedQuizCaseKey(quizCaseKey)}
                   onPlayed={onPlayed}
-                  showViewDealsButton={!gameOnly}
+                  showViewDealsButton={false}
                   showBackButton={!gameOnly}
                 />
               ) : (

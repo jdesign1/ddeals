@@ -265,15 +265,20 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
 
       {showBackButton && (
         <div className="pointer-events-none sticky top-0 z-40 h-0">
-          <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto absolute left-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-stone-600 shadow-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
+          <button ref={backButtonRef} type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto absolute left-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2">
             <ChevronLeft className="h-6 w-6" aria-hidden="true" />
           </button>
+          {rankLabel && !showPriceHistory && (
+            <span className="absolute left-16 top-3 inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800">
+              Rank: {rankLabel}
+            </span>
+          )}
         </div>
       )}
 
-      {rankLabel && !showPriceHistory && (
+      {!showBackButton && rankLabel && !showPriceHistory && (
         <div className="pointer-events-none sticky top-0 z-40 h-0">
-          <span className={`absolute left-3 ${showBackButton ? "top-16" : "top-3"} inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800`}>
+          <span className="absolute left-3 top-3 inline-flex items-center rounded-full border border-fair-200 bg-white px-3 py-2 dd-type-meta dd-type-meta-strong text-fair-800">
             Rank: {rankLabel}
           </span>
         </div>
@@ -305,14 +310,14 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.34, ease: "easeOut" }}
-            className="relative flex aspect-[1.05/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50"
+            className="relative flex aspect-[1.1/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50"
           >
             <MascotImage
-              src="/deal-detective-case-mascot.webp"
-              darkSrc="/deal-detective-case-mascot.webp"
+              src="/deal-detective-case-mascot-wide.webp"
+              darkSrc="/deal-detective-case-mascot-wide.webp"
               alt="Dodgy Deal mascot comparing two deal case files at headquarters"
-              width={1254}
-              height={1254}
+              width={1315}
+              height={1196}
               sizes="(max-width: 480px) 100vw, 432px"
               priority
               unoptimized
