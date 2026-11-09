@@ -26,8 +26,16 @@ function SupermarketPicker({
   const dialogRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  const supermarketLabel = hasStoreFilter ? `Supermarket · ${selectedStores.length}` : "Supermarket";
-  const supermarketAriaLabel = `Filter by supermarket. ${hasStoreFilter ? `${selectedStores.length} supermarket${selectedStores.length === 1 ? "" : "s"} selected` : "All supermarkets selected"}.`;
+  const supermarketLabel = selectedStores.length === 0
+    ? "Supermarket"
+    : selectedStores.length === 1
+      ? stores.find((store) => store.id === selectedStores[0])?.label ?? "Supermarket"
+      : `${selectedStores.length} Selected`;
+  const supermarketAriaLabel = `Filter by supermarket. ${hasStoreFilter
+    ? selectedStores.length === 1
+      ? `${supermarketLabel} selected`
+      : `${selectedStores.length} supermarkets selected`
+    : "All supermarkets selected"}.`;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -150,7 +158,7 @@ function SupermarketPicker({
                             : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                         }`}
                       >
-                        All supermarkets
+                        All
                       </button>
                       {stores.map((store) => {
                         const selected = selectedStores.includes(store.id);

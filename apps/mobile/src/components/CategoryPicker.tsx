@@ -28,7 +28,11 @@ function CategoryPicker({
   align?: "left" | "center";
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedLabel = label;
+  const selectedLabel = selectedCategories.length === 0
+    ? label
+    : selectedCategories.length === 1
+      ? selectedCategories[0]
+      : `${selectedCategories.length} Categories`;
 
   const toggleCategory = (category: string) => {
     onChange(
@@ -104,7 +108,7 @@ function CategoryPicker({
                         : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                     }`}
                   >
-                    All categories
+                    All
                   </button>
                   {CATEGORY_SECTIONS.map((section) => {
                     const sectionCategories = section.categories.filter((category) => availableCategories.includes(category));

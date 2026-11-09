@@ -675,14 +675,14 @@ export default function ListsPage() {
             <div className="shrink-0">
               <DealTypePicker value={selectedDealType} onChange={setSelectedDealType} />
             </div>
-            <div className="shrink-0">
+            <div className="min-w-[8.75rem] shrink-0">
               <SupermarketPicker
                 stores={supermarketOptions}
                 selectedStoreIds={selectedSupermarkets}
                 onToggleStore={toggleSupermarket}
               />
             </div>
-            <div className="shrink-0">
+            <div className="min-w-[7.5rem] shrink-0">
               <CategoryPicker
                 selectedCategories={selectedCategories}
                 onChange={setSelectedCategories}

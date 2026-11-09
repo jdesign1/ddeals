@@ -22,7 +22,11 @@ function SupermarketPicker({
   const [isOpen, setIsOpen] = useState(false);
   const selectedStores = selectedStoreIds.filter((storeId) => storeId !== "all");
   const isActive = selectedStores.length > 0;
-  const selectedLabel = "Supermarket";
+  const selectedLabel = selectedStores.length === 0
+    ? "Supermarket"
+    : selectedStores.length === 1
+      ? stores.find((store) => store.id === selectedStores[0])?.label ?? "Supermarket"
+      : `${selectedStores.length} Selected`;
   const reset = () => onToggleStore("all");
 
   return (
@@ -92,7 +96,7 @@ function SupermarketPicker({
                           : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                       }`}
                     >
-                      All supermarkets
+                      All
                     </button>
                     {stores.map((store) => {
                       const selected = selectedStores.includes(store.id);

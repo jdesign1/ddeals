@@ -947,6 +947,11 @@ export default function FullScreenSearch() {
   const renderToolbarFilters = (target: "popular" | "results") => {
     const categoryFilter = target === "results" ? resultsCategoryFilter : popularCategoryFilter;
     const sortBy = target === "results" ? resultsSortBy : popularSortBy;
+    const categoryLabel = categoryFilter.length === 0
+      ? "Category"
+      : categoryFilter.length === 1
+        ? categoryFilter[0]
+        : `${categoryFilter.length} Categories`;
 
     return (
       <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.65fr)] gap-1.5 overflow-hidden">
@@ -956,11 +961,11 @@ export default function FullScreenSearch() {
           onToggleStore={handleStoreToggle}
         />
         <FilterTrigger
-          label="Category"
+          label={categoryLabel}
           active={categoryFilter.length > 0}
           onOpen={() => setCategorySheetTarget(target)}
           onClear={() => updateCategoryFilter(target, [])}
-          ariaLabel="Filter by category"
+          ariaLabel={`Filter by category: ${categoryLabel}`}
           fill
         />
         <NativeSelectFilter
@@ -1782,7 +1787,7 @@ export default function FullScreenSearch() {
                           : "cursor-pointer bg-white text-stone-600 hover:bg-stone-50"
                       }`}
                     >
-                      All categories
+                      All
                     </button>
                     {CATEGORY_SECTIONS.map((section) => {
                       const sectionCats = section.categories.filter((c) => homeCategories.includes(c));
