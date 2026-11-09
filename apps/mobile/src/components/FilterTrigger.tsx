@@ -57,9 +57,9 @@ export default function FilterTrigger({
         className="absolute inset-0 z-0 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-1"
       />
       <span className={`pointer-events-none relative z-10 flex h-11 w-full min-w-0 items-center dd-type-control text-stone-700 ${align === "left" ? "justify-start pl-3 pr-8" : `justify-center ${compact ? "pl-3 pr-8" : "px-2 pr-8"}`}`}>
-        <span className={`flex w-full min-w-0 items-center gap-1 ${align === "left" ? "justify-start" : "justify-center"}`}>
+        <span className={`flex w-full min-w-0 items-center gap-1 ${align === "left" ? "justify-start text-left" : "justify-center text-center"}`}>
           {leading}
-          <span className="min-w-0 max-w-full truncate">{label}</span>
+          <span className="min-w-0 flex-1 truncate">{label}</span>
         </span>
       </span>
       <span className="pointer-events-none absolute inset-y-1 right-0 z-10 flex w-8 items-center justify-center">
