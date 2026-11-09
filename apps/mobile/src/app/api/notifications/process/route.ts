@@ -1,6 +1,7 @@
 import {
   createSupabaseClient,
   detectWatchlistAlerts,
+  isVerifiedLiveSpecial,
   isWatchlistObservationFresh,
   type WatchlistVerdict,
 } from "@dodgey-deals/shared";
@@ -50,6 +51,7 @@ interface PublishedSpecialRow {
   product_name: string;
   store_name: string;
   sale_price: number;
+  specials_verified_at: string | null;
   verdict: "GENUINE" | "DODGY" | "MARGINAL" | "UNKNOWN";
 }
 
@@ -225,7 +227,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
         .in("product_id", productChunk),
       catalogue
         .from("published_dodgy_deals_cache")
-        .select("product_id,store_id,product_name,store_name,sale_price,verdict")
+        .select("product_id,store_id,product_name,store_name,sale_price,specials_verified_at,verdict")
         .in("product_id", productChunk),
       catalogue
         .from("products")
@@ -287,11 +289,7 @@ async function processAlerts(): Promise<Record<string, number | boolean>> {
     const linkedSpecial = specialByPriceKey.get(priceKey(price.product_id, price.store_id));
     const observationIsFresh = isWatchlistObservationFresh(price.updated_at, now);
     if (!observationIsFresh || !Number.isFinite(Number(price.price)) || Number(price.price) < 0) continue;
-    const isVerifiedSpecial = Boolean(
-      price.is_special &&
-      linkedSpecial &&
-      Math.abs(Number(linkedSpecial.sale_price) - Number(price.price)) < 0.01
-    );
+    const isVerifiedSpecial = isVerifiedLiveSpecial(price, linkedSpecial);
     const listProductItems = itemsByProduct.get(price.product_id) ?? [];
 
     for (const item of listProductItems) {

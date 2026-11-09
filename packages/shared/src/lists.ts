@@ -13,6 +13,7 @@ import {
   type CurrentDeal,
   type PublishedAssessmentRow,
 } from "./data.ts";
+import { isVerifiedLiveSpecial } from "./specials-freshness.ts";
 
 /**
  * Real, persisted shopping lists — backs S1 "My Lists" (project.md Stitch
@@ -359,7 +360,7 @@ export async function fetchListPriceLookups(
   // supermarket sections from one refresh to the next.
   const specialsByProduct = new Map<string, CurrentPriceLookupRow[]>();
   for (const row of priceRows) {
-    if (!row.is_special || !dealByProductStore.has(`${row.product_id}:${row.store_id}`)) continue;
+    if (!isVerifiedLiveSpecial(row, dealByProductStore.get(`${row.product_id}:${row.store_id}`))) continue;
     const rows = specialsByProduct.get(row.product_id) ?? [];
     rows.push(row);
     specialsByProduct.set(row.product_id, rows);
@@ -423,7 +424,7 @@ export function computeListSummaryFromLookups(items: ListItemRow[], lookups: Lis
       baselineTotal += cheapest.price * qty; // no known "was" price -- assume no saving for this item, not a fabricated one
     }
 
-    if (cheapest.is_special && deal && deal.verdict !== "DODGY" && deal.verdict !== "UNKNOWN") {
+    if (isVerifiedLiveSpecial(cheapest, deal) && deal && deal.verdict !== "DODGY" && deal.verdict !== "UNKNOWN") {
       hasVerifiedSpecial = true;
     }
   }
@@ -592,9 +593,9 @@ export function buildListItemProductCard(
   rowsByStore.set(cheapest.store_id, cheapest);
 
   const currentRows = [...rowsByStore.values()];
-  const verifiedSpecialRows = currentRows.filter(
-    (row) => row.is_special === true && lookups.dealByProductStore.has(`${productId}:${row.store_id}`),
-  );
+  const verifiedSpecialRows = currentRows.filter((row) => (
+    isVerifiedLiveSpecial(row, lookups.dealByProductStore.get(`${productId}:${row.store_id}`))
+  ));
   const verifiedSpecialStoreIds = new Set(verifiedSpecialRows.map((row) => row.store_id));
   // Preserve the legacy pure-builder contract: callers that omit the derived
   // special map are asking us to trust the raw special flag, so an unmatched

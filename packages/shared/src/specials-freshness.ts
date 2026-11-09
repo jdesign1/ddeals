@@ -5,6 +5,50 @@ import type { ProductCard } from "./data.ts";
 // retailer disappear from an otherwise usable cached catalogue after 48h.
 export const SPECIALS_VERIFICATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+export interface CurrentSpecialObservation {
+  price: number | null | undefined;
+  is_special: boolean | null | undefined;
+}
+
+export interface PublishedSpecialObservation {
+  sale_price?: number | null;
+  specials_verified_at?: string | null;
+}
+
+/**
+ * A raw current-price flag is only an observation. It becomes a user-facing
+ * live special when the same product/store also has a published assessment,
+ * the sale price still matches, and the retailer snapshot is inside the
+ * catalogue freshness window.
+ *
+ * `specials_verified_at` is optional for pure unit-test callers and older
+ * cached rows. Live catalogue rows include it, so production reads receive
+ * the bounded freshness check.
+ */
+export function isVerifiedLiveSpecial(
+  price: CurrentSpecialObservation,
+  published: PublishedSpecialObservation | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (price.is_special !== true || !published) return false;
+
+  const currentPrice = Number(price.price);
+  if (!Number.isFinite(currentPrice) || currentPrice < 0) return false;
+
+  if (published.sale_price != null) {
+    const salePrice = Number(published.sale_price);
+    if (!Number.isFinite(salePrice) || Math.round(salePrice * 100) !== Math.round(currentPrice * 100)) return false;
+  }
+
+  if (published.specials_verified_at) {
+    const verifiedAt = Date.parse(published.specials_verified_at);
+    if (!Number.isFinite(verifiedAt)) return false;
+    if (verifiedAt > now + 5 * 60 * 1000 || now - verifiedAt >= SPECIALS_VERIFICATION_TTL_MS) return false;
+  }
+
+  return true;
+}
+
 /** Remove store deals whose complete snapshot is missing or outside its verified window. */
 export function filterRecentlyVerifiedSpecials(
   products: ProductCard[],

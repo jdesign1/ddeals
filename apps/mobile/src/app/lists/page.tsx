@@ -45,6 +45,7 @@ import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import { getLockedPreviewOpacity } from "@/lib/locked-preview";
 import { sortWatchlistItems, watchlistItemDeal } from "@/lib/watchlist-sort";
 import { getLockedWatchlistProductIds, shouldShowWatchlistUpgradePrompt } from "@/lib/watchlist-upgrade";
+import { subscribeToCataloguePublication } from "@/lib/catalogue-publication";
 
 type WatchlistDealTypeCounts = {
   realSavers: number;
@@ -268,7 +269,7 @@ export default function ListsPage() {
 
   const loadCachedData = useCallback(() => {
     if (!user) return;
-    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id)
+    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
       .then(applyData)
       .catch((loadError) => setError(describeFetchError(loadError, "We couldn't load your Watchlist.")));
   }, [applyData, user]);
@@ -291,7 +292,7 @@ export default function ListsPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id)
+    loadListsPageData(requireAccountsSupabaseClient(), supabaseConfig, user.id, { forceRefresh: true })
       .then((data) => {
         if (!cancelled) applyData(data);
       })
@@ -324,6 +325,26 @@ export default function ListsPage() {
     window.addEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, handleMembershipChanged);
     return () => window.removeEventListener(LIST_MEMBERSHIP_CHANGED_EVENT, handleMembershipChanged);
   }, [reload]);
+
+  const catalogueSubscriptionPrimedRef = useRef(false);
+  useEffect(() => {
+    if (!userId) {
+      catalogueSubscriptionPrimedRef.current = false;
+      return;
+    }
+
+    catalogueSubscriptionPrimedRef.current = false;
+    return subscribeToCataloguePublication(() => {
+      // The subscription helper invokes the callback when the channel first
+      // connects. The initial Watchlist load already covers that case; only
+      // later publication events need to force a fresh account/catalogue join.
+      if (!catalogueSubscriptionPrimedRef.current) {
+        catalogueSubscriptionPrimedRef.current = true;
+        return;
+      }
+      void reload(false);
+    });
+  }, [reload, userId]);
 
   const watchlistItems = useMemo<WatchlistItem[]>(() => {
     const byProduct = new Map<string, WatchlistItem>();
@@ -451,7 +472,13 @@ export default function ListsPage() {
         categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
       }
 
-      const deal = watchlistItemDeal(item, itemCards, ["all"], undefined, "best");
+      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(category);
+      const deals = itemCards.get(item.productId)?.currentDeals ?? [];
+      const matchesSupermarket = selectedSupermarkets.includes("all")
+        || deals.some((deal) => matchesAnySelectedStore(deal.store, selectedSupermarkets));
+      if (!matchesCategory || !matchesSupermarket) continue;
+
+      const deal = watchlistItemDeal(item, itemCards, selectedSupermarkets, undefined, "best");
       if (!deal || deal.isOnSpecial !== true) continue;
       onSpecialCount += 1;
       const verdict = getAssessmentVerdict(deal);
@@ -466,7 +493,7 @@ export default function ListsPage() {
       dealTypeCounts: counts,
       onSpecialCount,
     };
-  }, [itemCards, productMeta, watchlistItems]);
+  }, [itemCards, productMeta, selectedCategories, selectedSupermarkets, watchlistItems]);
 
   const { categories, categoryCounts, dealTypeCounts, onSpecialCount } = watchlistSummary;
 
