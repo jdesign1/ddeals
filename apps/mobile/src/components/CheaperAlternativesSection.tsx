@@ -34,7 +34,6 @@ function CheaperAlternativesSection({
 
   return (
     <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
-      <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
       <button
         type="button"
         onClick={onToggle}
