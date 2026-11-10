@@ -280,6 +280,8 @@ export const HISTORICAL_FAIR_MIN_HIGH_DISCOUNT = 5;
 export const HISTORICAL_SAVER_LOW_TOLERANCE = 0.01;
 /** A broader Fair Price read needs more observations than a near-low read. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES = 8;
+/** Minimum published 90-day samples for a cautious history-only Fair Price read. */
+export const HISTORICAL_OBSERVED_FAIR_MIN_SAMPLES = 4;
 /** A modest average premium is still fair when the independent history is robust. */
 export const HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT = -5;
 /** Keep the fair read below a meaningfully higher observed high. */
@@ -339,12 +341,11 @@ type HistoricalAssessmentRow = Pick<PublishedAssessmentRow, "verdict">
  * price is below the 90-day high": it needs a sustained observation window,
  * a real regular-price period, a meaningful average/high separation, and a
  * current price at or near the recorded low. A separate established-Fair
- * branch permits a wider position in the observed range only when the
- * current normal reference, repeated special observations, and a larger
- * observation count support that interpretation. This branch allows a modest
- * average premium (up to 5%) because a product can still be a fair buy
- * without being close to its absolute low. A separate above-average branch
- * keeps a robust but non-standout price out of the "Needs more history"
+ * branch permits a wider position in the observed range when the current
+ * normal reference or a sustained, repeated 90-day price pattern supports
+ * that interpretation. It allows a modest average premium (up to 5%) because
+ * a product can still be a fair buy without being close to its absolute low.
+ * A separate above-average branch keeps a robust but non-standout price out of the "Needs more history"
  * state, including when the primary classifier is still UNKNOWN. The
  * published aggregate does not expose low-specific recurrence yet, so the
  * low/near-low gate uses repeated special-state observations or a current low
@@ -364,14 +365,21 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
   const samples = Number(row.price_history_90d_samples);
   const specialSamples = row.price_history_90d_special_samples == null ? null : Number(row.price_history_90d_special_samples);
   const trackedDays = Number(row.price_history_90d_days_tracked);
-  const specialDays = Number(row.price_history_90d_special_days);
+  const specialDays = row.price_history_90d_special_days == null ? NaN : Number(row.price_history_90d_special_days);
   const priceChanges = row.price_history_90d_price_changes == null ? null : Number(row.price_history_90d_price_changes);
+  const normalPrice = row.normal_price == null ? null : Number(row.normal_price);
   const saleStartedAt = row.sale_started_at ? Date.parse(row.sale_started_at) : NaN;
   const currentLowDays = Number.isFinite(saleStartedAt)
     ? Math.max(0, (Date.now() - saleStartedAt) / (24 * 60 * 60 * 1000))
     : null;
 
-  if (![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)) return null;
+  if (
+    ![salePrice, low, high, average, samples, trackedDays, specialDays].every(Number.isFinite)
+    || salePrice <= 0
+    || low <= 0
+    || high <= low
+    || average <= 0
+  ) return null;
 
   // The backend view excludes any long-history refinement when the current
   // unit-price evidence indicates shrinkflation. Keep the client resolver in
@@ -405,12 +413,49 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     return null;
   }
 
+  const currentIsAtLow = salePrice <= low + HISTORICAL_SAVER_LOW_TOLERANCE;
+  const hasRepeatedOrHeldLow =
+    (specialSamples != null && specialSamples >= HISTORICAL_SAVER_MIN_SPECIAL_SAMPLES)
+    || (currentLowDays != null && currentLowDays >= HISTORICAL_SAVER_MIN_CURRENT_LOW_DAYS);
+  const averageDiscount = ((average - salePrice) / average) * 100;
+  const highDiscount = ((high - salePrice) / high) * 100;
+  const lowGapPct = ((salePrice - low) / low) * 100;
+  const rangePosition = (salePrice - low) / (high - low);
+
+  // Some stores provide enough 90-day price-state history to describe a
+  // fair price even when the recent regular-price baseline is missing. Keep
+  // this fallback Fair-only: require repeated specials, at least two price
+  // changes, meaningful regular-price duration, and a current price in the
+  // lower 75% of a non-flat range. It must not override a known Dodgy or
+  // recent unit-price/pump signal.
+  const hasReliableObservedFairHistory =
+    row.verdict === "UNKNOWN"
+    && (row.evidence_status === "EARLY" || row.evidence_status === "INSUFFICIENT")
+    && row.store_history_ready === true
+    && samples >= HISTORICAL_OBSERVED_FAIR_MIN_SAMPLES
+    && trackedDays >= HISTORICAL_SAVER_MIN_TRACKED_DAYS
+    && specialDays >= 0
+    && specialDays <= trackedDays
+    && trackedDays - specialDays >= HISTORICAL_SAVER_MIN_REGULAR_DAYS
+    && specialSamples != null
+    && Number.isFinite(specialSamples)
+    && specialSamples >= HISTORICAL_SAVER_MIN_SPECIAL_SAMPLES
+    && priceChanges != null
+    && Number.isFinite(priceChanges)
+    && priceChanges >= 2
+    && salePrice > low + HISTORICAL_SAVER_LOW_TOLERANCE
+    && high > low
+    && rangePosition <= HISTORICAL_ESTABLISHED_FAIR_MAX_RANGE_POSITION
+    && averageDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_AVERAGE_DISCOUNT
+    && highDiscount >= HISTORICAL_ESTABLISHED_FAIR_MIN_HIGH_DISCOUNT
+    && (normalPrice == null
+      || (Number.isFinite(normalPrice)
+        && normalPrice > 0
+        && salePrice <= normalPrice * (1 + HISTORICAL_ESTABLISHED_FAIR_MAX_NORMAL_PREMIUM / 100)));
+  if (hasReliableObservedFairHistory) return "NINETY_DAY_ESTABLISHED_FAIR";
+
   if (
-    salePrice <= 0
-    || low <= 0
-    || high <= low
-    || average <= 0
-    || samples < HISTORICAL_SAVER_MIN_SAMPLES
+    samples < HISTORICAL_SAVER_MIN_SAMPLES
     || trackedDays < HISTORICAL_SAVER_MIN_TRACKED_DAYS
     || specialDays < 0
     || specialDays > trackedDays
@@ -426,13 +471,6 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     return null;
   }
 
-  const currentIsAtLow = salePrice <= low + HISTORICAL_SAVER_LOW_TOLERANCE;
-  const hasRepeatedOrHeldLow =
-    (specialSamples != null && specialSamples >= HISTORICAL_SAVER_MIN_SPECIAL_SAMPLES)
-    || (currentLowDays != null && currentLowDays >= HISTORICAL_SAVER_MIN_CURRENT_LOW_DAYS);
-  const averageDiscount = ((average - salePrice) / average) * 100;
-  const highDiscount = ((high - salePrice) / high) * 100;
-  const lowGapPct = ((salePrice - low) / low) * 100;
   if (hasRepeatedOrHeldLow) {
     if (
       currentIsAtLow
@@ -452,8 +490,6 @@ function getHistoricalAssessmentBasis(row: HistoricalAssessmentRow): HistoricalA
     }
   }
 
-  const normalPrice = row.normal_price == null ? null : Number(row.normal_price);
-  const rangePosition = (salePrice - low) / (high - low);
   if (
     samples >= HISTORICAL_ESTABLISHED_FAIR_MIN_SAMPLES
     && specialSamples != null
