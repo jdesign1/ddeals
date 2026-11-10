@@ -860,12 +860,12 @@ export default function DealAssessmentPage() {
         </div>
 
         {rankingList.length > 0 && (
-          <div className="border-t border-stone-100 pt-4">
+          <div className="pt-4">
             <div className="mb-4">
               <h3 className="dd-type-section text-stone-900">Select a supermarket</h3>
             </div>
             <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
-              {rankingList.map((item, index) => {
+              {rankingList.map((item) => {
                 const storeDeal = findDealForStore(product.currentDeals, item.store);
                 if (!storeDeal) return null;
                 const storeMeta = getStoreLogoMeta(item.store);
@@ -939,7 +939,7 @@ export default function DealAssessmentPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-      <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
+      <div id="selected-assessment" role="tabpanel" className={`space-y-0 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         <div className="space-y-1.5" data-onboarding="deal-verdict">
           <div className="flex min-w-0 items-center gap-2">
             <h3 className={`min-w-0 truncate font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
@@ -966,22 +966,6 @@ export default function DealAssessmentPage() {
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <StoreLogoBadge store={selectedDeal.store} variant="card" />
               <h3 className="min-w-0 truncate text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
-              {!uncertain && (
-                <button
-                  type="button"
-                  onClick={() => setIsEvidenceSheetOpen(true)}
-                  aria-haspopup="dialog"
-                  aria-expanded={isEvidenceSheetOpen}
-                  aria-label={`See the evidence for this ${verdict} assessment`}
-                  className="inline-flex flex-shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
-                >
-                  <AnimatedVerdictBadge
-                    badge={verdictBadge}
-                    animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                    className="w-fit"
-                  />
-                </button>
-              )}
             </div>
             <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
           </div>
@@ -994,6 +978,7 @@ export default function DealAssessmentPage() {
             verdict={verdict}
             evidenceSummary={evidenceSummary}
             assessmentCopy={assessmentSummary.body}
+            compactSpacing
             open={isEvidenceSheetOpen}
             onOpenChange={setIsEvidenceSheetOpen}
           />
