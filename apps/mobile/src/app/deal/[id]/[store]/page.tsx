@@ -47,7 +47,6 @@ import { usePageHeader } from "@/lib/header-context";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import PriceHistoryChart, { ALL_STORES_VALUE } from "@/components/PriceHistoryChart";
 import PriceTimingRecommendation, { type PriceTimingSeries } from "@/components/PriceTimingRecommendation";
-import AssessmentText from "@/components/AssessmentText";
 import InsightCarousel from "@/components/InsightCarousel";
 import CheaperAlternativesSection from "@/components/CheaperAlternativesSection";
 import ErrorState from "@/components/ErrorState";
@@ -115,12 +114,6 @@ function storesMatch(left: string, right: string): boolean {
   const normalizedLeft = normalizeStoreKey(left);
   const normalizedRight = normalizeStoreKey(right);
   return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
-}
-
-function joinStoreNames(stores: string[]): string {
-  if (stores.length <= 1) return stores[0] ?? "the listed supermarket";
-  if (stores.length === 2) return `${stores[0]} and ${stores[1]}`;
-  return `${stores.slice(0, -1).join(", ")}, and ${stores[stores.length - 1]}`;
 }
 
 function DealActions({ productId, productName, dataOnboarding, immediateAdd = false }: { productId: string; productName: string; dataOnboarding?: string; immediateAdd?: boolean }) {
@@ -809,19 +802,6 @@ export default function DealAssessmentPage() {
 
   const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
   const evidenceSummary = getEvidenceSummary();
-  const lowestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
-  const lowestSpecialStoreNames =
-    lowestSpecialPriceCents == null
-      ? []
-      : visibleRanking
-          .filter((item) => Math.round(item.price * 100) === lowestSpecialPriceCents)
-          .map((item) => item.store)
-          .filter((store, index, stores) => stores.indexOf(store) === index);
-  const selectedStoreHasLowestSpecial = lowestSpecialStoreNames.some((store) => storesMatch(store, selectedDeal.store));
-  const crossStoreSpecialSummary =
-    lowestSpecialStoreItem && lowestSpecialStoreNames.length > 0 && !selectedStoreHasLowestSpecial
-      ? `The lowest special price across supermarkets is $${lowestSpecialStoreItem.price.toFixed(2)} at ${joinStoreNames(lowestSpecialStoreNames)}.`
-      : null;
   const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
 
   return (
@@ -882,8 +862,7 @@ export default function DealAssessmentPage() {
         {rankingList.length > 0 && (
           <div className="border-t border-stone-100 pt-4">
             <div className="mb-4">
-              <h3 className="dd-type-section text-stone-900">Price ranking</h3>
-              <p className="mt-0.5 text-sm leading-relaxed text-stone-500">Select a supermarket to see assessment details</p>
+              <h3 className="dd-type-section text-stone-900">Select a supermarket</h3>
             </div>
             <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
               {rankingList.map((item, index) => {
@@ -891,8 +870,6 @@ export default function DealAssessmentPage() {
                 if (!storeDeal) return null;
                 const storeMeta = getStoreLogoMeta(item.store);
                 const isCurrentStore = storesMatch(item.store, selectedDeal.store);
-                const isFirstStore = index === 0;
-                const isLastStore = index === rankingList.length - 1;
                 const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
                 const storeUnitPrice = shouldDisplayAssessmentUnitPrice(product.category, product.name, storeDeal.saleUnitLabel)
                   ? formatUnitPrice(storeDeal.saleUnitPrice, storeDeal.saleUnitLabel)
@@ -933,9 +910,7 @@ export default function DealAssessmentPage() {
                 );
                 const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
                   isCurrentStore
-                    ? `outline-2 outline outline-offset-0 outline-stone-400 ${
-                        isFirstStore ? "rounded-t-2xl" : isLastStore ? "rounded-b-2xl" : "rounded-none"
-                      }`
+                    ? "rounded-2xl outline-2 outline outline-offset-0 outline-stone-400"
                     : ""
                 }`;
                 return (
@@ -966,6 +941,27 @@ export default function DealAssessmentPage() {
       >
       <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         <div className="space-y-1.5" data-onboarding="deal-verdict">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className={`min-w-0 truncate font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
+              {getVerdictTitle(verdict)}
+            </h3>
+            {!uncertain && (
+              <button
+                type="button"
+                onClick={() => setIsEvidenceSheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={isEvidenceSheetOpen}
+                aria-label={`See the evidence for this ${verdict} assessment`}
+                className="inline-flex flex-shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+              >
+                <AnimatedVerdictBadge
+                  badge={verdictBadge}
+                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                  className="w-fit"
+                />
+              </button>
+            )}
+          </div>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <StoreLogoBadge store={selectedDeal.store} variant="card" />
@@ -992,26 +988,16 @@ export default function DealAssessmentPage() {
           <DealStoreLink deal={selectedDeal} productName={product.name} />
         </div>
 
-        <div>
-          <h4 className="dd-type-control mb-1 font-display font-extrabold text-stone-900">
-            <AssessmentText text={assessmentSummary.heading} />
-          </h4>
-          {crossStoreSpecialSummary && (
-            <p className="mt-2 text-sm leading-relaxed text-stone-600">
-              <AssessmentText text={crossStoreSpecialSummary} />
-            </p>
-          )}
-          {evidenceSummary && (
-            <AssessmentEvidenceCard
-              deal={selectedDeal}
-              verdict={verdict}
-              evidenceSummary={evidenceSummary}
-              assessmentCopy={assessmentSummary.body}
-              open={isEvidenceSheetOpen}
-              onOpenChange={setIsEvidenceSheetOpen}
-            />
-          )}
-        </div>
+        {evidenceSummary && (
+          <AssessmentEvidenceCard
+            deal={selectedDeal}
+            verdict={verdict}
+            evidenceSummary={evidenceSummary}
+            assessmentCopy={assessmentSummary.body}
+            open={isEvidenceSheetOpen}
+            onOpenChange={setIsEvidenceSheetOpen}
+          />
+        )}
 
       </div>
       </motion.div>
