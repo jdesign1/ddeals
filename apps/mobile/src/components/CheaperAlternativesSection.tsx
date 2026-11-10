@@ -12,7 +12,6 @@ interface CheaperAlternativesSectionProps {
   alternatives: CheaperAlternative[];
   isMultiStoreDeal: boolean;
   showCarousel: boolean;
-  verdictButtonBorderClass: string;
   onToggle: () => void;
 }
 
@@ -20,7 +19,6 @@ function CheaperAlternativesSection({
   alternatives,
   isMultiStoreDeal,
   showCarousel,
-  verdictButtonBorderClass,
   onToggle,
 }: CheaperAlternativesSectionProps) {
   const visibleAlternatives = useMemo(() => {
@@ -37,16 +35,11 @@ function CheaperAlternativesSection({
   return (
     <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
       <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
-      <p className="mb-3 text-sm text-stone-600">
-        {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
-      </p>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={showCarousel}
-        className={`flex w-full items-center justify-center gap-2 rounded-full border py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${
-          isMultiStoreDeal ? "border-stone-500 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
-        }`}
+        className="flex w-full items-center justify-center gap-2 rounded-full border border-stone-500 bg-white px-4 py-3 text-center dd-type-control text-stone-900 transition-all hover:bg-stone-50"
       >
         <span>See cheaper options</span>
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">

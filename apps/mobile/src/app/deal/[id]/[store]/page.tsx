@@ -778,8 +778,6 @@ export default function DealAssessmentPage() {
     verdict === "Real Saver" ? "bg-fair-50" : verdict === "Dodgy Deal" ? "bg-alert-50" : uncertain ? "page-paper-surface" : "bg-dodgy-50";
   const verdictBorderClass =
     verdict === "Real Saver" ? "border-fair-200" : verdict === "Dodgy Deal" ? "border-alert-200" : uncertain ? "border-stone-200" : "border-dodgy-200";
-  const verdictButtonBorderClass =
-    verdict === "Real Saver" ? "border-fair-700 text-fair-800" : verdict === "Dodgy Deal" ? "border-alert-700 text-alert-800" : uncertain ? "border-stone-600 text-stone-700" : "border-dodgy-700 text-dodgy-800";
   const verdictBadge = VERDICT_BADGE[verdict];
 
   // `rankingList` contains each supermarket's current price, while
@@ -1087,7 +1085,6 @@ export default function DealAssessmentPage() {
             alternatives={cheaperAlternatives}
             isMultiStoreDeal={false}
             showCarousel={showCheaperCarousel}
-            verdictButtonBorderClass={verdictButtonBorderClass}
             onToggle={toggleCheaperCarousel}
           />
         </div>
@@ -1096,15 +1093,10 @@ export default function DealAssessmentPage() {
       {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
           <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
             <h4 className="dd-type-section text-stone-900">Cheaper alternatives available</h4>
-            <p className="mb-3 text-sm text-stone-600">
-              {isMultiStoreDeal ? "See cheaper products on special" : "See other cheaper alternatives on special"}
-            </p>
             <button
               onClick={toggleCheaperCarousel}
               aria-expanded={showCheaperCarousel}
-              className={`flex w-full items-center justify-center gap-2 rounded-full border py-3 px-4 text-center dd-type-control transition-all hover:bg-stone-50 ${
-                isMultiStoreDeal ? "border-stone-500 bg-white text-stone-700" : `${verdictButtonBorderClass} bg-white`
-              }`}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-stone-500 bg-white px-4 py-3 text-center dd-type-control text-stone-900 transition-all hover:bg-stone-50"
             >
               <span>See cheaper options</span>
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
