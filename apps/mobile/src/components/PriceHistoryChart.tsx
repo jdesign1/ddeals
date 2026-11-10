@@ -483,7 +483,7 @@ function PriceHistoryChart({
         </motion.div>
       </div>
       <p className="text-center text-sm leading-5 text-stone-600">
-        {showHistoryList ? "Tap to return to the graph." : "The line connects recorded price changes; tap to see dates and prices."}
+        {showHistoryList ? "Tap to return to the graph." : "Tap the graph to see dates and prices."}
       </p>
     </div>
   );

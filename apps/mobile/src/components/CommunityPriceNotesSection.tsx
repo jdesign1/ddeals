@@ -94,7 +94,7 @@ const NoteCard = memo(function NoteCard({ note, onEdit, onHelpfulChanged, onOpen
       />
       {note.status === "pending" && (
         <p className="mt-3 rounded-xl border border-fair-200 bg-fair-50 px-3 py-2 text-xs font-semibold leading-4 text-fair-900" role="status">
-          Pending - tip will update shortly.
+          Under review. Your tip will appear once approved.
         </p>
       )}
       {(note.price !== null || note.store_name) && (
@@ -674,7 +674,7 @@ function CommunityPriceNotesSection({
       >
         <div>
           <h2 id="community-price-notes-heading" className="dd-type-section text-stone-900">Help other shoppers</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">Seen this cheaper somewhere, or noticed something useful? Share a quick tip with the community.</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">Found it cheaper or spotted something useful? Share a tip for other shoppers.</p>
         </div>
 
         {isLoadingCurrentProduct && (
@@ -692,15 +692,15 @@ function CommunityPriceNotesSection({
           >
             {error && (
               <div className="rounded-xl border border-stone-200 bg-stone-50 p-4" role="alert">
-                <p className="text-sm font-semibold text-stone-700">Community tips aren&rsquo;t available right now.</p>
+                <p className="text-sm font-semibold text-stone-700">Community tips are unavailable right now.</p>
                 <button type="button" onClick={() => { setLoadedProductId(null); setRetryTick((tick) => tick + 1); }} className="mt-3 min-h-11 rounded-full border border-stone-400 px-4 py-2 text-sm font-bold text-stone-700 hover:bg-white">Try again</button>
               </div>
             )}
 
             {!error && notes.length === 0 && (
               <div className="rounded-xl border border-stone-300 bg-stone-50 p-4">
-                <p className="text-sm font-semibold leading-5 text-stone-700">No community tips yet.</p>
-                <p className="mt-1 text-sm leading-5 text-stone-500">Know something useful about this item? Be the first to share it.</p>
+                <p className="text-sm font-semibold leading-5 text-stone-700">No tips yet.</p>
+                <p className="mt-1 text-sm leading-5 text-stone-500">Got a useful tip? Be the first to share it.</p>
               </div>
             )}
 
@@ -710,7 +710,7 @@ function CommunityPriceNotesSection({
                   {notes.slice(0, 3).map((note) => <NoteCard key={note.id} note={note} onEdit={openEditComposer} onHelpfulChanged={handleHelpfulChanged} onOpenProfile={openCommunityProfile} />)}
                 </InsightCarousel>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs font-semibold text-stone-500">Community-reported prices may be out of date.</p>
+                  <p className="text-xs font-semibold text-stone-500">Shopper-reported prices may be out of date.</p>
                   {notes.length > 3 && <button ref={seeAllNotesButtonRef} type="button" onClick={openNotesSheet} className="min-h-11 rounded-full px-2 text-sm font-bold text-stone-700 underline decoration-stone-300 underline-offset-4 hover:text-stone-900">See all tips</button>}
                 </div>
               </div>
