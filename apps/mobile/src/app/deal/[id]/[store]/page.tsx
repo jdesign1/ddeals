@@ -632,6 +632,10 @@ export default function DealAssessmentPage() {
     const previousBodyPosition = body.style.position;
     const previousBodyTop = body.style.top;
     const previousBodyWidth = body.style.width;
+    // CSS overscroll containment and a fixed body cover most browsers, but
+    // iOS WebViews can still turn a downward touch gesture into pull-to-refresh
+    // unless the active touchmove is explicitly cancelled.
+    const preventPullToRefresh = (event: TouchEvent) => event.preventDefault();
     html.style.overflow = "hidden";
     html.style.overscrollBehavior = "none";
     document.body.style.overflow = "hidden";
@@ -640,6 +644,7 @@ export default function DealAssessmentPage() {
     body.style.top = `-${scrollY}px`;
     body.style.width = "100%";
     window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("touchmove", preventPullToRefresh, { passive: false });
     return () => {
       html.style.overflow = previousHtmlOverflow;
       html.style.overscrollBehavior = previousHtmlOverscrollBehavior;
@@ -649,6 +654,7 @@ export default function DealAssessmentPage() {
       body.style.top = previousBodyTop;
       body.style.width = previousBodyWidth;
       window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("touchmove", preventPullToRefresh);
       window.scrollTo(0, scrollY);
     };
   }, [showProductImage]);
