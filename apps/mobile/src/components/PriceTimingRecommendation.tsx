@@ -10,10 +10,10 @@ export interface PriceTimingSeries {
 }
 
 const ACTION_STYLE: Record<PriceTimingAction, { label: string; className: string }> = {
-  "buy-now": { label: "Good price now", className: "bg-fair-50 text-fair-700" },
-  wait: { label: "Higher than usual", className: "bg-alert-50 text-alert-700" },
+  "buy-now": { label: "Good price", className: "bg-fair-50 text-fair-700" },
+  wait: { label: "Price is high", className: "bg-alert-50 text-alert-700" },
   watch: { label: "Typical price", className: "bg-blue-50 text-blue-700" },
-  "add-to-list": { label: "More history needed", className: "bg-stone-100 text-stone-700" },
+  "add-to-list": { label: "Need more history", className: "bg-stone-100 text-stone-700" },
 };
 
 function formatPrice(value: number | null): string {
@@ -22,22 +22,22 @@ function formatPrice(value: number | null): string {
 
 function movementCopy(signal: PriceTimingSignal): string {
   if (signal.priceChange == null || signal.direction === "steady") {
-    return "There is no clear recent rise or drop to call out.";
+    return "No recent price change.";
   }
 
-  return `Price has ${signal.direction === "up" ? "risen" : "dropped"} by ${formatPrice(Math.abs(signal.priceChange))} since the previous recorded price.`;
+  return `${signal.direction === "up" ? "Up" : "Down"} ${formatPrice(Math.abs(signal.priceChange))} since the last check.`;
 }
 
 function recommendationCopy(signal: PriceTimingSignal, currentIsSpecial: boolean): string {
   switch (signal.action) {
     case "buy-now":
-      return `The current price is close to the 90-day low of ${formatPrice(signal.low)}${currentIsSpecial ? " and is on special" : ""}.`;
+      return `Near the lowest price seen in 90 days${currentIsSpecial ? ". On special now." : "."}`;
     case "wait":
-      return `The current price is above the 90-day average of ${formatPrice(signal.average)}, so it may be worth waiting for a better price.`;
+      return "Above the 90-day average. It may be worth waiting.";
     case "watch":
-      return "The current price sits in its usual range, so the history does not give a strong reason to buy or wait.";
+      return "Around its usual price. No clear reason to buy or wait.";
     case "add-to-list":
-      return "There are not enough distinct recorded prices to tell whether it is likely to drop yet. More history will make the signal clearer.";
+      return "Not enough history to tell if it may drop. Keep it on your Watchlist and check again later.";
   }
 }
 
@@ -57,7 +57,7 @@ function TimingRow({ series, showStore }: { series: PriceTimingSeries; showStore
       <p className={`mt-3 ${bodyCopyClassName}`}>{movementCopy(signal)}</p>
       <p className={`mt-2 ${bodyCopyClassName}`}>{recommendationCopy(signal, series.currentIsSpecial)}</p>
       <p className={`mt-3 ${bodyCopyClassName}`}>
-        Based on {signal.observationCount} distinct recorded price{signal.observationCount === 1 ? "" : "s"}. History is a guide, not a guarantee.
+        Based on {signal.observationCount} price check{signal.observationCount === 1 ? "" : "s"}. Prices can change.
       </p>
     </div>
   );
