@@ -6,6 +6,7 @@ import { Info, X } from "lucide-react";
 import type { AssessmentVerdict, CurrentDeal } from "@dodgey-deals/shared";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import AssessmentText from "@/components/AssessmentText";
+import StoreLogoBadge from "@/components/StoreLogoBadge";
 import WinkMascot from "@/components/WinkMascot";
 import { VERDICT_BADGE } from "@/lib/assessment-verdict";
 
@@ -186,7 +187,8 @@ function AssessmentEvidenceCard({
                   )}
 
                   <div className="rounded-2xl border border-stone-200 bg-white px-4 py-4">
-                    <h4 className="text-sm font-bold text-stone-900">
+                    <h4 className="flex items-center gap-2 text-sm font-bold text-stone-900">
+                      <StoreLogoBadge store={deal.store} variant="compact" />
                       <span className={`dd-badge ${verdictBadge.className}`}>
                         <verdictBadge.icon className="h-3.5 w-3.5" aria-hidden="true" />
                         {verdictBadge.label}

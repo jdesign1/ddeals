@@ -832,8 +832,8 @@ export default function DealAssessmentPage() {
       {isMultiStoreDeal ? (
         <>
       {rankingList.length > 0 && (
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs">
-          <h3 className="mb-2 dd-type-section text-stone-900">Select a supermarket</h3>
+        <section className="rounded-2xl border border-stone-200 bg-white px-5 pb-1 pt-5 text-left shadow-xs">
+          <h3 className="mb-4 dd-type-section text-stone-900">Select a supermarket</h3>
           <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
             {rankingList.map((item) => {
               const storeDeal = findDealForStore(product.currentDeals, item.store);
