@@ -26,10 +26,9 @@ function getEvidenceDetails(deal: CurrentDeal) {
   };
 }
 
-function formatCount(value: number | null | undefined, singular: string, plural = `${singular}s`): string | null {
+function formatCountValue(value: number | null | undefined): string | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
-  const count = Math.round(value);
-  return `${count} ${count === 1 ? singular : plural}`;
+  return String(Math.round(value));
 }
 
 function getPriceMovement(deal: CurrentDeal): { direction: "up" | "down"; amount: string } | null {
@@ -91,9 +90,9 @@ function AssessmentEvidenceCard({
   const titleId = useId();
   const sheetId = useId();
   const { days, checks, trackedDays: trackedDaysValue } = getEvidenceDetails(deal);
-  const ninetyDayChecks = formatCount(deal.ninetyDaySamples, "check");
-  const trackedDays = formatCount(trackedDaysValue, "day");
-  const priceChanges = formatCount(deal.ninetyDayPriceChanges, "change");
+  const ninetyDayChecks = formatCountValue(deal.ninetyDaySamples) ?? formatCountValue(checks);
+  const trackedDays = formatCountValue(trackedDaysValue);
+  const priceChanges = formatCountValue(deal.ninetyDayPriceChanges);
   const hasEvidenceCounts = Boolean(days || checks || trackedDays || ninetyDayChecks || priceChanges);
   const verdictBadge = VERDICT_BADGE[verdict];
   const priceMovement = getPriceMovement(deal);
@@ -170,16 +169,16 @@ function AssessmentEvidenceCard({
                         </p>
                         <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200/80 text-center">
                           <div className="px-2 first:pl-0 last:pr-0">
-                            <p className="text-base font-extrabold text-stone-900">{ninetyDayChecks ?? formatCount(checks, "check") ?? "—"}</p>
-                            <p className="mt-0.5 text-xs leading-4 font-normal text-stone-500">checks</p>
+                            <p className="text-2xl leading-7 font-extrabold text-stone-900">{ninetyDayChecks ?? "—"}</p>
+                            <p className="mt-1 text-sm leading-5 font-semibold text-stone-600">Checks</p>
                           </div>
                           <div className="px-2 first:pl-0 last:pr-0">
-                            <p className="text-base font-extrabold text-stone-900">{trackedDays ?? "—"}</p>
-                            <p className="mt-0.5 text-xs leading-4 font-normal text-stone-500">days tracked</p>
+                            <p className="text-2xl leading-7 font-extrabold text-stone-900">{trackedDays ?? "—"}</p>
+                            <p className="mt-1 text-sm leading-5 font-semibold text-stone-600">Days</p>
                           </div>
                           <div className="px-2 first:pl-0 last:pr-0">
-                            <p className="text-base font-extrabold text-stone-900">{priceChanges ?? "—"}</p>
-                            <p className="mt-0.5 text-xs leading-4 font-normal text-stone-500">price changes</p>
+                            <p className="text-2xl leading-7 font-extrabold text-stone-900">{priceChanges ?? "—"}</p>
+                            <p className="mt-1 text-sm leading-5 font-semibold text-stone-600">Price changes</p>
                           </div>
                         </div>
                       </div>
