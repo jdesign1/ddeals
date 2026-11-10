@@ -27,7 +27,6 @@ import {
   getRealAveragePrice,
   buildRankingList,
   buildVisibleRanking,
-  buildBarChartData,
   buildPriceHistoryInsights,
   findCheaperAlternatives,
   findDealForStore,
@@ -45,7 +44,6 @@ import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { usePageHeader } from "@/lib/header-context";
-import StoreCompareChart from "@/components/StoreCompareChart";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
 import PriceHistoryChart, { ALL_STORES_VALUE } from "@/components/PriceHistoryChart";
 import PriceTimingRecommendation, { type PriceTimingSeries } from "@/components/PriceTimingRecommendation";
@@ -614,7 +612,6 @@ export default function DealAssessmentPage() {
   const toggleCheaperCarousel = useCallback(() => {
     setShowCheaperCarousel((open) => !open);
   }, []);
-  const [priceHistoryViewTab, setPriceHistoryViewTab] = useState<"90-day-view" | "insights">("90-day-view");
   const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("price-tips");
   const [showProductImage, setShowProductImage] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
@@ -690,7 +687,6 @@ export default function DealAssessmentPage() {
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);
   const isMultiStoreDeal = rankingList.length > 1;
   const visibleRanking = useMemo(() => (product ? buildVisibleRanking(product, rankingList) : []), [product, rankingList]);
-  const barChartData = useMemo(() => (product ? buildBarChartData(product) : []), [product]);
   const currentPriceRange = useMemo(() => (product ? getCurrentPriceRange(product) : null), [product]);
   const specialPriceRange = useMemo(() => (product ? getSpecialPriceRange(product) : null), [product]);
   // Always "all" stores now (2026-08-12) -- the supermarket filter pills
@@ -705,11 +701,8 @@ export default function DealAssessmentPage() {
       : []),
     [activeDeal, effectiveProducts, product]
   );
-  // Summary insight tiles for the tabbed Price History Insights panel. Built
-  // from the `dodgy_deals` view's price_history_90d_* columns (see data.ts) --
-  // returns [] below MIN_90D_SAMPLES_FOR_INSIGHTS, while the separate 90-day
-  // tab can still show its raw transition chart when that summary gate is not
-  // met.
+  // Summary insight tiles for the 90-day price tips panel. Built from the
+  // `dodgy_deals` view's price_history_90d_* columns (see data.ts).
   const insights = useMemo(() => (activeDeal ? buildPriceHistoryInsights(activeDeal) : []), [activeDeal]);
   const priceTimingSeries = useMemo<PriceTimingSeries[]>(
     () =>
@@ -1331,100 +1324,24 @@ export default function DealAssessmentPage() {
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
             <div>
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>
-              <p className="mt-1 text-sm leading-relaxed text-stone-500">
-                {priceHistoryViewTab === "90-day-view"
-                  ? "See how the special price has changed over 90 days"
-                  : "Compare current prices with each supermarket's recent average."}
-              </p>
+              <p className="mt-1 text-sm leading-relaxed text-stone-500">See how the special price has changed over 90 days</p>
             </div>
-            <div
-              className="flex items-center gap-0.5 rounded-lg bg-stone-200 p-1 shadow-inner shadow-black/5"
-              role="tablist"
-              aria-label="90-day price history views"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={priceHistoryViewTab === "90-day-view"}
-                onClick={() => setPriceHistoryViewTab("90-day-view")}
-                className={`relative z-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryViewTab === "90-day-view" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <AnimatePresence initial={false}>
-                  {priceHistoryViewTab === "90-day-view" && (
-                    <motion.span
-                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
-                      style={{ zIndex: -1 }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                </AnimatePresence>
-                90 day view
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={priceHistoryViewTab === "insights"}
-                onClick={() => setPriceHistoryViewTab("insights")}
-                className={`relative z-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-center dd-type-control transition-[background-color,color,box-shadow] ${
-                  priceHistoryViewTab === "insights" ? "dd-segmented-control-active text-stone-900 shadow-sm ring-1 ring-black/5" : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <AnimatePresence initial={false}>
-                  {priceHistoryViewTab === "insights" && (
-                    <motion.span
-                      className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white"
-                      style={{ zIndex: -1 }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                </AnimatePresence>
-                Average
-              </button>
+            <div data-onboarding="price-history-chart">
+              <PriceHistoryChart
+                points={priceHistoryPoints}
+                currentPrice={historyDeal?.price ?? selectedDeal.price}
+                currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
+                currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
+                comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
+                loading={priceHistoryLoadingForSelection}
+                error={priceHistoryErrorForSelection}
+                historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
+                storeOptions={historyStoreOptions}
+                selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
+                onStoreChange={selectHistoryStore}
+                verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
+              />
             </div>
-            {priceHistoryViewTab === "90-day-view" ? (
-              <div data-onboarding="price-history-chart">
-                <PriceHistoryChart
-                  points={priceHistoryPoints}
-                  currentPrice={historyDeal?.price ?? selectedDeal.price}
-                  currentStore={isAllHistorySelected ? "All supermarkets" : effectiveHistoryStore}
-                  currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
-                  comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
-                  loading={priceHistoryLoadingForSelection}
-                  error={priceHistoryErrorForSelection}
-                  historySeries={isAllHistorySelected ? priceHistorySeries : undefined}
-                  storeOptions={historyStoreOptions}
-                  selectedStore={isAllHistorySelected ? ALL_STORES_VALUE : effectiveHistoryStore}
-                  onStoreChange={selectHistoryStore}
-                  verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
-                />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <StoreCompareChart rows={barChartData} />
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-ink-600">
-                    <span className="dd-chart-average-bar h-2 w-2 rounded-full" />
-                    <span>Recent average</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-fair-700">
-                    <span className="h-2 w-2 rounded-full bg-fair-600" />
-                    <span>Cheaper</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm leading-4 font-bold text-alert-700">
-                    <span className="h-2 w-2 rounded-full bg-alert-600" />
-                    <span>Pricier</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
             <h4 className="dd-type-section text-stone-900">90-day price tips</h4>
