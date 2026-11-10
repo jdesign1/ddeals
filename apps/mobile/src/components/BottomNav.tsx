@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { memo, useCallback, useEffect, useRef } from "react";
-import { useSearchNavigation } from "@/lib/search-context";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useNotificationsData } from "@/lib/notifications-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { useRouter } from "next/navigation";
 import { markNavigationStart } from "@/lib/navigation-performance";
+import { useWatchlistData } from "@/lib/watchlist-context";
 
 type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
 
@@ -324,10 +325,21 @@ export default function BottomNav() {
   const router = useRouter();
   const prefetchedRoutesRef = useRef(new Set<string>());
   const { isActive: isSearchActive, closeSearch } = useSearchNavigation();
-  const { hasUnreadWatchlistUpdates } = useNotificationsData();
+  const { unreadAlerts } = useNotificationsData();
+  const { products, catalogueLiveLoaded } = useSearchCatalogue();
+  const { savedProductIds, savedItemsReady } = useWatchlistData();
   const { isOpen: isDrawerOpen } = useNavigationDrawer();
   const { hasPendingDigest } = useNewSpecialsData();
   const { requestOpen } = useNewSpecialsActions();
+  const hasUnreadCurrentWatchlistUpdates = useMemo(() => {
+    if (!catalogueLiveLoaded || !savedItemsReady || unreadAlerts.length === 0) return false;
+    const currentSpecialProductIds = new Set(
+      products
+        .filter((product) => savedProductIds.has(product.id) && product.currentDeals.some((deal) => deal.isOnSpecial === true))
+        .map((product) => product.id),
+    );
+    return unreadAlerts.some((alert) => currentSpecialProductIds.has(alert.product_id));
+  }, [catalogueLiveLoaded, products, savedItemsReady, savedProductIds, unreadAlerts]);
   const hasBottomNav = pathname !== null
     && !pathname.startsWith("/deal/")
     && pathname !== "/settings"
@@ -399,7 +411,7 @@ export default function BottomNav() {
             label={label}
             icon={icon}
             isActive={href === "/" ? pathname === "/" : pathname.startsWith(href)}
-            hasUnreadUpdates={href === "/lists" && hasUnreadWatchlistUpdates}
+            hasUnreadUpdates={href === "/lists" && hasUnreadCurrentWatchlistUpdates}
             hasNewSpecials={href === "/" && hasPendingDigest}
             prefetchRoute={prefetchRoute}
             isSearchActive={isSearchActive}
