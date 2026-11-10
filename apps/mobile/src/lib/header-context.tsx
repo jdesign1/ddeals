@@ -23,6 +23,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export interface HeaderOverride {
   title: string;
   onBack: () => void;
+  actions?: ReactNode;
 }
 
 const HeaderOverrideContext = createContext<{
@@ -47,11 +48,11 @@ export function useHeaderOverride() {
  * away). `title` can change across renders (e.g. once the product name
  * finishes loading) and the header updates immediately.
  */
-export function usePageHeader(title: string | null, onBack: () => void) {
+export function usePageHeader(title: string | null, onBack: () => void, actions?: ReactNode) {
   const { setOverride } = useHeaderOverride();
   useEffect(() => {
     if (title == null) return;
-    setOverride({ title, onBack });
+    setOverride({ title, onBack, actions });
     return () => setOverride(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title]);

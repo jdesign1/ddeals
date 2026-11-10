@@ -125,7 +125,7 @@ function joinStoreNames(stores: string[]): string {
 
 function DealActions({ productId, productName, dataOnboarding, immediateAdd = false }: { productId: string; productName: string; dataOnboarding?: string; immediateAdd?: boolean }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => {
@@ -136,9 +136,9 @@ function DealActions({ productId, productName, dataOnboarding, immediateAdd = fa
           }
         }}
         aria-label="Share"
-        className="flex h-8 w-8 items-center justify-center text-stone-900 transition-opacity hover:opacity-70"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-stone-900 transition-colors hover:bg-stone-100"
       >
-        <Share className="block h-6 w-6" aria-hidden="true" />
+        <Share className="block h-5 w-5" aria-hidden="true" />
       </button>
       <AddToListButton
         productId={productId}
@@ -146,7 +146,7 @@ function DealActions({ productId, productName, dataOnboarding, immediateAdd = fa
         immediateAdd={immediateAdd}
         dataOnboarding={dataOnboarding}
         containerClassName="relative"
-        buttonClassName="flex h-8 w-8 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
+        buttonClassName="flex h-9 w-9 items-center justify-center rounded-full border border-stone-900 bg-white text-stone-900"
         iconClassName="h-5 w-5"
       />
     </div>
@@ -682,7 +682,10 @@ export default function DealAssessmentPage() {
   // in place within it, so the global header stays on this page's own
   // title/back button throughout either way.
   const headerTitle = headerProduct?.name ?? null;
-  usePageHeader(headerTitle, onBack);
+  const headerActions = headerProduct ? (
+    <DealActions productId={headerProduct.id} productName={headerProduct.name} dataOnboarding="deal-save" immediateAdd />
+  ) : null;
+  usePageHeader(headerTitle, onBack, headerActions);
 
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);
   const isMultiStoreDeal = rankingList.length > 1;
@@ -842,7 +845,6 @@ export default function DealAssessmentPage() {
           <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
             Deal assessment
           </h2>
-          <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" immediateAdd />
         </div>
         <div className="flex items-start gap-4" data-onboarding="deal-summary">
           <button
@@ -959,29 +961,29 @@ export default function DealAssessmentPage() {
       <div id="selected-assessment" role="tabpanel" className={`space-y-5 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
         <div className="space-y-1.5" data-onboarding="deal-verdict">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-2.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <StoreLogoBadge store={selectedDeal.store} variant="card" />
-              <h3 className="truncate text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
+              <h3 className="min-w-0 truncate text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
+              {!uncertain && (
+                <button
+                  type="button"
+                  onClick={() => setIsEvidenceSheetOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={isEvidenceSheetOpen}
+                  aria-label={`See the evidence for this ${verdict} assessment`}
+                  className="inline-flex flex-shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+                >
+                  <AnimatedVerdictBadge
+                    badge={verdictBadge}
+                    animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                    className="w-fit"
+                  />
+                </button>
+              )}
             </div>
             <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
           </div>
           <DealStoreLink deal={selectedDeal} productName={product.name} />
-          {!uncertain && (
-            <button
-              type="button"
-              onClick={() => setIsEvidenceSheetOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={isEvidenceSheetOpen}
-              aria-label={`See the evidence for this ${verdict} assessment`}
-              className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
-            >
-              <AnimatedVerdictBadge
-                badge={verdictBadge}
-                animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                className="w-fit"
-              />
-            </button>
-          )}
         </div>
 
         <div>
@@ -1011,28 +1013,27 @@ export default function DealAssessmentPage() {
       ) : (
         <div className={`space-y-4 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="min-w-0" data-onboarding="deal-verdict">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className={`font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className={`min-w-0 truncate font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
                 {getVerdictTitle(verdict)}
               </h2>
-              <DealActions productId={product.id} productName={product.name} dataOnboarding="deal-save" immediateAdd />
+              {!uncertain && (
+                <button
+                  type="button"
+                  onClick={() => setIsEvidenceSheetOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={isEvidenceSheetOpen}
+                  aria-label={`See the evidence for this ${verdict} assessment`}
+                  className="inline-flex flex-shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+                >
+                  <AnimatedVerdictBadge
+                    badge={verdictBadge}
+                    animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
+                    className="w-fit"
+                  />
+                </button>
+              )}
             </div>
-            {!uncertain && (
-              <button
-                type="button"
-                onClick={() => setIsEvidenceSheetOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={isEvidenceSheetOpen}
-                aria-label={`See the evidence for this ${verdict} assessment`}
-                className="mt-2 inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
-              >
-                <AnimatedVerdictBadge
-                  badge={verdictBadge}
-                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  className="w-fit"
-                />
-              </button>
-            )}
           </div>
 
           <div className="flex items-start gap-4" data-onboarding="deal-summary">
@@ -1065,21 +1066,16 @@ export default function DealAssessmentPage() {
             </div>
           </div>
 
-          <div>
-            <h4 className="dd-type-section text-stone-900">
-              Price trend data
-            </h4>
-            {evidenceSummary && (
-              <AssessmentEvidenceCard
-                deal={selectedDeal}
-                verdict={verdict}
-                evidenceSummary={evidenceSummary}
-                assessmentCopy={assessmentSummary.body}
-                open={isEvidenceSheetOpen}
-                onOpenChange={setIsEvidenceSheetOpen}
-              />
-            )}
-          </div>
+          {evidenceSummary && (
+            <AssessmentEvidenceCard
+              deal={selectedDeal}
+              verdict={verdict}
+              evidenceSummary={evidenceSummary}
+              assessmentCopy={assessmentSummary.body}
+              open={isEvidenceSheetOpen}
+              onOpenChange={setIsEvidenceSheetOpen}
+            />
+          )}
 
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
@@ -1316,7 +1312,6 @@ export default function DealAssessmentPage() {
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
             <div>
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>
-              <p className="mt-1 text-sm leading-relaxed text-stone-500">See how the special price has changed over 90 days</p>
             </div>
             <div data-onboarding="price-history-chart">
               <PriceHistoryChart

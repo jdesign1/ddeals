@@ -172,12 +172,19 @@ export default function AppHeader({
           </AnimatePresence>
 
           {isContextHeader ? (
-            <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2">
-              <button type="button" onClick={() => (override?.onBack ? override.onBack() : window.history.back())} aria-label="Back" className="-ml-1.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
-                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              </button>
-              <span className="min-w-0 flex-1 truncate pr-2 font-display text-base font-extrabold tracking-normal text-ink-900">{contextTitle}</span>
-            </div>
+            <>
+              <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2">
+                <button type="button" onClick={() => (override?.onBack ? override.onBack() : window.history.back())} aria-label="Back" className="-ml-1.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
+                  <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <span className="min-w-0 flex-1 truncate pr-1 font-display text-base font-extrabold tracking-normal text-ink-900">{contextTitle}</span>
+              </div>
+              {override?.actions && (
+                <div aria-hidden={refreshStatus !== null} className="flex flex-shrink-0 items-center gap-1">
+                  {override.actions}
+                </div>
+              )}
+            </>
           ) : (
             <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2.5">
               <button type="button" id="global-header-menu-btn" aria-label={user ? "Open profile menu" : "Open menu"} aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${user ? "border-fair-600 bg-fair-600 text-white hover:bg-fair-700" : "border-stone-300 bg-white text-stone-800 hover:bg-stone-50"}`}>
