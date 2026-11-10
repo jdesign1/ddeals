@@ -1081,10 +1081,8 @@ export default function DealAssessmentPage() {
             recommendation and supporting price tips in the card below. */}
         <div ref={priceHistorySectionRef} className="space-y-4">
           <div className="dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 shadow-xs">
-            <div>
+            <div data-onboarding="price-history-chart" className="scroll-mt-24 space-y-4">
               <h4 className="dd-type-section text-stone-900">90-day price history</h4>
-            </div>
-            <div data-onboarding="price-history-chart">
               <PriceHistoryChart
                 points={priceHistoryPoints}
                 currentPrice={historyDeal?.price ?? selectedDeal.price}

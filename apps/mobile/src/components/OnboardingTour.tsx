@@ -15,11 +15,11 @@ type TourStep = {
   target: string;
   title: string;
   body: string;
-  position?: "top" | "search" | "bottom" | "middle" | "lower";
+  position?: "top" | "search" | "target-below" | "bottom" | "middle" | "lower";
   welcome?: boolean;
   scrim?: "below-card";
   autoScroll?: boolean;
-  scrollBlock?: "center" | "end";
+  scrollBlock?: "start" | "center" | "end";
 };
 
 const DEAL_ROUTE = "__deal__";
@@ -63,16 +63,14 @@ const TOUR_STEPS: TourStep[] = [
     body: "Use the 90-day price history to see how the price has moved and judge whether today’s price is fair.",
     position: "top",
     autoScroll: true,
-    scrollBlock: "center",
+    scrollBlock: "start",
   },
   {
     href: DEAL_ROUTE,
     target: '[data-onboarding="deal-save"]',
     title: "Add items to your Watchlist",
     body: "Use the plus button to save this product to your Watchlist. You can then keep an eye out for a better price.",
-    position: "middle",
-    autoScroll: true,
-    scrollBlock: "end",
+    position: "target-below",
   },
 ];
 
@@ -95,12 +93,13 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const isDealPath = pathname.startsWith("/deal/");
 
   useEffect(() => {
+    if (isClosing) return;
     if (step.href === DEAL_ROUTE) {
       if (dealHref && !isDealPath) router.push(dealHref);
       return;
     }
     if (pathname !== step.href) router.push(step.href);
-  }, [dealHref, isDealPath, pathname, router, step.href]);
+  }, [dealHref, isClosing, isDealPath, pathname, router, step.href]);
 
   // Resolve the first deal while the tour is still on Check Deals. This keeps
   // steps 4–6 deterministic: the route is already known before the user taps
@@ -170,7 +169,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
         settleTimer = window.setTimeout(() => {
           isAutoScrolling = false;
           measure();
-        }, prefersReducedMotion ? 40 : 420);
+        }, prefersReducedMotion ? 40 : 680);
         return;
       }
       if (nextRect && nextRect.width > 0 && nextRect.height > 0) {
@@ -203,7 +202,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [activeHref, isDealPath, pathname, prefersReducedMotion, step.href, step.target, stepIndex]);
+  }, [activeHref, isDealPath, pathname, prefersReducedMotion, step.autoScroll, step.href, step.scrollBlock, step.target, stepIndex]);
 
   const hasTarget = Boolean(
     step.target &&
@@ -217,13 +216,15 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       return { top: -100, left: -100, width: 0, height: 0, borderRadius: 18 };
     }
     const isSearchSpotlight = step.target === '[data-onboarding="search-bar"]';
-    const verticalPadding = isSearchSpotlight ? 10 : 8;
+    const isWatchlistSpotlight = step.target === '[data-onboarding="deal-save"]';
+    const horizontalPadding = isSearchSpotlight ? 4 : isWatchlistSpotlight ? 2 : 8;
+    const verticalPadding = isSearchSpotlight ? 4 : isWatchlistSpotlight ? 2 : 8;
     return {
       top: Math.max(8, targetRect.top - verticalPadding),
-      left: Math.max(8, targetRect.left - 8),
-      width: targetRect.width + 16,
+      left: Math.max(8, targetRect.left - horizontalPadding),
+      width: targetRect.width + horizontalPadding * 2,
       height: targetRect.height + verticalPadding * 2,
-      borderRadius: 18,
+      borderRadius: isWatchlistSpotlight ? 999 : 18,
     };
   }, [step.target, targetRect]);
 
@@ -234,6 +235,10 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     if (step.position === "search") {
       const targetBottom = targetRect?.bottom ?? viewportHeight * 0.2;
       return { top: Math.min(viewportHeight - 284, targetBottom + 40) };
+    }
+    if (step.position === "target-below") {
+      const targetBottom = targetRect?.bottom ?? viewportHeight * 0.12;
+      return { top: Math.max(72, Math.min(viewportHeight - 276, targetBottom + 12)) };
     }
     if (step.position === "middle") {
       return { top: Math.max(96, Math.min(viewportHeight - 276, viewportHeight * 0.56)) };
@@ -251,16 +256,15 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
   const closeTour = useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
-    closeTimerRef.current = window.setTimeout(onClose, prefersReducedMotion ? 80 : 280);
-  }, [isClosing, onClose, prefersReducedMotion]);
+    if (pathname !== "/") router.replace("/");
+    closeTimerRef.current = window.setTimeout(onClose, prefersReducedMotion ? 80 : 360);
+  }, [isClosing, onClose, pathname, prefersReducedMotion, router]);
 
   const finishTour = useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
-    closeTimerRef.current = window.setTimeout(() => {
-      if (pathname !== "/") router.push("/");
-      onClose();
-    }, prefersReducedMotion ? 80 : 280);
+    if (pathname !== "/") router.replace("/");
+    closeTimerRef.current = window.setTimeout(onClose, prefersReducedMotion ? 80 : 360);
   }, [isClosing, onClose, pathname, prefersReducedMotion, router]);
 
   const changeStep = useCallback((nextStep: number) => {
@@ -269,7 +273,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
     setStepIndex(nextStep);
     stepTransitionTimerRef.current = window.setTimeout(() => {
       isStepTransitioningRef.current = false;
-    }, prefersReducedMotion ? 100 : 500);
+    }, prefersReducedMotion ? 100 : 680);
   }, [isClosing, prefersReducedMotion]);
 
   const goNext = useCallback(() => {
@@ -306,8 +310,8 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       <motion.div
         className="pointer-events-auto absolute inset-x-0 bottom-0 bg-stone-950"
         initial={false}
-        animate={{ opacity: scrimOpacity }}
-        transition={{ duration: shouldSnapCheckDealScrim ? 0 : prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
+        animate={{ opacity: isClosing ? 0 : scrimOpacity }}
+        transition={{ duration: shouldSnapCheckDealScrim ? 0 : prefersReducedMotion ? 0.08 : 0.28, ease: "easeOut" }}
         style={
           usesBelowCardScrim
             ? {
@@ -320,21 +324,21 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
       />
 
       <AnimatePresence mode="wait" initial={false}>
-        {hasTarget && (
+        {hasTarget && !isClosing && (
           <motion.div
             key={`spotlight-${stepIndex}`}
             className="pointer-events-none absolute border-2 border-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0.08 : 0.16, ease: "easeOut" }}
+            transition={{ duration: prefersReducedMotion ? 0.08 : 0.28, ease: "easeOut" }}
             style={{ ...spotlightStyle, boxShadow: "0 0 0 9999px rgba(28, 25, 23, 0.62)" }}
             aria-hidden="true"
           />
         )}
       </AnimatePresence>
 
-      {hasTarget && !prefersReducedMotion && (
+      {hasTarget && !isClosing && !prefersReducedMotion && (
         <motion.div
           key={`pulse-${stepIndex}`}
           className="pointer-events-none absolute border-2 border-white"
@@ -348,7 +352,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
               "0 0 0 0 rgba(255,255,255,0)",
             ],
           }}
-          transition={{ duration: 0.55, repeat: 3, repeatType: "loop", ease: "easeInOut" }}
+          transition={{ duration: 1.15, repeat: 2, repeatType: "loop", ease: "easeInOut" }}
           style={spotlightStyle}
           aria-hidden="true"
         />
@@ -363,7 +367,7 @@ export default function OnboardingTour({ onClose }: OnboardingTourProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: prefersReducedMotion ? 0.08 : 0.24, ease: "easeInOut" }}
+          transition={{ duration: prefersReducedMotion ? 0.08 : 0.32, ease: "easeInOut" }}
           aria-live="polite"
         >
           {step.welcome && (
