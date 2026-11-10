@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -112,6 +112,10 @@ function storesMatch(left: string, right: string): boolean {
   const normalizedLeft = normalizeStoreKey(left);
   const normalizedRight = normalizeStoreKey(right);
   return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
+function stopTouchPropagation(event: ReactTouchEvent<HTMLDivElement>) {
+  event.stopPropagation();
 }
 
 function DealActions({ productId, productName, dataOnboarding, immediateAdd = false }: { productId: string; productName: string; dataOnboarding?: string; immediateAdd?: boolean }) {
@@ -643,7 +647,7 @@ export default function DealAssessmentPage() {
     body.style.top = `-${scrollY}px`;
     body.style.width = "100%";
     window.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("touchmove", preventPullToRefresh, { passive: false });
+    document.addEventListener("touchmove", preventPullToRefresh, { capture: true, passive: false });
     return () => {
       html.style.overflow = previousHtmlOverflow;
       html.style.overscrollBehavior = previousHtmlOverscrollBehavior;
@@ -653,7 +657,7 @@ export default function DealAssessmentPage() {
       body.style.top = previousBodyTop;
       body.style.width = previousBodyWidth;
       window.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("touchmove", preventPullToRefresh);
+      document.removeEventListener("touchmove", preventPullToRefresh, true);
       window.scrollTo(0, scrollY);
     };
   }, [showProductImage]);
@@ -1204,6 +1208,10 @@ export default function DealAssessmentPage() {
         aria-modal="true"
         aria-label={`Larger image of ${product.name}`}
         onClick={() => setShowProductImage(false)}
+        onTouchStart={stopTouchPropagation}
+        onTouchMove={stopTouchPropagation}
+        onTouchEnd={stopTouchPropagation}
+        onTouchCancel={stopTouchPropagation}
       >
         <button
           type="button"
