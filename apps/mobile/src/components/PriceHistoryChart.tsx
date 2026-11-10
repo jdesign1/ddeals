@@ -243,6 +243,9 @@ function PriceHistoryChart({
     .sort((a, b) => new Date(b.point.scrapedAt).getTime() - new Date(a.point.scrapedAt).getTime());
   const gridValues = [yMax, yMin + yRange / 2, yMin];
   const hasComparisonPrice = typeof comparisonPrice === "number" && Number.isFinite(comparisonPrice) && comparisonPrice > 0;
+  // The list panel has room for roughly four rows before it can scroll. Do
+  // not show a swipe hint when the available history already fits onscreen.
+  const hasScrollableHistory = listPoints.length > 4;
   return (
     <div className="space-y-3">
       {storeSelector}
@@ -431,7 +434,7 @@ function PriceHistoryChart({
             <div className="flex h-full min-h-0 flex-col">
               <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-2">
                 <span className="dd-type-control text-stone-700">Price history</span>
-                <span className="dd-type-meta text-stone-500">Swipe down for history</span>
+                {hasScrollableHistory && <span className="dd-type-meta text-stone-500">Swipe down for history</span>}
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                 {listPoints.length > 0 ? (
