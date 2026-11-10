@@ -11,6 +11,7 @@ import {
   readCatalogueCache,
   readCatalogueCacheMetadata,
   writeCatalogueCache,
+  writeCataloguePublicationCheck,
   updateCatalogueCacheProducts,
   __clearCatalogueCacheForTests,
   __catalogueCacheTestInternals,
@@ -87,6 +88,14 @@ test("writeCatalogueCache: preserves the source freshness marker in metadata", a
   assert.equal(metadata?.sourceUpdatedAt, sourceUpdatedAt);
   assert.equal(Number.isFinite(metadata?.savedAt), true);
   assert.equal(metadata?.complete, true);
+});
+
+test("verified retailer metadata is stored and stale checks cannot replace it", async () => {
+  const marker = Date.parse("2026-11-10T06:00:00Z");
+  await writeCatalogueCache([fakeProduct("p1")], marker, ["paknsave", "woolworths"]);
+  await writeCataloguePublicationCheck(marker, Date.now() + 1, ["paknsave"]);
+  await writeCataloguePublicationCheck(marker - 1, Date.now() + 2, ["woolworths"]);
+  assert.deepEqual((await readCatalogueCacheMetadata())?.verifiedStoreIds, ["paknsave"]);
 });
 
 test("updateCatalogueCacheProducts: updates rows without resetting the full-catalogue timestamp", async () => {

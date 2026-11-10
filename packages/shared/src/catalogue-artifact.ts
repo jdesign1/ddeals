@@ -10,24 +10,30 @@ export interface CatalogueArtifact {
   sourceUpdatedAt: number | null;
   generatedAt: string;
   products: ProductCard[];
+  /** Verified retailers whose current snapshot may contain zero offers. */
+  verifiedStoreIds?: string[];
 }
 
 export interface CatalogueVersion {
   schemaVersion: typeof CATALOGUE_VERSION_SCHEMA_VERSION;
   /** Stable source publication marker, not the time this response was served. */
   sourceUpdatedAt: number;
+  /** Verified retailers whose current snapshot may contain zero offers. */
+  verifiedStoreIds?: string[];
 }
 
 export function createCatalogueArtifact(
   products: ProductCard[],
   sourceUpdatedAt: number | null,
-  generatedAt = new Date().toISOString()
+  generatedAt = new Date().toISOString(),
+  verifiedStoreIds?: readonly string[] | null,
 ): CatalogueArtifact {
   return {
     schemaVersion: CATALOGUE_ARTIFACT_SCHEMA_VERSION,
     sourceUpdatedAt: typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt) ? sourceUpdatedAt : null,
     generatedAt,
     products,
+    ...(Array.isArray(verifiedStoreIds) ? { verifiedStoreIds: [...verifiedStoreIds] } : {}),
   };
 }
 
@@ -43,12 +49,18 @@ export function assertCatalogueArtifactHasProducts(artifact: CatalogueArtifact):
   return artifact;
 }
 
-export function createCatalogueVersion(sourceUpdatedAt: number): CatalogueVersion {
+export function createCatalogueVersion(sourceUpdatedAt: number, verifiedStoreIds?: readonly string[] | null): CatalogueVersion {
   if (!Number.isFinite(sourceUpdatedAt)) throw new Error("Catalogue version marker is invalid");
   return {
     schemaVersion: CATALOGUE_VERSION_SCHEMA_VERSION,
     sourceUpdatedAt,
+    ...(Array.isArray(verifiedStoreIds) ? { verifiedStoreIds: [...verifiedStoreIds] } : {}),
   };
+}
+
+function isVerifiedStoreIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 80
+    && value.every((id) => typeof id === "string" && id.length > 0 && id.length <= 80);
 }
 
 function isProductCard(value: unknown): value is ProductCard {
@@ -82,6 +94,7 @@ export function parseCatalogueArtifact(value: unknown): CatalogueArtifact {
   if (!Array.isArray(artifact.products) || !artifact.products.every(isProductCard)) {
     throw new Error("Catalogue artifact products are invalid");
   }
+  if (artifact.verifiedStoreIds !== undefined && !isVerifiedStoreIds(artifact.verifiedStoreIds)) throw new Error("Catalogue artifact verified-store list is invalid");
   return artifact as CatalogueArtifact;
 }
 
@@ -94,5 +107,6 @@ export function parseCatalogueVersion(value: unknown): CatalogueVersion {
   if (typeof version.sourceUpdatedAt !== "number" || !Number.isFinite(version.sourceUpdatedAt)) {
     throw new Error("Catalogue version marker is invalid");
   }
+  if (version.verifiedStoreIds !== undefined && !isVerifiedStoreIds(version.verifiedStoreIds)) throw new Error("Catalogue version verified-store list is invalid");
   return version as CatalogueVersion;
 }

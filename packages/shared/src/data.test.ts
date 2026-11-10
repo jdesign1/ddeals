@@ -1097,12 +1097,11 @@ test("loadLiveProducts: concurrent overlapping calls share one in-flight fetch, 
     const config = fakeConfig("concurrent");
     const [a, b] = await Promise.all([loadLiveProducts(config), loadLiveProducts(config)]);
     assert.deepEqual(a, b);
-    // An empty specials snapshot needs only the one catalogue request; the
-    // scoped match-index reads are skipped because there are no product IDs
-    // to group. Two overlapping loadLiveProducts() calls sharing one fetch
-    // therefore make one request total, not two. This is the exact
+    // Empty snapshots need the specials feed and publication metadata; both
+    // requests are shared across overlapping callers. No match-index read is
+    // needed because there are no product IDs to group. This is the exact
     // production failure mode: before this cache existed, this would be 6.
-    assert.equal(calls.length, 1, `expected 1 underlying fetch for 2 overlapping callers, got ${calls.length}`);
+    assert.equal(calls.length, 2, `expected 2 shared requests for 2 overlapping callers, got ${calls.length}`);
   } finally {
     restore();
   }
@@ -1113,10 +1112,10 @@ test("loadLiveProducts: a second call after the cache entry is evicted fetches a
   try {
     const config = fakeConfig("eviction");
     await loadLiveProducts(config);
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     __liveProductsCache.delete(`${config.url}::${config.anonKey}`);
     await loadLiveProducts(config);
-    assert.equal(calls.length, 2, "expected a fresh catalogue request after manual cache eviction");
+    assert.equal(calls.length, 4, "expected catalogue and publication requests after manual cache eviction");
   } finally {
     restore();
   }
@@ -1192,6 +1191,13 @@ test("mergeMissingStoreDeals retains a cached retailer when a fresh snapshot omi
     merged[0].currentDeals.map((deal) => deal.store),
     ["New World", "Woolworths"],
   );
+});
+
+test("mergeMissingStoreDeals drops cached deals for a verified retailer with zero current offers", () => {
+  const cached = fakeProductCard("shared");
+  const fresh = { ...cached, currentDeals: [{ ...cached.currentDeals[0], store: "New World", sourceStoreId: "newworld" }] };
+  const merged = mergeMissingStoreDeals([fresh], [cached], ["newworld", "woolworths"]);
+  assert.deepEqual(merged[0].currentDeals.map((deal) => deal.store), ["New World"]);
 });
 
 test("mergeMissingStoreDeals does not re-add a retailer present in the fresh snapshot", () => {
@@ -1546,7 +1552,7 @@ test("loadLiveProducts: refreshes a warm cache when the source timestamp advance
     const result = await loadLiveProducts(fakeConfig("source-advanced"));
     assert.notDeepEqual(result, cachedProducts);
     assert.equal(result.length, 1);
-    assert.equal(calls.length, 3, "expected one publication marker plus the two-request catalogue pipeline");
+    assert.equal(calls.length, 4, "expected publication checks plus catalogue and retailer-state requests");
   } finally {
     globalThis.fetch = original;
   }
@@ -1587,7 +1593,7 @@ test("loadLiveProducts: a new publication bypasses a resolved pre-publication in
   try {
     const result = await loadLiveProducts(config);
     assert.equal(result[0]?.name, "Fresh Butter");
-    assert.equal(calls.length, 3, "an advanced marker must force the 2-request catalogue fetch");
+    assert.equal(calls.length, 4, "an advanced marker must fetch catalogue and retailer publication state");
   } finally {
     globalThis.fetch = original;
   }
@@ -1613,7 +1619,7 @@ test("loadLiveProducts: marker failure serves the last good catalogue without a 
   try {
     const result = await loadLiveProducts(fakeConfig("marker-failure"));
     assert.deepEqual(result, cachedProducts);
-    assert.equal(calls.length, 3, "the marker compatibility chain should be attempted, but not the full catalogue");
+    assert.equal(calls.length, 4, "the publication-state compatibility chain should be attempted, but not the full catalogue");
     assert.ok(calls.every((url) => (
       url.includes("catalogue_publications")
       || url.includes("dodgy_deals_cache?select=cache_refreshed_at")

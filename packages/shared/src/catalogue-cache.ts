@@ -66,7 +66,7 @@ const CATALOGUE_CACHE_METADATA_KEY = "live_products_metadata";
  * Version 18 invalidates cards built before near-low Fair Price assessments
  * were carried through neutral catalogue rows.
  */
-const CATALOGUE_CACHE_VERSION = 18;
+const CATALOGUE_CACHE_VERSION = 19;
 const CATALOGUE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours -- safety fallback; the published-cache marker controls freshness while the app is active.
 
 export interface CatalogueCacheMetadata {
@@ -77,6 +77,8 @@ export interface CatalogueCacheMetadata {
   publicationCheckedAt?: number;
   /** True only for a snapshot written from a validated catalogue artifact. */
   complete?: boolean;
+  /** Verified retailers, including those with zero published offers. */
+  verifiedStoreIds?: string[];
 }
 
 interface CatalogueCacheRecord extends CatalogueCacheMetadata {
@@ -154,6 +156,7 @@ export async function readCatalogueCacheMetadata(): Promise<CatalogueCacheMetada
           sourceUpdatedAt: latest.sourceUpdatedAt,
           publicationCheckedAt: latest.publicationCheckedAt,
           complete: latest.complete === true,
+          verifiedStoreIds: latest.verifiedStoreIds,
         }
       : null;
   } catch {
@@ -162,7 +165,7 @@ export async function readCatalogueCacheMetadata(): Promise<CatalogueCacheMetada
 }
 
 /** Best-effort timestamp write used when a successful refresh has no products to cache. */
-export async function writeCatalogueCacheMetadata(savedAt = Date.now(), sourceUpdatedAt?: number | null): Promise<void> {
+export async function writeCatalogueCacheMetadata(savedAt = Date.now(), sourceUpdatedAt?: number | null, verifiedStoreIds?: readonly string[] | null): Promise<void> {
   try {
     const db = await openCatalogueCacheDB();
     const sourceMarker = typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt) ? sourceUpdatedAt : undefined;
@@ -173,6 +176,7 @@ export async function writeCatalogueCacheMetadata(savedAt = Date.now(), sourceUp
         savedAt,
         ...(sourceMarker === undefined ? {} : { sourceUpdatedAt: sourceMarker }),
         complete: false,
+        ...(Array.isArray(verifiedStoreIds) ? { verifiedStoreIds: [...verifiedStoreIds] } : {}),
       }, CATALOGUE_CACHE_METADATA_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -190,21 +194,36 @@ export async function writeCatalogueCacheMetadata(savedAt = Date.now(), sourceUp
  */
 export async function writeCataloguePublicationCheck(
   sourceUpdatedAt: number | null,
-  checkedAt = Date.now()
+  checkedAt = Date.now(),
+  verifiedStoreIds?: readonly string[] | null,
 ): Promise<void> {
   try {
-    const existing = await readCatalogueCacheRecord();
-    if (!existing || existing.version !== CATALOGUE_CACHE_VERSION) return;
     const db = await openCatalogueCacheDB();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
-      tx.objectStore(CATALOGUE_CACHE_STORE).put({
-        ...existing,
-        publicationCheckedAt: checkedAt,
-        ...(typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt)
-          ? { sourceUpdatedAt }
-          : {}),
-      }, CATALOGUE_CACHE_KEY);
+      const store = tx.objectStore(CATALOGUE_CACHE_STORE);
+      const productRequest = store.get(CATALOGUE_CACHE_KEY);
+      const metadataRequest = store.get(CATALOGUE_CACHE_METADATA_KEY);
+      const update = (record: CatalogueCacheRecord | CatalogueCacheTimestampRecord | undefined, key: string) => {
+        if (!record || record.version !== CATALOGUE_CACHE_VERSION) return;
+        const older = typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt)
+          && record.sourceUpdatedAt !== undefined && sourceUpdatedAt < record.sourceUpdatedAt;
+        const advanced = typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt)
+          && (record.sourceUpdatedAt === undefined || sourceUpdatedAt > record.sourceUpdatedAt);
+        const ids = older ? record.verifiedStoreIds
+          : Array.isArray(verifiedStoreIds) ? [...verifiedStoreIds]
+            : advanced ? undefined : record.verifiedStoreIds;
+        store.put({
+          ...record,
+          publicationCheckedAt: checkedAt,
+          ...(older ? {} : typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt) ? { sourceUpdatedAt } : {}),
+          ...(ids === undefined ? {} : { verifiedStoreIds: ids }),
+        }, key);
+      };
+      productRequest.onsuccess = () => update(productRequest.result as CatalogueCacheRecord | undefined, CATALOGUE_CACHE_KEY);
+      metadataRequest.onsuccess = () => update(metadataRequest.result as CatalogueCacheTimestampRecord | undefined, CATALOGUE_CACHE_METADATA_KEY);
+      productRequest.onerror = () => reject(productRequest.error);
+      metadataRequest.onerror = () => reject(metadataRequest.error);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -215,23 +234,31 @@ export async function writeCataloguePublicationCheck(
 }
 
 /** Best-effort write — failures (quota, blocked storage) are swallowed, never surfaced. Caching is an optimization, not a requirement. */
-export async function writeCatalogueCache(products: ProductCard[], sourceUpdatedAt?: number | null): Promise<void> {
+export async function writeCatalogueCache(products: ProductCard[], sourceUpdatedAt?: number | null, verifiedStoreIds?: readonly string[] | null): Promise<void> {
   try {
     if (!Array.isArray(products) || !products.length) return;
     const db = await openCatalogueCacheDB();
     const sourceMarker = typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt) ? sourceUpdatedAt : undefined;
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(CATALOGUE_CACHE_STORE, "readwrite");
-      const savedAt = Date.now();
-      const record: CatalogueCacheRecord = {
-        version: CATALOGUE_CACHE_VERSION,
-        savedAt,
-        publicationCheckedAt: savedAt,
-        products,
-        complete: true,
-        ...(sourceMarker === undefined ? {} : { sourceUpdatedAt: sourceMarker }),
+      const store = tx.objectStore(CATALOGUE_CACHE_STORE);
+      const request = store.get(CATALOGUE_CACHE_KEY);
+      request.onsuccess = () => {
+        const existing = request.result as CatalogueCacheRecord | undefined;
+        const existingMarker = existing?.version === CATALOGUE_CACHE_VERSION ? existing.sourceUpdatedAt : undefined;
+        if (existingMarker !== undefined && (sourceMarker === undefined || sourceMarker < existingMarker)) return;
+        const ids = Array.isArray(verifiedStoreIds) ? [...verifiedStoreIds]
+          : existing?.version === CATALOGUE_CACHE_VERSION && (sourceMarker === undefined || existingMarker === undefined || sourceMarker <= existingMarker)
+            ? existing.verifiedStoreIds : undefined;
+        const savedAt = Date.now();
+        const record: CatalogueCacheRecord = {
+          version: CATALOGUE_CACHE_VERSION, savedAt, publicationCheckedAt: savedAt, products, complete: true,
+          ...(sourceMarker === undefined ? {} : { sourceUpdatedAt: sourceMarker }),
+          ...(ids === undefined ? {} : { verifiedStoreIds: ids }),
+        };
+        store.put(record, CATALOGUE_CACHE_KEY);
       };
-      tx.objectStore(CATALOGUE_CACHE_STORE).put(record, CATALOGUE_CACHE_KEY);
+      request.onerror = () => reject(request.error);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createCatalogueVersion, fetchCataloguePublicationTimestamp } from "@dodgey-deals/shared";
+import { createCatalogueVersion, fetchCataloguePublicationInfo } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 
 export const runtime = "nodejs";
@@ -26,7 +26,8 @@ export function OPTIONS(): Response {
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const sourceUpdatedAt = await fetchCataloguePublicationTimestamp(supabaseConfig);
+    const publication = await fetchCataloguePublicationInfo(supabaseConfig);
+    const sourceUpdatedAt = publication.sourceUpdatedAt;
     if (sourceUpdatedAt === null) {
       return Response.json(
         { error: "catalogue-version-unavailable" },
@@ -40,7 +41,7 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
 
-    const body = JSON.stringify(createCatalogueVersion(sourceUpdatedAt));
+    const body = JSON.stringify(createCatalogueVersion(sourceUpdatedAt, publication.verifiedStoreIds));
     const etag = `"${createHash("sha256").update(body).digest("hex")}"`;
     const headers = { ...SUCCESS_HEADERS, ETag: etag };
     if (request.headers.get("if-none-match") === etag) {

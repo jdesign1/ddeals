@@ -30,6 +30,12 @@ test("catalogue artifact round-trips its version and source marker", () => {
   assert.deepEqual(parseCatalogueArtifact(JSON.parse(JSON.stringify(artifact))), artifact);
 });
 
+test("catalogue payloads retain verified retailer IDs including an empty list", () => {
+  const artifact = createCatalogueArtifact([PRODUCT], 1_757_000_000_000, undefined, ["paknsave"]);
+  assert.deepEqual(parseCatalogueArtifact(JSON.parse(JSON.stringify(artifact))).verifiedStoreIds, ["paknsave"]);
+  assert.deepEqual(parseCatalogueVersion(createCatalogueVersion(1_757_000_000_000, [])).verifiedStoreIds, []);
+});
+
 test("catalogue artifact parser rejects incompatible or malformed public data", () => {
   assert.throws(
     () => parseCatalogueArtifact({ schemaVersion: 2, generatedAt: new Date().toISOString(), sourceUpdatedAt: null, products: [] }),

@@ -1141,11 +1141,13 @@ function storeKeysInProducts(products: ProductCard[]): Set<string> {
 export function mergeMissingStoreDeals(
   freshProducts: ProductCard[],
   cachedProducts: ProductCard[],
+  verifiedStoreIds?: readonly string[] | null,
 ): ProductCard[] {
   const freshStoreKeys = storeKeysInProducts(freshProducts);
   const cachedStoreKeys = storeKeysInProducts(cachedProducts);
+  const verifiedStoreKeys = verifiedStoreIds == null ? null : new Set(verifiedStoreIds.map(canonicalStoreKey));
   const missingStoreKeys = new Set(
-    [...cachedStoreKeys].filter((storeKey) => !freshStoreKeys.has(storeKey)),
+    [...cachedStoreKeys].filter((storeKey) => !freshStoreKeys.has(storeKey) && !verifiedStoreKeys?.has(storeKey)),
   );
   if (!missingStoreKeys.size) return freshProducts;
 
@@ -1195,6 +1197,7 @@ interface LiveProductsLoadResult {
   products: ProductCard[];
   /** Cache refresh timestamp from the exact rows used to build these cards. */
   sourceUpdatedAt: number | null;
+  verifiedStoreIds: string[] | null;
 }
 
 /**
@@ -1204,13 +1207,14 @@ interface LiveProductsLoadResult {
  * grouped into real cross-store match groups via the union-find matchIndex.
  */
 async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<LiveProductsLoadResult> {
-  const specialRows = await fetchSpecialRows(config);
-  const sourceUpdatedAt = specialRows.reduce<number | null>((latest, row) => {
+  const [specialRows, publication] = await Promise.all([fetchSpecialRows(config), fetchCataloguePublicationInfo(config)]);
+  const rowsTimestamp = specialRows.reduce<number | null>((latest, row) => {
     const timestamp = row.cache_refreshed_at ? Date.parse(row.cache_refreshed_at) : NaN;
     if (!Number.isFinite(timestamp)) return latest;
     return latest === null ? timestamp : Math.max(latest, timestamp);
   }, null);
-  if (!specialRows.length) return { products: [], sourceUpdatedAt };
+  const sourceUpdatedAt = publication.sourceUpdatedAt ?? rowsTimestamp;
+  if (!specialRows.length) return { products: [], sourceUpdatedAt, verifiedStoreIds: publication.verifiedStoreIds };
 
   const matchIndex = await buildMatchIndex(config, specialRows.map((row) => row.product_id));
   /*
@@ -1227,7 +1231,7 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Liv
     byGroup.get(groupId)!.push(row);
   }
 
-  return { products: buildProductCardsFromSpecials(splitUnsafeMatchGroups([...byGroup.entries()])), sourceUpdatedAt };
+  return { products: buildProductCardsFromSpecials(splitUnsafeMatchGroups([...byGroup.entries()])), sourceUpdatedAt, verifiedStoreIds: publication.verifiedStoreIds };
 }
 
 interface LiveProductsCacheEntry {
@@ -1335,6 +1339,32 @@ interface LatestSourceTimestampCacheEntry {
   resolvedAt: number | null;
 }
 
+export interface CataloguePublicationInfo {
+  sourceUpdatedAt: number | null;
+  verifiedStoreIds: string[] | null;
+}
+
+function parseVerifiedStoreIds(state: string | null | undefined): string[] | null {
+  if (typeof state !== "string") return null;
+  if (!state.trim()) return [];
+  return [...new Set(state.split(",").map((entry) => entry.split(":", 1)[0]?.trim()).filter((id): id is string => Boolean(id)))];
+}
+
+export async function fetchCataloguePublicationInfo(config: SupabaseRestConfig): Promise<CataloguePublicationInfo> {
+  try {
+    const row = await fetchFirstRow<{ published_at: string | null; specials_freshness_state: string | null }>(
+      config, "catalogue_publications?select=published_at,specials_freshness_state&id=eq.live&limit=1",
+    );
+    const timestamp = row?.published_at ? Date.parse(row.published_at) : NaN;
+    return Number.isFinite(timestamp)
+      ? { sourceUpdatedAt: timestamp, verifiedStoreIds: parseVerifiedStoreIds(row?.specials_freshness_state) }
+      : { sourceUpdatedAt: null, verifiedStoreIds: null };
+  } catch {
+    // Older deployments may not expose the per-retailer freshness column.
+    return { sourceUpdatedAt: await fetchLatestPublicationTimestampDeduped(config), verifiedStoreIds: null };
+  }
+}
+
 const latestSourceTimestampCache = new Map<string, LatestSourceTimestampCacheEntry>();
 const LATEST_SOURCE_TIMESTAMP_CACHE_TTL_MS = 30_000;
 const publicationMarkerInvalidations = new Map<string, number>();
@@ -1399,8 +1429,7 @@ function catalogueUrlForPublication(catalogueUrl: string, sourceUpdatedAt: numbe
 /** Builds the public payload without using browser-only IndexedDB state. */
 export async function buildCatalogueArtifact(config: SupabaseRestConfig): Promise<CatalogueArtifact> {
   const fresh = await loadLiveProductsUncached(config);
-  const sourceUpdatedAt = (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt;
-  return createCatalogueArtifact(filterRecentlyVerifiedSpecials(fresh.products), sourceUpdatedAt);
+  return createCatalogueArtifact(filterRecentlyVerifiedSpecials(fresh.products), fresh.sourceUpdatedAt, undefined, fresh.verifiedStoreIds);
 }
 
 /**
@@ -1730,7 +1759,7 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
             cached
             && version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)
           ) {
-            await writeCataloguePublicationCheck(version.sourceUpdatedAt);
+            await writeCataloguePublicationCheck(version.sourceUpdatedAt, Date.now(), version.verifiedStoreIds);
             publicationMarkerInvalidations.delete(cacheKey);
             return filterRecentlyVerifiedSpecials(cached);
           }
@@ -1764,13 +1793,13 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
         && artifact.sourceUpdatedAt !== null
         && artifact.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)
       ) {
-        await writeCataloguePublicationCheck(artifact.sourceUpdatedAt);
+        await writeCataloguePublicationCheck(artifact.sourceUpdatedAt, Date.now(), artifact.verifiedStoreIds);
         publicationMarkerInvalidations.delete(cacheKey);
         return filterRecentlyVerifiedSpecials(cached);
       }
       if (artifact.products.length > 0) {
-        const products = mergeMissingStoreDeals(artifact.products, cached ?? []);
-        await writeCatalogueCache(products, artifact.sourceUpdatedAt);
+        const products = mergeMissingStoreDeals(artifact.products, cached ?? [], artifact.verifiedStoreIds);
+        await writeCatalogueCache(products, artifact.sourceUpdatedAt, artifact.verifiedStoreIds);
         publicationMarkerInvalidations.delete(cacheKey);
         return filterRecentlyVerifiedSpecials(products);
       }
@@ -1795,7 +1824,8 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     ) {
       return filterRecentlyVerifiedSpecials(cached);
     }
-    const latestSourceUpdatedAt = await fetchLatestPublicationTimestampDeduped(config);
+    const publication = await fetchCataloguePublicationInfo(config);
+    const latestSourceUpdatedAt = publication.sourceUpdatedAt;
     // A marker outage is not evidence that the cached catalogue is stale.
     // Keep serving the last good, locally filtered snapshot instead of
     // turning a small metadata failure into a full-feed request storm. The
@@ -1815,7 +1845,7 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     // server marker, so deploying this contract cannot leave old browsers
     // pinned to stale data for the remainder of the six-hour display TTL.
     if (latestSourceUpdatedAt !== null && latestSourceUpdatedAt <= (cachedMetadata?.sourceUpdatedAt ?? 0)) {
-      await writeCataloguePublicationCheck(latestSourceUpdatedAt);
+      await writeCataloguePublicationCheck(latestSourceUpdatedAt, Date.now(), publication.verifiedStoreIds);
       publicationMarkerInvalidations.delete(cacheKey);
       return filterRecentlyVerifiedSpecials(cached);
     }
@@ -1836,16 +1866,14 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     if (cached) return filterRecentlyVerifiedSpecials(cached);
     throw error;
   }
-  const products = mergeMissingStoreDeals(fresh.products, cached ?? []);
-  const sourceUpdatedAt = products.length
-    ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
-    : fresh.sourceUpdatedAt;
+  const products = mergeMissingStoreDeals(fresh.products, cached ?? [], fresh.verifiedStoreIds);
+  const sourceUpdatedAt = fresh.sourceUpdatedAt;
   publicationMarkerInvalidations.delete(cacheKey);
   // Wait for the validated snapshot to be persisted before returning. The
   // mobile new-specials detector uses the cache metadata as its publication
   // boundary, so returning first could make a cold load look incomplete and
   // skip the first new-deals batch until the next refresh.
-  if (products.length) await writeCatalogueCache(products, sourceUpdatedAt);
+  if (products.length) await writeCatalogueCache(products, sourceUpdatedAt, fresh.verifiedStoreIds);
   return filterRecentlyVerifiedSpecials(products);
 }
 
@@ -1904,7 +1932,7 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
             expectedSourceUpdatedAt = version.sourceUpdatedAt;
             const metadata = await readCatalogueCacheMetadata();
             if (cached && version.sourceUpdatedAt <= (metadata?.sourceUpdatedAt ?? 0)) {
-              await writeCataloguePublicationCheck(version.sourceUpdatedAt);
+              await writeCataloguePublicationCheck(version.sourceUpdatedAt, Date.now(), version.verifiedStoreIds);
               publicationMarkerInvalidations.delete(cacheKey);
               return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
             }
@@ -1923,7 +1951,7 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
         ) {
           return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
         }
-        fresh = { products: artifact.products, sourceUpdatedAt: artifact.sourceUpdatedAt };
+        fresh = { products: artifact.products, sourceUpdatedAt: artifact.sourceUpdatedAt, verifiedStoreIds: artifact.verifiedStoreIds ?? null };
       } catch (error) {
         if (cached) {
           return { products: cached, refreshed: false, throttled: false, retryAfterMs: 0 };
@@ -1933,20 +1961,18 @@ export async function refreshLiveProducts(config: SupabaseRestConfig): Promise<R
     } else {
       fresh = await loadLiveProductsDeduped(config, true);
     }
-    const sourceUpdatedAt = config.catalogueUrl
-      ? fresh.sourceUpdatedAt
-      : fresh.products.length
-        ? (await fetchLatestPublicationTimestampDeduped(config)) ?? fresh.sourceUpdatedAt
-        : fresh.sourceUpdatedAt;
-    if (fresh.products.length) await writeCatalogueCache(fresh.products, sourceUpdatedAt);
-    else await writeCatalogueCacheMetadata(Date.now(), sourceUpdatedAt);
+    const cachedProducts = await readCatalogueCache();
+    const products = mergeMissingStoreDeals(fresh.products, cachedProducts ?? [], fresh.verifiedStoreIds);
+    const sourceUpdatedAt = fresh.sourceUpdatedAt;
+    if (products.length) await writeCatalogueCache(products, sourceUpdatedAt, fresh.verifiedStoreIds);
+    else await writeCatalogueCacheMetadata(Date.now(), sourceUpdatedAt, fresh.verifiedStoreIds);
     publicationMarkerInvalidations.delete(cacheKey);
     const refreshEntry = __liveProductsRefreshes.get(cacheKey);
     if (refreshEntry) {
       refreshEntry.lastSuccessfulRefreshAt = Date.now();
-      refreshEntry.products = fresh.products;
+      refreshEntry.products = products;
     }
-    return { products: fresh.products, refreshed: true, throttled: false, retryAfterMs: 0 };
+    return { products, refreshed: true, throttled: false, retryAfterMs: 0 };
   })();
 
   entry.promise = promise;
