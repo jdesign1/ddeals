@@ -20,7 +20,6 @@ import {
   getAssessmentVerdict,
   buildAssessmentSummaryCopy,
   getStoreProductUrl,
-  getCurrentPriceRange,
   getSpecialPriceRange,
   formatUnitPrice,
   shouldDisplayAssessmentUnitPrice,
@@ -41,7 +40,6 @@ import { supabaseConfig } from "@/lib/config";
 import { useAuthStatus } from "@/lib/auth-context";
 import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
-import { getStoreLogoMeta } from "@/lib/store-meta";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { usePageHeader } from "@/lib/header-context";
 import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
@@ -697,7 +695,6 @@ export default function DealAssessmentPage() {
   const rankingList = useMemo(() => (product ? buildRankingList(product) : []), [product]);
   const isMultiStoreDeal = rankingList.length > 1;
   const visibleRanking = useMemo(() => (product ? buildVisibleRanking(product, rankingList) : []), [product, rankingList]);
-  const currentPriceRange = useMemo(() => (product ? getCurrentPriceRange(product) : null), [product]);
   const specialPriceRange = useMemo(() => (product ? getSpecialPriceRange(product) : null), [product]);
   // Always "all" stores now (2026-08-12) -- the supermarket filter pills
   // that used to let Jay narrow this down (`selectedStores` state +
@@ -834,107 +831,46 @@ export default function DealAssessmentPage() {
 
       {isMultiStoreDeal ? (
         <>
-      <section className="space-y-5 rounded-2xl border border-stone-200 bg-white px-5 pb-0 pt-5 text-left shadow-xs">
-        <div className="flex items-start gap-4" data-onboarding="deal-summary">
-          <button
-            type="button"
-            onClick={() => setShowProductImage(true)}
-            aria-label={`View larger image of ${product.name}`}
-            className="product-image-frame deal-assessment-image h-24 w-24 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0"
-          >
-            <ProductImage src={product.image} alt={product.name} width={96} height={96} className="product-image-content h-full w-full object-contain" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <h2 id="product-summary-heading" className="mt-0.5 break-words text-lg font-extrabold leading-snug text-stone-900">
-              {product.name}
-            </h2>
-            <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
-            <p className="mt-2 font-display text-2xl font-extrabold tracking-tight text-stone-900">
-              {currentPriceRange
-                ? Math.round(currentPriceRange.lowestPrice * 100) === Math.round(currentPriceRange.highestPrice * 100)
-                  ? `$${currentPriceRange.lowestPrice.toFixed(2)}`
-                  : `$${currentPriceRange.lowestPrice.toFixed(2)}–$${currentPriceRange.highestPrice.toFixed(2)}`
-                : "Price unavailable"}
-            </p>
-            <p className="mt-0.5 text-sm font-semibold text-stone-500">
-              {currentPriceRange ? `Across ${currentPriceRange.storeCount} supermarket${currentPriceRange.storeCount === 1 ? "" : "s"}` : "No supermarket prices available"}
-            </p>
-          </div>
-        </div>
-
-        {rankingList.length > 0 && (
-          <div className="pt-4">
-            <div className="mb-4">
-              <h3 className="dd-type-section text-stone-900">Select a supermarket</h3>
-            </div>
-            <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
-              {rankingList.map((item) => {
-                const storeDeal = findDealForStore(product.currentDeals, item.store);
-                if (!storeDeal) return null;
-                const storeMeta = getStoreLogoMeta(item.store);
-                const isCurrentStore = storesMatch(item.store, selectedDeal.store);
-                const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
-                const storeUnitPrice = shouldDisplayAssessmentUnitPrice(product.category, product.name, storeDeal.saleUnitLabel)
-                  ? formatUnitPrice(storeDeal.saleUnitPrice, storeDeal.saleUnitLabel)
-                  : null;
-                const bestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
-                const isBestSpecialPrice =
-                  storeDeal.isOnSpecial !== false && bestSpecialPriceCents != null && Math.round(item.price * 100) === bestSpecialPriceCents;
-                const rowContent = (
-                  <>
-                    {isMultiStoreDeal ? (
-                      <StoreLogoBadge store={item.store} variant="ranking" />
-                    ) : (
-                      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md dd-type-badge ${storeMeta.bg} ${storeMeta.text}`}>
-                        {storeMeta.short}
-                      </span>
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate text-sm font-extrabold text-stone-800">{item.store}</span>
-                      </span>
+      {rankingList.length > 0 && (
+        <section className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-xs">
+          <h3 className="mb-2 dd-type-section text-stone-900">Select a supermarket</h3>
+          <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
+            {rankingList.map((item) => {
+              const storeDeal = findDealForStore(product.currentDeals, item.store);
+              if (!storeDeal) return null;
+              const isCurrentStore = storesMatch(item.store, selectedDeal.store);
+              const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
+              const storeUnitPrice = shouldDisplayAssessmentUnitPrice(product.category, product.name, storeDeal.saleUnitLabel)
+                ? formatUnitPrice(storeDeal.saleUnitPrice, storeDeal.saleUnitLabel)
+                : null;
+              const bestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
+              const isBestSpecialPrice = storeDeal.isOnSpecial !== false && bestSpecialPriceCents != null && Math.round(item.price * 100) === bestSpecialPriceCents;
+              return (
+                <button
+                  key={item.store}
+                  type="button"
+                  role="tab"
+                  aria-selected={isCurrentStore}
+                  aria-controls="selected-assessment"
+                  onClick={() => selectAssessmentStore(item.store)}
+                  className={`-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "rounded-2xl outline-2 outline outline-offset-0 outline-stone-400" : ""}`}
+                  aria-label={`View ${item.store} assessment`}
+                >
+                  <StoreLogoBadge store={item.store} variant="ranking" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-stone-800">{item.store}</span>
+                  <span className="flex-shrink-0 text-right">
+                    <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
+                    {storeUnitPrice && <span className="block dd-type-meta text-stone-500">{storeUnitPrice}</span>}
+                    <span className={`block text-xs font-extrabold ${storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"}`}>
+                      {storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best price" : "Special"}
                     </span>
-                    <span className="flex-shrink-0 text-right">
-                      <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
-                      {storeUnitPrice && (
-                        <span className="block dd-type-meta text-stone-500" aria-label={`Unit price ${storeUnitPrice.replace("/", " per ")}`}>
-                          {storeUnitPrice}
-                        </span>
-                      )}
-                      <span
-                        className={`block text-xs font-extrabold ${
-                          storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"
-                        }`}
-                      >
-                        {storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best price" : "Special"}
-                      </span>
-                    </span>
-                  </>
-                );
-                const rowClassName = `-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left ${
-                  isCurrentStore
-                    ? "rounded-2xl outline-2 outline outline-offset-0 outline-stone-400"
-                    : ""
-                }`;
-                return (
-                  <button
-                    key={item.store}
-                    type="button"
-                    role="tab"
-                    aria-selected={isCurrentStore}
-                    aria-controls="selected-assessment"
-                    onClick={() => selectAssessmentStore(item.store)}
-                    className={`${rowClassName} transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
-                    aria-label={`View ${item.store} assessment`}
-                  >
-                    {rowContent}
-                  </button>
-                );
-              })}
-            </div>
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <motion.div
         key={`${historyRouteKey}-${selectedDeal.store}`}
@@ -942,49 +878,34 @@ export default function DealAssessmentPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-      <div id="selected-assessment" role="tabpanel" className={`space-y-0 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-        <div className="space-y-3" data-onboarding="deal-verdict">
-          <div className="flex min-w-0 items-center gap-2">
-            <h3 className={`min-w-0 truncate font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
-              {getVerdictTitle(verdict)}
-            </h3>
-            {!uncertain && (
-              <button
-                type="button"
-                onClick={() => setIsEvidenceSheetOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={isEvidenceSheetOpen}
-                aria-label={`See the evidence for this ${verdict} assessment`}
-                className="inline-flex flex-shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
-              >
-                <AnimatedVerdictBadge
-                  badge={verdictBadge}
-                  animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`}
-                  className="w-fit"
-                />
-              </button>
-            )}
-          </div>
-          <div className="flex items-start gap-3">
-            <DealStoreLink
-              deal={selectedDeal}
-              productName={product.name}
-              className="block min-w-0 flex-1"
-            />
-            <p className={`shrink-0 whitespace-nowrap font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
+      <div id="selected-assessment" role="tabpanel" className={`space-y-4 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
+        <div className="flex min-w-0 items-center gap-2" data-onboarding="deal-verdict">
+          <h3 className={`min-w-0 truncate font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
+            {getVerdictTitle(verdict)}
+          </h3>
+          {!uncertain && (
+            <button type="button" onClick={() => setIsEvidenceSheetOpen(true)} aria-haspopup="dialog" aria-expanded={isEvidenceSheetOpen} aria-label={`See the evidence for this ${verdict} assessment`} className="inline-flex flex-shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700">
+              <AnimatedVerdictBadge badge={verdictBadge} animationKey={`selected-${product.id}-${selectedDeal.store}-${verdict}`} className="w-fit" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-start gap-4" data-onboarding="deal-summary">
+          <button type="button" onClick={() => setShowProductImage(true)} aria-label={`View larger image of ${product.name}`} className="product-image-frame deal-assessment-image h-28 w-28 flex-shrink-0 select-none overflow-hidden rounded-lg border-0 p-0">
+            <ProductImage src={product.image} alt={product.name} width={112} height={112} className="product-image-content h-full w-full object-contain" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h2 id="product-summary-heading" className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h2>
+            <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className={`font-display text-2xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</span>
+              <span className="text-sm font-bold text-stone-500">ea</span>
+            </div>
+            {selectedUnitPrice && <p className="mt-0.5 dd-type-meta text-stone-500">{selectedUnitPrice}</p>}
+            <DealStoreLink deal={selectedDeal} productName={product.name} />
           </div>
         </div>
-
         {evidenceSummary && (
-          <AssessmentEvidenceCard
-            deal={selectedDeal}
-            verdict={verdict}
-            evidenceSummary={evidenceSummary}
-            assessmentCopy={assessmentSummary.body}
-            compactSpacing
-            open={isEvidenceSheetOpen}
-            onOpenChange={setIsEvidenceSheetOpen}
-          />
+          <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} assessmentCopy={assessmentSummary.body} compactSpacing open={isEvidenceSheetOpen} onOpenChange={setIsEvidenceSheetOpen} />
         )}
 
         {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
@@ -1083,7 +1004,7 @@ export default function DealAssessmentPage() {
         <div className={`space-y-4 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="min-w-0" data-onboarding="deal-verdict">
             <div className="flex min-w-0 items-center gap-2">
-              <h2 className={`min-w-0 truncate font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
+              <h2 className={`min-w-0 truncate font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
                 {getVerdictTitle(verdict)}
               </h2>
               {!uncertain && (
