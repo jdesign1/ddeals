@@ -136,12 +136,12 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
         ? ` It is ${averageDiscount}% below the 90-day average.`
         : "";
       if (deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR") {
-        const highCopy = deal.ninetyDayHigh != null && Number.isFinite(deal.ninetyDayHigh) && deal.ninetyDayHigh > 0
-          ? ` It is below the 90-day high of ${formatAssessmentPrice(deal.ninetyDayHigh)}.`
+        const establishedAverageCopy = averageDiscount != null && averageDiscount > 0
+          ? `\n\nIt's ${averageDiscount}% below the 90-day average.`
           : "";
         return {
           heading: "Fair price based on 90-day history",
-          body: `Current price: ${currentPrice}.\n90-day low: ${formatAssessmentPrice(deal.ninetyDayLow)}.\nThis price sits in the lower part of the observed 90-day range, but it has been cheaper before.${averageCopy}${highCopy}`,
+          body: `Price sits in the lower observed 90-day range. It's been cheaper before.${establishedAverageCopy}`,
         };
       }
       return {

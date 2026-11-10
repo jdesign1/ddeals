@@ -97,7 +97,7 @@ function AssessmentEvidenceCard({
   const hasEvidenceCounts = Boolean(days || checks || trackedDays || ninetyDayChecks || priceChanges);
   const verdictBadge = VERDICT_BADGE[verdict];
   const priceMovement = getPriceMovement(deal);
-  const evidenceFooter = "This is based on 90 day price history, more observations will give more reliable evidence";
+  const evidenceFooter = "Based on the last 90-days of price history.";
   const assessmentLines = assessmentCopy.split("\n");
   const firstNarrativeLineIndex = assessmentLines.findIndex(
     (line) => !/^(Current price|90-day low|90-day average|Recent normal price):/.test(line),

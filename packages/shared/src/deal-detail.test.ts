@@ -303,10 +303,10 @@ test("buildAssessmentSummaryCopy: explains an established fair price from 90-day
   );
 
   assert.equal(copy.heading, "Fair price based on 90-day history");
-  assert.match(copy.body, /Current price: \$8\.59/);
-  assert.match(copy.body, /90-day low: \$7\.79/);
-  assert.match(copy.body, /lower part of the observed 90-day range/);
-  assert.match(copy.body, /90-day high of \$9\.89/);
+  assert.equal(
+    copy.body,
+    "Price sits in the lower observed 90-day range. It's been cheaper before.\n\nIt's 3% below the 90-day average.",
+  );
 });
 
 test("buildAssessmentSummaryCopy: explains when a recent discount is above the 90-day average", () => {
