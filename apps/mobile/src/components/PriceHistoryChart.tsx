@@ -148,14 +148,14 @@ function PriceHistoryChart({
   }, [animateOnMount, chartElement, isChartInView, shouldReduceMotion]);
   const showStoreSelector = storeOptions.length > 1 && Boolean(onStoreChange);
   const storeSelector = showStoreSelector ? (
-    <div className="flex justify-end">
+    <div className="flex justify-center">
       <div className="relative inline-flex items-center">
         <select
           id="price-history-store"
           value={selectedStore}
           onChange={(event) => onStoreChange?.(event.target.value)}
           aria-label="Select supermarket for price history"
-          className={`min-h-11 max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-right text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0 ${
+          className={`min-h-11 max-w-full appearance-none border-0 bg-transparent py-2 pl-2 pr-6 text-center text-[15px] leading-5 font-semibold text-stone-800 shadow-none outline-none focus:border-0 ${
             selectedStore === ALL_STORES_VALUE ? "w-16" : "w-fit"
           }`}
         >
@@ -262,7 +262,7 @@ function PriceHistoryChart({
             aria-label="Show price history as a list"
             aria-hidden={showHistoryList}
             tabIndex={showHistoryList ? -1 : 0}
-            className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 text-left"
+            className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 pb-1 text-left"
             style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "none" : "auto" }}
           >
         <div className="flex min-h-5 items-center justify-center gap-2 -mb-1 pb-0">
@@ -400,7 +400,7 @@ function PriceHistoryChart({
             Today
           </text>
         </svg>
-        <div className="-mt-3 flex flex-wrap items-center justify-center gap-2 text-sm leading-4 font-bold text-stone-700">
+        <div className="-mt-4 flex flex-wrap items-center justify-center gap-2 text-sm leading-4 font-bold text-stone-700">
           {showingAllStores
             ? renderedSeries.map((series) => (
                 <div key={series.store} className="flex items-center gap-1.5">

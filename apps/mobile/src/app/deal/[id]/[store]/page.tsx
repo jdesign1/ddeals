@@ -146,7 +146,15 @@ function DealActions({ productId, productName, dataOnboarding, immediateAdd = fa
   );
 }
 
-function DealStoreLink({ deal, productName }: { deal: CurrentDeal; productName: string }) {
+function DealStoreLink({
+  deal,
+  productName,
+  className = "mt-0.5 inline-block",
+}: {
+  deal: CurrentDeal;
+  productName: string;
+  className?: string;
+}) {
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const location = getTrustedDealLocation(deal);
   const label = `At ${storeLabel}${location ? ` ${location}` : ""}`;
@@ -157,7 +165,7 @@ function DealStoreLink({ deal, productName }: { deal: CurrentDeal; productName: 
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${label} product listing`}
-      className="mt-0.5 inline-block min-h-11 max-w-full rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+      className={`${className} min-h-11 max-w-full rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
     >
       <span className="break-words">{label}</span>
       <ChevronRight className="ml-0.5 inline-block h-4 w-4 align-[-0.2em]" aria-hidden="true" />
@@ -826,12 +834,7 @@ export default function DealAssessmentPage() {
 
       {isMultiStoreDeal ? (
         <>
-      <section className="space-y-5 rounded-2xl border border-stone-200 bg-white px-5 pb-0 pt-5 text-left shadow-xs" aria-labelledby="deal-assessment-heading">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="deal-assessment-heading" className="dd-type-section text-stone-900">
-            Deal assessment
-          </h2>
-        </div>
+      <section className="space-y-5 rounded-2xl border border-stone-200 bg-white px-5 pb-0 pt-5 text-left shadow-xs">
         <div className="flex items-start gap-4" data-onboarding="deal-summary">
           <button
             type="button"
@@ -940,7 +943,7 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
       <div id="selected-assessment" role="tabpanel" className={`space-y-0 rounded-2xl border-2 bg-white p-5 text-left shadow-xs ${verdictBorderClass}`}>
-        <div className="space-y-1.5" data-onboarding="deal-verdict">
+        <div className="space-y-3" data-onboarding="deal-verdict">
           <div className="flex min-w-0 items-center gap-2">
             <h3 className={`min-w-0 truncate font-display text-xl font-extrabold tracking-tight ${verdictColorClass}`}>
               {getVerdictTitle(verdict)}
@@ -962,14 +965,14 @@ export default function DealAssessmentPage() {
               </button>
             )}
           </div>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5">
-              <StoreLogoBadge store={selectedDeal.store} variant="card" />
-              <h3 className="min-w-0 truncate text-lg font-extrabold text-stone-900">{selectedDeal.store}</h3>
-            </div>
-            <p className={`font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
+          <div className="flex items-start gap-3">
+            <DealStoreLink
+              deal={selectedDeal}
+              productName={product.name}
+              className="block min-w-0 flex-1"
+            />
+            <p className={`shrink-0 whitespace-nowrap font-display text-xl font-extrabold ${multiStoreDealPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</p>
           </div>
-          <DealStoreLink deal={selectedDeal} productName={product.name} />
         </div>
 
         {evidenceSummary && (
@@ -982,6 +985,95 @@ export default function DealAssessmentPage() {
             open={isEvidenceSheetOpen}
             onOpenChange={setIsEvidenceSheetOpen}
           />
+        )}
+
+        {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
+          <div className="mt-4 space-y-4">
+            <button
+              onClick={toggleCheaperCarousel}
+              aria-expanded={showCheaperCarousel}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-stone-500 bg-white px-4 py-3 text-center dd-type-control text-stone-900 transition-all hover:bg-stone-50"
+            >
+              <span>See cheaper options</span>
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
+                {cheaperAlternatives.length}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-200 ${showCheaperCarousel ? "rotate-180" : ""}`}
+                strokeWidth={2.5}
+                aria-hidden="true"
+              />
+            </button>
+
+            {/* Keep the carousel aligned with the selected supermarket card's
+                edges while preserving the card's height animation. */}
+            <AnimatePresence initial={false}>
+              {showCheaperCarousel && (
+                <motion.div
+                  key="cheaper-carousel"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                  className="-mx-5 overflow-hidden"
+                >
+                  <div className="pt-3">
+                    <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
+                      {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving }) => (
+                        <div key={`${altProd.id}-${altStore}`}>
+                          <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-300 bg-white px-5 pb-5 pt-7 shadow-xs">
+                            <AddToListButton productId={altProd.id} productName={altProd.name} />
+                            <div className="flex items-start gap-4">
+                              <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
+                                <ProductImage
+                                  src={altProd.image}
+                                  alt={altProd.name}
+                                  width={96}
+                                  height={96}
+                                  className="product-image-content h-full w-full object-contain mix-blend-multiply"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-grow py-1">
+                                <div className="space-y-1">
+                                  <p className="dd-type-secondary dd-type-secondary-strong text-ink-600">
+                                    {altProd.brand
+                                      ? altProd.brand.charAt(0).toUpperCase() + altProd.brand.slice(1).toLowerCase()
+                                      : altProd.brand}{" "}
+                                    {altProd.unit}
+                                  </p>
+                                  <h3 className="mt-1 line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
+                                    {altProd.name}
+                                  </h3>
+                                  <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
+                                    <span className="font-display text-base font-extrabold text-stone-900">${altPrice.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
+                              Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
+                            </span>
+                            <a
+                              href={findDealForStore(altProd.currentDeals, altStore)?.productUrl || getStoreProductUrl(altStore, altProd.name)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="dd-type-control mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-stone-400 bg-white py-2.5 text-center text-stone-700 transition-all hover:bg-stone-50"
+                            >
+                              <span aria-hidden="true">
+                                <StoreLogoBadge store={altStore} variant="card" />
+                              </span>
+                              Go to {altStore}
+                              <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </InsightCarousel>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
 
       </div>
@@ -1062,224 +1154,6 @@ export default function DealAssessmentPage() {
           />
         </div>
       )}
-
-      {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
-          <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
-            <button
-              onClick={toggleCheaperCarousel}
-              aria-expanded={showCheaperCarousel}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-stone-500 bg-white px-4 py-3 text-center dd-type-control text-stone-900 transition-all hover:bg-stone-50"
-            >
-              <span>See cheaper options</span>
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fair-600 dd-type-badge text-white">
-                {cheaperAlternatives.length}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ${showCheaperCarousel ? "rotate-180" : ""}`}
-                strokeWidth={2.5}
-                aria-hidden="true"
-              />
-            </button>
-
-            {/* Bottom-sheet overlay (2026-08-12 to 2026-08-21) replaced with
-                this inline expand/collapse carousel, per Jay: "the container
-                will grow and show a carousel of the cheaper options (instead
-                of the bottom sheet). This carousel can then be collapsed
-                again by selecting the cheaper options button again." A
-                `motion.div` height animation (0 -> "auto") rather than a
-                simple conditional render -- an instant show/hide would jump
-                the rest of the page up/down with no transition, which is
-                exactly the abruptness the old full-page/bottom-sheet views
-                didn't have either (both animated in their own way). Content
-                below is the old bottom sheet's card list, ported verbatim
-                (image, brand/unit, name, save badge, price row, "Go to X"
-                link, AddToListButton) -- only the outer chrome changed, not
-                what each card shows. Wrapped in `InsightCarousel` (see that
-                file's own header comment on why it was still around,
-                unused, from the 2026-08-20 Price History change) rather than
-                a plain stacked list, since Jay's ask was specifically for a
-                *carousel* of alternatives, not a list -- matches how "See
-                cheaper options" behaved before the bottom-sheet era (spec
-                step 4's original swipeable-cards intent).
-
-                UPDATE 2026-08-21, per Jay: "make the cards slightly less
-                width and show a hint of the next card, or previous cards,
-                to give users understanding to swipe left or right. Ensure
-                the cards are always the same height." Two changes from the
-                original version of this block:
-                1. `slideWidthClassName="w-[88%]"` (below) instead of
-                   `InsightCarousel`'s own `w-full` default -- each slide
-                   now takes 88% of the row's width instead of all of it, so
-                   the next slide's left edge (and, once scrolled past slide
-                   1, the previous slide's right edge) peeks in at the
-                   container's edge as a visible swipe affordance. The old
-                   per-slide `px-1` wrapper is gone -- `InsightCarousel`'s
-                   own track now carries a `gap-3` between slides instead,
-                   so spacing isn't split across two different places.
-                2. Cards are no longer variable-height. This directly
-                   reverses the "Deliberately NOT given a fixed slide
-                   height" reasoning that used to live in this comment --
-                   that was true for the old one-slide-fills-the-viewport
-                   layout, where a clipped taller card had no visible
-                   downside since only one card was ever on screen at once.
-                   With neighboring cards now peeking in side-by-side, a
-                   mismatched card height would visibly stagger against its
-                   neighbors, which is what Jay's "always the same height"
-                   ask is about. Fixed via `h-72` + `justify-between` on the
-                   card itself (below) -- the image/text row and the "Go to
-                   X" link become the 2 flex children, `justify-between`
-                   pins the link to the card's bottom edge regardless of how
-                   tall the row's own content is, so a short name doesn't
-                   leave the link floating in the middle of the card --  and
-                   `line-clamp-2` on the product name (below) to bound the
-                   one genuinely unpredictable input (name length) so it
-                   can't grow the card past its own fixed height on an
-                   unusually long product name. The outer `motion.div`'s own
-                   `height: "auto"` re-measure is untouched and still needed
-                   -- it's sizing the whole scroll track's height (which
-                   still changes when the carousel opens/closes), not any
-                   individual card. */}
-            <AnimatePresence initial={false}>
-              {showCheaperCarousel && (
-                <motion.div
-                  key="cheaper-carousel"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                  className="-mx-5 overflow-hidden"
-                >
-                  {/* `-mx-5` RE-FIXED 2026-08-21 (moved from the div
-                      below onto this `motion.div` itself) -- Jay reported
-                      the peek STILL not reaching the container's true edge
-                      even after the earlier same-day fix described in this
-                      file's own history (which put `-mx-5` on the div just
-                      below instead of here). Re-derived the box model by
-                      hand rather than re-guessing: that div's `-mx-5` was
-                      trying to extend 20px past ITS OWN parent -- which is
-                      THIS `motion.div`, and this `motion.div` already
-                      carries `overflow-hidden` (needed for its own
-                      height:0->auto open/close animation) and had no
-                      padding of its own to absorb that extension.
-                      `overflow: hidden` clips at the padding edge of
-                      whichever element it's set on -- so the negative
-                      margin's 20px-each-side extension was being clipped
-                      away by THIS element before it ever reached the
-                      verdict card's real border, making the fix a no-op
-                      (identical rendered result to no `-mx-5` at all).
-                      Putting `-mx-5` on this `motion.div` instead makes
-                      this the element whose own box becomes 40px wider and
-                      shifts 20px left -- `overflow-hidden` now clips
-                      relative to THAT already-widened box, so there's
-                      nothing left over to clip. This cancels the verdict
-                      card's own `p-5` (line ~385) exactly as the original
-                      attempt intended, so the carousel viewport spans the
-                      card's FULL true width; the matching `px-5` still
-                      lives on `InsightCarousel`'s own `trackPaddingClassName`
-                      prop (see that file's own doc comment for why it has
-                      to be on the scroll TRACK, not a wrapping div, for a
-                      peek to reach the true edge mid-scroll). The old
-                      wrapper div below no longer needs `-mx-5` -- keeps
-                      just `pt-3`. */}
-                  <div className="pt-3">
-                    <InsightCarousel slideWidthClassName="w-[92%]" trackPaddingClassName="px-5">
-                      {cheaperAlternatives.map(({ product: altProd, store: altStore, price: altPrice, saving }) => {
-                        return (
-                          <div key={`${altProd.id}-${altStore}`}>
-                            {/* Card content ported verbatim from the old
-                                bottom sheet's "Similar deals" list (same
-                                image size, AddToListButton default
-                                top-right position, brand+unit with no "·"
-                                separator per the 2026-08-17 fix, save
-                                badge phrasing, store logo meta badge inside
-                                the store CTA,
-                                "Go to {store}" link) -- only the outer
-                                shape changed (one card per carousel slide
-                                instead of a vertical stack inside a
-                                sheet). `h-64`/`justify-between` added
-                                2026-08-21 for Jay's "always the same
-                                height" ask -- see this section's own doc
-                                comment above. Bumped `h-64` -> `h-72` same
-                                day, per Jay's follow-up: "Carousel card
-                                heights need to be larger to accommodate
-                                the button, currently it's cropped at the
-                                bottom, or squished in, missing proper
-                                bottom padding" -- the fixed height was
-                                genuinely too short for this card's worst-
-                                case content (2-line clamped name + the
-                                save badge's own 2-line wrap + the price
-                                row + the button, with `pt-7`/`pb-5`/`gap-4`
-                                all real space on top of that), so content
-                                was overflowing past the card's own bottom
-                                edge -- `justify-between`'s bottom-pinned
-                                link had nowhere real to pin to inside a
-                                too-short box, which is exactly the
-                                "cropped"/"squished" look Jay described.
-                                `h-72` gives ~32px more room; the save
-                                badge's own text is fixed copy (not
-                                user data), so this ceiling is a real
-                                worst case, not a guess against unbounded
-                                content. */}
-                            <div className="dd-deal-assessment-card relative flex min-h-72 flex-col gap-3 rounded-2xl border border-stone-300 bg-white px-5 pb-5 pt-7 shadow-xs">
-                              <AddToListButton productId={altProd.id} productName={altProd.name} />
-                              <div className="flex items-start gap-4">
-                                <div className="product-image-frame deal-assessment-image flex h-24 w-24 flex-shrink-0 select-none items-center justify-center overflow-hidden rounded-xl">
-                                  <ProductImage
-                                    src={altProd.image}
-                                    alt={altProd.name}
-                                    width={96}
-                                    height={96}
-                                    className="product-image-content h-full w-full object-contain mix-blend-multiply"
-                                  />
-                                </div>
-                                <div className="min-w-0 flex-grow py-1">
-                                  <div className="space-y-1">
-                                    <p className="dd-type-secondary dd-type-secondary-strong text-ink-600">
-                                      {altProd.brand
-                                        ? altProd.brand.charAt(0).toUpperCase() + altProd.brand.slice(1).toLowerCase()
-                                        : altProd.brand}{" "}
-                                      {altProd.unit}
-                                    </p>
-                                    {/* line-clamp-2 added 2026-08-21, alongside
-                                        the card's new fixed `h-72` -- bounds
-                                        the one input here that could otherwise
-                                        grow past a fixed card height on an
-                                        unusually long product name. */}
-                                    <h3 className="mt-1 line-clamp-2 font-display text-base font-bold leading-snug text-stone-900">
-                                      {altProd.name}
-                                    </h3>
-                                    <div className="mt-2 flex items-baseline gap-1 whitespace-nowrap">
-                                      <span className="font-display text-base font-extrabold text-stone-900">${altPrice.toFixed(2)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <span className="dd-cheaper-saving-badge block w-full rounded-md border border-fair-800 bg-fair-800 px-2.5 py-2 dd-type-secondary dd-type-secondary-strong text-white">
-                                Save <strong className="font-extrabold">${saving.toFixed(2)}</strong> compared to original item checked
-                              </span>
-                              <a
-                                href={findDealForStore(altProd.currentDeals, altStore)?.productUrl || getStoreProductUrl(altStore, altProd.name)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="dd-type-control mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-stone-400 bg-white py-2.5 text-center text-stone-700 transition-all hover:bg-stone-50"
-                              >
-                                <span aria-hidden="true">
-                                  <StoreLogoBadge store={altStore} variant="card" />
-                                </span>
-                                Go to {altStore}
-                                <ExternalLink className="h-4 w-4 opacity-60" aria-hidden="true" />
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </InsightCarousel>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
 
       <div className="space-y-3">
         {/* Keep the detailed history views together, with the practical

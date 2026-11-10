@@ -167,10 +167,7 @@ function AssessmentEvidenceCard({
                   {hasEvidenceCounts && (
                     <EvidenceTableWithMascot>
                       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                        <p className="text-center text-[15px] leading-5 font-bold text-stone-900">
-                          {trackedDays ? `Evidence from the last ${trackedDays}` : "Evidence from the available history"}
-                        </p>
-                        <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200/80 text-center">
+                        <div className="grid grid-cols-3 divide-x divide-stone-200/80 text-center">
                           <div className="px-2 first:pl-0 last:pr-0">
                             <p className="text-2xl leading-7 font-extrabold text-stone-900">{ninetyDayChecks ?? "—"}</p>
                             <p className="mt-1 text-sm leading-5 font-semibold text-stone-600">Checks</p>
