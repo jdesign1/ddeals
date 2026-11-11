@@ -1,11 +1,11 @@
 "use client";
 
 import { Check, ChevronLeft, LockKeyhole, Star, X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { fetchPriceHistory90d, getAssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import CompactProductInfoCard from "@/components/CompactProductInfoCard";
-import MascotImage from "@/components/MascotImage";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
@@ -114,6 +114,27 @@ function StreakStarBurst() {
   );
 }
 
+function DealDetectiveQuizSkeleton() {
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col overflow-hidden rounded-t-3xl bg-[var(--color-paper)]" role="status" aria-label="Loading Deal Detective case">
+      <div className="dd-skeleton-shimmer aspect-[1.1/1] w-full shrink-0 rounded-t-3xl" aria-hidden="true" />
+      <div className="flex min-h-0 flex-1 flex-col px-5">
+        <div className="mt-2 flex flex-col items-center gap-2" aria-hidden="true">
+          <div className="dd-skeleton-shimmer h-6 w-56 rounded" />
+          <div className="dd-skeleton-shimmer h-4 w-64 max-w-full rounded" />
+        </div>
+        <div className="mt-5 flex gap-3" aria-hidden="true">
+          <div className="dd-skeleton-shimmer h-[14rem] min-w-0 flex-1 rounded-2xl" />
+          <div className="dd-skeleton-shimmer h-[14rem] min-w-0 flex-1 rounded-2xl" />
+        </div>
+        <div className="mt-auto pb-6 pt-3" aria-hidden="true">
+          <div className="dd-skeleton-shimmer h-14 w-full rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function currency(value: number): string {
   return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(value);
 }
@@ -134,6 +155,8 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
   const [showPriceHistory, setShowPriceHistory] = useState(false);
   const [selectedPriceHistory, setSelectedPriceHistory] = useState<SelectedPriceHistory>({ loading: false, points: [], error: null });
   const [streakLength, setStreakLength] = useState(0);
+  const [isMascotImageLoaded, setIsMascotImageLoaded] = useState(false);
+  const [mascotImageFailed, setMascotImageFailed] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const priceHistoryRevealTimeoutRef = useRef<number | null>(null);
@@ -147,8 +170,9 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
   const streakCaseKey = `${dealDetectivePairKeyForCase(quizCase)}::${questionKind}`;
 
   useEffect(() => {
+    if (!isMascotImageLoaded) return;
     backButtonRef.current?.focus();
-  }, []);
+  }, [isMascotImageLoaded]);
 
   useEffect(() => () => {
     if (priceHistoryRevealTimeoutRef.current !== null) window.clearTimeout(priceHistoryRevealTimeoutRef.current);
@@ -260,7 +284,16 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
   };
 
   return (
-    <div className="relative flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-1 flex-col" aria-busy={!isMascotImageLoaded}>
+      {!isMascotImageLoaded && <DealDetectiveQuizSkeleton />}
+      <motion.div
+        initial={false}
+        animate={isMascotImageLoaded ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
+        aria-hidden={!isMascotImageLoaded}
+        inert={!isMascotImageLoaded ? true : undefined}
+        className="relative flex min-h-full flex-1 flex-col"
+      >
       {correct && answered && <ConfettiBurst key={selectedSide} />}
 
       {showBackButton && (
@@ -304,26 +337,28 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
             />
           </motion.div>
         ) : (
-          <motion.div
+          <div
             key={mascotAnimationKey}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.34, ease: "easeOut" }}
             className="relative flex aspect-[1.1/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50"
           >
-            <MascotImage
-              src="/deal-detective-case-mascot-wide.webp"
-              darkSrc="/deal-detective-case-mascot-wide.webp"
-              alt="Dodgy Deal mascot comparing two deal case files at headquarters"
-              width={1315}
-              height={1196}
-              sizes="(max-width: 480px) 100vw, 432px"
-              priority
-              unoptimized
-              className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
-            />
-          </motion.div>
+            {!mascotImageFailed && (
+              <Image
+                src="/deal-detective-case-mascot-wide.webp"
+                alt="Dodgy Deal mascot comparing two deal case files at headquarters"
+                width={1315}
+                height={1196}
+                sizes="(max-width: 480px) 100vw, 432px"
+                priority
+                unoptimized
+                onLoad={() => setIsMascotImageLoaded(true)}
+                onError={() => {
+                  setMascotImageFailed(true);
+                  setIsMascotImageLoaded(true);
+                }}
+                className="absolute inset-0 block h-full w-full max-w-none object-cover object-top"
+              />
+            )}
+          </div>
         )}
       </AnimatePresence>
 
@@ -472,6 +507,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
           </div>
         )}
       </div>
+      </motion.div>
     </div>
   );
 }
