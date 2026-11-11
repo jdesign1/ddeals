@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Hand } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { type AssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
@@ -436,7 +436,7 @@ function PriceHistoryChart({
                 <span className="dd-type-control text-stone-700">Price history</span>
                 {hasScrollableHistory && <span className="dd-type-meta text-stone-500">Swipe down for history</span>}
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="-mr-2 min-h-0 flex-1 overflow-y-auto pr-4">
                 {listPoints.length > 0 ? (
                   listPoints.map(({ point, store, seriesPoints }) => {
                     const pointIndex = seriesPoints.findIndex(
@@ -483,7 +483,14 @@ function PriceHistoryChart({
         </motion.div>
       </div>
       <p className="text-center text-sm leading-5 text-stone-600">
-        {showHistoryList ? "Tap to return to the graph." : "Tap the graph to see dates and prices."}
+        {showHistoryList ? (
+          "Tap to return to the graph."
+        ) : (
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <Hand className="h-4 w-4" aria-hidden="true" />
+            <span>Tap the graph</span>
+          </span>
+        )}
       </p>
     </div>
   );
