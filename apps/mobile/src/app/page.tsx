@@ -827,6 +827,7 @@ export default function HomePage() {
     [deferredCatalogueProducts, isSearchActive, selectedStores],
   );
   const didYouKnowCards = didYouKnowSummary.cards;
+  const isDidYouKnowPending = products.length > 0 && deferredCatalogueProducts !== products;
   const dealVerdictSummary = didYouKnowSummary.verdictSummary;
   const unreadRealSaverDealKeySet = useMemo(() => {
     const realDealKeys = digest?.realDealKeys ?? [];
@@ -1225,7 +1226,11 @@ export default function HomePage() {
             <>
               {checkDealsBeltOrder.map((belt) => {
                 if (belt === "did-you-know") {
-                  if (didYouKnowCards.length === 0) return null;
+                  if (didYouKnowCards.length === 0) {
+                    return isDidYouKnowPending
+                      ? <DidYouKnowCarouselSkeleton key={belt} flushTop={checkDealsBeltOrder[0] === "did-you-know"} />
+                      : null;
+                  }
                   return (
                     <DidYouKnowCarousel
                       key={belt}
@@ -1410,6 +1415,25 @@ function HomeCatalogueSkeleton() {
         </div>
       </section>
     </div>
+  );
+}
+
+/** Reserve the Did you know belt's position while its deferred catalogue pass runs. */
+function DidYouKnowCarouselSkeleton({ flushTop = false }: { flushTop?: boolean }) {
+  return (
+    <section className={`flex flex-col gap-3 bg-white py-4 ${flushTop ? "-mt-2" : ""}`} aria-hidden="true">
+      <div className="mx-5">
+        <div className="dd-skeleton-shimmer h-6 w-36 rounded" />
+      </div>
+      <div className="hide-scrollbar -mx-5 flex gap-3 overflow-hidden px-5">
+        <div className="dd-skeleton-shimmer h-[11rem] w-[92%] shrink-0 rounded-3xl" />
+        <div className="dd-skeleton-shimmer h-[11rem] w-[92%] shrink-0 rounded-3xl" />
+      </div>
+      <div className="mt-3 flex h-1.5 items-center justify-center gap-1.5" aria-hidden="true">
+        <div className="dd-skeleton-shimmer h-1.5 w-4 rounded-full" />
+        <div className="dd-skeleton-shimmer h-1.5 w-1.5 rounded-full" />
+      </div>
+    </section>
   );
 }
 

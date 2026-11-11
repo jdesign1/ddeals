@@ -101,7 +101,7 @@ a[aria-label="Dodgy Deal home"] {
 
 @media (prefers-reduced-motion: no-preference) {
   [data-check-deals-return="true"] .check-deals-page-enter {
-    animation: check-deals-page-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation: check-deals-page-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 }
 
