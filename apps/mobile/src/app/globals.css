@@ -952,8 +952,7 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 @keyframes launchMascotCycle {
-  0%,
-  100% {
+  0% {
     opacity: 0;
     transform: scale(0.56);
   }
@@ -999,11 +998,11 @@ html[data-theme="dark"] .theme-loader-surface {
     transform: scale(0.94);
   }
   59%,
-  78% {
+  63% {
     opacity: 1;
     transform: scale(1);
   }
-  84%,
+  69%,
   100% {
     opacity: 0;
     transform: scale(0.94);
@@ -1017,11 +1016,11 @@ html[data-theme="dark"] .theme-loader-surface {
     transform: scaleX(0.7);
   }
   62%,
-  78% {
+  64% {
     opacity: 1;
     transform: scaleX(1);
   }
-  84%,
+  70%,
   100% {
     opacity: 0;
     transform: scaleX(0.7);

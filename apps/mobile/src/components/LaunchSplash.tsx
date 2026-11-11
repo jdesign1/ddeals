@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 import WinkMascot from "@/components/WinkMascot";
-import { useNewSpecialsData } from "@/lib/new-specials-context";
 
 // The native storyboard covers the first launch frame; give the WebView wink
 // enough time to read clearly without holding the first screen for too long.
 const SPLASH_DURATION_MS = 1200;
 const SPLASH_EXIT_MS = 260;
-const LAUNCH_DECISION_MAX_WAIT_MS = 3500;
 type LaunchSplashStyle = CSSProperties & { "--launch-cycle-duration": string };
 const SPLASH_CLAIM_KEY = "dd-launch-splash-claimed";
 type LaunchWindow = Window & { __ddLaunchSplashClaimed?: boolean };
@@ -47,7 +45,6 @@ function claimLaunchSplash(): void {
  */
 export default function LaunchSplash() {
   const pathname = usePathname();
-  const { launchDecisionReady } = useNewSpecialsData();
   const launchPathnameRef = useRef<string | null>(pathname);
   const [visible, setVisible] = useState(() => {
     if (pathname !== "/") return false;
@@ -55,7 +52,6 @@ export default function LaunchSplash() {
   });
   const [exiting, setExiting] = useState(false);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
-  const [launchWaitExpired, setLaunchWaitExpired] = useState(false);
   const splashStyle: LaunchSplashStyle = {
     "--launch-cycle-duration": `${SPLASH_DURATION_MS}ms`,
   };
@@ -109,13 +105,7 @@ export default function LaunchSplash() {
   }, [visible]);
 
   useEffect(() => {
-    if (!visible || launchDecisionReady) return;
-    const timer = window.setTimeout(() => setLaunchWaitExpired(true), LAUNCH_DECISION_MAX_WAIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [launchDecisionReady, visible]);
-
-  useEffect(() => {
-    if (!minimumElapsed || (!launchDecisionReady && !launchWaitExpired)) return;
+    if (!minimumElapsed) return;
 
     const exitTimer = window.setTimeout(() => setExiting(true), 0);
     let completionFrame: number | null = null;
@@ -134,7 +124,7 @@ export default function LaunchSplash() {
       window.clearTimeout(removeTimer);
       if (completionFrame !== null) window.cancelAnimationFrame(completionFrame);
     };
-  }, [launchDecisionReady, launchWaitExpired, minimumElapsed]);
+  }, [minimumElapsed]);
 
   if (!visible) return null;
 

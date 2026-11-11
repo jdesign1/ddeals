@@ -13,7 +13,7 @@ import { useHeaderOverride } from "@/lib/header-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { subscribeToCheckDealsHeaderVisibility } from "@/lib/scroll-events";
-import { useSearchInput } from "@/lib/search-context";
+import { useSearchCatalogue, useSearchInput } from "@/lib/search-context";
 import { WATCHLIST_SHARE_EVENT } from "@/lib/watchlist-events";
 import type { DealFilter } from "@/lib/deal-filters";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
@@ -47,6 +47,7 @@ export default function AppHeader({
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
   const { query, setQuery, openSearch, openSearchForFilter } = useSearchInput();
+  const { loadingProducts } = useSearchCatalogue();
   const {
     digest,
     popupEligible,
@@ -82,6 +83,7 @@ export default function AppHeader({
   useEffect(() => subscribeToCheckDealsHeaderVisibility(setIsHiddenOnCheckDeals), []);
 
   const shouldPresentNewSpecialsModal = isLaunchSplashFinished
+    && !loadingProducts
     && (digest?.total ?? 0) > 0
     && pathname === "/"
     && !popupSuppressedUntilHomeExit;
