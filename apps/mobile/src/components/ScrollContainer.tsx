@@ -74,6 +74,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(64);
   const [chromeHeight, setChromeHeight] = useState(64);
+  const [isReturningToCheckDeals, setIsReturningToCheckDeals] = useState(false);
   const checkDealsSearchBackground =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "bg-stone-100";
   const refreshStatus: "refreshing" | "updated" | "up-to-date" | null = refreshing
@@ -94,6 +95,11 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     const previousPathname = previousPathnameRef.current;
     previousPathnameRef.current = pathname;
     markNavigationCommit(pathname);
+    setIsReturningToCheckDeals(
+      pathname === "/"
+      && previousPathname !== "/"
+      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
 
     const isContactRoute = CONTACT_ROUTES.includes(pathname);
     const wasContactRoute = CONTACT_ROUTES.includes(previousPathname);
@@ -430,6 +436,10 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       className={`app-drawer-shiftable mobile-scroll-surface page-paper-surface relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain transition-[background-color] duration-300 ease-out ${isDrawerOpen ? "is-drawer-open" : ""} ${
         pathname === "/" ? checkDealsSearchBackground : ""
       }`}
+      data-check-deals-return={isReturningToCheckDeals ? "true" : undefined}
+      onAnimationEnd={(event) => {
+        if (event.animationName === "check-deals-page-enter") setIsReturningToCheckDeals(false);
+      }}
       // Check Deals keeps the header/toolbar layout slots fixed while
       // their visual hide/show transitions run independently. The explicit
       // metrics are inherited by the sticky siblings for their fixed insets.

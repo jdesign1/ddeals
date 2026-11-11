@@ -299,7 +299,7 @@ function CheckDealsToolbar({
                   }`}
                   aria-label={`Filter to new deals since your last visit, ${newDealsCount} available`}
                 >
-                  <span className="rounded-full bg-alert-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
+                  <span className="rounded-full bg-alert-600 px-1.5 py-[3px] text-[10px] leading-none text-white">
                     {newDealsCount}
                   </span>
                   New to you
@@ -1068,7 +1068,7 @@ export default function HomePage() {
     <>
       <div className="relative">
       <main
-          className={`flex flex-col gap-2 pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"}`}
+          className={`flex flex-col gap-2 pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"} ${!loadingProducts && !error ? "check-deals-page-enter" : ""}`}
         >
       {!isSearchActive && !loadingProducts && !error && (
         <CheckDealsSummary
