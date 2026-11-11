@@ -232,6 +232,81 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 }
 
 /**
+ * Builds the one-line reason shown beside the verdict, using the same
+ * baseline and 90-day figures as `buildAssessmentSummaryCopy`.
+ */
+export function buildAssessmentInsightCopy(deal: CurrentDeal): string {
+  const verdict = getAssessmentVerdict(deal);
+  const normalPrice = formatAssessmentPrice(deal.originalPrice);
+  const savingsPct = signedSavingsPercentage(deal);
+  const average = deal.ninetyDayAvg;
+  const ninetyDayLow = deal.ninetyDayLow;
+  const hasAverage = average != null && Number.isFinite(average) && average > 0;
+  const hasLow = ninetyDayLow != null && Number.isFinite(ninetyDayLow) && ninetyDayLow > 0;
+
+  if (verdict === "Dodgy Deal") {
+    const higherThanUsual = deal.price - (deal.originalPrice ?? 0);
+    return normalPrice && Number.isFinite(higherThanUsual) && higherThanUsual >= 0.005
+      ? `$${higherThanUsual.toFixed(2)} higher than usual`
+      : "This discount isn't a genuine saving.";
+  }
+
+  if (verdict === "Real Saver") {
+    if (deal.assessmentBasis === "NINETY_DAY_LOW" && ninetyDayLow != null && hasLow) {
+      if (hasAverage) {
+        const belowAveragePct = Math.round(((average - deal.price) / average) * 100);
+        if (belowAveragePct > 0) return `${belowAveragePct}% below the 90-day average`;
+      }
+      return deal.price <= ninetyDayLow + 0.01
+        ? "At the lowest price in 90 days"
+        : "Near the lowest price in 90 days";
+    }
+    if (savingsPct != null && savingsPct > 0 && normalPrice) {
+      return `${savingsPct}% below the recent normal price`;
+    }
+    return "A genuine saving based on available price history";
+  }
+
+  if (verdict === "Fair Price") {
+    if (
+      (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"
+        || deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR")
+      && ninetyDayLow != null
+      && hasLow
+    ) {
+      if (hasAverage) {
+        const belowAveragePct = Math.round(((average - deal.price) / average) * 100);
+        if (belowAveragePct > 0) return `${belowAveragePct}% below the 90-day average`;
+      }
+      return deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"
+        ? "It's been cheaper before"
+        : "Near the lowest price in 90 days";
+    }
+
+    if (deal.assessmentBasis === "NINETY_DAY_ABOVE_AVERAGE" && hasAverage) {
+      const aboveAverage = deal.price - average;
+      return aboveAverage >= 0.005
+        ? `$${aboveAverage.toFixed(2)} above the 90-day average`
+        : "Around the 90-day average, not a standout saver";
+    }
+
+    if (savingsPct != null && savingsPct > 0 && normalPrice) {
+      return `${savingsPct}% below the recent normal price`;
+    }
+    if (!deal.isOnSpecial) return "No special price is running right now";
+    if (normalPrice && deal.price - (deal.originalPrice ?? 0) >= 0.005) {
+      return `$${(deal.price - (deal.originalPrice ?? 0)).toFixed(2)} above the recent normal price`;
+    }
+    return normalPrice
+      ? "No meaningful saving versus the recent normal price"
+      : "There isn't a reliable recent price baseline yet";
+  }
+
+  if (verdict === "Early read") return "A few more recent price checks are needed to confirm this deal";
+  return "More price history is needed to confirm this deal";
+}
+
+/**
  * Same branch order as the prototype's DealModal: a plain (non-special) item
  * always lands as a "Fair Price" (no discount game being played); a special
  * without enough evidence stays neutral, while older-but-useful evidence is

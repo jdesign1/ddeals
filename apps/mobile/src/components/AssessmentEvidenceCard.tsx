@@ -72,6 +72,7 @@ function EvidenceTableWithMascot({ children }: { children: ReactNode }) {
 function AssessmentEvidenceCard({
   deal,
   verdict,
+  assessmentInsight,
   evidenceSummary,
   assessmentCopy,
   open,
@@ -80,6 +81,7 @@ function AssessmentEvidenceCard({
 }: {
   deal: CurrentDeal;
   verdict: AssessmentVerdict;
+  assessmentInsight: string;
   evidenceSummary: string;
   assessmentCopy: string;
   /** Optional controlled state lets related assessment controls open this same sheet. */
@@ -117,16 +119,21 @@ function AssessmentEvidenceCard({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        aria-expanded={isOpen}
-        aria-controls={sheetId}
-        className={`dd-type-control ${compactSpacing ? "mt-0" : "mt-1"} flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-stone-500 bg-transparent px-3.5 py-3 text-center text-stone-700 transition-colors hover:border-stone-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
-      >
-        <span className="min-w-0 text-stone-700">{evidenceSummary}</span>
-        <Info className="h-5 w-5 flex-shrink-0 text-stone-900" strokeWidth={2.25} aria-hidden="true" />
-      </button>
+      <div className={`${compactSpacing ? "mt-0" : "mt-1"} space-y-1`}>
+        <p className="text-center text-sm font-semibold leading-5 text-stone-700">
+          {assessmentInsight}
+        </p>
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          aria-expanded={isOpen}
+          aria-controls={sheetId}
+          className="dd-type-control flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-stone-500 bg-transparent px-3.5 py-3 text-center text-stone-700 transition-colors hover:border-stone-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
+        >
+          <span className="min-w-0 text-stone-700">{evidenceSummary}</span>
+          <Info className="h-5 w-5 flex-shrink-0 text-stone-900" strokeWidth={2.25} aria-hidden="true" />
+        </button>
+      </div>
 
       <BottomSheetPortal open={isOpen}>
         <AnimatePresence>

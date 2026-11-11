@@ -4,6 +4,7 @@ import {
   buildPriceHistoryInsights,
   buildPriceTimingSignal,
   buildAssessmentSummaryCopy,
+  buildAssessmentInsightCopy,
   findBestDodgyDeal,
   findDealForStore,
   getAssessmentVerdict,
@@ -350,6 +351,67 @@ test("buildAssessmentSummaryCopy: uses concise copy for an early-read assessment
 
   assert.equal(copy.heading, "Needs more history");
   assert.equal(copy.body, "Current price: $5.00.\nRecent normal price: $7.00.\nWe need a few more recent price checks to confirm this deal.");
+});
+
+test("buildAssessmentInsightCopy explains each verdict using its matching price baseline", () => {
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({ dealType: "Dodgy Deal", price: 4.39, originalPrice: 4.19 })),
+    "$0.20 higher than usual",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({
+      dealType: "Unverified Deal",
+      evidenceStatus: "EARLY",
+      assessmentBasis: "NINETY_DAY_LOW",
+      price: 5.19,
+      ninetyDayLow: 5.19,
+      ninetyDayAvg: 5.70,
+    })),
+    "9% below the 90-day average",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({
+      dealType: "Real Deal",
+      assessmentBasis: "NINETY_DAY_ABOVE_AVERAGE",
+      price: 7.89,
+      ninetyDayAvg: 6.79,
+    })),
+    "$1.10 above the 90-day average",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({
+      dealType: "Unverified Deal",
+      evidenceStatus: "EARLY",
+      assessmentBasis: "NINETY_DAY_NEAR_LOW",
+      price: 7.59,
+      ninetyDayLow: 7.49,
+      ninetyDayAvg: 8.12,
+    })),
+    "7% below the 90-day average",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({ dealType: "Fair Price", price: 3.99, originalPrice: 4.19 })),
+    "5% below the recent normal price",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({ dealType: "Fair Price", price: 4.39, originalPrice: 4.19 })),
+    "$0.20 above the recent normal price",
+  );
+});
+
+test("buildAssessmentInsightCopy covers regular-price and incomplete-history cases", () => {
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({ isOnSpecial: false, dealType: "Fair Price", price: 5, originalPrice: 5 })),
+    "No special price is running right now",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })),
+    "A few more recent price checks are needed to confirm this deal",
+  );
+  assert.equal(
+    buildAssessmentInsightCopy(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })),
+    "More price history is needed to confirm this deal",
+  );
 });
 
 test("findBestDodgyDeal: finds a Dodgy retailer deal even when another store has a better discount", () => {

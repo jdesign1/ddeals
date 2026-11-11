@@ -19,6 +19,7 @@ import {
   isUncertainAssessment,
   getAssessmentVerdict,
   buildAssessmentSummaryCopy,
+  buildAssessmentInsightCopy,
   getStoreProductUrl,
   getSpecialPriceRange,
   formatUnitPrice,
@@ -810,6 +811,7 @@ export default function DealAssessmentPage() {
   const multiStoreDealPriceColorClass = verdict === "Real Saver" ? "text-fair-700" : "text-stone-900";
 
   const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
+  const assessmentInsight = buildAssessmentInsightCopy(selectedDeal);
   const evidenceSummary = getEvidenceSummary();
   const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
 
@@ -909,7 +911,7 @@ export default function DealAssessmentPage() {
           </div>
         </div>
         {evidenceSummary && (
-          <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} assessmentCopy={assessmentSummary.body} compactSpacing open={isEvidenceSheetOpen} onOpenChange={setIsEvidenceSheetOpen} />
+          <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} assessmentInsight={assessmentInsight} evidenceSummary={evidenceSummary} assessmentCopy={assessmentSummary.body} compactSpacing open={isEvidenceSheetOpen} onOpenChange={setIsEvidenceSheetOpen} />
         )}
 
         {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
@@ -1064,6 +1066,7 @@ export default function DealAssessmentPage() {
             <AssessmentEvidenceCard
               deal={selectedDeal}
               verdict={verdict}
+              assessmentInsight={assessmentInsight}
               evidenceSummary={evidenceSummary}
               assessmentCopy={assessmentSummary.body}
               open={isEvidenceSheetOpen}
