@@ -1,5 +1,5 @@
 import type { ProductCard } from "./data.ts";
-import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
+import { filterRecentlyVerifiedSpecials, missingVerifiedCoreSupermarketIds } from "./specials-freshness.ts";
 
 /**
  * Persistent, cross-session, same-browser cache of the fully-built
@@ -129,8 +129,10 @@ export async function readCatalogueCache(): Promise<ProductCard[] | null> {
   if (!record) return null;
   if (record.version !== CATALOGUE_CACHE_VERSION) return null;
   if (!Array.isArray(record.products) || !record.products.length) return null;
+  if (record.complete === false) return null;
   if (Date.now() - record.savedAt > CATALOGUE_CACHE_TTL_MS) return null;
   const recentlyVerifiedProducts = filterRecentlyVerifiedSpecials(record.products);
+  if (missingVerifiedCoreSupermarketIds(recentlyVerifiedProducts, record.verifiedStoreIds).length > 0) return null;
   return recentlyVerifiedProducts.length ? recentlyVerifiedProducts : null;
 }
 
@@ -237,6 +239,7 @@ export async function writeCataloguePublicationCheck(
 export async function writeCatalogueCache(products: ProductCard[], sourceUpdatedAt?: number | null, verifiedStoreIds?: readonly string[] | null): Promise<void> {
   try {
     if (!Array.isArray(products) || !products.length) return;
+    if (missingVerifiedCoreSupermarketIds(products, verifiedStoreIds).length > 0) return;
     const db = await openCatalogueCacheDB();
     const sourceMarker = typeof sourceUpdatedAt === "number" && Number.isFinite(sourceUpdatedAt) ? sourceUpdatedAt : undefined;
     await new Promise<void>((resolve, reject) => {

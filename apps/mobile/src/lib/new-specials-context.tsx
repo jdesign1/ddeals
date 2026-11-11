@@ -59,6 +59,8 @@ interface NewSpecialsContextValue {
   canOpenDetectiveCase: boolean;
   hasPendingDigest: boolean;
   popupEligible: boolean;
+  /** Startup can leave the launch cover once catalogue and local popup state are reconciled. */
+  launchDecisionReady: boolean;
   popupSuppressedUntilHomeExit: boolean;
   openRequested: boolean;
   previewSummary: NewSpecialsSummary;
@@ -83,6 +85,7 @@ export type NewSpecialsDataContextValue = Pick<
   | "canOpenDetectiveCase"
   | "hasPendingDigest"
   | "popupEligible"
+  | "launchDecisionReady"
   | "popupSuppressedUntilHomeExit"
   | "openRequested"
   | "previewSummary"
@@ -162,7 +165,7 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
 
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { products, loadingProducts, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
+  const { products, loadingProducts, catalogueLiveLoaded, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
   const latestProductsRef = useRef(products);
   const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuthStatus();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
@@ -233,6 +236,12 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   }, [isAnonymousSession, scope]);
 
   const storageReady = scope !== null && stored.scope === scope;
+  const launchDecisionReady = catalogueLiveLoaded && storageReady && (
+    !cataloguePublicationComplete
+    || !cataloguePublicationKey
+    || products.length === 0
+    || lastProcessedPublicationKey === cataloguePublicationKey
+  );
 
   useEffect(() => {
     if (!scope || !storageReady) return;
@@ -664,6 +673,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       canOpenDetectiveCase,
       hasPendingDigest: Boolean(pendingDigest?.total),
       popupEligible,
+      launchDecisionReady,
       popupSuppressedUntilHomeExit,
       openRequested,
       previewSummary,
@@ -679,7 +689,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       markReviewed,
       markDetectiveCasePlayed,
     }),
-    [canOpenDetectiveCase, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
+    [canOpenDetectiveCase, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, launchDecisionReady, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
   );
 
   const dataValue = useMemo<NewSpecialsDataContextValue>(
@@ -690,13 +700,14 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       canOpenDetectiveCase,
       hasPendingDigest: Boolean(pendingDigest?.total),
       popupEligible,
+      launchDecisionReady,
       popupSuppressedUntilHomeExit,
       openRequested,
       previewSummary,
       previewOpenRequested,
       detectiveCaseOpenRequested,
     }),
-    [canOpenDetectiveCase, detectiveCase, detectiveCaseOpenRequested, digest, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary],
+    [canOpenDetectiveCase, detectiveCase, detectiveCaseOpenRequested, digest, launchDecisionReady, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary],
   );
 
   const actionsValue = useMemo<NewSpecialsActionsContextValue>(

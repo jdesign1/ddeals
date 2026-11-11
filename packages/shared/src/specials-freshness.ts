@@ -15,6 +15,33 @@ export interface PublishedSpecialObservation {
   specials_verified_at?: string | null;
 }
 
+const CORE_SUPERMARKETS = ["newworld", "paknsave", "woolworths"] as const;
+
+function normalizedStoreId(value: string): string {
+  return value.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+/**
+ * Returns core retailers that the publication marker says were verified but
+ * whose offers are missing from this snapshot. They normally have active
+ * specials; a marker/snapshot mismatch is safer to treat as incomplete than
+ * to show shoppers a false zero for a supermarket.
+ */
+export function missingVerifiedCoreSupermarketIds(
+  products: readonly { currentDeals: readonly { store: string }[] }[],
+  verifiedStoreIds: readonly string[] | null | undefined,
+): string[] {
+  if (!verifiedStoreIds) return [];
+  const verified = verifiedStoreIds.map(normalizedStoreId);
+  const present = new Set(products.flatMap((product) => product.currentDeals.map((deal) => normalizedStoreId(deal.store))));
+
+  return CORE_SUPERMARKETS.filter((storeId) => {
+    const isVerified = verified.some((verifiedId) => verifiedId.includes(storeId));
+    const hasOffers = [...present].some((storeKey) => storeKey.includes(storeId));
+    return isVerified && !hasOffers;
+  });
+}
+
 /**
  * A raw current-price flag is only an observation. It becomes a user-facing
  * live special when the same product/store also has a published assessment,

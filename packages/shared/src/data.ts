@@ -37,7 +37,7 @@ import {
   type CatalogueArtifact,
   type CatalogueVersion,
 } from "./catalogue-artifact.ts";
-import { filterRecentlyVerifiedSpecials } from "./specials-freshness.ts";
+import { filterRecentlyVerifiedSpecials, missingVerifiedCoreSupermarketIds } from "./specials-freshness.ts";
 import {
   INFLATED_REFERENCE_MIN_APPARENT_SAVING,
   MATERIAL_OVER_NORMAL_THRESHOLD,
@@ -1214,7 +1214,10 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Liv
     return latest === null ? timestamp : Math.max(latest, timestamp);
   }, null);
   const sourceUpdatedAt = publication.sourceUpdatedAt ?? rowsTimestamp;
-  if (!specialRows.length) return { products: [], sourceUpdatedAt, verifiedStoreIds: publication.verifiedStoreIds };
+  if (!specialRows.length) {
+    assertVerifiedCoreStoreCoverage([], publication.verifiedStoreIds);
+    return { products: [], sourceUpdatedAt, verifiedStoreIds: publication.verifiedStoreIds };
+  }
 
   const matchIndex = await buildMatchIndex(config, specialRows.map((row) => row.product_id));
   /*
@@ -1231,7 +1234,19 @@ async function loadLiveProductsUncached(config: SupabaseRestConfig): Promise<Liv
     byGroup.get(groupId)!.push(row);
   }
 
-  return { products: buildProductCardsFromSpecials(splitUnsafeMatchGroups([...byGroup.entries()])), sourceUpdatedAt, verifiedStoreIds: publication.verifiedStoreIds };
+  const products = buildProductCardsFromSpecials(splitUnsafeMatchGroups([...byGroup.entries()]));
+  assertVerifiedCoreStoreCoverage(products, publication.verifiedStoreIds);
+  return { products, sourceUpdatedAt, verifiedStoreIds: publication.verifiedStoreIds };
+}
+
+function assertVerifiedCoreStoreCoverage(
+  products: readonly ProductCard[],
+  verifiedStoreIds: readonly string[] | null | undefined,
+): void {
+  const missingStores = missingVerifiedCoreSupermarketIds(products, verifiedStoreIds);
+  if (missingStores.length > 0) {
+    throw new Error(`Incomplete catalogue snapshot: missing offers for verified supermarkets (${missingStores.join(", ")})`);
+  }
 }
 
 interface LiveProductsCacheEntry {
@@ -1797,11 +1812,14 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
         publicationMarkerInvalidations.delete(cacheKey);
         return filterRecentlyVerifiedSpecials(cached);
       }
+      assertVerifiedCoreStoreCoverage(artifact.products, artifact.verifiedStoreIds);
       if (artifact.products.length > 0) {
         const products = mergeMissingStoreDeals(artifact.products, cached ?? [], artifact.verifiedStoreIds);
+        const displayableProducts = filterRecentlyVerifiedSpecials(products);
+        assertVerifiedCoreStoreCoverage(displayableProducts, artifact.verifiedStoreIds);
         await writeCatalogueCache(products, artifact.sourceUpdatedAt, artifact.verifiedStoreIds);
         publicationMarkerInvalidations.delete(cacheKey);
-        return filterRecentlyVerifiedSpecials(products);
+        return displayableProducts;
       }
       if (cached) return filterRecentlyVerifiedSpecials(cached);
     } catch {
@@ -1867,14 +1885,21 @@ export async function loadLiveProducts(config: SupabaseRestConfig): Promise<Prod
     throw error;
   }
   const products = mergeMissingStoreDeals(fresh.products, cached ?? [], fresh.verifiedStoreIds);
+  const displayableProducts = filterRecentlyVerifiedSpecials(products);
+  try {
+    assertVerifiedCoreStoreCoverage(displayableProducts, fresh.verifiedStoreIds);
+  } catch (error) {
+    if (cached) return filterRecentlyVerifiedSpecials(cached);
+    throw error;
+  }
   const sourceUpdatedAt = fresh.sourceUpdatedAt;
   publicationMarkerInvalidations.delete(cacheKey);
   // Wait for the validated snapshot to be persisted before returning. The
   // mobile new-specials detector uses the cache metadata as its publication
   // boundary, so returning first could make a cold load look incomplete and
   // skip the first new-deals batch until the next refresh.
-  if (products.length) await writeCatalogueCache(products, sourceUpdatedAt, fresh.verifiedStoreIds);
-  return filterRecentlyVerifiedSpecials(products);
+  if (displayableProducts.length) await writeCatalogueCache(products, sourceUpdatedAt, fresh.verifiedStoreIds);
+  return displayableProducts;
 }
 
 /** Returns true when an automatic six-hour refresh is due, without making a network request. */
