@@ -911,7 +911,12 @@ export default function DealAssessmentPage() {
           </div>
         </div>
         {evidenceSummary && (
-          <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} assessmentInsight={assessmentInsight} evidenceSummary={evidenceSummary} assessmentCopy={assessmentSummary.body} compactSpacing open={isEvidenceSheetOpen} onOpenChange={setIsEvidenceSheetOpen} />
+          <p className="text-left text-sm font-semibold leading-5 text-stone-700">
+            {assessmentInsight}
+          </p>
+        )}
+        {evidenceSummary && (
+          <AssessmentEvidenceCard deal={selectedDeal} verdict={verdict} evidenceSummary={evidenceSummary} assessmentCopy={assessmentSummary.body} open={isEvidenceSheetOpen} onOpenChange={setIsEvidenceSheetOpen} />
         )}
 
         {isMultiStoreDeal && cheaperAlternatives.length > 0 && (
@@ -1063,10 +1068,14 @@ export default function DealAssessmentPage() {
           </div>
 
           {evidenceSummary && (
+            <p className="text-left text-sm font-semibold leading-5 text-stone-700">
+              {assessmentInsight}
+            </p>
+          )}
+          {evidenceSummary && (
             <AssessmentEvidenceCard
               deal={selectedDeal}
               verdict={verdict}
-              assessmentInsight={assessmentInsight}
               evidenceSummary={evidenceSummary}
               assessmentCopy={assessmentSummary.body}
               open={isEvidenceSheetOpen}
