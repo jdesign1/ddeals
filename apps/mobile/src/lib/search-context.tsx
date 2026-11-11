@@ -579,6 +579,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const resumeAfterDealBack = useCallback(() => {
     setHasOpenedSearch(true);
     setPreserveSearchStateOnOpen(true);
+    // Restore the previous results without reopening the mobile keyboard.
+    // Explicit search entry points set this back to true when the user taps
+    // the search bar.
+    setFocusSearchOnOpen(false);
     setIsActive(true);
     setReturnToSearch(null);
   }, []);
