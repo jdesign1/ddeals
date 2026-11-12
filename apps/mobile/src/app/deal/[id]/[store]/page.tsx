@@ -650,13 +650,6 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
-            <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
-              {getVerdictTitle(verdict)}
-            </h2>
-            <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] min-w-0 shrink-0" />
-          </div>
-
           <div className="flex items-start gap-4" data-onboarding="deal-summary">
             <button
               type="button"
@@ -681,7 +674,13 @@ export default function DealAssessmentPage() {
             </div>
           </div>
 
-          <p className="text-left text-sm font-semibold leading-5 text-stone-700">{assessmentInsight}</p>
+          <div className="space-y-0" data-onboarding="deal-verdict">
+            <h2 className={`font-display text-lg font-extrabold leading-6 tracking-tight ${verdictColorClass}`}>
+              {getVerdictTitle(verdict)}
+            </h2>
+            <DealStoreLink deal={selectedDeal} productName={product.name} className="w-fit max-w-full" />
+            <p className="text-left text-sm font-semibold leading-5 text-stone-700">{assessmentInsight}</p>
+          </div>
 
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
