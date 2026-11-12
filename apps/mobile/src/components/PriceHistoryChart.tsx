@@ -20,6 +20,8 @@ interface PriceHistoryChartProps {
   historySeries?: PriceHistorySeries[];
   /** Use when the chart is shown in a portal instead of the main app scroll surface. */
   animateOnMount?: boolean;
+  /** Smaller footprint for the inline deal-history card. */
+  compact?: boolean;
 }
 
 interface ChartPoint extends PriceHistoryPoint {
@@ -120,6 +122,7 @@ function PriceHistoryChart({
   verdict,
   historySeries = [],
   animateOnMount = false,
+  compact = false,
 }: PriceHistoryChartProps) {
   const [chartNow] = useState(() => Date.now());
   const [showHistoryList, setShowHistoryList] = useState(false);
@@ -249,7 +252,7 @@ function PriceHistoryChart({
   return (
     <div className="space-y-3">
       {storeSelector}
-      <div ref={setChartElement} className="relative h-[21rem] [perspective:1000px]">
+      <div ref={setChartElement} className={`relative ${compact ? "h-64" : "h-[21rem]"} [perspective:1000px]`}>
         <motion.div
           className="relative h-full w-full"
           animate={{ rotateY: showHistoryList ? 180 : 0 }}
@@ -265,23 +268,25 @@ function PriceHistoryChart({
             className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 pb-1 text-left"
             style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "none" : "auto" }}
           >
-        <div className="flex min-h-5 items-center justify-center gap-2 -mb-1 pb-0">
-          {showingAllStores ? (
-            <span className="dd-type-control text-stone-700">All supermarkets</span>
-          ) : (
-            <>
-              <StoreLogoBadge store={currentStore} variant="card" />
-              <span className="dd-type-control text-stone-700">price</span>
-              <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
-            </>
-          )}
-          {!showingAllStores && hasComparisonPrice && (
-            <PriceChangeBadge currentPrice={currentPrice} comparisonPrice={comparisonPrice} />
-          )}
-        </div>
+        {!compact && (
+          <div className="-mb-1 flex min-h-5 items-center justify-center gap-2 pb-0">
+            {showingAllStores ? (
+              <span className="dd-type-control text-stone-700">All supermarkets</span>
+            ) : (
+              <>
+                <StoreLogoBadge store={currentStore} variant="card" />
+                <span className="dd-type-control text-stone-700">price</span>
+                <span className="font-display font-extrabold text-stone-900">${currentPrice.toFixed(2)}</span>
+              </>
+            )}
+            {!showingAllStores && hasComparisonPrice && (
+              <PriceChangeBadge currentPrice={currentPrice} comparisonPrice={comparisonPrice} />
+            )}
+          </div>
+        )}
         <svg
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-          className="block h-64 w-full"
+          className={`block ${compact ? "h-52" : "h-64"} w-full`}
           role="img"
           aria-label={
             showingAllStores
