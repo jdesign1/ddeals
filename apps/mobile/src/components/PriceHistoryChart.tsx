@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, Hand } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Pointer } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { type AssessmentVerdict, type PriceHistoryPoint } from "@dodgey-deals/shared";
 import PriceChangeBadge from "@/components/PriceChangeBadge";
@@ -488,14 +488,10 @@ function PriceHistoryChart({
         </motion.div>
       </div>
       <p className="text-center text-sm leading-5 text-stone-600">
-        {showHistoryList ? (
-          "Tap to return to the graph."
-        ) : (
-          <span className="inline-flex items-center justify-center gap-1.5">
-            <Hand className="h-4 w-4" aria-hidden="true" />
-            <span>Tap the graph</span>
-          </span>
-        )}
+        <span className="inline-flex items-center justify-center gap-1.5">
+          <Pointer className="h-4 w-4" aria-hidden="true" />
+          <span>{showHistoryList ? "Tap to return to the graph." : "Tap the graph"}</span>
+        </span>
       </p>
     </div>
   );

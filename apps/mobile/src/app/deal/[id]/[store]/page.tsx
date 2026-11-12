@@ -17,7 +17,6 @@ import {
   type CurrentDeal,
   isUncertainAssessment,
   getAssessmentVerdict,
-  buildAssessmentSummaryCopy,
   buildAssessmentInsightCopy,
   getStoreProductUrl,
   formatUnitPrice,
@@ -143,7 +142,7 @@ function DealActions({ productId, productName, dataOnboarding, immediateAdd = fa
 function DealStoreLink({
   deal,
   productName,
-  className = "mt-0.5 inline-block",
+  className = "mt-0",
 }: {
   deal: CurrentDeal;
   productName: string;
@@ -151,18 +150,18 @@ function DealStoreLink({
 }) {
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
   const location = getTrustedDealLocation(deal);
-  const label = `At ${storeLabel}${location ? ` ${location}` : ""}`;
+  const label = `${storeLabel}${location ? ` ${location}` : ""}`;
 
   return (
     <a
       href={deal.productUrl || getStoreProductUrl(deal.store, productName)}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Open ${label} product listing`}
-      className={`${className} min-h-11 max-w-full rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
+      aria-label={`Open ${storeLabel} product listing`}
+      className={`${className} inline-flex min-h-11 min-w-0 max-w-full items-center gap-0.5 rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
     >
-      <span className="break-words">{label}</span>
-      <ChevronRight className="ml-0.5 inline-block h-4 w-4 align-[-0.2em]" aria-hidden="true" />
+      <span className="truncate">{label}</span>
+      <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
     </a>
   );
 }
@@ -580,7 +579,6 @@ export default function DealAssessmentPage() {
   const lowestSpecialStoreItem = visibleRanking[0];
 
   const assessmentInsight = buildAssessmentInsightCopy(selectedDeal);
-  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
   const historyStatsDeal = historyDeal ?? selectedDeal;
   const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
 
@@ -652,11 +650,11 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1" data-onboarding="deal-verdict">
-            <h2 className={`min-w-0 font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
+          <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
+            <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
               {getVerdictTitle(verdict)}
             </h2>
-            <DealStoreLink deal={selectedDeal} productName={product.name} className="mt-0 inline-block shrink-0" />
+            <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] shrink-0" />
           </div>
 
           <div className="flex items-start gap-4" data-onboarding="deal-summary">
@@ -685,11 +683,6 @@ export default function DealAssessmentPage() {
 
           <p className="text-left text-sm font-semibold leading-5 text-stone-700">{assessmentInsight}</p>
 
-          <details className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm">
-            <summary className="cursor-pointer font-semibold text-stone-700">How we reached this verdict</summary>
-            <p className="mt-2 whitespace-pre-line leading-5 text-stone-600">{assessmentSummary.body}</p>
-          </details>
-
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
             isMultiStoreDeal={false}
@@ -702,15 +695,15 @@ export default function DealAssessmentPage() {
       <div className="dd-deal-assessment-card space-y-3 rounded-2xl border border-stone-300 bg-white p-4 shadow-xs">
         <h3 className="dd-type-section text-stone-900">90-day deal history</h3>
         <div className="grid grid-cols-3 divide-x divide-stone-200 rounded-xl border border-stone-200 bg-stone-50 py-2 text-center" role="group" aria-label="90-day price history summary">
-          <div className="px-2 first:pl-0 last:pr-0">
+          <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
             <p className="font-display text-xl leading-6 font-extrabold text-stone-900">
-              {Number.isFinite(historyStatsDeal.ninetyDaySamples) && historyStatsDeal.ninetyDaySamples != null
-                ? Math.max(0, Math.round(historyStatsDeal.ninetyDaySamples))
+              {Number.isFinite(historyStatsDeal.ninetyDayDaysTracked) && historyStatsDeal.ninetyDayDaysTracked != null
+                ? Math.max(0, Math.round(historyStatsDeal.ninetyDayDaysTracked))
                 : "—"}
             </p>
-            <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Price observations</p>
+            <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Days tracked</p>
           </div>
-          <div className="px-2 first:pl-0 last:pr-0">
+          <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
             <p className="font-display text-xl leading-6 font-extrabold text-stone-900">
               {Number.isFinite(historyStatsDeal.ninetyDayPriceChanges) && historyStatsDeal.ninetyDayPriceChanges != null
                 ? Math.max(0, Math.round(historyStatsDeal.ninetyDayPriceChanges))
@@ -718,7 +711,7 @@ export default function DealAssessmentPage() {
             </p>
             <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Price changes</p>
           </div>
-          <div className="px-2 first:pl-0 last:pr-0">
+          <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
             <p className="font-display text-xl leading-6 font-extrabold text-stone-900">
               {Number.isFinite(historyStatsDeal.ninetyDayAvg) && historyStatsDeal.ninetyDayAvg != null && historyStatsDeal.ninetyDayAvg > 0
                 ? `$${historyStatsDeal.ninetyDayAvg.toFixed(2)}`
