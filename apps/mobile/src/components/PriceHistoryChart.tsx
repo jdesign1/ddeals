@@ -41,7 +41,7 @@ export interface PriceHistorySeries {
 const WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const VIEWBOX_WIDTH = 360;
 const VIEWBOX_HEIGHT = 210;
-const PLOT_LEFT = 52;
+const PLOT_LEFT = 68;
 const PLOT_RIGHT = 344;
 const PLOT_TOP = 10;
 const PLOT_BOTTOM = 164;

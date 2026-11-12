@@ -246,70 +246,45 @@ export function buildAssessmentInsightCopy(deal: CurrentDeal): string {
 
   if (hasLow) {
     return deal.price <= ninetyDayLow + 0.01
-      ? "Lowest price in the last 90 days"
-      : `Lowest recorded price in the last 90 days: $${ninetyDayLow.toFixed(2)}`;
+      ? "Lowest in 90 days"
+      : `90-day low: $${ninetyDayLow.toFixed(2)}`;
   }
 
   if (verdict === "Dodgy Deal") {
     const higherThanUsual = deal.price - (deal.originalPrice ?? 0);
     return normalPrice && Number.isFinite(higherThanUsual) && higherThanUsual >= 0.005
-      ? `$${higherThanUsual.toFixed(2)} higher than usual`
-      : "This discount isn't a genuine saving.";
+      ? `$${higherThanUsual.toFixed(2)} above usual`
+      : "Not a genuine saving";
   }
 
   if (verdict === "Real Saver") {
-    if (deal.assessmentBasis === "NINETY_DAY_LOW" && ninetyDayLow != null && hasLow) {
-      if (hasAverage) {
-        const belowAveragePct = Math.round(((average - deal.price) / average) * 100);
-        if (belowAveragePct > 0) return `${belowAveragePct}% below the 90-day average`;
-      }
-      return deal.price <= ninetyDayLow + 0.01
-        ? "At the lowest price in 90 days"
-        : "Near the lowest price in 90 days";
-    }
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
-      return `${savingsPct}% below the recent normal price`;
+      return `${savingsPct}% below usual`;
     }
-    return "A genuine saving based on available price history";
+    return "Genuine saving";
   }
 
   if (verdict === "Fair Price") {
-    if (
-      (deal.assessmentBasis === "NINETY_DAY_NEAR_LOW"
-        || deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR")
-      && ninetyDayLow != null
-      && hasLow
-    ) {
-      if (hasAverage) {
-        const belowAveragePct = Math.round(((average - deal.price) / average) * 100);
-        if (belowAveragePct > 0) return `${belowAveragePct}% below the 90-day average`;
-      }
-      return deal.assessmentBasis === "NINETY_DAY_ESTABLISHED_FAIR"
-        ? "It's been cheaper before"
-        : "Near the lowest price in 90 days";
-    }
-
     if (deal.assessmentBasis === "NINETY_DAY_ABOVE_AVERAGE" && hasAverage) {
       const aboveAverage = deal.price - average;
       return aboveAverage >= 0.005
-        ? `$${aboveAverage.toFixed(2)} above the 90-day average`
-        : "Around the 90-day average, not a standout saver";
+        ? `$${aboveAverage.toFixed(2)} above 90-day avg.`
+        : "Around the 90-day average";
     }
 
     if (savingsPct != null && savingsPct > 0 && normalPrice) {
-      return `${savingsPct}% below the recent normal price`;
+      return `${savingsPct}% below usual`;
     }
-    if (!deal.isOnSpecial) return "No special price is running right now";
+    if (!deal.isOnSpecial) return "Regular price";
     if (normalPrice && deal.price - (deal.originalPrice ?? 0) >= 0.005) {
-      return `$${(deal.price - (deal.originalPrice ?? 0)).toFixed(2)} above the recent normal price`;
+      return `$${(deal.price - (deal.originalPrice ?? 0)).toFixed(2)} above usual`;
     }
     return normalPrice
-      ? "No meaningful saving versus the recent normal price"
-      : "There isn't a reliable recent price baseline yet";
+      ? "No real saving"
+      : "No price history yet";
   }
 
-  if (verdict === "Early read") return "Not enough history to confirm the lowest price yet";
-  return "Not enough history to confirm the lowest price yet";
+  return "Not enough history yet";
 }
 
 /**

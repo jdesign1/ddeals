@@ -692,10 +692,10 @@ export default function DealAssessmentPage() {
         </div>
       </motion.div>
 
-      <div className="dd-deal-assessment-card space-y-2 rounded-2xl border border-stone-300 bg-white p-4 shadow-xs">
+      <div className="dd-deal-assessment-card space-y-3 rounded-2xl border border-stone-300 bg-white p-4 shadow-xs">
         <h3 className="dd-type-section text-stone-900">90-day deal history</h3>
         <div className="overflow-hidden rounded-xl border border-stone-100 bg-stone-50">
-          <div className="grid grid-cols-3 divide-x divide-stone-200/80 border-b border-stone-200/80 py-2 text-center" role="group" aria-label="90-day price history summary">
+          <div className="grid grid-cols-3 divide-x divide-stone-200/80 py-3 text-center" role="group" aria-label="90-day price history summary">
             <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
               <p className="font-display text-lg leading-6 font-extrabold text-stone-900">
                 {Number.isFinite(historyStatsDeal.ninetyDayDaysTracked) && historyStatsDeal.ninetyDayDaysTracked != null
