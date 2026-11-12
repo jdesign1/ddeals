@@ -243,11 +243,18 @@ export function buildAssessmentInsightCopy(deal: CurrentDeal): string {
   const ninetyDayLow = deal.ninetyDayLow;
   const hasAverage = average != null && Number.isFinite(average) && average > 0;
   const hasLow = ninetyDayLow != null && Number.isFinite(ninetyDayLow) && ninetyDayLow > 0;
+  const trackedDays = Number.isFinite(deal.ninetyDayDaysTracked) && deal.ninetyDayDaysTracked != null
+    ? Math.min(90, Math.max(1, Math.round(deal.ninetyDayDaysTracked)))
+    : null;
 
   if (hasLow) {
-    return deal.price <= ninetyDayLow + 0.01
-      ? "Lowest in 90 days"
-      : `90-day low: $${ninetyDayLow.toFixed(2)}`;
+    const isAtRecordedLow = deal.price <= ninetyDayLow + 0.01;
+    if (trackedDays == null) {
+      return isAtRecordedLow ? "Lowest recorded" : `Low: $${ninetyDayLow.toFixed(2)}`;
+    }
+    return isAtRecordedLow
+      ? `Lowest in ${trackedDays} days`
+      : `Lowest: $${ninetyDayLow.toFixed(2)} over ${trackedDays} days`;
   }
 
   if (verdict === "Dodgy Deal") {

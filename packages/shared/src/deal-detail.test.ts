@@ -356,7 +356,7 @@ test("buildAssessmentSummaryCopy: uses concise copy for an early-read assessment
 test("buildAssessmentInsightCopy explains each verdict using its matching price baseline", () => {
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({ dealType: "Dodgy Deal", price: 4.39, originalPrice: 4.19 })),
-    "$0.20 higher than usual",
+    "$0.20 above usual",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({
@@ -365,9 +365,10 @@ test("buildAssessmentInsightCopy explains each verdict using its matching price 
       assessmentBasis: "NINETY_DAY_LOW",
       price: 5.19,
       ninetyDayLow: 5.19,
+      ninetyDayDaysTracked: 73,
       ninetyDayAvg: 5.70,
     })),
-    "Lowest in 90 days",
+    "Lowest in 73 days",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({
@@ -376,7 +377,7 @@ test("buildAssessmentInsightCopy explains each verdict using its matching price 
       price: 7.89,
       ninetyDayAvg: 6.79,
     })),
-    "$1.10 above the 90-day average",
+    "$1.10 above 90-day avg.",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({
@@ -385,9 +386,10 @@ test("buildAssessmentInsightCopy explains each verdict using its matching price 
       assessmentBasis: "NINETY_DAY_NEAR_LOW",
       price: 7.59,
       ninetyDayLow: 7.49,
+      ninetyDayDaysTracked: 42,
       ninetyDayAvg: 8.12,
     })),
-    "90-day low: $7.49",
+    "Lowest: $7.49 over 42 days",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({ dealType: "Fair Price", price: 3.99, originalPrice: 4.19 })),
