@@ -367,7 +367,7 @@ test("buildAssessmentInsightCopy explains each verdict using its matching price 
       ninetyDayLow: 5.19,
       ninetyDayAvg: 5.70,
     })),
-    "9% below the 90-day average",
+    "Lowest price in the last 90 days",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({
@@ -387,7 +387,7 @@ test("buildAssessmentInsightCopy explains each verdict using its matching price 
       ninetyDayLow: 7.49,
       ninetyDayAvg: 8.12,
     })),
-    "7% below the 90-day average",
+    "Lowest recorded price in the last 90 days: $7.49",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({ dealType: "Fair Price", price: 3.99, originalPrice: 4.19 })),
@@ -406,11 +406,11 @@ test("buildAssessmentInsightCopy covers regular-price and incomplete-history cas
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "EARLY" })),
-    "A few more recent price checks are needed to confirm this deal",
+    "Not enough history to confirm the lowest price yet",
   );
   assert.equal(
     buildAssessmentInsightCopy(fakeDeal({ dealType: "Unverified Deal", evidenceStatus: "LIMITED" })),
-    "More price history is needed to confirm this deal",
+    "Not enough history to confirm the lowest price yet",
   );
 });
 

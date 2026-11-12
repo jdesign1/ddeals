@@ -158,9 +158,9 @@ function DealStoreLink({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${storeLabel} product listing`}
-      className={`${className} inline-flex min-h-11 min-w-0 max-w-full items-center gap-0.5 rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
+      className={`${className} inline-flex min-h-11 min-w-0 max-w-full items-center gap-0.5 overflow-hidden whitespace-nowrap rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
     >
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
     </a>
   );
@@ -654,7 +654,7 @@ export default function DealAssessmentPage() {
             <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
               {getVerdictTitle(verdict)}
             </h2>
-            <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] shrink-0" />
+            <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] min-w-0 shrink-0" />
           </div>
 
           <div className="flex items-start gap-4" data-onboarding="deal-summary">
@@ -692,46 +692,48 @@ export default function DealAssessmentPage() {
         </div>
       </motion.div>
 
-      <div className="dd-deal-assessment-card space-y-3 rounded-2xl border border-stone-300 bg-white p-4 shadow-xs">
+      <div className="dd-deal-assessment-card space-y-2 rounded-2xl border border-stone-300 bg-white p-4 shadow-xs">
         <h3 className="dd-type-section text-stone-900">90-day deal history</h3>
-        <div className="grid grid-cols-3 divide-x divide-stone-200 rounded-xl border border-stone-200 bg-stone-50 py-2 text-center" role="group" aria-label="90-day price history summary">
-          <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
-            <p className="font-display text-xl leading-6 font-extrabold text-stone-900">
-              {Number.isFinite(historyStatsDeal.ninetyDayDaysTracked) && historyStatsDeal.ninetyDayDaysTracked != null
-                ? Math.max(0, Math.round(historyStatsDeal.ninetyDayDaysTracked))
-                : "—"}
-            </p>
-            <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Days tracked</p>
+        <div className="overflow-hidden rounded-xl border border-stone-100 bg-stone-50">
+          <div className="grid grid-cols-3 divide-x divide-stone-200/80 border-b border-stone-200/80 py-2 text-center" role="group" aria-label="90-day price history summary">
+            <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
+              <p className="font-display text-lg leading-6 font-extrabold text-stone-900">
+                {Number.isFinite(historyStatsDeal.ninetyDayDaysTracked) && historyStatsDeal.ninetyDayDaysTracked != null
+                  ? Math.max(0, Math.round(historyStatsDeal.ninetyDayDaysTracked))
+                  : "—"}
+              </p>
+              <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Days tracked</p>
+            </div>
+            <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
+              <p className="font-display text-lg leading-6 font-extrabold text-stone-900">
+                {Number.isFinite(historyStatsDeal.ninetyDayPriceChanges) && historyStatsDeal.ninetyDayPriceChanges != null
+                  ? Math.max(0, Math.round(historyStatsDeal.ninetyDayPriceChanges))
+                  : "—"}
+              </p>
+              <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Price changes</p>
+            </div>
+            <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
+              <p className="font-display text-lg leading-6 font-extrabold text-stone-900">
+                {Number.isFinite(historyStatsDeal.ninetyDayAvg) && historyStatsDeal.ninetyDayAvg != null && historyStatsDeal.ninetyDayAvg > 0
+                  ? `$${historyStatsDeal.ninetyDayAvg.toFixed(2)}`
+                  : "—"}
+              </p>
+              <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Avg. price</p>
+            </div>
           </div>
-          <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
-            <p className="font-display text-xl leading-6 font-extrabold text-stone-900">
-              {Number.isFinite(historyStatsDeal.ninetyDayPriceChanges) && historyStatsDeal.ninetyDayPriceChanges != null
-                ? Math.max(0, Math.round(historyStatsDeal.ninetyDayPriceChanges))
-                : "—"}
-            </p>
-            <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Price changes</p>
+          <div data-onboarding="price-history-chart" className="scroll-mt-24">
+            <PriceHistoryChart
+              points={priceHistoryPoints}
+              currentPrice={historyDeal?.price ?? selectedDeal.price}
+              currentStore={effectiveHistoryStore}
+              currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
+              comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
+              loading={priceHistoryLoadingForSelection}
+              error={priceHistoryErrorForSelection}
+              verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
+              compact
+            />
           </div>
-          <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
-            <p className="font-display text-xl leading-6 font-extrabold text-stone-900">
-              {Number.isFinite(historyStatsDeal.ninetyDayAvg) && historyStatsDeal.ninetyDayAvg != null && historyStatsDeal.ninetyDayAvg > 0
-                ? `$${historyStatsDeal.ninetyDayAvg.toFixed(2)}`
-                : "—"}
-            </p>
-            <p className="mt-1 text-xs leading-4 font-semibold text-stone-600">Avg. price</p>
-          </div>
-        </div>
-        <div data-onboarding="price-history-chart" className="scroll-mt-24">
-          <PriceHistoryChart
-            points={priceHistoryPoints}
-            currentPrice={historyDeal?.price ?? selectedDeal.price}
-            currentStore={effectiveHistoryStore}
-            currentIsSpecial={historyDeal?.isOnSpecial ?? selectedDeal.isOnSpecial}
-            comparisonPrice={historyDeal?.originalPrice ?? selectedDeal.originalPrice}
-            loading={priceHistoryLoadingForSelection}
-            error={priceHistoryErrorForSelection}
-            verdict={getAssessmentVerdict(historyDeal ?? selectedDeal)}
-            compact
-          />
         </div>
       </div>
 

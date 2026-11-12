@@ -115,7 +115,7 @@ export function buildAssessmentSummaryCopy(deal: CurrentDeal): AssessmentSummary
 
   if (verdict === "Dodgy Deal") {
     return {
-      heading: savingsPct != null && savingsPct < 0 && normalPrice ? `${Math.abs(savingsPct)}% above the recent normal price` : "Dodgy discount",
+      heading: savingsPct != null && savingsPct < 0 && normalPrice ? `${Math.abs(savingsPct)}% above the recent normal price` : "Dodgy Deal",
       body: buildAssessmentPriceBody(currentPrice, normalPrice, "That's not a genuine saving."),
     };
   }
@@ -244,6 +244,12 @@ export function buildAssessmentInsightCopy(deal: CurrentDeal): string {
   const hasAverage = average != null && Number.isFinite(average) && average > 0;
   const hasLow = ninetyDayLow != null && Number.isFinite(ninetyDayLow) && ninetyDayLow > 0;
 
+  if (hasLow) {
+    return deal.price <= ninetyDayLow + 0.01
+      ? "Lowest price in the last 90 days"
+      : `Lowest recorded price in the last 90 days: $${ninetyDayLow.toFixed(2)}`;
+  }
+
   if (verdict === "Dodgy Deal") {
     const higherThanUsual = deal.price - (deal.originalPrice ?? 0);
     return normalPrice && Number.isFinite(higherThanUsual) && higherThanUsual >= 0.005
@@ -302,8 +308,8 @@ export function buildAssessmentInsightCopy(deal: CurrentDeal): string {
       : "There isn't a reliable recent price baseline yet";
   }
 
-  if (verdict === "Early read") return "A few more recent price checks are needed to confirm this deal";
-  return "More price history is needed to confirm this deal";
+  if (verdict === "Early read") return "Not enough history to confirm the lowest price yet";
+  return "Not enough history to confirm the lowest price yet";
 }
 
 /**

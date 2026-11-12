@@ -10,7 +10,7 @@ export const VERDICT_BADGE: Record<AssessmentVerdict, { label: string; className
 };
 
 export function getVerdictTitle(verdict: AssessmentVerdict): string {
-  if (verdict === "Dodgy Deal") return "Dodgy discount";
+  if (verdict === "Dodgy Deal") return "Dodgy Deal";
   if (verdict === "Early read" || verdict === "Limited history") return "Limited Price History";
   return verdict;
 }

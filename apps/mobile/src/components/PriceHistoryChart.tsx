@@ -43,7 +43,7 @@ const VIEWBOX_WIDTH = 360;
 const VIEWBOX_HEIGHT = 210;
 const PLOT_LEFT = 52;
 const PLOT_RIGHT = 344;
-const PLOT_TOP = 16;
+const PLOT_TOP = 10;
 const PLOT_BOTTOM = 164;
 
 function formatDate(value: string, isCurrent = false): string {
@@ -175,9 +175,9 @@ function PriceHistoryChart({
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className={compact ? "space-y-0" : "space-y-3"}>
         {storeSelector}
-        <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4">
+        <div className={`flex h-64 w-full items-center justify-center p-4 ${compact ? "rounded-none border-0 bg-transparent" : "rounded-xl border border-stone-100 bg-stone-50"}`}>
           <p className="text-sm font-semibold text-stone-500">Loading 90-day price history…</p>
         </div>
       </div>
@@ -186,9 +186,9 @@ function PriceHistoryChart({
 
   if (error) {
     return (
-      <div className="space-y-3">
+      <div className={compact ? "space-y-0" : "space-y-3"}>
         {storeSelector}
-        <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
+        <div className={`flex h-64 w-full items-center justify-center p-4 text-center ${compact ? "rounded-none border-0 bg-transparent" : "rounded-xl border border-stone-100 bg-stone-50"}`}>
           <p className="text-sm leading-5 font-semibold text-stone-500">90-day price history isn’t available right now.</p>
         </div>
       </div>
@@ -209,9 +209,9 @@ function PriceHistoryChart({
     .filter((series) => series.points.length > 0);
   if (renderedSeries.length === 0 || renderedSeries.every((series) => series.points.length < 2)) {
     return (
-      <div className="space-y-3">
+      <div className={compact ? "space-y-0" : "space-y-3"}>
         {storeSelector}
-        <div className="flex h-64 w-full items-center justify-center rounded-xl border border-stone-100 bg-stone-50 p-4 text-center">
+        <div className={`flex h-64 w-full items-center justify-center p-4 text-center ${compact ? "rounded-none border-0 bg-transparent" : "rounded-xl border border-stone-100 bg-stone-50"}`}>
           <p className="text-sm leading-5 font-semibold text-stone-500">Not enough recorded price history to draw this chart yet.</p>
         </div>
       </div>
@@ -250,7 +250,7 @@ function PriceHistoryChart({
   // not show a swipe hint when the available history already fits onscreen.
   const hasScrollableHistory = listPoints.length > 4;
   return (
-    <div className="space-y-3">
+    <div className={compact ? "space-y-0" : "space-y-3"}>
       {storeSelector}
       <div ref={setChartElement} className={`relative ${compact ? "h-64" : "h-[21rem]"} [perspective:1000px]`}>
         <motion.div
@@ -265,7 +265,7 @@ function PriceHistoryChart({
             aria-label="Show price history as a list"
             aria-hidden={showHistoryList}
             tabIndex={showHistoryList ? -1 : 0}
-            className="h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-2 pb-1 text-left"
+            className={`h-full w-full text-left ${compact ? "rounded-none border-0 bg-transparent px-1 pb-1 pt-0" : "rounded-xl border border-stone-100 bg-stone-50 p-2 pb-1"}`}
             style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "none" : "auto" }}
           >
         {!compact && (
@@ -433,7 +433,7 @@ function PriceHistoryChart({
             aria-label="Show price history graph"
             aria-hidden={!showHistoryList}
             tabIndex={showHistoryList ? 0 : -1}
-            className="absolute inset-0 h-full w-full rounded-xl border border-stone-100 bg-stone-50 p-4 text-left"
+            className={`absolute inset-0 h-full w-full text-left ${compact ? "rounded-none border-0 bg-transparent p-3" : "rounded-xl border border-stone-100 bg-stone-50 p-4"}`}
             style={{ backfaceVisibility: "hidden", pointerEvents: showHistoryList ? "auto" : "none", transform: "rotateY(180deg)" }}
           >
             <div className="flex h-full min-h-0 flex-col">
