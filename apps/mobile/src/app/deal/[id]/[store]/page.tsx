@@ -657,7 +657,7 @@ export default function DealAssessmentPage() {
             <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] min-w-0 shrink-0" />
           </div>
 
-          <div className="flex items-start gap-4" data-onboarding="deal-summary">
+          <div className="flex items-start gap-4 rounded-xl bg-stone-50 p-3" data-onboarding="deal-summary">
             <button
               type="button"
               onClick={() => setShowProductImage(true)}
@@ -667,7 +667,7 @@ export default function DealAssessmentPage() {
               <ProductImage src={product.image} alt={product.name} width={80} height={80} className="product-image-content h-full w-full object-contain" />
             </button>
             <div className="min-w-0 flex-1">
-              <h3 id="product-summary-heading" className="break-words text-base font-extrabold leading-snug text-stone-900">{product.name}</h3>
+              <h3 id="product-summary-heading" className="break-words text-[15px] font-extrabold leading-snug text-stone-900">{product.name}</h3>
               <p className="mt-0.5 dd-type-meta dd-type-meta-strong text-stone-500">{product.unit}</p>
               <div className="mt-1 flex items-baseline gap-1">
                 <span className={`font-display text-2xl font-extrabold ${assessmentPriceColorClass}`}>${selectedDeal.price.toFixed(2)}</span>
