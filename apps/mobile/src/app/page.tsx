@@ -383,6 +383,7 @@ interface SnapshotDealGroups {
   dodgy: FlatDeal[];
   newSavings: FlatDeal[];
   newDodgy: FlatDeal[];
+  unreadRealSaverDealKeysByCategory: Map<string, string[]>;
   categorySummary: SnapshotCategorySummary;
   newCategorySummary: SnapshotCategorySummary;
   railLatestPublishedAt: SnapshotRailLatestPublishedAt;
@@ -418,6 +419,7 @@ const EMPTY_SNAPSHOT_DEAL_GROUPS: SnapshotDealGroups = {
   dodgy: [],
   newSavings: [],
   newDodgy: [],
+  unreadRealSaverDealKeysByCategory: new Map(),
   categorySummary: EMPTY_SNAPSHOT_CATEGORY_SUMMARY,
   newCategorySummary: EMPTY_SNAPSHOT_CATEGORY_SUMMARY,
   railLatestPublishedAt: EMPTY_SNAPSHOT_RAIL_LATEST_PUBLISHED_AT,
@@ -478,12 +480,14 @@ function buildSnapshotDealGroups(
   products: ProductCard[],
   selectedStores: string[],
   newDealKeys?: ReadonlySet<string>,
+  unreadRealSaverDealKeys?: ReadonlySet<string> | null,
 ): SnapshotDealGroups {
   const savings: FlatDeal[] = [];
   const realSavers: FlatDeal[] = [];
   const dodgy: FlatDeal[] = [];
   const newSavings: FlatDeal[] = [];
   const newDodgy: FlatDeal[] = [];
+  const unreadRealSaverDealKeysByCategory = new Map<string, string[]>();
   const savingsCategorySummary: SnapshotCategorySummary = {
     availableCategories: [],
     categoryCounts: new Map<string, number>(),
@@ -518,7 +522,19 @@ function buildSnapshotDealGroups(
       const isDodgyEligible = isEligibleForDealSnapshot(deal, "dodgy");
       if (!isSavingsEligible && !isDodgyEligible) continue;
 
-      const isNewDeal = Boolean(newDealKeys?.has(getNewSpecialDealKey(product.id, deal.store)));
+      const dealKey = getNewSpecialDealKey(product.id, deal.store);
+      const isNewDeal = Boolean(newDealKeys?.has(dealKey));
+      if (
+        unreadRealSaverDealKeys &&
+        unreadRealSaverDealKeys.has(dealKey) &&
+        isSavingsEligible &&
+        deal.dealType === "Real Deal"
+      ) {
+        const category = groupCategory(product.category, product.name);
+        const categoryDealKeys = unreadRealSaverDealKeysByCategory.get(category) ?? [];
+        categoryDealKeys.push(dealKey);
+        unreadRealSaverDealKeysByCategory.set(category, categoryDealKeys);
+      }
       const snapshotEntry = { deal };
       if (isSavingsEligible) {
         if (!bestSavings || compareDealSnapshotEntries(snapshotEntry, { deal: bestSavings }, "savings") < 0) {
@@ -569,6 +585,7 @@ function buildSnapshotDealGroups(
     dodgy,
     newSavings,
     newDodgy,
+    unreadRealSaverDealKeysByCategory,
     categorySummary: mergeSnapshotCategorySummaries([savingsCategorySummary, dodgyCategorySummary]),
     newCategorySummary: mergeSnapshotCategorySummaries([newSavingsCategorySummary, newDodgyCategorySummary]),
     railLatestPublishedAt: {
@@ -873,19 +890,24 @@ export default function HomePage() {
       // Avoid scanning the full catalogue while the user is in Real/Dodgy
       // results or while the full-screen search overlay is active.
       if (isSearchActive || dealFilter !== "all") return EMPTY_SNAPSHOT_DEAL_GROUPS;
-      return buildSnapshotDealGroups(products, selectedStores, activeSnapshotNewDealKeys);
+      return buildSnapshotDealGroups(products, selectedStores, activeSnapshotNewDealKeys, unreadRealSaverDealKeySet);
     },
-    [activeSnapshotNewDealKeys, dealFilter, isSearchActive, products, selectedStores],
+    [activeSnapshotNewDealKeys, dealFilter, isSearchActive, products, selectedStores, unreadRealSaverDealKeySet],
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
-  const forYouCategoryCounts = useMemo(() => {
+  const forYouCategorySummary = useMemo(() => {
     const counts = new Map(preferredCategories.map((category) => [category, 0]));
     for (const { product } of snapshotDealGroups.realSavers) {
       const category = groupCategory(product.category, product.name);
-      if (counts.has(category)) counts.set(category, (counts.get(category) ?? 0) + 1);
+      if (!counts.has(category)) continue;
+      counts.set(category, (counts.get(category) ?? 0) + 1);
     }
-    return counts;
-  }, [preferredCategories, snapshotDealGroups.realSavers]);
+    return { counts, unreadDealKeys: snapshotDealGroups.unreadRealSaverDealKeysByCategory };
+  }, [preferredCategories, snapshotDealGroups.realSavers, snapshotDealGroups.unreadRealSaverDealKeysByCategory]);
+  const unreadForYouCategories = useMemo(
+    () => new Set(forYouCategorySummary.unreadDealKeys.keys()),
+    [forYouCategorySummary.unreadDealKeys],
+  );
   const allWorstDodgyDeals = snapshotDealGroups.dodgy;
   const newTopSavingsDeals = newForYouFilterActive ? snapshotDealGroups.newSavings : [];
   const newWorstDodgyDeals = newForYouFilterActive ? snapshotDealGroups.newDodgy : [];
@@ -971,8 +993,10 @@ export default function HomePage() {
 
   const handleForYouCategoryOpen = useCallback((category: string) => {
     if (!preferredCategories.includes(category)) return;
+    const unreadDealKeys = forYouCategorySummary.unreadDealKeys.get(category);
+    if (unreadDealKeys?.length) markReviewed(unreadDealKeys, "real");
     openSearchForFilter("real", { focus: false, category });
-  }, [openSearchForFilter, preferredCategories]);
+  }, [forYouCategorySummary.unreadDealKeys, markReviewed, openSearchForFilter, preferredCategories]);
 
   const handleOpenCategoryInterestsSheet = useCallback(() => {
     setIsCategoryInterestsSheetOpen(true);
@@ -1225,7 +1249,8 @@ export default function HomePage() {
                     <ForYouCategoryRail
                       key={belt}
                       categories={preferredCategories}
-                      counts={forYouCategoryCounts}
+                      counts={forYouCategorySummary.counts}
+                      unreadCategories={unreadForYouCategories}
                       onOpenCategory={handleForYouCategoryOpen}
                       onEditCategories={handleOpenCategoryInterestsSheet}
                     />
