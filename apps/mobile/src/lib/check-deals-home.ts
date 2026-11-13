@@ -5,7 +5,6 @@ import {
   matchesAnySelectedStore,
   normalizeStoreKey,
   STORE_PILL_ORDER,
-  type DealSnapshotKind,
   type CurrentDeal,
   type ProductCard,
 } from "@dodgey-deals/shared";
@@ -49,7 +48,6 @@ export function buildForYouCategoryDealsByCategory(
   deals: readonly Pick<CheckDealsRailItem, "product" | "deal">[],
   categories: readonly string[],
   newDealKeys: readonly string[] | ReadonlySet<string> = [],
-  snapshotKind: DealSnapshotKind = "savings",
 ): Array<{ category: string; deals: CheckDealsRailItem[]; count: number }> {
   if (categories.length === 0) return [];
 
@@ -74,7 +72,7 @@ export function buildForYouCategoryDealsByCategory(
       product,
       deal,
       isNew: newKeys.size > 0 && newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
-    }, snapshotKind);
+    });
   }
 
   return categories.map((category) => {
@@ -86,16 +84,16 @@ export function buildForYouCategoryDealsByCategory(
   });
 }
 
-function compareForYouDeals(left: CheckDealsRailItem, right: CheckDealsRailItem, snapshotKind: DealSnapshotKind): number {
+function compareForYouDeals(left: CheckDealsRailItem, right: CheckDealsRailItem): number {
   const newDifference = Number(right.isNew) - Number(left.isNew);
   return newDifference
-    || compareDealSnapshotEntries(left, right, snapshotKind)
+    || compareDealSnapshotEntries(left, right, "savings")
     || left.product.name.localeCompare(right.product.name);
 }
 
-function insertForYouDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem, snapshotKind: DealSnapshotKind): void {
+function insertForYouDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem): void {
   let insertAt = 0;
-  while (insertAt < items.length && compareForYouDeals(items[insertAt]!, candidate, snapshotKind) <= 0) {
+  while (insertAt < items.length && compareForYouDeals(items[insertAt]!, candidate) <= 0) {
     insertAt += 1;
   }
   if (insertAt >= MAX_FOR_YOU_CATEGORY_PRODUCTS) return;

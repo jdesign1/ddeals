@@ -630,7 +630,6 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
-  const [forYouDealType, setForYouDealType] = useState<DealSnapshotKind>("savings");
   const [dismissedWorthAnotherLookOverride, setDismissedWorthAnotherLookOverride] = useState<{
     scope: string | null;
     keys: Set<string>;
@@ -900,10 +899,9 @@ export default function HomePage() {
     [activeSnapshotNewDealKeys, dealFilter, isSearchActive, products, selectedStores],
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
-  const forYouSourceDeals = forYouDealType === "dodgy" ? snapshotDealGroups.dodgy : snapshotDealGroups.realSavers;
   const forYouCategoryDeals = useMemo(
-    () => buildForYouCategoryDealsByCategory(forYouSourceDeals, preferredCategories, newDealKeySet, forYouDealType),
-    [forYouDealType, forYouSourceDeals, newDealKeySet, preferredCategories],
+    () => buildForYouCategoryDealsByCategory(snapshotDealGroups.realSavers, preferredCategories, newDealKeySet),
+    [newDealKeySet, preferredCategories, snapshotDealGroups.realSavers],
   );
   const visibleForYouCategory = activeForYouCategory && preferredCategories.includes(activeForYouCategory)
     ? activeForYouCategory
@@ -999,8 +997,8 @@ export default function HomePage() {
 
   const handleForYouSeeAll = useCallback(() => {
     if (!visibleForYouCategory) return;
-    openSearchForFilter(forYouDealType === "dodgy" ? "dodgy" : "real", { focus: false, category: visibleForYouCategory });
-  }, [forYouDealType, openSearchForFilter, visibleForYouCategory]);
+    openSearchForFilter("real", { focus: false, category: visibleForYouCategory });
+  }, [openSearchForFilter, visibleForYouCategory]);
 
   const handleForYouCategorySelect = useCallback((category: string) => {
     if (!preferredCategories.includes(category)) return;
@@ -1268,9 +1266,7 @@ export default function HomePage() {
                       activeCategory={visibleForYouCategory}
                       deals={visibleForYouDeals}
                       counts={visibleForYouCategoryCounts}
-                      dealType={forYouDealType}
                       onSelectCategory={handleForYouCategorySelect}
-                      onSelectDealType={setForYouDealType}
                       onEditCategories={handleOpenCategoryInterestsSheet}
                       onSeeAll={handleForYouSeeAll}
                     />
