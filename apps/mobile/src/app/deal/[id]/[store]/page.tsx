@@ -604,7 +604,7 @@ export default function DealAssessmentPage() {
 
       {isMultiStoreDeal && rankingList.length > 0 && (
         <section className="rounded-2xl border border-stone-200 bg-white px-3 pb-3 pt-4 text-left shadow-xs">
-          <h3 className="mb-3 dd-type-section text-stone-900">Select a supermarket</h3>
+          <h3 className="mb-4 dd-type-section text-stone-900">Select a supermarket</h3>
           <div className="grid grid-cols-3 items-start gap-2" role="tablist" aria-label="Supermarket price ranking" aria-orientation="horizontal">
             {rankingList.map((item) => {
               const storeDeal = findDealForStore(product.currentDeals, item.store);
@@ -630,8 +630,7 @@ export default function DealAssessmentPage() {
                   aria-label={`View ${storeName} assessment, $${item.price.toFixed(2)}, ${dealLabel}`}
                 >
                   <StoreLogoBadge store={item.store} variant="ranking" decorative />
-                  <span className="w-full break-words text-xs font-extrabold leading-4 text-stone-800">{storeName}</span>
-                  <span className={`font-display text-base font-extrabold leading-5 ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
+                  <span className={`font-display text-lg font-extrabold leading-6 ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
                   {storeUnitPrice && <span className="max-w-full break-words text-[10px] leading-3 text-stone-500">{storeUnitPrice}</span>}
                   <span className={`text-[11px] font-extrabold leading-4 ${storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"}`}>
                     {dealLabel}
