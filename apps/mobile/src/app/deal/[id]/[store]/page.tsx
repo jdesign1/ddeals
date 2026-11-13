@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
-import { ChevronRight, Share, X } from "lucide-react";
+import { Check, ChevronRight, Share, X } from "lucide-react";
 import {
   loadLiveProducts,
   refreshLiveProducts,
@@ -626,9 +626,10 @@ export default function DealAssessmentPage() {
                   aria-selected={isCurrentStore}
                   aria-controls="selected-assessment"
                   onClick={() => selectAssessmentStore(item.store)}
-                  className={`flex min-w-0 flex-col items-center justify-start gap-1 rounded-xl border px-2 py-1.5 text-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "border-stone-400 bg-stone-50 outline-2 outline outline-offset-0 outline-stone-400" : "border-stone-200 bg-white"}`}
+                  className={`relative flex min-w-0 flex-col items-center justify-start gap-1 rounded-xl border px-2 py-1.5 text-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "border-black bg-stone-50" : "border-stone-200 bg-white"}`}
                   aria-label={`View ${storeName} assessment, $${item.price.toFixed(2)}, ${dealLabel}`}
                 >
+                  {isCurrentStore && <Check className="absolute right-1.5 top-1.5 h-4 w-4 text-black" strokeWidth={3} aria-hidden="true" />}
                   <StoreLogoBadge store={item.store} variant="ranking" decorative />
                   <span className={`font-display text-lg font-extrabold leading-6 ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
                   {storeUnitPrice && <span className="max-w-full break-words text-[10px] leading-3 text-stone-500">{storeUnitPrice}</span>}
