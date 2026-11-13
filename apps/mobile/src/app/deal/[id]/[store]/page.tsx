@@ -18,6 +18,7 @@ import {
   type CurrentDeal,
   isUncertainAssessment,
   getAssessmentVerdict,
+  buildAssessmentSummaryCopy,
   buildAssessmentInsightCopy,
   getStoreProductUrl,
   formatUnitPrice,
@@ -44,6 +45,7 @@ import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
+import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
 import { getPrimedDealProduct } from "@/lib/deal-navigation";
 import CommunityPriceNotesSection from "@/components/CommunityPriceNotesSection";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
@@ -579,6 +581,7 @@ export default function DealAssessmentPage() {
   const lowestCurrentPriceItem = rankingList[0];
   const lowestSpecialStoreItem = visibleRanking[0];
 
+  const assessmentSummary = buildAssessmentSummaryCopy(selectedDeal);
   const assessmentInsight = buildAssessmentInsightCopy(selectedDeal);
   const historyStatsDeal = historyDeal ?? selectedDeal;
   const bestPriceCents = lowestCurrentPriceItem ? Math.round(lowestCurrentPriceItem.price * 100) : null;
@@ -688,6 +691,14 @@ export default function DealAssessmentPage() {
             <Image src="/logo.svg" alt="" width={20} height={20} className="mt-0.5 h-5 w-5 shrink-0 object-contain" aria-hidden="true" />
             <span>{assessmentInsight}</span>
           </p>
+
+          <AssessmentEvidenceCard
+            deal={selectedDeal}
+            verdict={verdict}
+            evidenceSummary="See the evidence"
+            assessmentCopy={assessmentSummary.body}
+            compactSpacing
+          />
 
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
