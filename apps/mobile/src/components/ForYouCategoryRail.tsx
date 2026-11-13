@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Settings } from "lucide-react";
+import { ArrowRight, Check, Settings } from "lucide-react";
 import Image from "next/image";
 import { memo, useMemo } from "react";
 import { getDealSnapshotAmount } from "@dodgey-deals/shared";
@@ -25,6 +25,8 @@ function ForYouCategoryRail({
   onEditCategories: () => void;
   onSeeAll: () => void;
 }) {
+  const activeCategoryCount = counts.get(activeCategory) ?? deals.length;
+  const hasMoreDealsToSee = activeCategoryCount > deals.length;
   const cards = useMemo(
     () => deals.map((item, index) => {
       const amount = getDealSnapshotAmount(item.deal, "savings");
@@ -117,13 +119,19 @@ function ForYouCategoryRail({
               snapshot={snapshot}
             />
           ))}
-          <button
-            type="button"
-            onClick={onSeeAll}
-            className="flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch items-center justify-center rounded-[1.5rem] p-4 text-fair-800 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
-          >
-            <span className="dd-type-control font-extrabold">See all</span>
-          </button>
+          {hasMoreDealsToSee && (
+            <button
+              type="button"
+              onClick={onSeeAll}
+              aria-label={`See all ${activeCategoryCount} Real Savers in ${activeCategory}`}
+              className="flex w-[40%] min-w-[136px] max-w-[180px] shrink-0 cursor-pointer snap-start self-stretch items-center justify-center rounded-[1.5rem] p-4 text-fair-800 transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+            >
+              <span className="inline-flex items-center gap-1.5 dd-type-control font-extrabold">
+                See all {activeCategoryCount}
+                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />
+              </span>
+            </button>
+          )}
         </div>
       )}
     </section>
