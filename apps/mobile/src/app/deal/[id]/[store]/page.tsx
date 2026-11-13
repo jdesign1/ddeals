@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { Check, ChevronRight, Share, X } from "lucide-react";
 import {
@@ -651,8 +652,10 @@ export default function DealAssessmentPage() {
       >
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
-            <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-extrabold tracking-tight ${verdictColorClass}`}>
-              {getVerdictTitle(verdict)}
+            <h2 className="min-w-0 flex-1">
+              <span className={`inline-flex max-w-full truncate rounded-full border px-3 py-1 text-sm leading-5 font-extrabold tracking-tight ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}>
+                {getVerdictTitle(verdict)}
+              </span>
             </h2>
             <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] min-w-0 shrink-0" />
           </div>
@@ -681,7 +684,10 @@ export default function DealAssessmentPage() {
             </div>
           </div>
 
-          <p className="text-center text-sm font-semibold leading-5 text-stone-700">{assessmentInsight}</p>
+          <p className="flex items-start justify-center gap-1.5 text-center text-sm font-semibold leading-5 text-stone-700">
+            <Image src="/logo.svg" alt="" width={20} height={20} className="mt-0.5 h-5 w-5 shrink-0 object-contain" aria-hidden="true" />
+            <span>{assessmentInsight}</span>
+          </p>
 
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
