@@ -1,45 +1,54 @@
 "use client";
 
 import { Settings } from "lucide-react";
+import Image from "next/image";
 import { memo, useMemo } from "react";
-import { getDealSnapshotAmount } from "@dodgey-deals/shared";
+import { getDealSnapshotAmount, type DealSnapshotKind } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
+import { getCategoryImageSrc } from "@/lib/category-images";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
 
 function ForYouCategoryRail({
   categories,
   activeCategory,
   deals,
+  counts,
+  dealType,
   onSelectCategory,
+  onSelectDealType,
   onEditCategories,
   onSeeAll,
 }: {
   categories: readonly string[];
   activeCategory: string;
   deals: readonly CheckDealsRailItem[];
+  counts: ReadonlyMap<string, number>;
+  dealType: DealSnapshotKind;
   onSelectCategory: (category: string) => void;
+  onSelectDealType: (dealType: DealSnapshotKind) => void;
   onEditCategories: () => void;
   onSeeAll: () => void;
 }) {
+  const isDodgy = dealType === "dodgy";
+  const dealLabel = isDodgy ? "Dodgy Deals" : "Real Savers";
   const cards = useMemo(
     () => deals.map((item, index) => {
-      const amount = getDealSnapshotAmount(item.deal, "savings");
+      const amount = getDealSnapshotAmount(item.deal, dealType);
       return {
         item,
         index,
-        amount,
         snapshot: {
           rank: index + 1,
           showRank: false,
-          kind: "savings" as const,
+          kind: dealType,
           amount: amount ?? undefined,
           isNew: item.isNew,
           badgeLabel: amount == null ? "Special" : undefined,
-          badgeTone: amount == null ? "neutral" as const : "savings" as const,
+          badgeTone: amount == null ? "neutral" as const : isDodgy ? "dodgy" as const : "savings" as const,
         },
       };
     }),
-    [deals],
+    [dealType, deals, isDodgy],
   );
 
   return (
@@ -47,7 +56,7 @@ function ForYouCategoryRail({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id="for-you-title" className="dd-type-section text-fair-800">Your saved categories</h2>
-          <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Deals from your chosen categories</p>
+          <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Best specials from your favourite categories</p>
         </div>
         <button
           type="button"
@@ -61,10 +70,34 @@ function ForYouCategoryRail({
         </button>
       </div>
 
-      <div className="hide-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 pt-1" role="tablist" aria-label="Your deal categories">
+      <div className="grid grid-cols-2 rounded-2xl bg-white p-1 shadow-xs ring-1 ring-stone-200" role="group" aria-label="Deal type">
+        {(["savings", "dodgy"] as const).map((kind) => {
+          const selected = dealType === kind;
+          const label = kind === "savings" ? "Real Savers" : "Dodgy Deals";
+          return (
+            <button
+              key={kind}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onSelectDealType(kind)}
+              className={`min-h-10 rounded-xl px-3 dd-type-control font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${
+                selected ? "bg-stone-900 text-white shadow-sm" : "text-stone-700 hover:bg-stone-100"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="hide-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 pt-1" role="tablist" aria-label={`${dealLabel} by saved category`}>
         {categories.map((category) => {
           const isActive = category === activeCategory;
-          const tabId = `for-you-tab-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+          const count = counts.get(category) ?? 0;
+          const countLabel = isDodgy
+            ? `${count} ${count === 1 ? "Dodgy Deal" : "Dodgy Deals"}`
+            : `${count} ${count === 1 ? "Real Saver" : "Real Savers"}`;
+          const tabId = `for-you-category-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
           return (
             <button
               key={category}
@@ -72,39 +105,45 @@ function ForYouCategoryRail({
               role="tab"
               id={tabId}
               aria-selected={isActive}
-              aria-controls="for-you-deals"
+              aria-controls="for-you-category-deals"
+              aria-label={`${countLabel} in ${category}`}
               onClick={() => onSelectCategory(category)}
-              className={`h-9 shrink-0 rounded-full px-3.5 py-2 dd-type-control transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-700 ${
-                isActive
-                  ? "bg-stone-900 text-white shadow-sm"
-                  : "bg-white text-stone-700 ring-1 ring-stone-200 hover:bg-stone-50"
+              className={`flex w-[6.25rem] shrink-0 cursor-pointer flex-col items-center rounded-2xl border px-2 py-2 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${
+                isActive ? "border-stone-900 bg-white shadow-sm" : "border-stone-200 bg-white/70 hover:bg-white"
               }`}
             >
-              {category}
+              <span className="dd-type-section leading-none tabular-nums text-stone-900">{count}</span>
+              <Image
+                src={getCategoryImageSrc(category)}
+                alt=""
+                width={48}
+                height={48}
+                className="my-1 h-12 w-12 object-contain"
+                aria-hidden="true"
+              />
+              <span className="dd-type-meta line-clamp-2 min-h-8 leading-4 text-stone-700">{category}</span>
             </button>
           );
         })}
       </div>
 
       {deals.length === 0 ? (
-        <div id="for-you-deals" className="rounded-2xl border border-fair-100 bg-white px-4 py-5 text-center" role="tabpanel" aria-label={`${activeCategory} deals for you`}>
-          <p className="dd-type-control text-stone-800">No current standout deals in {activeCategory}.</p>
+        <div id="for-you-category-deals" className="rounded-2xl border border-fair-100 bg-white px-4 py-5 text-center" role="tabpanel" aria-label={`${activeCategory} ${dealLabel}`}>
+          <p className="dd-type-control text-stone-800">No current {dealLabel.toLowerCase()} in {activeCategory}.</p>
           <p className="mt-1 dd-type-meta text-stone-500">Try another category above.</p>
         </div>
       ) : (
-        <div id="for-you-deals" className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0" role="tabpanel" aria-label={`${activeCategory} deals for you`}>
-          {cards.map(({ item, snapshot, index }) => {
-            return (
-              <ProductListCard
-                key={`for-you-${activeCategory}-${item.product.id}-${item.deal.store}`}
-                product={item.product}
-                deal={item.deal}
-                imageLoading={index < 2 ? "eager" : "lazy"}
-                storeLinePrefix={null}
-                snapshot={snapshot}
-              />
-            );
-          })}
+        <div id="for-you-category-deals" className="hide-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 pb-2 pl-5 pr-0" role="tabpanel" aria-label={`${activeCategory} ${dealLabel}`}>
+          {cards.map(({ item, snapshot, index }) => (
+            <ProductListCard
+              key={`for-you-${dealType}-${activeCategory}-${item.product.id}-${item.deal.store}`}
+              product={item.product}
+              deal={item.deal}
+              imageLoading={index < 2 ? "eager" : "lazy"}
+              storeLinePrefix={null}
+              snapshot={snapshot}
+            />
+          ))}
           <button
             type="button"
             onClick={onSeeAll}

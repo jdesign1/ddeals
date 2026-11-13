@@ -381,6 +381,7 @@ function sortDeals(deals: FlatDeal[], sortBy: DealSortBy | SortBy): FlatDeal[] {
 
 interface SnapshotDealGroups {
   savings: FlatDeal[];
+  realSavers: FlatDeal[];
   dodgy: FlatDeal[];
   newSavings: FlatDeal[];
   newDodgy: FlatDeal[];
@@ -415,6 +416,7 @@ const EMPTY_SNAPSHOT_RAIL_LATEST_PUBLISHED_AT: SnapshotRailLatestPublishedAt = {
 
 const EMPTY_SNAPSHOT_DEAL_GROUPS: SnapshotDealGroups = {
   savings: [],
+  realSavers: [],
   dodgy: [],
   newSavings: [],
   newDodgy: [],
@@ -480,6 +482,7 @@ function buildSnapshotDealGroups(
   newDealKeys?: ReadonlySet<string>,
 ): SnapshotDealGroups {
   const savings: FlatDeal[] = [];
+  const realSavers: FlatDeal[] = [];
   const dodgy: FlatDeal[] = [];
   const newSavings: FlatDeal[] = [];
   const newDodgy: FlatDeal[] = [];
@@ -505,6 +508,7 @@ function buildSnapshotDealGroups(
   let newDodgyLatestPublishedAt: string | null = null;
   for (const product of products) {
     let bestSavings: CurrentDeal | undefined;
+    let bestRealSaver: CurrentDeal | undefined;
     let bestDodgy: CurrentDeal | undefined;
     let bestNewSavings: CurrentDeal | undefined;
     let bestNewDodgy: CurrentDeal | undefined;
@@ -525,6 +529,9 @@ function buildSnapshotDealGroups(
         if (isNewDeal && (!bestNewSavings || compareDealSnapshotEntries(snapshotEntry, { deal: bestNewSavings }, "savings") < 0)) {
           bestNewSavings = deal;
         }
+        if (deal.dealType === "Real Deal" && (!bestRealSaver || compareDealSnapshotEntries(snapshotEntry, { deal: bestRealSaver }, "savings") < 0)) {
+          bestRealSaver = deal;
+        }
       }
 
       if (isDodgyEligible) {
@@ -541,6 +548,7 @@ function buildSnapshotDealGroups(
       addSnapshotCategory(savingsCategorySummary, product);
       savingsLatestPublishedAt = updateLatestPublishedAt(savingsLatestPublishedAt, bestSavings);
     }
+    if (bestRealSaver) realSavers.push({ product, deal: bestRealSaver });
     if (bestDodgy) {
       dodgy.push({ product, deal: bestDodgy });
       addSnapshotCategory(dodgyCategorySummary, product);
@@ -559,6 +567,7 @@ function buildSnapshotDealGroups(
   }
   return {
     savings,
+    realSavers,
     dodgy,
     newSavings,
     newDodgy,
@@ -621,6 +630,7 @@ export default function HomePage() {
   const [dealSortBy, setDealSortBy] = useState<DealSortBy>(() => getDefaultDealSort("all"));
   const [dealCategoryFilter, setDealCategoryFilter] = useState<string[]>([]);
   const [isNewForYouFilter, setIsNewForYouFilter] = useState(false);
+  const [forYouDealType, setForYouDealType] = useState<DealSnapshotKind>("savings");
   const [dismissedWorthAnotherLookOverride, setDismissedWorthAnotherLookOverride] = useState<{
     scope: string | null;
     keys: Set<string>;
@@ -890,14 +900,20 @@ export default function HomePage() {
     [activeSnapshotNewDealKeys, dealFilter, isSearchActive, products, selectedStores],
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
+  const forYouSourceDeals = forYouDealType === "dodgy" ? snapshotDealGroups.dodgy : snapshotDealGroups.realSavers;
   const forYouCategoryDeals = useMemo(
-    () => buildForYouCategoryDealsByCategory(allTopSavingsDeals, preferredCategories, newDealKeySet),
-    [allTopSavingsDeals, newDealKeySet, preferredCategories],
+    () => buildForYouCategoryDealsByCategory(forYouSourceDeals, preferredCategories, newDealKeySet, forYouDealType),
+    [forYouDealType, forYouSourceDeals, newDealKeySet, preferredCategories],
   );
   const visibleForYouCategory = activeForYouCategory && preferredCategories.includes(activeForYouCategory)
     ? activeForYouCategory
     : preferredCategories[0] ?? null;
-  const visibleForYouDeals = forYouCategoryDeals.find(({ category }) => category === visibleForYouCategory)?.deals ?? [];
+  const visibleForYouCategoryData = forYouCategoryDeals.find(({ category }) => category === visibleForYouCategory);
+  const visibleForYouDeals = visibleForYouCategoryData?.deals ?? [];
+  const visibleForYouCategoryCounts = useMemo(
+    () => new Map(forYouCategoryDeals.map(({ category, count }) => [category, count])),
+    [forYouCategoryDeals],
+  );
   const allWorstDodgyDeals = snapshotDealGroups.dodgy;
   const newTopSavingsDeals = newForYouFilterActive ? snapshotDealGroups.newSavings : [];
   const newWorstDodgyDeals = newForYouFilterActive ? snapshotDealGroups.newDodgy : [];
@@ -983,8 +999,8 @@ export default function HomePage() {
 
   const handleForYouSeeAll = useCallback(() => {
     if (!visibleForYouCategory) return;
-    openSearchForFilter("real", { focus: false, category: visibleForYouCategory });
-  }, [openSearchForFilter, visibleForYouCategory]);
+    openSearchForFilter(forYouDealType === "dodgy" ? "dodgy" : "real", { focus: false, category: visibleForYouCategory });
+  }, [forYouDealType, openSearchForFilter, visibleForYouCategory]);
 
   const handleForYouCategorySelect = useCallback((category: string) => {
     if (!preferredCategories.includes(category)) return;
@@ -1251,7 +1267,10 @@ export default function HomePage() {
                       categories={preferredCategories}
                       activeCategory={visibleForYouCategory}
                       deals={visibleForYouDeals}
+                      counts={visibleForYouCategoryCounts}
+                      dealType={forYouDealType}
                       onSelectCategory={handleForYouCategorySelect}
+                      onSelectDealType={setForYouDealType}
                       onEditCategories={handleOpenCategoryInterestsSheet}
                       onSeeAll={handleForYouSeeAll}
                     />

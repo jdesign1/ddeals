@@ -5,6 +5,7 @@ import {
   matchesAnySelectedStore,
   normalizeStoreKey,
   STORE_PILL_ORDER,
+  type DealSnapshotKind,
   type CurrentDeal,
   type ProductCard,
 } from "@dodgey-deals/shared";
@@ -48,46 +49,53 @@ export function buildForYouCategoryDealsByCategory(
   deals: readonly Pick<CheckDealsRailItem, "product" | "deal">[],
   categories: readonly string[],
   newDealKeys: readonly string[] | ReadonlySet<string> = [],
-): Array<{ category: string; deals: CheckDealsRailItem[] }> {
+  snapshotKind: DealSnapshotKind = "savings",
+): Array<{ category: string; deals: CheckDealsRailItem[]; count: number }> {
   if (categories.length === 0) return [];
 
   const newKeys = newDealKeys instanceof Set ? newDealKeys : new Set(newDealKeys);
   const categorySet = new Set(categories);
   const grouped = new Map<string, CheckDealsRailItem[]>();
+  const counts = new Map<string, number>();
 
-  for (const category of categories) grouped.set(category, []);
+  for (const category of categories) {
+    grouped.set(category, []);
+    counts.set(category, 0);
+  }
 
   for (const { product, deal } of deals) {
     const category = groupCategory(product.category, product.name);
     if (!categorySet.has(category)) continue;
     const categoryDeals = grouped.get(category);
     if (!categoryDeals) continue;
+    counts.set(category, (counts.get(category) ?? 0) + 1);
 
     insertForYouDeal(categoryDeals, {
       product,
       deal,
       isNew: newKeys.size > 0 && newKeys.has(getNewSpecialDealKey(product.id, deal.store)),
-    });
+    }, snapshotKind);
   }
 
   return categories.map((category) => {
     return {
       category,
       deals: grouped.get(category) ?? [],
+      count: counts.get(category) ?? 0,
     };
   });
 }
 
-function compareForYouDeals(left: CheckDealsRailItem, right: CheckDealsRailItem): number {
+function compareForYouDeals(left: CheckDealsRailItem, right: CheckDealsRailItem, snapshotKind: DealSnapshotKind): number {
   const newDifference = Number(right.isNew) - Number(left.isNew);
   return newDifference
-    || compareDealSnapshotEntries(left, right, "savings")
+    || compareDealSnapshotEntries(left, right, snapshotKind)
     || left.product.name.localeCompare(right.product.name);
 }
 
-function insertForYouDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem): void {
+function insertForYouDeal(items: CheckDealsRailItem[], candidate: CheckDealsRailItem, snapshotKind: DealSnapshotKind): void {
   let insertAt = 0;
-  while (insertAt < items.length && compareForYouDeals(items[insertAt]!, candidate) <= 0) {
+  while (insertAt < items.length && compareForYouDeals(items[insertAt]!, candidate, snapshotKind) <= 0) {
     insertAt += 1;
   }
   if (insertAt >= MAX_FOR_YOU_CATEGORY_PRODUCTS) return;
