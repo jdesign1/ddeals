@@ -687,15 +687,18 @@ export default function DealAssessmentPage() {
             </div>
           </div>
 
-          <p className="flex items-start justify-center gap-1.5 text-center text-sm font-semibold leading-5 text-stone-700">
-            <Image src="/logo.svg" alt="" width={20} height={20} className="mt-0.5 h-5 w-5 shrink-0 object-contain" aria-hidden="true" />
-            <span>{assessmentInsight}</span>
-          </p>
-
           <AssessmentEvidenceCard
             deal={selectedDeal}
             verdict={verdict}
-            evidenceSummary="See the evidence"
+            evidenceSummary={assessmentInsight}
+            triggerAriaLabel={`Show deal evidence for ${product.name}`}
+            triggerContent={(
+              <>
+                <Image src="/logo.svg" alt="" width={20} height={20} className="mt-0.5 h-5 w-5 shrink-0 object-contain" aria-hidden="true" />
+                <span className="min-w-0 underline decoration-stone-400 underline-offset-2">{assessmentInsight}</span>
+              </>
+            )}
+            triggerClassName="mt-0 flex min-h-0 w-full items-start justify-start gap-1.5 rounded-md border-0 bg-transparent p-0 text-left text-sm font-semibold leading-5 text-stone-700 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
             assessmentCopy={assessmentSummary.body}
             compactSpacing
           />
