@@ -33,7 +33,7 @@ function CheaperAlternativesSection({
   if (alternatives.length === 0) return null;
 
   return (
-    <div className={isMultiStoreDeal ? "dd-deal-assessment-card space-y-4 rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : "space-y-4"}>
+    <div className={isMultiStoreDeal ? "dd-deal-assessment-card rounded-2xl border border-stone-300 bg-white p-5 text-left shadow-xs" : ""}>
       <button
         type="button"
         onClick={onToggle}
@@ -55,10 +55,10 @@ function CheaperAlternativesSection({
         {showCarousel && (
           <motion.div
             key="cheaper-carousel"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            initial={{ height: 0, marginTop: 0, opacity: 0 }}
+            animate={{ height: "auto", marginTop: 16, opacity: 1 }}
+            exit={{ height: 0, marginTop: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
             className="-mx-5 overflow-hidden"
           >
             <div className="pt-3">
