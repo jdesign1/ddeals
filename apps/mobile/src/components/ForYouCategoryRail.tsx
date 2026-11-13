@@ -87,7 +87,9 @@ function ForYouCategoryRail({
               }`}
             >
               {isActive && <Check className="absolute right-2 top-2 h-4 w-4 text-stone-900" strokeWidth={2.5} aria-hidden="true" />}
-              <span className="dd-type-section leading-none tabular-nums text-stone-900">{count}</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-fair-600 dd-type-control font-extrabold leading-none tabular-nums text-white">
+                {count}
+              </span>
               <Image
                 src={getCategoryImageSrc(category)}
                 alt=""
