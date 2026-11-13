@@ -653,7 +653,7 @@ export default function DealAssessmentPage() {
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
             <h2 className="min-w-0 flex-1">
-              <span className={`inline-flex max-w-full truncate rounded-full border px-3 py-1 text-sm leading-5 font-extrabold tracking-tight ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}>
+              <span className={`inline-flex max-w-full truncate rounded-full border px-4 py-2 text-lg leading-6 font-extrabold tracking-tight ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}>
                 {getVerdictTitle(verdict)}
               </span>
             </h2>
