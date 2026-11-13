@@ -603,19 +603,21 @@ export default function DealAssessmentPage() {
     <div className="flex-1 space-y-4 px-6 pb-6 pt-3">
 
       {isMultiStoreDeal && rankingList.length > 0 && (
-        <section className="rounded-2xl border border-stone-200 bg-white px-5 pb-1 pt-5 text-left shadow-xs">
-          <h3 className="mb-4 dd-type-section text-stone-900">Select a supermarket</h3>
-          <div className="divide-y divide-stone-100" role="tablist" aria-label="Supermarket price ranking">
+        <section className="rounded-2xl border border-stone-200 bg-white px-3 pb-3 pt-4 text-left shadow-xs">
+          <h3 className="mb-3 dd-type-section text-stone-900">Select a supermarket</h3>
+          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Supermarket price ranking" aria-orientation="horizontal">
             {rankingList.map((item) => {
               const storeDeal = findDealForStore(product.currentDeals, item.store);
               if (!storeDeal) return null;
               const isCurrentStore = storesMatch(item.store, selectedDeal.store);
               const isBestPrice = bestPriceCents != null && Math.round(item.price * 100) === bestPriceCents;
+              const storeName = STORE_DISPLAY_FALLBACK[normalizeStoreKey(item.store)] || item.store;
               const storeUnitPrice = shouldDisplayAssessmentUnitPrice(product.category, product.name, storeDeal.saleUnitLabel)
                 ? formatUnitPrice(storeDeal.saleUnitPrice, storeDeal.saleUnitLabel)
                 : null;
               const bestSpecialPriceCents = lowestSpecialStoreItem ? Math.round(lowestSpecialStoreItem.price * 100) : null;
               const isBestSpecialPrice = storeDeal.isOnSpecial !== false && bestSpecialPriceCents != null && Math.round(item.price * 100) === bestSpecialPriceCents;
+              const dealLabel = storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best price" : "Special";
               return (
                 <button
                   key={item.store}
@@ -624,17 +626,15 @@ export default function DealAssessmentPage() {
                   aria-selected={isCurrentStore}
                   aria-controls="selected-assessment"
                   onClick={() => selectAssessmentStore(item.store)}
-                  className={`-mx-5 flex min-h-[4.5rem] w-[calc(100%+2.5rem)] items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "rounded-2xl outline-2 outline outline-offset-0 outline-stone-400" : ""}`}
-                  aria-label={`View ${item.store} assessment`}
+                  className={`flex min-h-36 min-w-0 flex-col items-center justify-start gap-1 rounded-xl border p-2 text-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "border-stone-400 bg-stone-50 outline-2 outline outline-offset-0 outline-stone-400" : "border-stone-200 bg-white"}`}
+                  aria-label={`View ${storeName} assessment, $${item.price.toFixed(2)}, ${dealLabel}`}
                 >
-                  <StoreLogoBadge store={item.store} variant="ranking" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-stone-800">{item.store}</span>
-                  <span className="flex-shrink-0 text-right">
-                    <span className={`block font-display text-base font-extrabold ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
-                    {storeUnitPrice && <span className="block dd-type-meta text-stone-500">{storeUnitPrice}</span>}
-                    <span className={`block text-xs font-extrabold ${storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"}`}>
-                      {storeDeal.isOnSpecial === false ? "Regular price" : isBestSpecialPrice ? "Best price" : "Special"}
-                    </span>
+                  <StoreLogoBadge store={item.store} variant="ranking" decorative />
+                  <span className="w-full break-words text-xs font-extrabold leading-4 text-stone-800">{storeName}</span>
+                  <span className={`font-display text-base font-extrabold leading-5 ${isBestPrice ? "text-fair-700" : "text-stone-800"}`}>${item.price.toFixed(2)}</span>
+                  {storeUnitPrice && <span className="max-w-full break-words text-[10px] leading-3 text-stone-500">{storeUnitPrice}</span>}
+                  <span className={`text-[11px] font-extrabold leading-4 ${storeDeal.isOnSpecial === false ? "text-stone-500" : isBestSpecialPrice ? "text-fair-700" : "text-stone-900"}`}>
+                    {dealLabel}
                   </span>
                 </button>
               );
@@ -681,7 +681,7 @@ export default function DealAssessmentPage() {
             </div>
           </div>
 
-          <p className="text-left text-sm font-semibold leading-5 text-stone-700">{assessmentInsight}</p>
+          <p className="text-center text-sm font-semibold leading-5 text-stone-700">{assessmentInsight}</p>
 
           <CheaperAlternativesSection
             alternatives={cheaperAlternatives}
