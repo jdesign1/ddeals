@@ -36,7 +36,6 @@ import { fetchDealCheckHistoryFromApi } from "@/lib/deal-check-history-api";
 import {
   buildHomePrimarySummary,
   buildHomeDealBrowseSummary,
-  buildForYouCategoryDealsByCategory,
   buildPreviouslyCheckedChangedDeals,
   formatCompactUpdatedText,
   getPreviouslyCheckedDealKey,
@@ -80,7 +79,6 @@ import {
 import { buildBrandSummaries, type BrandSummary } from "@/lib/brand-browse";
 
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
-const FOR_YOU_CATEGORY_STORAGE_PREFIX = "dodgey-deals:for-you-category:v1";
 const EMPTY_AVAILABLE_STORE_KEYS: string[] = [];
 const EMPTY_CURRENT_SPECIAL_SUMMARY: CurrentSpecialSummary = {
   counts: { newworld: 0, paknsave: 0, woolworths: 0 },
@@ -640,10 +638,6 @@ export default function HomePage() {
   const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
   const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
   const categoryInterestsPromptedForRef = useRef<string | null>(null);
-  const [activeForYouCategoryOverride, setActiveForYouCategoryOverride] = useState<{
-    scope: string | null;
-    category: string | null;
-  }>({ scope: null, category: null });
   const [topDealsCategories, setTopDealsCategoriesState] = useState<string[]>(() => [
     ...new Set([...readSnapshotCategories("savings"), ...readSnapshotCategories("dodgy")]),
   ]);
@@ -659,9 +653,6 @@ export default function HomePage() {
   const worthAnotherLookStorageKey = session?.user?.id
     ? `${WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX}:${session.user.id}`
     : null;
-  const forYouCategoryStorageKey = session?.user?.id && !isAnonymousSession
-    ? `${FOR_YOU_CATEGORY_STORAGE_PREFIX}:${session.user.id}`
-    : null;
   const storedDismissedWorthAnotherLookKeys = useMemo(() => {
     if (typeof window === "undefined" || !worthAnotherLookStorageKey) return new Set<string>();
 
@@ -676,18 +667,6 @@ export default function HomePage() {
   const dismissedWorthAnotherLookKeys = dismissedWorthAnotherLookOverride.scope === worthAnotherLookStorageKey
     ? dismissedWorthAnotherLookOverride.keys
     : storedDismissedWorthAnotherLookKeys;
-  const storedForYouCategory = useMemo(() => {
-    if (typeof window === "undefined" || !forYouCategoryStorageKey) return null;
-
-    try {
-      return window.localStorage.getItem(forYouCategoryStorageKey) || null;
-    } catch {
-      return null;
-    }
-  }, [forYouCategoryStorageKey]);
-  const activeForYouCategory = activeForYouCategoryOverride.scope === forYouCategoryStorageKey
-    ? activeForYouCategoryOverride.category
-    : storedForYouCategory;
   const beltOrderScope = getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const didYouKnowStorageScope = getDidYouKnowScope(beltOrderScope, selectedStores);
   const [checkDealsBeltOrder, setCheckDealsBeltOrder] = useState<CheckDealsBeltId[]>(() => [...DEFAULT_CHECK_DEALS_BELT_ORDER]);
@@ -899,19 +878,14 @@ export default function HomePage() {
     [activeSnapshotNewDealKeys, dealFilter, isSearchActive, products, selectedStores],
   );
   const allTopSavingsDeals = snapshotDealGroups.savings;
-  const forYouCategoryDeals = useMemo(
-    () => buildForYouCategoryDealsByCategory(snapshotDealGroups.realSavers, preferredCategories, newDealKeySet),
-    [newDealKeySet, preferredCategories, snapshotDealGroups.realSavers],
-  );
-  const visibleForYouCategory = activeForYouCategory && preferredCategories.includes(activeForYouCategory)
-    ? activeForYouCategory
-    : preferredCategories[0] ?? null;
-  const visibleForYouCategoryData = forYouCategoryDeals.find(({ category }) => category === visibleForYouCategory);
-  const visibleForYouDeals = visibleForYouCategoryData?.deals ?? [];
-  const visibleForYouCategoryCounts = useMemo(
-    () => new Map(forYouCategoryDeals.map(({ category, count }) => [category, count])),
-    [forYouCategoryDeals],
-  );
+  const forYouCategoryCounts = useMemo(() => {
+    const counts = new Map(preferredCategories.map((category) => [category, 0]));
+    for (const { product } of snapshotDealGroups.realSavers) {
+      const category = groupCategory(product.category, product.name);
+      if (counts.has(category)) counts.set(category, (counts.get(category) ?? 0) + 1);
+    }
+    return counts;
+  }, [preferredCategories, snapshotDealGroups.realSavers]);
   const allWorstDodgyDeals = snapshotDealGroups.dodgy;
   const newTopSavingsDeals = newForYouFilterActive ? snapshotDealGroups.newSavings : [];
   const newWorstDodgyDeals = newForYouFilterActive ? snapshotDealGroups.newDodgy : [];
@@ -995,22 +969,10 @@ export default function HomePage() {
     if (filter !== "all") setIsNewForYouFilter(false);
   }, [setDealFilter]);
 
-  const handleForYouSeeAll = useCallback(() => {
-    if (!visibleForYouCategory) return;
-    openSearchForFilter("real", { focus: false, category: visibleForYouCategory });
-  }, [openSearchForFilter, visibleForYouCategory]);
-
-  const handleForYouCategorySelect = useCallback((category: string) => {
+  const handleForYouCategoryOpen = useCallback((category: string) => {
     if (!preferredCategories.includes(category)) return;
-    setActiveForYouCategoryOverride({ scope: forYouCategoryStorageKey, category });
-    if (!forYouCategoryStorageKey) return;
-
-    try {
-      window.localStorage.setItem(forYouCategoryStorageKey, category);
-    } catch {
-      // The in-memory selection still lasts for this visit when storage is unavailable.
-    }
-  }, [forYouCategoryStorageKey, preferredCategories]);
+    openSearchForFilter("real", { focus: false, category });
+  }, [openSearchForFilter, preferredCategories]);
 
   const handleOpenCategoryInterestsSheet = useCallback(() => {
     setIsCategoryInterestsSheetOpen(true);
@@ -1258,17 +1220,14 @@ export default function HomePage() {
                   );
                 }
                 if (belt === "for-you") {
-                  if (preferredCategories.length === 0 || !visibleForYouCategory) return null;
+                  if (preferredCategories.length === 0) return null;
                   return (
                     <ForYouCategoryRail
                       key={belt}
                       categories={preferredCategories}
-                      activeCategory={visibleForYouCategory}
-                      deals={visibleForYouDeals}
-                      counts={visibleForYouCategoryCounts}
-                      onSelectCategory={handleForYouCategorySelect}
+                      counts={forYouCategoryCounts}
+                      onOpenCategory={handleForYouCategoryOpen}
                       onEditCategories={handleOpenCategoryInterestsSheet}
-                      onSeeAll={handleForYouSeeAll}
                     />
                   );
                 }
