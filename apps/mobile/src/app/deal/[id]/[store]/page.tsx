@@ -605,7 +605,7 @@ export default function DealAssessmentPage() {
       {isMultiStoreDeal && rankingList.length > 0 && (
         <section className="rounded-2xl border border-stone-200 bg-white px-3 pb-3 pt-4 text-left shadow-xs">
           <h3 className="mb-3 dd-type-section text-stone-900">Select a supermarket</h3>
-          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Supermarket price ranking" aria-orientation="horizontal">
+          <div className="grid grid-cols-3 items-start gap-2" role="tablist" aria-label="Supermarket price ranking" aria-orientation="horizontal">
             {rankingList.map((item) => {
               const storeDeal = findDealForStore(product.currentDeals, item.store);
               if (!storeDeal) return null;
@@ -626,7 +626,7 @@ export default function DealAssessmentPage() {
                   aria-selected={isCurrentStore}
                   aria-controls="selected-assessment"
                   onClick={() => selectAssessmentStore(item.store)}
-                  className={`flex min-h-36 min-w-0 flex-col items-center justify-start gap-1 rounded-xl border p-2 text-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "border-stone-400 bg-stone-50 outline-2 outline outline-offset-0 outline-stone-400" : "border-stone-200 bg-white"}`}
+                  className={`flex min-w-0 flex-col items-center justify-start gap-1 rounded-xl border px-2 py-1.5 text-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${isCurrentStore ? "border-stone-400 bg-stone-50 outline-2 outline outline-offset-0 outline-stone-400" : "border-stone-200 bg-white"}`}
                   aria-label={`View ${storeName} assessment, $${item.price.toFixed(2)}, ${dealLabel}`}
                 >
                   <StoreLogoBadge store={item.store} variant="ranking" decorative />
