@@ -12,12 +12,11 @@ import { useRouter } from "next/navigation";
 import { markNavigationStart } from "@/lib/navigation-performance";
 import { useWatchlistData } from "@/lib/watchlist-context";
 
-type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leaderboard";
+type MaterialSymbolName = "home" | "list_alt_add" | "search_check_2" | "leaderboard";
 
 /**
- * Bottom nav: Check deals / Lists / All Checks / Deal stats. First tab's
- * label changed from "Home" to "Check deals" 2026-08-11, per Jay's ask, to
- * match the prototype's own bottom nav label for this slot (see line below).
+ * Bottom nav: Home / Lists / All Checks / Deal stats. The first tab returns
+ * to the Home label and home glyph on 2026-11-14, per Jay's ask.
  * Active-tab styling changed same day, also per Jay's ask ("too light" /
  * "make it dark when selected"): was `--color-brand-primary` (green) text
  * only, now a dark (`--color-ink-900`) pill (`bg-ink-900`) behind the icon
@@ -59,8 +58,8 @@ type MaterialSymbolName = "search" | "list_alt_add" | "search_check_2" | "leader
  * bottom-nav icons for these two tabs (`Prototype/index.html` lines
  * ~7291/~7304) at the time -- since replaced (2026-08-13, see below).
  *
- * All four tab icons use the exact Google Material Symbols glyphs now:
- * `search`, `list_alt_add`, `search_check_2`, and `leaderboard`.
+ * All four tab icons use Google Material Symbols glyphs:
+ * `home`, `list_alt_add`, `search_check_2`, and `leaderboard`.
  * Each glyph uses FILL 0 for the default state and FILL 1 for the selected
  * state, matching the icon references supplied by Jay.
  *
@@ -214,15 +213,7 @@ const TABS: {
   label: string;
   icon: MaterialSymbolName;
 }[] = [
-  // Icon swapped `Home` -> `Search` 2026-08-19, per Jay: "change home icon
-  // to search icon" -- label/href/active-tab logic untouched, this tab
-  // still points at `/` and is still highlighted there; only the glyph
-  // changed. Doesn't reopen the "no search entry point on /specials, /lists,
-  // /me" gap this file's own header comment already flags (this is still
-  // just a Home-tab icon, not a functioning search trigger on its own --
-  // the real full-screen search overlay is still only reachable via Home's
-  // own inline search bar / AppHeader's global icon, per that comment).
-  { href: "/", label: "Check deals", icon: "search" },
+  { href: "/", label: "Home", icon: "home" },
   { href: "/lists", label: "Watchlist", icon: "list_alt_add" },
   { href: "/history", label: "All Checks", icon: "search_check_2" },
   { href: "/me", label: "Deal stats", icon: "leaderboard" },
