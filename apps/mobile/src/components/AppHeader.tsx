@@ -43,7 +43,8 @@ export default function AppHeader({
   refreshStatus?: "refreshing" | "updated" | "up-to-date" | null;
 }) {
   const pathname = usePathname();
-  const { isAnonymousSession, user, profile, profileLoading, session } = useAuthStatus();
+  const { isAnonymousSession, user, profile, profileLoading, session, loading: authLoading } = useAuthStatus();
+  const isLoggedOut = !authLoading && (!user || isAnonymousSession);
   const { override } = useHeaderOverride();
   const { isOpen: isDrawerOpen, toggleDrawer } = useNavigationDrawer();
   const { query, setQuery, openSearch, openSearchForFilter } = useSearchInput();
@@ -189,13 +190,16 @@ export default function AppHeader({
             </>
           ) : (
             <div aria-hidden={refreshStatus !== null} className="flex min-w-0 flex-1 items-center gap-2.5">
-              <button type="button" id="global-header-menu-btn" aria-label={user ? "Open profile menu" : "Open menu"} aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${user ? "border-fair-600 bg-fair-600 text-white hover:bg-fair-700" : "border-stone-300 bg-white text-stone-800 hover:bg-stone-50"}`}>
-                {user ? (
+              <button type="button" id="global-header-menu-btn" aria-label={user && !isAnonymousSession ? "Open profile menu" : "Open menu"} aria-controls="global-navigation-drawer" aria-expanded={isDrawerOpen} onClick={toggleDrawer} className={`relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${user && !isLoggedOut ? "border-fair-600 bg-fair-600 text-white hover:bg-fair-700" : isLoggedOut ? "border-ink-900 bg-ink-900 text-white hover:bg-ink-900" : "border-stone-300 bg-white text-stone-800 hover:bg-stone-50"}`}>
+                {user && !isLoggedOut ? (
                   profileAvatarLoading
                     ? <span className="h-4 w-4 animate-pulse rounded-full bg-white/60" aria-hidden="true" />
                     : <span className="text-base font-bold text-white" aria-hidden="true">{avatarInitial}</span>
                 ) : (
                   <Menu className="h-5 w-5" aria-hidden="true" />
+                )}
+                {isLoggedOut && (
+                  <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white" aria-hidden="true" />
                 )}
               </button>
               <label data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors focus-within:border-stone-900">

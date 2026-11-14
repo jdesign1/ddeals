@@ -27,7 +27,7 @@ export default function AppDrawer() {
     completeSettingsNavigation,
     closeDrawer,
   } = useNavigationDrawer();
-  const { user, profile, loading, profileLoading } = useAuthStatus();
+  const { user, profile, loading, profileLoading, isAnonymousSession } = useAuthStatus();
   const { openAuthSheet, requestOnboardingTour } = useAuthActions();
   const { unreadAlerts } = useNotificationsData();
   const { canOpenDetectiveCase } = useNewSpecialsData();
@@ -124,7 +124,7 @@ export default function AppDrawer() {
 
   const displayName = user ? getAccountDisplayName(user, { full_name: profile?.full_name }) : "Your account";
   const avatarInitial = user ? displayName.charAt(0).toUpperCase() : null;
-  const accountCardLoading = loading || Boolean(user && profileLoading && !profile);
+  const accountCardLoading = loading || Boolean(user && !isAnonymousSession && profileLoading && !profile);
 
   return (
     <>
@@ -173,7 +173,7 @@ export default function AppDrawer() {
         <div className="px-4 pb-4">
           {accountCardLoading ? (
             <div className="h-[76px] animate-pulse rounded-2xl bg-stone-100" aria-label="Loading account" />
-          ) : user ? (
+          ) : user && !isAnonymousSession ? (
             <Link
               href="/settings"
               onClick={navigateToSettings}
@@ -200,7 +200,7 @@ export default function AppDrawer() {
                 closeDrawer();
                 openAuthSheet();
               }}
-              className="flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+              className="relative flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
               <Image
                 src="/logo.svg"
@@ -214,6 +214,9 @@ export default function AppDrawer() {
                 <span className="block dd-type-control font-semibold text-stone-900">Create account or log in</span>
                 <span className="block dd-type-meta text-stone-500">Save lists and preferences</span>
               </span>
+              {!loading && (
+                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-stone-50" aria-hidden="true" />
+              )}
             </button>
           )}
         </div>
