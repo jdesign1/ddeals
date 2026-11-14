@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useSearchNavigation } from "@/lib/search-context";
 import { useAuthOverlay, useAuthStatus } from "@/lib/auth-context";
+import FirstInstallOnboarding from "@/components/FirstInstallOnboarding";
 
 function OverlayChunkFallback() {
   return (
@@ -44,6 +45,7 @@ const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
 
 const ONBOARDING_TOUR_SEEN_PREFIX = "dd-onboarding-tour-seen:";
 const ANONYMOUS_ONBOARDING_TOUR_ID = "anonymous";
+const FIRST_INSTALL_ONBOARDING_KEY = "dd-first-install-onboarding:v1";
 
 function hasSeenOnboardingTour(userId: string): boolean {
   try {
@@ -78,7 +80,7 @@ function hasSeenOnboardingTour(userId: string): boolean {
  */
 export default function GlobalOverlays() {
   const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearchNavigation();
-  const { user } = useAuthStatus();
+  const { user, profile, loading, profileLoading } = useAuthStatus();
   const {
     isAuthSheetOpen,
     hasOpenedAuthSheet,
@@ -93,6 +95,54 @@ export default function GlobalOverlays() {
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("preview") === "onboarding"
   );
+  const [isFirstInstallOnboardingOpen, setIsFirstInstallOnboardingOpen] = useState(false);
+  const [isFirstInstallStatusReady, setIsFirstInstallStatusReady] = useState(false);
+  const [isFirstInstallTourOpen, setIsFirstInstallTourOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    if (isPreviewTourOpen) {
+      setIsFirstInstallStatusReady(true);
+      return;
+    }
+
+    // Wait for auth restoration before showing a first-install gate. An
+    // existing signed-in account should not see this after an app update.
+    if (loading || (user && profileLoading)) return;
+
+    let completed = false;
+    try {
+      completed = window.localStorage.getItem(FIRST_INSTALL_ONBOARDING_KEY) === "1";
+      if (!completed && user && profile?.onboarding_complete && profile.category_interests_prompted_at) {
+        completed = true;
+      }
+      if (!completed && hasSeenOnboardingTour(user?.id ?? ANONYMOUS_ONBOARDING_TOUR_ID)) {
+        completed = true;
+      }
+
+      // Treat durable app preferences and prior activity snapshots as proof
+      // this is an existing install when upgrading from a version without the
+      // first-install marker.
+      if (!completed) {
+        const knownInstallKeys = [
+          "dodgey-deals-card-layout",
+          "dodgey-deals:check-deals-belt-order:v1:device",
+        ];
+        completed = knownInstallKeys.some((key) => window.localStorage.getItem(key) !== null) ||
+          Object.keys(window.localStorage).some((key) =>
+            key.startsWith("dd-top20-snapshot-v1:") ||
+            key.startsWith("dodgey-deals:did-you-know-seen:v2:") ||
+            key.startsWith("dd-semantic-specials-snapshot-v2:") ||
+            key.startsWith("dd-semantic-specials-popup-state-v1:") ||
+            key.startsWith("dd-deal-detective-played-v1:")
+          );
+      }
+      if (completed) window.localStorage.setItem(FIRST_INSTALL_ONBOARDING_KEY, "1");
+    } catch {
+      // Keep the first-run path available when storage is disabled.
+    }
+    setIsFirstInstallOnboardingOpen(!completed);
+    setIsFirstInstallStatusReady(true);
+  }, [isPreviewTourOpen, loading, profile, profileLoading, user]);
 
   useEffect(() => {
     if (user && onboardingTourRequest === "new" && hasSeenOnboardingTour(user.id)) {
@@ -128,6 +178,25 @@ export default function GlobalOverlays() {
     dismissOnboardingTour();
   }, [dismissOnboardingTour, onboardingUserId]);
 
+  const completeFirstInstallOnboarding = useCallback(() => {
+    try {
+      window.localStorage.setItem(FIRST_INSTALL_ONBOARDING_KEY, "1");
+    } catch {
+      // The current app session can still proceed if storage is unavailable.
+    }
+    setIsFirstInstallOnboardingOpen(false);
+  }, []);
+
+  const startFirstInstallTour = useCallback(() => {
+    completeFirstInstallOnboarding();
+    setIsFirstInstallTourOpen(true);
+  }, [completeFirstInstallOnboarding]);
+
+  const closeFirstInstallTour = useCallback(() => {
+    setIsFirstInstallTourOpen(false);
+    closeOnboardingTour();
+  }, [closeOnboardingTour]);
+
   return (
     <>
       {/* Keep the search component mounted from the first shell render. Its
@@ -145,7 +214,18 @@ export default function GlobalOverlays() {
       {(hasOpenedAuthSheet || isAuthSheetOpen) && (
         <AuthSheet isOpen={isAuthSheetOpen} prompt={authSheetPrompt} onClose={closeAuthSheet} />
       )}
-      {isOnboardingTourOpen && <OnboardingTour onClose={closeOnboardingTour} />}
+      {isFirstInstallStatusReady && isFirstInstallOnboardingOpen && (
+        <FirstInstallOnboarding
+          onComplete={completeFirstInstallOnboarding}
+          onStartTour={startFirstInstallTour}
+        />
+      )}
+      {(isOnboardingTourOpen || isFirstInstallTourOpen) && (
+        <OnboardingTour
+          onClose={isFirstInstallTourOpen ? closeFirstInstallTour : closeOnboardingTour}
+          initialStepIndex={isFirstInstallTourOpen ? 1 : 0}
+        />
+      )}
     </>
   );
 }

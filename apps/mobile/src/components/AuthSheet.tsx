@@ -7,7 +7,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import AuthPanel from "@/components/AuthPanel";
 import MascotImage from "@/components/MascotImage";
-import { useAuthOverlay, useAuthStatus } from "@/lib/auth-context";
+import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
+import {
+  useAuthCategoryInterestsActions,
+  useAuthOverlay,
+  useAuthStatus,
+  type AccountProfile,
+} from "@/lib/auth-context";
+import { normalizeCategoryInterests } from "@/lib/category-interests";
 
 /**
  * Global log-in/sign-up bottom sheet (2026-08-19, per Jay: "The login/sign
@@ -123,17 +130,68 @@ export default function AuthSheet({
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, profileLoading } = useAuthStatus();
+  const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
   const { authSheetReturnPath } = useAuthOverlay();
   const wasOpenRef = useRef(isOpen);
   const hasRedirectedAfterAuthRef = useRef(false);
+  const [isCategoryInterestsOpen, setIsCategoryInterestsOpen] = useState(false);
+  const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
+  const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
 
-  const handleAuthSuccess = useCallback(() => {
+  const finishAuthSuccess = useCallback(() => {
     if (hasRedirectedAfterAuthRef.current) return;
     hasRedirectedAfterAuthRef.current = true;
     const destination = authSheetReturnPath ?? (pathname !== "/" ? "/" : null);
     onClose();
     if (destination && destination !== pathname) router.push(destination);
   }, [authSheetReturnPath, onClose, pathname, router]);
+
+  const handleAuthSuccess = useCallback((completedProfile?: AccountProfile | null) => {
+    if (hasRedirectedAfterAuthRef.current || isCategoryInterestsOpen) return;
+    const nextProfile = completedProfile ?? profile;
+    if (nextProfile?.onboarding_complete && !nextProfile.category_interests_prompted_at) {
+      setCategoryInterestsError(null);
+      setIsCategoryInterestsOpen(true);
+      return;
+    }
+    finishAuthSuccess();
+  }, [finishAuthSuccess, isCategoryInterestsOpen, profile]);
+
+  const handleSaveCategoryInterests = useCallback(async (categories: string[]) => {
+    setCategoryInterestsError(null);
+    setIsSavingCategoryInterests(true);
+    try {
+      const result = await updateCategoryInterests(categories);
+      if (result.error) {
+        setCategoryInterestsError("We couldn't save your deal interests. Please try again.");
+        return;
+      }
+      setIsCategoryInterestsOpen(false);
+      finishAuthSuccess();
+    } catch {
+      setCategoryInterestsError("We couldn't save your deal interests. Please try again.");
+    } finally {
+      setIsSavingCategoryInterests(false);
+    }
+  }, [finishAuthSuccess, updateCategoryInterests]);
+
+  const handleDismissCategoryInterests = useCallback(async () => {
+    setCategoryInterestsError(null);
+    setIsSavingCategoryInterests(true);
+    try {
+      const result = await dismissCategoryInterestsPrompt();
+      if (result.error) {
+        setCategoryInterestsError("We couldn't save that choice. Please try again.");
+        return;
+      }
+      setIsCategoryInterestsOpen(false);
+      finishAuthSuccess();
+    } catch {
+      setCategoryInterestsError("We couldn't save that choice. Please try again.");
+    } finally {
+      setIsSavingCategoryInterests(false);
+    }
+  }, [dismissCategoryInterestsPrompt, finishAuthSuccess]);
 
   // iOS may scroll the focused OTP field farther than needed while the
   // keyboard is animating in. Keep the form just slightly offset so the
@@ -214,6 +272,20 @@ export default function AuthSheet({
   // legal route is active means that route's existing back arrow can return
   // to the page underneath with this sheet still open.
   if (isOpen && isViewingLegal && isLegalRoute) return null;
+
+  if (isCategoryInterestsOpen) {
+    return (
+      <CategoryInterestsSheet
+        open
+        mode="onboarding"
+        initialCategories={normalizeCategoryInterests(profile?.preferred_categories)}
+        isSaving={isSavingCategoryInterests}
+        error={categoryInterestsError}
+        onSave={(categories) => void handleSaveCategoryInterests(categories)}
+        onClose={() => void handleDismissCategoryInterests()}
+      />
+    );
+  }
 
   return (
     <AnimatePresence>

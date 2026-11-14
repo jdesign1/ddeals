@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 export interface OnboardingTourProps {
   onClose: () => void;
+  initialStepIndex?: number;
 }
 
 type TourStep = {
@@ -74,11 +75,11 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-export default function OnboardingTour({ onClose }: OnboardingTourProps) {
+export default function OnboardingTour({ onClose, initialStepIndex = 0 }: OnboardingTourProps) {
   const router = useRouter();
   const pathname = usePathname();
   const prefersReducedMotion = useReducedMotion();
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(() => Math.max(0, Math.min(TOUR_STEPS.length - 1, initialStepIndex)));
   const [dealHref, setDealHref] = useState<string | null>(null);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [targetStepIndex, setTargetStepIndex] = useState<number | null>(null);

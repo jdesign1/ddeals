@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
-import { useAuthActions, useAuthFormActions, useAuthStatus, type AccountDetails } from "@/lib/auth-context";
+import { useAuthActions, useAuthFormActions, useAuthStatus, type AccountDetails, type AccountProfile } from "@/lib/auth-context";
 import { getAccountMetadataName } from "@/lib/account-display";
 import ButtonSpinner from "@/components/ButtonSpinner";
 
@@ -55,7 +55,7 @@ export default function AuthPanel({
   mode,
 }: {
   prompt?: string;
-  onSuccess: () => void;
+  onSuccess: (profile?: AccountProfile | null) => void;
   onOpenLegal: (path: "/privacy" | "/terms") => void;
   onOtpView: (otpInput: HTMLInputElement | null) => void;
   mode: AuthMode;
@@ -175,10 +175,10 @@ export default function AuthPanel({
           return;
         }
 
-        if (profileResult.profile?.onboarding_complete) onSuccess();
+        if (profileResult.profile?.onboarding_complete) onSuccess(profileResult.profile);
         else setView("profile");
       } else if (result.profile?.onboarding_complete) {
-        onSuccess();
+        onSuccess(result.profile);
       } else {
         setView("profile");
       }
@@ -227,7 +227,7 @@ export default function AuthPanel({
     try {
       const result = await completeProfile(details);
       if (result.error) setError("We couldn't save your account details. Please try again.");
-      else if (result.profile?.onboarding_complete) onSuccess();
+      else if (result.profile?.onboarding_complete) onSuccess(result.profile);
     } finally {
       setSubmitting(false);
     }
