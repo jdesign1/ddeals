@@ -53,18 +53,20 @@ export default function FirstInstallOnboarding({
     >
       <div className="flex h-full max-h-[100dvh] w-full max-w-[480px] flex-col px-5" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto py-3">
-          <Image
-            src="/first-install-welcome.webp"
-            alt="The Dodgy Deal mascot thoughtfully comparing specials in a supermarket aisle"
-            width={1254}
-            height={1254}
-            sizes="(max-width: 480px) calc(100vw - 40px), 440px"
-            preload
-            className="h-auto max-h-[38dvh] w-full max-w-[23rem] shrink-0 object-contain"
-          />
+          <div className="relative -mx-5 aspect-square w-[calc(100%+2.5rem)] max-w-[480px] shrink-0 overflow-hidden">
+            <Image
+              src={step === 1 ? "/first-install-welcome.webp" : "/first-install-inspect.webp"}
+              alt={step === 1
+                ? "The Dodgy Deal mascot thoughtfully comparing specials in a supermarket aisle"
+                : "The Dodgy Deal mascot inspecting a supermarket special with a magnifying glass"}
+              fill
+              sizes="100vw"
+              preload={step === 1}
+              className="object-cover"
+            />
+          </div>
 
           <div className="mt-3 w-full shrink-0 text-center" aria-live="polite">
-            <p className="dd-type-meta dd-type-meta-strong text-stone-500">Step {step} of 2</p>
             <AnimatePresence mode="wait" initial={false}>
               {step === 1 ? (
                 <motion.div

@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, FlaskConical, Gamepad2, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import WinkMascot from "@/components/WinkMascot";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useAuthActions, useAuthStatus } from "@/lib/auth-context";
 import { useNavigationDrawer } from "@/lib/navigation-drawer-context";
@@ -202,14 +202,7 @@ export default function AppDrawer() {
               }}
               className="relative flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
             >
-              <Image
-                src="/logo.svg"
-                alt=""
-                width={48}
-                height={48}
-                className="theme-logo h-12 w-12 flex-shrink-0"
-                aria-hidden="true"
-              />
+              <WinkMascot className="wink-mascot--account-prompt mascot-wave" />
               <span>
                 <span className="block dd-type-control font-semibold text-stone-900">Create account or log in</span>
                 <span className="block dd-type-meta text-stone-500">Save lists and preferences</span>

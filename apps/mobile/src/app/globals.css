@@ -1109,9 +1109,8 @@ html[data-theme="dark"] .theme-loader-surface {
   will-change: transform;
 }
 
-/* The search-bar mascot keeps its gentle float while its eyes blink as a
-   separate layer, so the two animations do not overwrite each other's
-   transforms. */
+/* Inline mascot marks keep their gentle float separate from the eye blink,
+   so the two animations do not overwrite each other's transforms. */
 .wink-mascot--search {
   width: 32px;
   height: 32px;
@@ -1122,8 +1121,15 @@ html[data-theme="dark"] .theme-loader-surface {
   height: 24px;
 }
 
+.wink-mascot--account-prompt {
+  width: 48px;
+  height: 48px;
+}
+
 .wink-mascot--search .wink-mascot__eye-fill,
-.wink-mascot--search .wink-mascot__pupil {
+.wink-mascot--search .wink-mascot__pupil,
+.wink-mascot--account-prompt .wink-mascot__eye-fill,
+.wink-mascot--account-prompt .wink-mascot__pupil {
   transform-box: fill-box;
   transform-origin: center;
   animation: searchMascotBlink 5.8s ease-in-out infinite;
@@ -1212,7 +1218,9 @@ html[data-theme="dark"] .theme-loader-surface {
   }
 
   .wink-mascot--search .wink-mascot__eye-fill,
-  .wink-mascot--search .wink-mascot__pupil {
+  .wink-mascot--search .wink-mascot__pupil,
+  .wink-mascot--account-prompt .wink-mascot__eye-fill,
+  .wink-mascot--account-prompt .wink-mascot__pupil {
     animation: none;
   }
 
