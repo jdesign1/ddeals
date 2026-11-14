@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { Check, ChevronRight, Share, X } from "lucide-react";
@@ -45,6 +44,7 @@ import AddToListButton from "@/components/AddToListButton";
 import ProductImage from "@/components/ProductImage";
 import PageLoader from "@/components/PageLoader";
 import AssessmentEvidenceCard from "@/components/AssessmentEvidenceCard";
+import WinkMascot from "@/components/WinkMascot";
 import { getPrimedDealProduct } from "@/lib/deal-navigation";
 import CommunityPriceNotesSection from "@/components/CommunityPriceNotesSection";
 import { subscribeToCatalogueUpdates, publishCatalogueUpdate } from "@/lib/catalogue-refresh";
@@ -691,7 +691,7 @@ export default function DealAssessmentPage() {
             triggerAriaLabel={`Show deal evidence for ${product.name}`}
             triggerContent={(
               <>
-                <Image src="/logo.svg" alt="" width={20} height={20} className="h-5 w-5 shrink-0 object-contain" aria-hidden="true" />
+                <WinkMascot className="wink-mascot--evidence-trigger mascot-wave" />
                 <span className="min-w-0 text-center underline decoration-stone-400 underline-offset-2">{assessmentInsight}</span>
               </>
             )}

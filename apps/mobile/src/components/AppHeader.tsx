@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, Menu, RefreshCw, Share2 } from "lucide-react";
 import NewSpecialsModal from "@/components/NewSpecialsModal";
 import { LAUNCH_SPLASH_COMPLETE_EVENT } from "@/components/LaunchSplash";
+import WinkMascot from "@/components/WinkMascot";
 import { useAuthStatus } from "@/lib/auth-context";
 import { getAccountDisplayName } from "@/lib/account-display";
 import { useHeaderOverride } from "@/lib/header-context";
@@ -203,7 +203,7 @@ export default function AppHeader({
                 )}
               </button>
               <label data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors focus-within:border-stone-900">
-                <Image src="/logo.svg" alt="" width={32} height={32} className="theme-logo mascot-wave mr-3 h-8 w-8 flex-shrink-0" />
+                <WinkMascot className="wink-mascot--search mascot-wave mr-3" />
                 <input
                   id="global-search-input"
                   type="search"
