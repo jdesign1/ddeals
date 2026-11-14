@@ -27,7 +27,6 @@ import {
   buildVisibleRanking,
   findCheaperAlternatives,
   findDealForStore,
-  getTrustedDealLocation,
   normalizeStoreKey,
   STORE_DISPLAY_FALLBACK,
   logDealCheck,
@@ -152,8 +151,6 @@ function DealStoreLink({
   className?: string;
 }) {
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
-  const location = getTrustedDealLocation(deal);
-  const label = `${storeLabel}${location ? ` ${location}` : ""}`;
 
   return (
     <a
@@ -163,7 +160,7 @@ function DealStoreLink({
       aria-label={`Open ${storeLabel} product listing`}
       className={`${className} inline-flex min-h-11 min-w-0 max-w-full items-center gap-0.5 overflow-hidden whitespace-nowrap rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
     >
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{storeLabel}</span>
       <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
     </a>
   );
@@ -656,7 +653,7 @@ export default function DealAssessmentPage() {
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
             <h2 className="min-w-0 flex-1">
-              <span className={`inline-flex max-w-full truncate rounded-full border px-4 py-2 text-lg leading-6 font-extrabold tracking-tight ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}>
+              <span className={`inline-flex max-w-full truncate rounded-full border px-3 py-1.5 text-base leading-5 font-extrabold tracking-tight ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}>
                 {getVerdictTitle(verdict)}
               </span>
             </h2>
