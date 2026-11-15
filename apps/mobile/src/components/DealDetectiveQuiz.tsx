@@ -350,8 +350,15 @@ export default function DealDetectiveQuiz({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
-            className="pt-14"
+            className={onboardingMode ? "pt-3" : "pt-14"}
           >
+            {onboardingMode && (
+              <div className="px-5 pb-2">
+                <span className={`inline-flex rounded-full px-3 py-1 dd-type-secondary dd-type-secondary-strong ${selectedCandidate.kind === "dodgy" ? "bg-alert-100 text-alert-900" : "bg-fair-100 text-fair-900"}`}>
+                  {selectedCandidate.kind === "dodgy" ? "Dodgy Deal" : "Real Saver"}
+                </span>
+              </div>
+            )}
             <CompactProductInfoCard
               productName={selectedCandidate.product.name}
               productBrand={selectedCandidate.product.brand}
@@ -401,7 +408,7 @@ export default function DealDetectiveQuiz({
                 ? "Which special do you think is really cheaper?"
                 : questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
             </h2>
-            <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
+            <p id="new-specials-description" className={`mt-2 text-stone-600 ${onboardingMode ? "dd-type-body" : "dd-type-secondary leading-5"}`}>
               {onboardingMode
                 ? "Tap the one you think is a real saving."
                 : questionKind === "real"
@@ -437,10 +444,10 @@ export default function DealDetectiveQuiz({
             >
               <p className={`dd-type-control dd-type-control-strong ${correct ? "text-fair-900" : "text-alert-900"}`}>
                 {onboardingMode
-                  ? correct ? "Good spotting, Detective." : "Good try, Detective."
+                  ? correct ? "Good spotting!" : "Not quite!"
                   : correct ? "Great call — you spotted it." : "Close call! Not quite."}
               </p>
-              <p className="mt-2 dd-type-meta leading-4 text-stone-600">
+              <p className={`mt-2 text-stone-600 ${onboardingMode ? "dd-type-secondary" : "dd-type-meta leading-4"}`}>
                 {onboardingMode && selectedCandidate
                   ? selectedCandidate.kind === "real"
                     ? "Real Saver — it’s cheaper than its recent prices."
@@ -473,7 +480,7 @@ export default function DealDetectiveQuiz({
               {onboardingMode ? (
                 <div className="px-1 pb-2 text-center">
                   <p className="font-display text-lg font-extrabold text-stone-900">Price history is the clue</p>
-                  <p className="mt-1 dd-type-secondary text-stone-600">We compare today&apos;s price with the item&apos;s recent prices.</p>
+                  <p className="mt-1 dd-type-body text-stone-600">We compare the price history.</p>
                 </div>
               ) : (
                 <p className="px-1 pb-2 text-center dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-stone-500">

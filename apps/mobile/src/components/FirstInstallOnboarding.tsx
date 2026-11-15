@@ -150,7 +150,7 @@ export default function FirstInstallOnboarding({
             <h1 id="first-install-loading-title" className="sr-only">Preparing your first case</h1>
             <div className="dd-skeleton-shimmer aspect-[1.1/1] w-full shrink-0" aria-hidden="true" />
             <div className="flex flex-1 flex-col px-5 pt-4">
-              <p className="text-center dd-type-secondary text-stone-600" role="status" aria-live="polite">
+              <p className="text-center dd-type-body text-stone-600" role="status" aria-live="polite">
                 Getting a case ready…
               </p>
               <div className="mx-auto dd-skeleton-shimmer h-7 w-64 max-w-full rounded" aria-hidden="true" />
