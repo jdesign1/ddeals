@@ -91,10 +91,14 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
   const closeTimerRef = useRef<number | null>(null);
   const stepTransitionTimerRef = useRef<number | null>(null);
   const isStepTransitioningRef = useRef(false);
-  const step = TOUR_STEPS[stepIndex];
-  const isLastStep = stepIndex === TOUR_STEPS.length - 1;
-  const activeHref = step.href === DEAL_ROUTE ? dealHref : step.href;
   const isDealPath = pathname.startsWith("/deal/");
+  // Selecting a deal is part of step 3. Treat the route change as the
+  // transition into the assessment step so the route guard doesn't send the
+  // user back Home while the deal page is loading.
+  const currentStepIndex = stepIndex === 2 && isDealPath ? 3 : stepIndex;
+  const step = TOUR_STEPS[currentStepIndex];
+  const isLastStep = currentStepIndex === TOUR_STEPS.length - 1;
+  const activeHref = step.href === DEAL_ROUTE ? dealHref : step.href;
 
   useEffect(() => {
     if (isClosing) return;
@@ -189,7 +193,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
           }
           return nextRect;
         });
-        setTargetStepIndex((currentStepIndex) => currentStepIndex === stepIndex ? currentStepIndex : stepIndex);
+        setTargetStepIndex((currentIndex) => currentIndex === currentStepIndex ? currentIndex : currentStepIndex);
       }
     };
 
@@ -206,11 +210,11 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [activeHref, isDealPath, pathname, prefersReducedMotion, step.autoScroll, step.href, step.scrollBlock, step.target, stepIndex]);
+  }, [activeHref, currentStepIndex, isDealPath, pathname, prefersReducedMotion, step.autoScroll, step.href, step.scrollBlock, step.target]);
 
   const hasTarget = Boolean(
     step.target &&
-    targetStepIndex === stepIndex &&
+    targetStepIndex === currentStepIndex &&
     targetRect &&
     targetRect.width > 0 &&
     targetRect.height > 0,
@@ -286,30 +290,42 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
     if (isLastStep) {
       finishTour();
     } else {
-      changeStep(stepIndex + 1);
+      changeStep(currentStepIndex + 1);
     }
-  }, [changeStep, finishTour, isLastStep, stepIndex]);
+  }, [changeStep, currentStepIndex, finishTour, isLastStep]);
+
+  const goPrevious = useCallback(() => {
+    if (currentStepIndex === 3 && isDealPath) {
+      if (isClosing || isStepTransitioningRef.current) return;
+      // Step 3 is route-derived when the user taps a deal directly. Return to
+      // Home first so that the derived step can move back to the deal picker.
+      changeStep(2);
+      router.push("/");
+      return;
+    }
+    changeStep(currentStepIndex - 1);
+  }, [changeStep, currentStepIndex, isClosing, isDealPath, router]);
 
   const usesBelowCardScrim = step.scrim === "below-card";
   const showBaseScrim = usesBelowCardScrim || !hasTarget;
   const scrimOpacity = showBaseScrim ? (usesBelowCardScrim ? 1 : 0.62) : 0;
-  const shouldSnapCheckDealScrim = stepIndex === 2 && !hasTarget;
+  const shouldSnapCheckDealScrim = currentStepIndex === 2 && !hasTarget;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeTour();
-      if (event.key === "ArrowLeft" && stepIndex > 0) changeStep(stepIndex - 1);
+      if (event.key === "ArrowLeft" && currentStepIndex > 0) goPrevious();
       if (event.key === "ArrowRight") {
         if (isLastStep) {
           finishTour();
         } else {
-          changeStep(stepIndex + 1);
+          changeStep(currentStepIndex + 1);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [changeStep, closeTour, finishTour, isLastStep, stepIndex]);
+  }, [changeStep, closeTour, currentStepIndex, finishTour, goPrevious, isLastStep]);
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Dodgy Deal app tour">
@@ -332,7 +348,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
       <AnimatePresence mode="wait" initial={false}>
         {hasTarget && !isClosing && (
           <motion.div
-            key={`spotlight-${stepIndex}`}
+            key={`spotlight-${currentStepIndex}`}
             className="pointer-events-none absolute border-2 border-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -346,7 +362,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
 
       {hasTarget && !isClosing && !prefersReducedMotion && (
         <motion.div
-          key={`pulse-${stepIndex}`}
+          key={`pulse-${currentStepIndex}`}
           className="pointer-events-none absolute border-2 border-white"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{
@@ -367,7 +383,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
       <AnimatePresence mode="wait" initial={false}>
         {!isClosing && (
         <motion.section
-          key={stepIndex}
+          key={currentStepIndex}
           className={`absolute left-4 right-4 mx-auto max-w-[448px] rounded-3xl bg-white px-5 py-4 shadow-2xl ${step.welcome ? "max-h-[calc(100dvh-2rem)] overflow-y-auto" : ""}`}
           style={cardStyle}
           initial={{ opacity: 0 }}
@@ -426,10 +442,10 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
               </button>
             )}
             <div className="flex items-center gap-2">
-              {stepIndex > 0 && (
+              {currentStepIndex > 0 && (
                 <button
                   type="button"
-                  onClick={() => changeStep(stepIndex - 1)}
+                  onClick={goPrevious}
                   className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-300 text-stone-700 transition-colors hover:bg-stone-50"
                   aria-label="Previous tour step"
                 >
