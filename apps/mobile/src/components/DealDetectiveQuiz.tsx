@@ -34,6 +34,7 @@ interface DealDetectiveQuizProps {
   onPlayed: () => void;
   showViewDealsButton?: boolean;
   showBackButton?: boolean;
+  onboardingMode?: boolean;
 }
 
 const CONFETTI_PIECES = [
@@ -146,7 +147,19 @@ function choiceClass(selected: boolean, revealed: boolean, isCorrect: boolean, i
   return "border-stone-200 bg-stone-50 opacity-70";
 }
 
-export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, onBack, onViewDeals, onDone, onAnswered, onPlayed, showViewDealsButton = true, showBackButton = true }: DealDetectiveQuizProps) {
+export default function DealDetectiveQuiz({
+  quizCase,
+  accessToken,
+  streakScope,
+  onBack,
+  onViewDeals,
+  onDone,
+  onAnswered,
+  onPlayed,
+  showViewDealsButton = true,
+  showBackButton = true,
+  onboardingMode = false,
+}: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
   const [currentRank, setCurrentRank] = useState<string | null>(null);
@@ -159,9 +172,12 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
   const [mascotImageFailed, setMascotImageFailed] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const backButtonRef = useRef<HTMLButtonElement>(null);
+  const onboardingHeadingRef = useRef<HTMLHeadingElement>(null);
   const priceHistoryRevealTimeoutRef = useRef<number | null>(null);
   const questionKind = quizCase.questionKind ?? "real";
-  const correctSide: DealDetectiveQuizSide = quizCase.left.kind === questionKind ? "left" : "right";
+  const correctSide: DealDetectiveQuizSide = onboardingMode
+    ? (quizCase.left.kind === "real" ? "left" : "right")
+    : (quizCase.left.kind === questionKind ? "left" : "right");
   const answered = selectedSide !== null;
   const correct = selectedSide === correctSide;
   const rankLabel = accessToken ? scoreResult?.detective_rank ?? currentRank : null;
@@ -173,6 +189,10 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
     if (!isMascotImageLoaded) return;
     backButtonRef.current?.focus();
   }, [isMascotImageLoaded]);
+
+  useEffect(() => {
+    if (onboardingMode && isMascotImageLoaded) onboardingHeadingRef.current?.focus();
+  }, [isMascotImageLoaded, onboardingMode, showPriceHistory]);
 
   useEffect(() => () => {
     if (priceHistoryRevealTimeoutRef.current !== null) window.clearTimeout(priceHistoryRevealTimeoutRef.current);
@@ -230,18 +250,23 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
     if (answered || isSubmitting) return;
     const candidate = side === "left" ? quizCase.left : quizCase.right;
     setSelectedSide(side);
-    onAnswered();
-    if (accessToken) {
-      saveAnswer(side);
-    } else {
-      onPlayed();
-      recordStreak(side === correctSide);
+    if (!onboardingMode) {
+      onAnswered();
+      if (accessToken) {
+        saveAnswer(side);
+      } else {
+        onPlayed();
+        recordStreak(side === correctSide);
+      }
     }
     loadSelectedPriceHistory(candidate);
     if (priceHistoryRevealTimeoutRef.current !== null) {
       window.clearTimeout(priceHistoryRevealTimeoutRef.current);
     }
-    priceHistoryRevealTimeoutRef.current = window.setTimeout(() => setShowPriceHistory(true), PRICE_HISTORY_REVEAL_DELAY_MS);
+    priceHistoryRevealTimeoutRef.current = window.setTimeout(
+      () => setShowPriceHistory(true),
+      onboardingMode ? 1_100 : PRICE_HISTORY_REVEAL_DELAY_MS,
+    );
   };
 
   const renderChoice = (side: DealDetectiveQuizSide) => {
@@ -294,7 +319,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
         inert={!isMascotImageLoaded ? true : undefined}
         className="relative flex min-h-full flex-1 flex-col"
       >
-      {correct && answered && <ConfettiBurst key={selectedSide} />}
+      {!onboardingMode && correct && answered && <ConfettiBurst key={selectedSide} />}
 
       {showBackButton && (
         <div className="pointer-events-none sticky top-0 z-40 h-0">
@@ -324,7 +349,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.28, ease: "easeOut" }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
             className="pt-14"
           >
             <CompactProductInfoCard
@@ -365,18 +390,36 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
       <div className="flex flex-1 flex-col px-5">
         {!showPriceHistory ? (
           <div className="text-center">
-            <h2 id="new-specials-title" className="mt-1 font-display text-xl font-extrabold text-stone-900">
-              {questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
+            <h2
+              ref={onboardingHeadingRef}
+              id="new-specials-title"
+              tabIndex={onboardingMode ? -1 : undefined}
+              data-onboarding-focus={onboardingMode ? "true" : undefined}
+              className="mt-1 font-display text-xl font-extrabold text-stone-900 outline-none"
+            >
+              {onboardingMode
+                ? "Which special do you think is really cheaper?"
+                : questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
             </h2>
             <p id="new-specials-description" className="mt-2 dd-type-secondary leading-5 text-stone-600">
-              {questionKind === "real"
-                ? "Use your deal detective instincts and guess which deal is real"
-                : "Use your deal detective instincts and guess which deal is dodgy"}
+              {onboardingMode
+                ? "Tap the one you think is a real saving."
+                : questionKind === "real"
+                  ? "Use your deal detective instincts and guess which deal is real"
+                  : "Use your deal detective instincts and guess which deal is dodgy"}
             </p>
           </div>
         ) : (
           <>
-            <h2 id="new-specials-title" className="sr-only">Deal Detective price evidence</h2>
+            <h2
+              ref={onboardingHeadingRef}
+              id="new-specials-title"
+              tabIndex={onboardingMode ? -1 : undefined}
+              data-onboarding-focus={onboardingMode ? "true" : undefined}
+              className="sr-only"
+            >
+              {onboardingMode ? "Price history is the clue" : "Deal Detective price evidence"}
+            </h2>
             <p id="new-specials-description" className="sr-only">Review the selected item&apos;s current price against its 90-day price history.</p>
           </>
         )}
@@ -387,22 +430,28 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
               initial={{ opacity: 0, y: 8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.24, ease: "easeOut" }}
               className={`mt-5 flex min-h-[8rem] flex-col justify-center rounded-2xl border px-5 py-4 text-center ${correct ? "border-fair-200 bg-fair-50" : "border-alert-200 bg-alert-50"}`}
               role="status"
               aria-live="polite"
             >
               <p className={`dd-type-control dd-type-control-strong ${correct ? "text-fair-900" : "text-alert-900"}`}>
-                {correct ? "Great call — you spotted it." : "Close call! Not quite."}
+                {onboardingMode
+                  ? correct ? "Good spotting, Detective." : "Good try, Detective."
+                  : correct ? "Great call — you spotted it." : "Close call! Not quite."}
               </p>
               <p className="mt-2 dd-type-meta leading-4 text-stone-600">
-                {accessToken
-                  ? scoreResult
-                    ? `This case has been closed. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far.`
-                    : isSubmitting
-                      ? "Saving your detective score…"
-                      : "Your answer is being checked."
-                  : <><LockKeyhole className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />Sign in to save your detective score.</>}
+                {onboardingMode && selectedCandidate
+                  ? selectedCandidate.kind === "real"
+                    ? "Real Saver — it’s cheaper than its recent prices."
+                    : "Dodgy Deal — it was cheaper in past specials. The other one is the Real Saver."
+                  : accessToken
+                    ? scoreResult
+                      ? `This case has been closed. You have ${scoreResult.quiz_correct} correct ${scoreResult.quiz_correct === 1 ? "case" : "cases"} so far.`
+                      : isSubmitting
+                        ? "Saving your detective score…"
+                        : "Your answer is being checked."
+                    : <><LockKeyhole className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />Sign in to save your detective score.</>}
               </p>
               {saveError && <p className="mt-2 dd-type-meta text-alert-700" role="alert">{saveError}</p>}
               {saveError && accessToken && selectedSide && (
@@ -417,13 +466,20 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.36, ease: "easeOut" }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.36, ease: "easeOut" }}
               className="mt-5 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs"
               aria-label={`Price history evidence for ${selectedCandidate.product.name}`}
             >
-              <p className="px-1 pb-2 text-center dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-stone-500">
-                Price history evidence
-              </p>
+              {onboardingMode ? (
+                <div className="px-1 pb-2 text-center">
+                  <p className="font-display text-lg font-extrabold text-stone-900">Price history is the clue</p>
+                  <p className="mt-1 dd-type-secondary text-stone-600">We compare today&apos;s price with the item&apos;s recent prices.</p>
+                </div>
+              ) : (
+                <p className="px-1 pb-2 text-center dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-stone-500">
+                  Price history evidence
+                </p>
+              )}
               <PriceHistoryChart
                 points={selectedPriceHistory.points}
                 currentPrice={selectedCandidate.deal.price}
@@ -434,8 +490,9 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
                 error={selectedPriceHistory.error}
                 verdict={getAssessmentVerdict(selectedCandidate.deal)}
                 animateOnMount
+                compact={onboardingMode}
               />
-              {streakLength >= 2 && (
+              {!onboardingMode && streakLength >= 2 && (
                 <motion.div
                   initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -455,7 +512,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
               initial={{ opacity: 1 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.24, ease: "easeOut" }}
               className="mt-5 flex gap-3"
               role="group"
               aria-label="Deal Detective case choices"
@@ -477,7 +534,20 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
           <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
             <div className="relative h-14">
               <AnimatePresence initial={false} mode="sync">
-                {answered ? (
+                {onboardingMode ? (
+                  <motion.button
+                    key={showPriceHistory ? "continue-onboarding" : "skip-onboarding"}
+                    type="button"
+                    onClick={onDone}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+                    className={`dd-btn absolute inset-0 w-full cursor-pointer ${showPriceHistory ? "dd-btn-primary" : "dd-btn-outline"}`}
+                  >
+                    {showPriceHistory ? "Continue" : "Skip"}
+                  </motion.button>
+                ) : answered ? (
                   <motion.button
                     key="close-case"
                     type="button"
@@ -485,7 +555,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
                     className="dd-btn dd-btn-primary absolute inset-0 w-full cursor-pointer"
                   >
                     Close case
@@ -496,7 +566,7 @@ export default function DealDetectiveQuiz({ quizCase, accessToken, streakScope, 
                     initial={{ opacity: 1 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.16, ease: "easeOut" }}
                     className="absolute inset-0 flex items-center justify-center dd-type-meta dd-type-meta-strong text-stone-500"
                   >
                     Case #{quizCase.caseNumber ?? 1}

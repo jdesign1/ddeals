@@ -1,9 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { useSearchNavigation } from "@/lib/search-context";
+import { useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
 import { useAuthOverlay, useAuthStatus } from "@/lib/auth-context";
+import { useNewSpecialsData } from "@/lib/new-specials-context";
 import FirstInstallOnboarding from "@/components/FirstInstallOnboarding";
 
 function OverlayChunkFallback() {
@@ -80,7 +82,10 @@ function hasSeenOnboardingTour(userId: string): boolean {
  */
 export default function GlobalOverlays() {
   const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearchNavigation();
+  const { loadingProducts, error } = useSearchCatalogue();
+  const pathname = usePathname();
   const { user, profile, loading, profileLoading } = useAuthStatus();
+  const { detectiveCase } = useNewSpecialsData();
   const {
     isAuthSheetOpen,
     hasOpenedAuthSheet,
@@ -216,6 +221,8 @@ export default function GlobalOverlays() {
       )}
       {isFirstInstallStatusReady && isFirstInstallOnboardingOpen && (
         <FirstInstallOnboarding
+          quizCase={detectiveCase}
+          isQuizCaseLoading={pathname === "/" && loadingProducts && !error}
           onComplete={completeFirstInstallOnboarding}
           onStartTour={startFirstInstallTour}
         />
