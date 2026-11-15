@@ -55,17 +55,31 @@ export default function FirstInstallOnboarding({
         <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto">
           <div className="relative aspect-square w-full shrink-0 overflow-hidden">
             <Image
-              src={step === 1 ? "/first-install-welcome.webp" : "/first-install-inspect.webp"}
-              alt={step === 1
-                ? "The Dodgy Deal mascot thoughtfully comparing specials in a supermarket aisle"
-                : "The Dodgy Deal mascot inspecting a supermarket special with a magnifying glass"}
+              src="/first-install-welcome.webp"
+              alt={step === 1 ? "The Dodgy Deal mascot thoughtfully comparing specials in a supermarket aisle" : ""}
+              aria-hidden={step !== 1}
               fill
               sizes="100vw"
-              preload={step === 1}
-              className="object-cover"
+              preload
+              className={`object-cover transition-opacity duration-300 ease-out motion-reduce:transition-none ${step === 1 ? "opacity-100" : "opacity-0"}`}
+            />
+            <Image
+              src="/first-install-inspect.webp"
+              alt={step === 2 ? "The Dodgy Deal mascot inspecting a supermarket special with a magnifying glass" : ""}
+              aria-hidden={step !== 2}
+              fill
+              sizes="100vw"
+              preload
+              className={`object-cover transition-opacity duration-300 ease-out motion-reduce:transition-none ${step === 2 ? "opacity-100" : "opacity-0"}`}
             />
             <div className="first-install-exclamation-layer" aria-hidden="true">
-              {step === 1 && <span className="first-install-exclamation-mask" />}
+              {step === 1 && (
+                <div className="first-install-exclamation-mask">
+                  <span className="first-install-exclamation-mask--one" />
+                  <span className="first-install-exclamation-mask--two" />
+                  <span className="first-install-exclamation-mask--three" />
+                </div>
+              )}
               <span className="first-install-exclamation first-install-exclamation--one" />
               <span className="first-install-exclamation first-install-exclamation--two" />
               <span className="first-install-exclamation first-install-exclamation--three" />
@@ -110,25 +124,43 @@ export default function FirstInstallOnboarding({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-3 px-5 pt-3 pb-safe-sm">
-          {step === 1 ? (
-            <button type="button" onClick={() => setStep(2)} className="dd-btn dd-btn-primary min-h-12 w-full">
-              Next
-            </button>
-          ) : (
-            <>
-              <button type="button" onClick={onComplete} className="dd-btn dd-btn-primary min-h-12 w-full">
-                Get started now
-              </button>
-              <button
-                type="button"
-                onClick={onStartTour}
-                className="dd-btn dd-btn-outline min-h-12 w-full"
+        <div className="shrink-0 px-5 pt-3 pb-safe-sm">
+          <AnimatePresence mode="wait" initial={false}>
+            {step === 1 ? (
+              <motion.div
+                key="next-action"
+                className="flex flex-col gap-3"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.22, ease: "easeOut" }}
               >
-                How to use Dodgy Deal
-              </button>
-            </>
-          )}
+                <button type="button" onClick={() => setStep(2)} className="dd-btn dd-btn-primary min-h-12 w-full">
+                  Next
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="start-actions"
+                className="flex flex-col gap-3"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.22, ease: "easeOut" }}
+              >
+                <button type="button" onClick={onComplete} className="dd-btn dd-btn-primary min-h-12 w-full">
+                  Get started now
+                </button>
+                <button
+                  type="button"
+                  onClick={onStartTour}
+                  className="dd-btn dd-btn-outline min-h-12 w-full"
+                >
+                  How to use Dodgy Deal
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

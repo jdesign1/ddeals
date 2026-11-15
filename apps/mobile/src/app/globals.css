@@ -1116,18 +1116,44 @@ html[data-theme="dark"] .theme-loader-surface {
   pointer-events: none;
 }
 
-/* The source illustrations include static rays. This softly blended patch
-   hides them so the live CSS rays below are the only visible marks. */
+/* Cover the baked-in step-one rays at their original positions. */
 .first-install-exclamation-mask {
   position: absolute;
   z-index: 1;
-  left: 58%;
-  top: 16.5%;
-  width: 14%;
-  height: 14%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, #fbf7f4 0 74%, rgb(251 247 244 / 96%) 86%, rgb(251 247 244 / 0) 100%);
-  filter: blur(4px);
+  inset: 0;
+  pointer-events: none;
+}
+
+.first-install-exclamation-mask > span {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  background: #fbf7f4;
+  transform: translate(-50%, -50%) rotate(var(--spark-angle));
+}
+
+.first-install-exclamation-mask--one {
+  left: 61.25%;
+  top: 21.73%;
+  width: 1.65%;
+  height: 6.75%;
+  --spark-angle: 12.9deg;
+}
+
+.first-install-exclamation-mask--two {
+  left: 66.3%;
+  top: 24.25%;
+  width: 1.6%;
+  height: 6.57%;
+  --spark-angle: 37.5deg;
+}
+
+.first-install-exclamation-mask--three {
+  left: 69.13%;
+  top: 28.73%;
+  width: 6.28%;
+  height: 1.59%;
+  --spark-angle: -25.9deg;
 }
 
 .first-install-exclamation {
@@ -1137,54 +1163,44 @@ html[data-theme="dark"] .theme-loader-surface {
   border-radius: 999px;
   background: #17170f;
   opacity: 0;
-  transform: rotate(var(--spark-angle)) scale(0.65);
-  transform-origin: center;
-  animation: firstInstallExclamationFlicker 3.4s ease-in-out infinite;
-  animation-delay: var(--spark-delay, 0s);
+  transform: translate(-50%, -50%) rotate(var(--spark-angle));
+  animation: firstInstallExclamationFlicker 3.2s ease-in-out infinite;
 }
 
 .first-install-exclamation--one {
-  left: 60.7%;
-  top: 18.5%;
-  width: 1.7%;
-  height: 6.5%;
-  --spark-angle: -12deg;
-  --spark-delay: 0s;
+  left: 61.25%;
+  top: 21.73%;
+  width: 1.65%;
+  height: 6.75%;
+  --spark-angle: 12.9deg;
 }
 
 .first-install-exclamation--two {
-  left: 65.4%;
-  top: 21.2%;
-  width: 1.7%;
-  height: 5.8%;
-  --spark-angle: -35deg;
-  --spark-delay: 120ms;
+  left: 66.3%;
+  top: 24.25%;
+  width: 1.6%;
+  height: 6.57%;
+  --spark-angle: 37.5deg;
 }
 
 .first-install-exclamation--three {
-  left: 67.7%;
-  top: 26%;
-  width: 5.3%;
-  height: 1.7%;
-  --spark-angle: -30deg;
-  --spark-delay: 240ms;
+  left: 69.13%;
+  top: 28.73%;
+  width: 6.28%;
+  height: 1.59%;
+  --spark-angle: -25.9deg;
 }
 
 @keyframes firstInstallExclamationFlicker {
   0%,
-  56%,
-  62%,
-  72%,
+  6%,
+  30%,
   100% {
     opacity: 0;
-    transform: rotate(var(--spark-angle)) scale(0.65);
   }
-  58%,
-  60%,
-  64%,
-  69% {
+  12%,
+  24% {
     opacity: 1;
-    transform: rotate(var(--spark-angle)) scale(1.06);
   }
 }
 
@@ -1290,8 +1306,7 @@ html[data-theme="dark"] .theme-loader-surface {
 @media (prefers-reduced-motion: reduce) {
   .first-install-exclamation {
     animation: none;
-    opacity: 0.9;
-    transform: rotate(var(--spark-angle));
+    opacity: 1;
   }
 
   .animate-mascot-turn {
