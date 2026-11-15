@@ -1109,6 +1109,85 @@ html[data-theme="dark"] .theme-loader-surface {
   will-change: transform;
 }
 
+.first-install-exclamation-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The source illustrations include static rays. This softly blended patch
+   hides them so the live CSS rays below are the only visible marks. */
+.first-install-exclamation-mask {
+  position: absolute;
+  z-index: 1;
+  left: 58%;
+  top: 16.5%;
+  width: 14%;
+  height: 14%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #fbf7f4 0 74%, rgb(251 247 244 / 96%) 86%, rgb(251 247 244 / 0) 100%);
+  filter: blur(4px);
+}
+
+.first-install-exclamation {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  border-radius: 999px;
+  background: #17170f;
+  opacity: 0;
+  transform: rotate(var(--spark-angle)) scale(0.65);
+  transform-origin: center;
+  animation: firstInstallExclamationFlicker 3.4s ease-in-out infinite;
+  animation-delay: var(--spark-delay, 0s);
+}
+
+.first-install-exclamation--one {
+  left: 60.7%;
+  top: 18.5%;
+  width: 1.7%;
+  height: 6.5%;
+  --spark-angle: -12deg;
+  --spark-delay: 0s;
+}
+
+.first-install-exclamation--two {
+  left: 65.4%;
+  top: 21.2%;
+  width: 1.7%;
+  height: 5.8%;
+  --spark-angle: -35deg;
+  --spark-delay: 120ms;
+}
+
+.first-install-exclamation--three {
+  left: 67.7%;
+  top: 26%;
+  width: 5.3%;
+  height: 1.7%;
+  --spark-angle: -30deg;
+  --spark-delay: 240ms;
+}
+
+@keyframes firstInstallExclamationFlicker {
+  0%,
+  56%,
+  62%,
+  72%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--spark-angle)) scale(0.65);
+  }
+  58%,
+  60%,
+  64%,
+  69% {
+    opacity: 1;
+    transform: rotate(var(--spark-angle)) scale(1.06);
+  }
+}
+
 /* Inline mascot marks keep their gentle float separate from the eye blink,
    so the two animations do not overwrite each other's transforms. */
 .wink-mascot--search {
@@ -1209,6 +1288,12 @@ html[data-theme="dark"] .theme-loader-surface {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .first-install-exclamation {
+    animation: none;
+    opacity: 0.9;
+    transform: rotate(var(--spark-angle));
+  }
+
   .animate-mascot-turn {
     animation: none;
   }

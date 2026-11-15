@@ -51,9 +51,9 @@ export default function FirstInstallOnboarding({
       aria-labelledby="first-install-title"
       aria-describedby="first-install-description"
     >
-      <div className="flex h-full max-h-[100dvh] w-full max-w-[480px] flex-col px-5" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto py-3">
-          <div className="relative -mx-5 aspect-square w-[calc(100%+2.5rem)] max-w-[480px] shrink-0 overflow-hidden">
+      <div className="flex h-full max-h-[100dvh] w-full flex-col">
+        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto">
+          <div className="relative aspect-square w-full shrink-0 overflow-hidden">
             <Image
               src={step === 1 ? "/first-install-welcome.webp" : "/first-install-inspect.webp"}
               alt={step === 1
@@ -64,9 +64,15 @@ export default function FirstInstallOnboarding({
               preload={step === 1}
               className="object-cover"
             />
+            <div className="first-install-exclamation-layer" aria-hidden="true">
+              <span className="first-install-exclamation-mask" />
+              <span className="first-install-exclamation first-install-exclamation--one" />
+              <span className="first-install-exclamation first-install-exclamation--two" />
+              <span className="first-install-exclamation first-install-exclamation--three" />
+            </div>
           </div>
 
-          <div className="mt-3 w-full shrink-0 text-center" aria-live="polite">
+          <div className="mt-4 w-full shrink-0 px-5 text-center" aria-live="polite">
             <AnimatePresence mode="wait" initial={false}>
               {step === 1 ? (
                 <motion.div
@@ -96,7 +102,7 @@ export default function FirstInstallOnboarding({
                     Ready to investigate?
                   </h1>
                   <p id="first-install-description" className="mt-2 dd-type-secondary text-stone-700">
-                    Start exploring, or take a quick guided tour.
+                    Start exploring current deals in NZ, or take a quick tour on how to use the app.
                   </p>
                 </motion.div>
               )}
@@ -104,7 +110,7 @@ export default function FirstInstallOnboarding({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2 pt-3 pb-safe-sm">
+        <div className="flex shrink-0 flex-col gap-3 px-5 pt-3 pb-safe-sm">
           {step === 1 ? (
             <button type="button" onClick={() => setStep(2)} className="dd-btn dd-btn-primary min-h-12 w-full">
               Next
