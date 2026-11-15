@@ -1135,24 +1135,24 @@ html[data-theme="dark"] .theme-loader-surface {
 .first-install-exclamation-mask--one {
   left: 61.25%;
   top: 21.73%;
-  width: 1.65%;
-  height: 6.75%;
+  width: 2%;
+  height: 7.1%;
   --spark-angle: 12.9deg;
 }
 
 .first-install-exclamation-mask--two {
   left: 66.3%;
   top: 24.25%;
-  width: 1.6%;
-  height: 6.57%;
+  width: 1.95%;
+  height: 6.95%;
   --spark-angle: 37.5deg;
 }
 
 .first-install-exclamation-mask--three {
   left: 69.13%;
   top: 28.73%;
-  width: 6.28%;
-  height: 1.59%;
+  width: 6.6%;
+  height: 1.9%;
   --spark-angle: -25.9deg;
 }
 

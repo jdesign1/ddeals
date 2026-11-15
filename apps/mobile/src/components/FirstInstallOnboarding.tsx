@@ -115,7 +115,7 @@ export default function FirstInstallOnboarding({
                   <h1 id="first-install-title" tabIndex={-1} className="mt-1 font-display text-2xl leading-tight font-extrabold text-ink-900 outline-none">
                     Ready to investigate?
                   </h1>
-                  <p id="first-install-description" className="mt-2 dd-type-secondary text-stone-700">
+                  <p id="first-install-description" className="mt-2 dd-type-body text-stone-700">
                     Start exploring current deals in NZ, or take a quick tour on how to use the app.
                   </p>
                 </motion.div>
