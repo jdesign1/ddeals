@@ -182,6 +182,7 @@ export default function DealDetectiveQuiz({
   const correct = selectedSide === correctSide;
   const rankLabel = accessToken ? scoreResult?.detective_rank ?? currentRank : null;
   const selectedCandidate = selectedSide === "left" ? quizCase.left : selectedSide === "right" ? quizCase.right : null;
+  const isOnboardingHistory = onboardingMode && showPriceHistory && selectedCandidate !== null;
   const mascotAnimationKey = `${quizCase.caseNumber ?? "case"}-${questionKind}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`;
   const streakCaseKey = `${dealDetectivePairKeyForCase(quizCase)}::${questionKind}`;
 
@@ -344,34 +345,15 @@ export default function DealDetectiveQuiz({
 
       <AnimatePresence mode="wait" initial={false}>
         {showPriceHistory && selectedCandidate ? (
-          <motion.div
-            key="selected-product-context"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
-            className={onboardingMode ? "pt-3" : "pt-14"}
-          >
-            {onboardingMode && (
-              <div className="mx-5 px-3 pb-2">
-                <span className={`inline-flex rounded-full px-3 py-1 dd-type-secondary dd-type-secondary-strong ${selectedCandidate.kind === "dodgy" ? "bg-alert-100 text-alert-900" : "bg-fair-100 text-fair-900"}`}>
-                  {selectedCandidate.kind === "dodgy" ? "Dodgy Deal" : "Real Saver"}
-                </span>
-              </div>
-            )}
-            {onboardingMode ? (
-              <div className="mx-5 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-xs">
-                <CompactProductInfoCard
-                  productName={selectedCandidate.product.name}
-                  productBrand={selectedCandidate.product.brand}
-                  productImage={selectedCandidate.product.image}
-                  productUnit={selectedCandidate.product.unit}
-                  currentStore={selectedCandidate.deal.store}
-                  currentPrice={selectedCandidate.deal.price}
-                  embedded
-                />
-              </div>
-            ) : (
+          onboardingMode ? null : (
+            <motion.div
+              key="selected-product-context"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
+              className="pt-14"
+            >
               <CompactProductInfoCard
                 productName={selectedCandidate.product.name}
                 productBrand={selectedCandidate.product.brand}
@@ -380,8 +362,8 @@ export default function DealDetectiveQuiz({
                 currentStore={selectedCandidate.deal.store}
                 currentPrice={selectedCandidate.deal.price}
               />
-            )}
-          </motion.div>
+            </motion.div>
+          )
         ) : (
           <div
             key={mascotAnimationKey}
@@ -444,6 +426,25 @@ export default function DealDetectiveQuiz({
             <p id="new-specials-description" className="sr-only">Review the selected item&apos;s current price against its 90-day price history.</p>
           </>
         )}
+        <div className={isOnboardingHistory ? "my-auto flex flex-col gap-4" : "contents"}>
+        {isOnboardingHistory && selectedCandidate && (
+          <div className="mx-5 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-xs">
+            <div className="pb-2 pt-3">
+              <span className={`inline-flex rounded-full px-3 py-1 dd-type-secondary dd-type-secondary-strong ${selectedCandidate.kind === "dodgy" ? "bg-alert-100 text-alert-900" : "bg-fair-100 text-fair-900"}`}>
+                {selectedCandidate.kind === "dodgy" ? "Dodgy Deal" : "Real Saver"}
+              </span>
+            </div>
+            <CompactProductInfoCard
+              productName={selectedCandidate.product.name}
+              productBrand={selectedCandidate.product.brand}
+              productImage={selectedCandidate.product.image}
+              productUnit={selectedCandidate.product.unit}
+              currentStore={selectedCandidate.deal.store}
+              currentPrice={selectedCandidate.deal.price}
+              embedded
+            />
+          </div>
+        )}
         <AnimatePresence mode="wait" initial={false}>
           {answered && !showPriceHistory ? (
             <motion.div
@@ -488,7 +489,7 @@ export default function DealDetectiveQuiz({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.36, ease: "easeOut" }}
-              className="mt-5 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs"
+              className={`${onboardingMode ? "mt-0" : "mt-5"} rounded-2xl border border-stone-200 bg-white p-3 shadow-xs`}
               aria-label={`Price history evidence for ${selectedCandidate.product.name}`}
             >
               {onboardingMode ? (
@@ -543,6 +544,7 @@ export default function DealDetectiveQuiz({
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
 
         {showViewDealsButton ? (
           <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
@@ -552,7 +554,7 @@ export default function DealDetectiveQuiz({
             {!showPriceHistory && <p className="mt-2 text-center dd-type-meta dd-type-meta-strong text-stone-500">Case #{quizCase.caseNumber ?? 1}</p>}
           </div>
         ) : (
-          <div className="sticky bottom-0 z-30 -mx-5 mt-auto bg-[var(--color-paper)] px-5 pb-6 pt-3">
+          <div className={`sticky bottom-0 z-30 -mx-5 bg-[var(--color-paper)] px-5 pb-6 pt-3 ${isOnboardingHistory ? "" : "mt-auto"}`}>
             <div className="relative h-14">
               <AnimatePresence initial={false} mode="sync">
                 {onboardingMode ? (
