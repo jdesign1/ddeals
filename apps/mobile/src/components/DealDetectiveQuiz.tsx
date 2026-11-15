@@ -353,20 +353,34 @@ export default function DealDetectiveQuiz({
             className={onboardingMode ? "pt-3" : "pt-14"}
           >
             {onboardingMode && (
-              <div className="px-5 pb-2">
+              <div className="mx-5 px-3 pb-2">
                 <span className={`inline-flex rounded-full px-3 py-1 dd-type-secondary dd-type-secondary-strong ${selectedCandidate.kind === "dodgy" ? "bg-alert-100 text-alert-900" : "bg-fair-100 text-fair-900"}`}>
                   {selectedCandidate.kind === "dodgy" ? "Dodgy Deal" : "Real Saver"}
                 </span>
               </div>
             )}
-            <CompactProductInfoCard
-              productName={selectedCandidate.product.name}
-              productBrand={selectedCandidate.product.brand}
-              productImage={selectedCandidate.product.image}
-              productUnit={selectedCandidate.product.unit}
-              currentStore={selectedCandidate.deal.store}
-              currentPrice={selectedCandidate.deal.price}
-            />
+            {onboardingMode ? (
+              <div className="mx-5 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-xs">
+                <CompactProductInfoCard
+                  productName={selectedCandidate.product.name}
+                  productBrand={selectedCandidate.product.brand}
+                  productImage={selectedCandidate.product.image}
+                  productUnit={selectedCandidate.product.unit}
+                  currentStore={selectedCandidate.deal.store}
+                  currentPrice={selectedCandidate.deal.price}
+                  embedded
+                />
+              </div>
+            ) : (
+              <CompactProductInfoCard
+                productName={selectedCandidate.product.name}
+                productBrand={selectedCandidate.product.brand}
+                productImage={selectedCandidate.product.image}
+                productUnit={selectedCandidate.product.unit}
+                currentStore={selectedCandidate.deal.store}
+                currentPrice={selectedCandidate.deal.price}
+              />
+            )}
           </motion.div>
         ) : (
           <div
@@ -408,7 +422,7 @@ export default function DealDetectiveQuiz({
                 ? "Which special do you think is really cheaper?"
                 : questionKind === "real" ? "Which one is the Real Saver?" : "Which one is the Dodgy Deal?"}
             </h2>
-            <p id="new-specials-description" className={`mt-2 text-stone-600 ${onboardingMode ? "dd-type-body" : "dd-type-secondary leading-5"}`}>
+            <p id="new-specials-description" className={`mt-2 text-stone-600 ${onboardingMode ? "text-[1.0625rem] leading-6" : "dd-type-secondary leading-5"}`}>
               {onboardingMode
                 ? "Tap the one you think is a real saving."
                 : questionKind === "real"
@@ -550,7 +564,9 @@ export default function DealDetectiveQuiz({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
-                    className={`dd-btn absolute inset-0 w-full cursor-pointer ${showPriceHistory ? "dd-btn-primary" : "dd-btn-outline"}`}
+                    className={showPriceHistory
+                      ? "dd-btn dd-btn-primary absolute inset-0 w-full cursor-pointer"
+                      : "absolute bottom-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 text-sm font-semibold text-stone-500 underline underline-offset-4 transition-colors hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"}
                   >
                     {showPriceHistory ? "Continue" : "Skip"}
                   </motion.button>

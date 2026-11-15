@@ -11,6 +11,7 @@ interface CompactProductInfoCardProps {
   currentPrice?: number | null;
   currentPriceClassName?: string;
   className?: string;
+  embedded?: boolean;
 }
 
 /** Compact product context shared by shopper-tip and evidence sheets. */
@@ -23,11 +24,16 @@ function CompactProductInfoCard({
   currentPrice,
   currentPriceClassName = "text-stone-900",
   className = "",
+  embedded = false,
 }: CompactProductInfoCardProps) {
   const productMeta = [productBrand, productUnit].filter(Boolean).join(" · ");
 
   return (
-    <div role="group" aria-label="Item details" className={`flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-stone-100 bg-stone-50 px-5 py-3 ${className}`}>
+    <div
+      role="group"
+      aria-label="Item details"
+      className={`flex flex-shrink-0 flex-wrap items-center gap-3 ${embedded ? "border-0 bg-transparent px-3 py-3" : "border-b border-stone-100 bg-stone-50 px-5 py-3"} ${className}`}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white">
           <ProductImage src={productImage} alt="" width={48} height={48} className="h-full w-full object-contain" />

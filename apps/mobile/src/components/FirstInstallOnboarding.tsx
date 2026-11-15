@@ -158,8 +158,13 @@ export default function FirstInstallOnboarding({
                 <div className="dd-skeleton-shimmer h-56 min-w-0 flex-1 rounded-2xl" aria-hidden="true" />
                 <div className="dd-skeleton-shimmer h-56 min-w-0 flex-1 rounded-2xl" aria-hidden="true" />
               </div>
-              <div className="mt-auto pb-safe-sm pt-4">
-                <button type="button" onClick={skipCaseLoading} className="dd-btn dd-btn-outline min-h-12 w-full" aria-label="Skip the first case">
+              <div className="mt-auto flex justify-end pb-safe-sm pt-4">
+                <button
+                  type="button"
+                  onClick={skipCaseLoading}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 text-sm font-semibold text-stone-500 underline underline-offset-4 transition-colors hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
+                  aria-label="Skip the first case"
+                >
                   Skip
                 </button>
               </div>
@@ -263,7 +268,7 @@ export default function FirstInstallOnboarding({
                 ) : (
                   <motion.div
                     key="ready-actions"
-                    className="flex flex-col gap-3"
+                    className="flex flex-col gap-4"
                     initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
