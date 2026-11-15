@@ -48,6 +48,27 @@ const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
 const ONBOARDING_TOUR_SEEN_PREFIX = "dd-onboarding-tour-seen:";
 const ANONYMOUS_ONBOARDING_TOUR_ID = "anonymous";
 const FIRST_INSTALL_ONBOARDING_KEY = "dd-first-install-onboarding:v1";
+const LOGGED_OUT_MASCOT_IMAGE_URLS = [
+  "/auth-wave.webp",
+  "/auth-wave-dark.webp",
+  "/lists-login.webp",
+  "/lists-login-dark.webp",
+  "/all-checks-login.webp",
+  "/all-checks-login-dark.webp",
+  "/deal-stats-login.webp",
+  "/deal-stats-login-dark.webp",
+] as const;
+const warmedLoggedOutMascotImageUrls = new Set<string>();
+
+function warmLoggedOutMascotImages(): void {
+  for (const src of LOGGED_OUT_MASCOT_IMAGE_URLS) {
+    if (warmedLoggedOutMascotImageUrls.has(src)) continue;
+    warmedLoggedOutMascotImageUrls.add(src);
+    const image = new window.Image();
+    image.decoding = "async";
+    image.src = src;
+  }
+}
 
 function hasSeenOnboardingTour(userId: string): boolean {
   try {
@@ -84,7 +105,7 @@ export default function GlobalOverlays() {
   const { isScannerOpen, hasOpenedScanner, closeScanner, openSearch } = useSearchNavigation();
   const { loadingProducts, error } = useSearchCatalogue();
   const pathname = usePathname();
-  const { user, profile, loading, profileLoading } = useAuthStatus();
+  const { user, profile, loading, profileLoading, isAnonymousSession } = useAuthStatus();
   const { detectiveCase } = useNewSpecialsData();
   const {
     isAuthSheetOpen,
@@ -103,6 +124,13 @@ export default function GlobalOverlays() {
   const [isFirstInstallOnboardingOpen, setIsFirstInstallOnboardingOpen] = useState(false);
   const [isFirstInstallStatusReady, setIsFirstInstallStatusReady] = useState(false);
   const [isFirstInstallTourOpen, setIsFirstInstallTourOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    if (loading || (user && !isAnonymousSession)) return;
+    // These small local illustrations appear in signed-out empty states and
+    // the login sheet. Warm both theme variants before the user opens them.
+    warmLoggedOutMascotImages();
+  }, [isAnonymousSession, loading, user]);
 
   useLayoutEffect(() => {
     if (isPreviewTourOpen) {

@@ -468,6 +468,7 @@ export default function AuthSheet({
                     width={192}
                     height={222}
                     sizes="112px"
+                    preload
                     unoptimized
                     className="mascot-wave h-auto w-24"
                   />
