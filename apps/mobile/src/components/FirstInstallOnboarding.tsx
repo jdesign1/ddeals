@@ -65,7 +65,7 @@ export default function FirstInstallOnboarding({
               className="object-cover"
             />
             <div className="first-install-exclamation-layer" aria-hidden="true">
-              <span className="first-install-exclamation-mask" />
+              {step === 1 && <span className="first-install-exclamation-mask" />}
               <span className="first-install-exclamation first-install-exclamation--one" />
               <span className="first-install-exclamation first-install-exclamation--two" />
               <span className="first-install-exclamation first-install-exclamation--three" />
