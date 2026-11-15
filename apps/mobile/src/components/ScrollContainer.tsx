@@ -10,6 +10,7 @@ import { markNavigationCommit, markNavigationFirstFrame } from "@/lib/navigation
 import {
   isNearScrollBottom,
   CHECK_DEALS_SCROLL_TO_TOP_EVENT,
+  consumePendingCheckDealsScrollToTop,
   getCapturedSettingsScrollPosition,
   publishCheckDealsHeaderVisibility,
 } from "@/lib/scroll-events";
@@ -178,6 +179,31 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
       return () => window.cancelAnimationFrame(firstFrame);
     }
 
+    if (pathname === "/" && consumePendingCheckDealsScrollToTop()) {
+      const resetToTop = () => {
+        const element = scrollRef.current;
+        if (!element) return;
+        element.scrollTop = 0;
+        lastScrollTopRef.current = 0;
+        checkDealsScrollTopRef.current = 0;
+        headerScrollAnchorRef.current = 0;
+        headerHiddenRef.current = false;
+        setIsHeaderHidden(false);
+        publishCheckDealsHeaderVisibility(false);
+      };
+
+      resetToTop();
+      let secondFrame: number | null = null;
+      const firstFrame = window.requestAnimationFrame(() => {
+        resetToTop();
+        secondFrame = window.requestAnimationFrame(resetToTop);
+      });
+      return () => {
+        window.cancelAnimationFrame(firstFrame);
+        if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+      };
+    }
+
     if (previousPathname === "/" && pathname !== "/") {
       checkDealsScrollTopRef.current = lastScrollTopRef.current;
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -289,6 +315,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     if (pathname !== "/") return;
 
     const resetCheckDealsScrollPosition = () => {
+      consumePendingCheckDealsScrollToTop();
       const element = scrollRef.current;
       if (!element) return;
       element.scrollTop = 0;
@@ -301,6 +328,7 @@ export default function ScrollContainer({ children }: { children: ReactNode }) {
     };
 
     window.addEventListener(CHECK_DEALS_SCROLL_TO_TOP_EVENT, resetCheckDealsScrollPosition);
+    if (consumePendingCheckDealsScrollToTop()) resetCheckDealsScrollPosition();
     return () => window.removeEventListener(CHECK_DEALS_SCROLL_TO_TOP_EVENT, resetCheckDealsScrollPosition);
   }, [pathname]);
 

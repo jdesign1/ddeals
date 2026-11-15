@@ -4,6 +4,7 @@ export const CHECK_DEALS_SCROLL_TO_TOP_EVENT = "dodgey-deals:check-deals-scroll-
 export const STICKY_BOTTOM_BOUNCE_GUARD_PX = 24;
 
 let settingsScrollTop = 0;
+let pendingCheckDealsScrollToTop = false;
 
 /** Capture Settings' custom scroll surface before App Router can reset it. */
 export function captureSettingsScrollPosition(): void {
@@ -52,7 +53,15 @@ export function publishCheckDealsScrollPosition(scrollTop: number): void {
 
 export function publishCheckDealsScrollToTop(): void {
   if (typeof window === "undefined") return;
+  pendingCheckDealsScrollToTop = true;
   window.dispatchEvent(new Event(CHECK_DEALS_SCROLL_TO_TOP_EVENT));
+}
+
+/** Consume a top-reset request if it arrived before Check Deals mounted. */
+export function consumePendingCheckDealsScrollToTop(): boolean {
+  if (!pendingCheckDealsScrollToTop) return false;
+  pendingCheckDealsScrollToTop = false;
+  return true;
 }
 
 export function subscribeToCheckDealsScrollPosition(onChange: (scrollTop: number) => void): () => void {

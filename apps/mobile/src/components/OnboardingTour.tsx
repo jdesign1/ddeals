@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { publishCheckDealsScrollToTop } from "@/lib/scroll-events";
 
 export interface OnboardingTourProps {
   onClose: () => void;
@@ -258,6 +259,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
 
   const closeTour = useCallback(() => {
     if (isClosing) return;
+    publishCheckDealsScrollToTop();
     setIsClosing(true);
     if (pathname !== "/") router.replace("/");
     closeTimerRef.current = window.setTimeout(onClose, prefersReducedMotion ? 80 : 360);
@@ -265,6 +267,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
 
   const finishTour = useCallback(() => {
     if (isClosing) return;
+    publishCheckDealsScrollToTop();
     setIsClosing(true);
     if (pathname !== "/") router.replace("/");
     closeTimerRef.current = window.setTimeout(onClose, prefersReducedMotion ? 80 : 360);
