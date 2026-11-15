@@ -428,8 +428,8 @@ export default function DealDetectiveQuiz({
         )}
         <div className={isOnboardingHistory ? "my-auto flex flex-col gap-4" : "contents"}>
         {isOnboardingHistory && selectedCandidate && (
-          <div className="mx-5 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-xs">
-            <div className="pb-2 pt-3">
+          <div className="overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-xs">
+            <div className="px-3 pb-2 pt-3">
               <span className={`inline-flex rounded-full px-3 py-1 dd-type-secondary dd-type-secondary-strong ${selectedCandidate.kind === "dodgy" ? "bg-alert-100 text-alert-900" : "bg-fair-100 text-fair-900"}`}>
                 {selectedCandidate.kind === "dodgy" ? "Dodgy Deal" : "Real Saver"}
               </span>
