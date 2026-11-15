@@ -64,9 +64,9 @@ const TOUR_STEPS: TourStep[] = [
     body: "Use the 90-day price history to see how the price has moved and judge whether today’s price is fair.",
     position: "top",
     autoScroll: true,
-    // Keep the chart lower in the viewport so the tour card above it does not
-    // cover the graph the user is being asked to inspect.
-    scrollBlock: "end",
+    // Centre the chart in the viewport so it stays visible beneath the tour
+    // card without landing too low on the screen.
+    scrollBlock: "center",
   },
   {
     href: DEAL_ROUTE,
@@ -412,7 +412,7 @@ export default function OnboardingTour({ onClose, initialStepIndex = 0 }: Onboar
             </div>
           )}
           <p className="mb-3 mt-3 dd-type-body text-left text-stone-600">{step.body}</p>
-          <div className="flex items-center justify-between gap-3">
+          <div className={`flex items-center gap-3 ${isLastStep ? "justify-end" : "justify-between"}`}>
             {!isLastStep && (
               <button
                 type="button"
