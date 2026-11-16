@@ -454,8 +454,13 @@ export function getDidYouKnowCardKey(card: DidYouKnowCard): string {
   return JSON.stringify([card.id, card.category]);
 }
 
+const didYouKnowCardFingerprintCache = new WeakMap<DidYouKnowCard, string>();
+
 export function getDidYouKnowCardFingerprint(card: DidYouKnowCard): string {
-  return JSON.stringify([
+  const cachedFingerprint = didYouKnowCardFingerprintCache.get(card);
+  if (cachedFingerprint) return cachedFingerprint;
+
+  const fingerprint = JSON.stringify([
     card.id,
     card.kind,
     card.category,
@@ -465,6 +470,8 @@ export function getDidYouKnowCardFingerprint(card: DidYouKnowCard): string {
     card.supportingText,
     card.search.dealKeys ? [...card.search.dealKeys].sort() : null,
   ]);
+  didYouKnowCardFingerprintCache.set(card, fingerprint);
+  return fingerprint;
 }
 
 export function getDidYouKnowFingerprint(cards: readonly DidYouKnowCard[]): string {
