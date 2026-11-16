@@ -14,6 +14,7 @@ import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-co
 import { useSearchCatalogue } from "@/lib/search-context";
 import { useSubscriptionStatus } from "@/lib/subscription-context";
 import { useWatchlistData } from "@/lib/watchlist-context";
+import { useDealNavigationFeedback } from "@/lib/deal-navigation-feedback-context";
 
 const SETTINGS_ROUTE_FALLBACK_MS = 1600;
 
@@ -35,6 +36,7 @@ export default function AppDrawer() {
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const { products, catalogueLiveLoaded } = useSearchCatalogue();
   const { savedProductIds, savedItemsReady } = useWatchlistData();
+  const { startNavigationFeedback } = useDealNavigationFeedback();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
   const settingsNavigationStartedRef = useRef(false);
@@ -100,6 +102,12 @@ export default function AppDrawer() {
         router.push("/settings");
       });
     });
+  };
+
+  const navigateToHowItWorks = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    startNavigationFeedback();
+    closeDrawer();
   };
 
   useEffect(() => {
@@ -218,7 +226,7 @@ export default function AppDrawer() {
         )}
 
         <nav aria-label="Menu links" className="border-t border-stone-100 px-3 py-3">
-          <Link href="/how-it-works" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
+          <Link href="/how-it-works" onClick={navigateToHowItWorks} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-stone-700 transition-colors hover:bg-stone-50">
             <span className="material-symbols-outlined text-[24px] leading-none text-stone-900" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
               help_center
             </span>

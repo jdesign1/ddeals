@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
 import { Plus, Search } from "lucide-react";
 import { usePageHeader } from "@/lib/header-context";
 
@@ -58,99 +59,88 @@ import { usePageHeader } from "@/lib/header-context";
  */
 export default function HowItWorksPage() {
   const router = useRouter();
-  const [pageReady, setPageReady] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
   usePageHeader("How Dodgy Deal works", () => router.back());
-
-  // Let the browser paint the route once before revealing it, so the content
-  // appears smoothly instead of flashing in underneath the header.
-  useEffect(() => {
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setPageReady(true));
-    });
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-    };
-  }, []);
 
   return (
     <>
-      <main
-        aria-busy={!pageReady}
-        className={`page-paper-surface min-h-full flex flex-col gap-4 px-5 py-6 pb-10 transition-opacity duration-300 ease-out motion-reduce:transition-none ${
-          pageReady ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <h1 className="sr-only">How Dodgy Deal works</h1>
-        <div className="-mx-5 -mt-6 flex justify-center">
-          <Image
-            src="/how-it-works-dodgy-deal.webp"
-            alt="Dodgy Deal mascot spotting a dodgy supermarket deal on his phone beside a shopping basket"
-            width={840}
-            height={840}
-            sizes="100vw"
-            preload
-            unoptimized
-            className="how-it-works-mascot h-auto w-full max-w-none"
-          />
-        </div>
-
-        <InfoSection id="how-it-works-intro-title" title="Empowering shoppers">
-          <p className="dd-type-body text-stone-600">
-            Supermarket specials aren&rsquo;t always what they seem. We track real price history across NZ supermarkets
-            to help you spot genuine bargains and avoid fake sales.
-          </p>
-        </InfoSection>
-
-        <InfoSection id="how-it-works-ratings-title" title="Our deal rating system">
-          <ul className="divide-y divide-stone-100">
-            <RatingCard
-              tag="Dodgy Deal"
-              tagClassName="dd-badge-alert"
-              description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
+      <main className="page-paper-surface min-h-full">
+        <motion.div
+          className="flex flex-col gap-4 px-5 py-6 pb-10"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.24, ease: "easeOut" }}
+        >
+          <h1 className="sr-only">How Dodgy Deal works</h1>
+          <div className="-mx-5 -mt-6 flex justify-center">
+            <Image
+              src="/how-it-works-dodgy-deal.webp"
+              alt="Dodgy Deal mascot spotting a dodgy supermarket deal on his phone beside a shopping basket"
+              width={840}
+              height={840}
+              sizes="100vw"
+              preload
+              unoptimized
+              className="how-it-works-mascot h-auto w-full max-w-none"
             />
-            <RatingCard
-              tag="Fair Price"
-              tagClassName="dd-badge-dodgy"
-              description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
-            />
-            <RatingCard
-              tag="Real Saver"
-              tagClassName="dd-badge-fair"
-              description="A deep, authentic discount well below the recent average price. A genuinely outstanding deal."
-            />
-          </ul>
-        </InfoSection>
+          </div>
 
-        <InfoSection id="how-it-works-steps-title" title="How to use Dodgy Deal">
-          <ol className="divide-y divide-stone-100">
-            <Step
-              title="Search grocery products"
-              icon={<Search className="h-5 w-5" strokeWidth={2.25} />}
-            >
-              Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
-              across different NZ supermarkets.
-            </Step>
-            <Step
-              title="Add items to your list"
-              icon={<Plus className="h-5 w-5" strokeWidth={2.5} />}
-            >
-              Save products you buy regularly to your own list, so you can check back on them any time.
-            </Step>
-            <Step
-              title="Check any deal"
-              icon={<Image src="/logo.svg" alt="" width={20} height={20} className="h-5 w-5 object-contain" />}
-            >
-              Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Price, or Real Saver &mdash; based on its
-              actual recent price history.
-            </Step>
-          </ol>
-        </InfoSection>
+          <InfoSection id="how-it-works-intro-title" title="Empowering shoppers">
+            <p className="dd-type-body text-stone-600">
+              Supermarket specials aren&rsquo;t always what they seem. We track real price history across NZ supermarkets
+              to help you spot genuine bargains and avoid fake sales.
+            </p>
+          </InfoSection>
 
-        <Link href="/" className="dd-btn dd-btn-primary w-full cursor-pointer text-center font-display">
-          Search for deals
-        </Link>
+          <InfoSection id="how-it-works-ratings-title" title="Our deal rating system">
+            <ul className="divide-y divide-stone-100">
+              <RatingCard
+                tag="Dodgy Deal"
+                tagClassName="dd-badge-alert"
+                description={'An item marked as a "special" that has no real discount, is priced higher than its recent history, or was quietly marked up right before the sale started.'}
+              />
+              <RatingCard
+                tag="Fair Price"
+                tagClassName="dd-badge-dodgy"
+                description="A genuine but minor price drop, matching typical promotional frequency. Safe to buy, but not a historic low."
+              />
+              <RatingCard
+                tag="Real Saver"
+                tagClassName="dd-badge-fair"
+                description="A deep, authentic discount well below the recent average price. A genuinely outstanding deal."
+              />
+            </ul>
+          </InfoSection>
+
+          <InfoSection id="how-it-works-steps-title" title="How to use Dodgy Deal">
+            <ol className="divide-y divide-stone-100">
+              <Step
+                title="Search grocery products"
+                icon={<Search className="h-5 w-5" strokeWidth={2.25} />}
+              >
+                Type in a brand or item (like &ldquo;coffee&rdquo; or &ldquo;butter&rdquo;) to see current specials
+                across different NZ supermarkets.
+              </Step>
+              <Step
+                title="Add items to your list"
+                icon={<Plus className="h-5 w-5" strokeWidth={2.5} />}
+              >
+                Save products you buy regularly to your own list, so you can check back on them any time.
+              </Step>
+              <Step
+                title="Check any deal"
+                icon={<Image src="/logo.svg" alt="" width={20} height={20} className="h-5 w-5 object-contain" />}
+              >
+                Tap a product to see its real verdict &mdash; Dodgy Deal, Fair Price, or Real Saver &mdash; based on its
+                actual recent price history.
+              </Step>
+            </ol>
+          </InfoSection>
+
+          <Link href="/" className="dd-btn dd-btn-primary w-full cursor-pointer text-center font-display">
+            Search for deals
+          </Link>
+        </motion.div>
       </main>
     </>
   );
