@@ -127,7 +127,7 @@ export default function SubscribePage() {
               ? <span className="dd-type-body">Your subscription keeps your watchlist unlimited and your price alerts active.</span>
               : <>
                 <span className="block dd-type-body">More savings. Less guesswork.</span>
-                <span className="mt-1 block dd-type-body">Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights.</span>
+                <span className="block dd-type-body">Unlock the full Dodgy Deal picture across your watchlist, deal history and savings insights.</span>
               </>}
           </p>
         </div>
@@ -281,7 +281,7 @@ export default function SubscribePage() {
                               <span>
                                 <span className="block dd-type-control text-stone-800">{isAnnual ? "Annual" : "Monthly"}</span>
                                 <span className="mt-2 block text-xl leading-7 font-extrabold tracking-[-0.03em] text-ink-950">{displayPrice}</span>
-                                <span className="mt-1.5 block max-w-[9rem] dd-type-meta text-stone-600">
+                                <span className="mt-3 block max-w-[9rem] dd-type-meta text-stone-600">
                                   {isAnnual
                                     ? "Renews yearly, plus one month free"
                                     : "Renews monthly, first month free"}
