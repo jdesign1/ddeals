@@ -1370,8 +1370,8 @@ export default function HomePage() {
         </>
       )}
       {!isSearchActive && !authLoading && (!user || isAnonymousSession) && (
-        <div className="px-4 pb-6 pt-2">
-          <LoggedOutAccountCard onClick={() => openAuthSheet()} showNotificationDot={false} bordered />
+        <div className="px-4 pb-8 pt-2">
+          <LoggedOutAccountCard onClick={() => openAuthSheet()} showNotificationDot={false} bordered showChevron />
         </div>
       )}
       </main>
