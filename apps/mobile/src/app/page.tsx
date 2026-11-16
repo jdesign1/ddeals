@@ -1330,8 +1330,8 @@ export default function HomePage() {
               <BrandRail brands={topRealSaverBrands} onSelectBrand={handleBrandSelect} />
               <RealSaverCategoryRail
                 categories={categoryDiscoveryItems}
-                title={preferredCategories.length > 0 ? "Explore other categories" : "Real Savers by category"}
-                description="Browse categories with the most genuine specials"
+                title="Top Categories"
+                description="Categories with the most genuine specials"
                 onOpenCategory={handleRealSaverCategoryOpen}
               />
               <PersonalDealRail
