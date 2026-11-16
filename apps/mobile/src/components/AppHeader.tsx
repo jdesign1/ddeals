@@ -199,7 +199,7 @@ export default function AppHeader({
                   <Menu className="h-5 w-5" aria-hidden="true" />
                 )}
                 {isLoggedOut && (
-                  <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white" aria-hidden="true" />
+                  <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-alert-600" aria-hidden="true" />
                 )}
               </button>
               <label data-onboarding="search-bar" className="dd-search-control flex h-11 min-w-0 flex-1 items-center rounded-full border border-stone-300 bg-white px-4 text-left transition-colors focus-within:border-stone-900">

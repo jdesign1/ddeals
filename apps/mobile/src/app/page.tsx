@@ -19,6 +19,7 @@ import CheckDealsVerdictSummary from "@/components/CheckDealsVerdictSummary";
 import CheckDealsBeltOrderSheet from "@/components/CheckDealsBeltOrderSheet";
 import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
+import RealSaverCategoryRail, { type RealSaverCategoryCount } from "@/components/RealSaverCategoryRail";
 import BrandRail from "@/components/BrandRail";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
@@ -897,13 +898,19 @@ export default function HomePage() {
   const allTopSavingsDeals = snapshotDealGroups.savings;
   const forYouCategorySummary = useMemo(() => {
     const counts = new Map(preferredCategories.map((category) => [category, 0]));
+    const allRealSaverCounts = new Map<string, number>();
     for (const { product } of snapshotDealGroups.realSavers) {
       const category = groupCategory(product.category, product.name);
-      if (!counts.has(category)) continue;
-      counts.set(category, (counts.get(category) ?? 0) + 1);
+      allRealSaverCounts.set(category, (allRealSaverCounts.get(category) ?? 0) + 1);
+      if (counts.has(category)) counts.set(category, (counts.get(category) ?? 0) + 1);
     }
-    return { counts, unreadDealKeys: snapshotDealGroups.unreadRealSaverDealKeysByCategory };
+    return { counts, allRealSaverCounts, unreadDealKeys: snapshotDealGroups.unreadRealSaverDealKeysByCategory };
   }, [preferredCategories, snapshotDealGroups.realSavers, snapshotDealGroups.unreadRealSaverDealKeysByCategory]);
+  const realSaverCategories = useMemo<RealSaverCategoryCount[]>(() =>
+    [...forYouCategorySummary.allRealSaverCounts.entries()]
+      .map(([category, count]) => ({ category, count }))
+      .sort((left, right) => right.count - left.count || left.category.localeCompare(right.category)),
+  [forYouCategorySummary.allRealSaverCounts]);
   const unreadForYouCategories = useMemo(
     () => new Set(forYouCategorySummary.unreadDealKeys.keys()),
     [forYouCategorySummary.unreadDealKeys],
@@ -997,6 +1004,9 @@ export default function HomePage() {
     if (unreadDealKeys?.length) markReviewed(unreadDealKeys, "real");
     openSearchForFilter("real", { focus: false, category });
   }, [forYouCategorySummary.unreadDealKeys, markReviewed, openSearchForFilter, preferredCategories]);
+  const handleRealSaverCategoryOpen = useCallback((category: string) => {
+    openSearchForFilter("real", { focus: false, category });
+  }, [openSearchForFilter]);
 
   const handleOpenCategoryInterestsSheet = useCallback(() => {
     setIsCategoryInterestsSheetOpen(true);
@@ -1311,6 +1321,7 @@ export default function HomePage() {
                 );
               })}
               <BrandRail brands={topRealSaverBrands} onSelectBrand={handleBrandSelect} />
+              <RealSaverCategoryRail categories={realSaverCategories} onOpenCategory={handleRealSaverCategoryOpen} />
               <PersonalDealRail
                 id="previously-checked-rail"
                 title="Deals you might have missed"

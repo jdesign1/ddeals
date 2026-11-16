@@ -1400,15 +1400,14 @@ export default function FullScreenSearch() {
                       <h2 className="dd-type-section truncate text-fair-900">{activeBrandSummary.name}</h2>
                       <p className="dd-type-meta mt-0.5 text-stone-600">All current specials from this brand</p>
                     </div>
-                    <span className="shrink-0 dd-type-meta font-bold text-fair-800">
-                      {activeBrandSummary.currentSpecialCount} item{activeBrandSummary.currentSpecialCount === 1 ? "" : "s"}
-                    </span>
                   </div>
                 )}
 
-                <div className="mt-4">
-                  <DealFilterSummary filter={dealFilter} />
-                </div>
+                {!(activeBrandSummary && dealFilter === "all") && (
+                  <div className="mt-4">
+                    <DealFilterSummary filter={dealFilter} />
+                  </div>
+                )}
 
                 {sortedPopularSpecials.length > 0 ? (
                   <div className="mt-4 space-y-3">
