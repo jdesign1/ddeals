@@ -5,15 +5,17 @@ import WinkMascot from "@/components/WinkMascot";
 export default function LoggedOutAccountCard({
   onClick,
   showNotificationDot,
+  bordered = false,
 }: {
   onClick: () => void;
   showNotificationDot: boolean;
+  bordered?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="relative flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200"
+      className={`relative flex min-h-[76px] w-full items-center gap-3 rounded-2xl bg-stone-50 px-4 py-2.5 text-left transition-colors hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200 ${bordered ? "border border-stone-200" : ""}`}
     >
       <WinkMascot className="wink-mascot--account-prompt mascot-wave" />
       <span>

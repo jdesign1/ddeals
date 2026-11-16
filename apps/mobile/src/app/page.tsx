@@ -1347,7 +1347,7 @@ export default function HomePage() {
                 dodgyDeals={dealVerdictSummary.dodgyDeals}
                 onOpenFilter={handleDealVerdictSelect}
               />
-              <div className="px-5 pb-24 pt-1">
+              <div className="px-5 py-2">
                 <button
                   type="button"
                   onClick={() => openSearchForFilter("all", { focus: false })}
@@ -1370,8 +1370,8 @@ export default function HomePage() {
         </>
       )}
       {!isSearchActive && !authLoading && (!user || isAnonymousSession) && (
-        <div className="px-4 pb-8 pt-2">
-          <LoggedOutAccountCard onClick={() => openAuthSheet()} showNotificationDot />
+        <div className="px-4 py-2">
+          <LoggedOutAccountCard onClick={() => openAuthSheet()} showNotificationDot={false} bordered />
         </div>
       )}
       </main>
