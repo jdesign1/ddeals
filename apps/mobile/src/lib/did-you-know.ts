@@ -13,13 +13,16 @@ export const DID_YOU_KNOW_MIN_REAL_PRODUCTS = 10;
 export const DID_YOU_KNOW_MIN_HISTORY_PRODUCTS = 10;
 export const DID_YOU_KNOW_MIN_FRESH_DEALS = 8;
 export const DID_YOU_KNOW_MIN_DODGY_PRODUCTS = 2;
+export const DID_YOU_KNOW_MIN_NINETY_DAY_LOW_PRODUCTS = 5;
 export const DID_YOU_KNOW_MIN_HISTORY_SAMPLES = 6;
 export const DID_YOU_KNOW_MIN_HISTORY_DAYS = 45;
 export const DID_YOU_KNOW_MIN_PRICE_CHANGES = 2;
 export const DID_YOU_KNOW_FRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const NINETY_DAY_LOW_EPSILON = 0.01;
 
 export type DidYouKnowCardKind =
   | "real-saver-leader"
+  | "ninety-day-low"
   | "historical-value"
   | "fresh-deal-wave"
   | "price-movement"
@@ -61,6 +64,8 @@ interface CategoryBucket {
   historyEntries: HistoryEntry[];
   movementProducts: Set<string>;
   trackedHistoryProducts: Set<string>;
+  ninetyDayLowProducts: Set<string>;
+  ninetyDayLowDealKeys: Set<string>;
 }
 
 export interface DidYouKnowCardsWithVerdictSummary {
@@ -136,6 +141,7 @@ function createBuckets(
     let hasRealDeal = false;
     let hasDodgyDeal = false;
     let hasHistory = false;
+    let hasNinetyDayLow = false;
     let bestHistoricalValue: number | null = null;
     let bestPriceChangeCount: number | null = null;
     for (const deal of product.currentDeals) {
@@ -154,6 +160,8 @@ function createBuckets(
           historyEntries: [],
           movementProducts: new Set<string>(),
           trackedHistoryProducts: new Set<string>(),
+          ninetyDayLowProducts: new Set<string>(),
+          ninetyDayLowDealKeys: new Set<string>(),
         } satisfies CategoryBucket;
         buckets.set(category, bucket);
       }
@@ -165,6 +173,17 @@ function createBuckets(
       hasHistory = true;
 
       if (deal.dealType === "Real Deal") {
+        const low = deal.ninetyDayLow;
+        if (
+          (deal.ninetyDayDaysTracked ?? 0) >= 90
+          && Number.isFinite(low)
+          && (low ?? 0) > 0
+          && deal.price <= (low ?? 0) + NINETY_DAY_LOW_EPSILON
+        ) {
+          bucket.ninetyDayLowDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
+          hasNinetyDayLow = true;
+        }
+
         const discount = averageDiscount(deal);
         if (discount !== null && (bestHistoricalValue === null || discount > bestHistoricalValue)) {
           bestHistoricalValue = discount;
@@ -182,6 +201,7 @@ function createBuckets(
     if (hasRealDeal) bucket.realProducts.add(product.id);
     if (hasDodgyDeal) bucket.dodgyProducts.add(product.id);
     if (hasHistory) bucket.trackedHistoryProducts.add(product.id);
+    if (hasNinetyDayLow) bucket.ninetyDayLowProducts.add(product.id);
 
     if (bestHistoricalValue !== null) {
       bucket.historyEntries.push({
@@ -257,6 +277,32 @@ function historicalValueCards(buckets: readonly CategoryBucket[]): DidYouKnowCar
       metricLabel: "below usual price",
       supportingText: `Specials in ${bucket.category} are below their usual price.`,
       search: { filter: "real" as const, category: bucket.category, sortBy: "biggest-saver" as const },
+    }));
+}
+
+function ninetyDayLowCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
+  return buckets
+    .filter((bucket) => bucket.ninetyDayLowProducts.size >= DID_YOU_KNOW_MIN_NINETY_DAY_LOW_PRODUCTS)
+    .sort((left, right) => (
+      right.ninetyDayLowProducts.size - left.ninetyDayLowProducts.size
+      || left.category.localeCompare(right.category)
+    ))
+    .map((bucket) => ({
+      id: "ninety-day-low",
+      kind: "ninety-day-low" as const,
+      category: bucket.category,
+      accent: "fair" as const,
+      metric: bucket.ninetyDayLowProducts.size,
+      metricFormat: "count" as const,
+      metricLabel: "Real Savers",
+      supportingText: `${bucket.category} has Real Savers at their lowest price in 90 days.`,
+      search: {
+        filter: "real" as const,
+        category: bucket.category,
+        sortBy: "biggest-saver" as const,
+        dealKeys: [...bucket.ninetyDayLowDealKeys],
+        preserveSelectedStores: true,
+      },
     }));
 }
 
@@ -350,6 +396,7 @@ function buildCardsFromBuckets(
     // facts when both would otherwise choose the same category. A red alert
     // should not disappear merely because that category is also fresh.
     () => dodgyAlertCards(buckets),
+    () => ninetyDayLowCards(buckets),
     () => historicalValueCards(buckets),
     () => freshDealCards(buckets),
     () => priceMovementCards(buckets),
@@ -416,6 +463,7 @@ export function getDidYouKnowCardFingerprint(card: DidYouKnowCard): string {
     card.metric,
     card.metricLabel,
     card.supportingText,
+    card.search.dealKeys ? [...card.search.dealKeys].sort() : null,
   ]);
 }
 
