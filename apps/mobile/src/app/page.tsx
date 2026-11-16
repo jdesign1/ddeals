@@ -911,6 +911,11 @@ export default function HomePage() {
       .map(([category, count]) => ({ category, count }))
       .sort((left, right) => right.count - left.count || left.category.localeCompare(right.category)),
   [forYouCategorySummary.allRealSaverCounts]);
+  const savedCategorySet = useMemo(() => new Set(preferredCategories), [preferredCategories]);
+  const categoryDiscoveryItems = useMemo(
+    () => realSaverCategories.filter(({ category }) => !savedCategorySet.has(category)),
+    [realSaverCategories, savedCategorySet],
+  );
   const unreadForYouCategories = useMemo(
     () => new Set(forYouCategorySummary.unreadDealKeys.keys()),
     [forYouCategorySummary.unreadDealKeys],
@@ -1321,7 +1326,14 @@ export default function HomePage() {
                 );
               })}
               <BrandRail brands={topRealSaverBrands} onSelectBrand={handleBrandSelect} />
-              <RealSaverCategoryRail categories={realSaverCategories} onOpenCategory={handleRealSaverCategoryOpen} />
+              <RealSaverCategoryRail
+                categories={categoryDiscoveryItems}
+                title={preferredCategories.length > 0 ? "Explore other categories" : "Real Savers by category"}
+                description={preferredCategories.length > 0
+                  ? "Find Real Saver deals beyond your saved categories"
+                  : "Browse categories with the most genuine savings"}
+                onOpenCategory={handleRealSaverCategoryOpen}
+              />
               <PersonalDealRail
                 id="previously-checked-rail"
                 title="Deals you might have missed"

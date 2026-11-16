@@ -12,9 +12,13 @@ export type RealSaverCategoryCount = {
 
 function RealSaverCategoryRail({
   categories,
+  title,
+  description,
   onOpenCategory,
 }: {
   categories: readonly RealSaverCategoryCount[];
+  title: string;
+  description: string;
   onOpenCategory: (category: string) => void;
 }) {
   if (categories.length === 0) return null;
@@ -22,8 +26,8 @@ function RealSaverCategoryRail({
   return (
     <section className="flex flex-col gap-3 bg-fair-50 px-5 py-5" aria-labelledby="real-savers-by-category-title">
       <div>
-        <h2 id="real-savers-by-category-title" className="dd-type-section text-fair-800">Real Savers by category</h2>
-        <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Browse categories with the most genuine savings</p>
+        <h2 id="real-savers-by-category-title" className="dd-type-section text-fair-800">{title}</h2>
+        <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">{description}</p>
       </div>
 
       <div className="hide-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1" aria-label="Real Saver deals by category">
