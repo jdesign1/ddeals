@@ -21,6 +21,7 @@ import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import RealSaverCategoryRail, { type RealSaverCategoryCount } from "@/components/RealSaverCategoryRail";
 import BrandRail from "@/components/BrandRail";
+import LoggedOutAccountCard from "@/components/LoggedOutAccountCard";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
@@ -636,7 +637,8 @@ export default function HomePage() {
   } = useSearchCatalogue();
   const { isActive: isSearchActive, openSearchForFilter } = useSearchNavigation();
   const { selectedStores, toggleStore, dealFilter, setDealFilter } = useSearchBrowse();
-  const { session, user, profile, isAnonymousSession } = useAuthStatus();
+  const { session, user, profile, isAnonymousSession, loading: authLoading } = useAuthStatus();
+  const { openAuthSheet } = useAuthActions();
   const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
   const { digest } = useNewSpecialsData();
   const { markReviewed } = useNewSpecialsActions();
@@ -1366,6 +1368,11 @@ export default function HomePage() {
             />
           )}
         </>
+      )}
+      {!isSearchActive && !authLoading && (!user || isAnonymousSession) && (
+        <div className="px-4 pb-8 pt-2">
+          <LoggedOutAccountCard onClick={() => openAuthSheet()} showNotificationDot />
+        </div>
       )}
       </main>
       </div>
