@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { getCategoryImageSrc } from "@/lib/category-images";
 
@@ -37,22 +36,19 @@ function RealSaverCategoryRail({
             type="button"
             onClick={() => onOpenCategory(category)}
             aria-label={`See ${count} Real Saver${count === 1 ? "" : "s"} in ${category}`}
-            className="relative flex min-h-[154px] w-[142px] shrink-0 cursor-pointer flex-col items-center rounded-3xl border border-fair-100 bg-white px-3 pb-3 pt-2 text-center shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+            className="flex min-h-[164px] w-[142px] shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-3xl border border-fair-100 bg-white px-3 py-2.5 text-center shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
           >
-            <span className="flex w-full items-center justify-between text-fair-800">
-              <span className="font-display text-xl font-extrabold leading-6 tabular-nums">{count}</span>
-              <ArrowRight className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
-            </span>
+            <span className="w-full text-center font-display text-2xl font-extrabold leading-7 tabular-nums text-fair-800">{count}</span>
             <Image
               src={getCategoryImageSrc(category)}
               alt=""
               width={64}
               height={64}
               sizes="64px"
-              className="my-1 h-16 w-16 shrink-0 object-contain"
+              className="h-16 w-16 shrink-0 object-contain"
               aria-hidden="true"
             />
-            <span className="mt-auto line-clamp-2 w-full dd-type-control dd-type-control-strong text-stone-900">{category}</span>
+            <span className="line-clamp-2 w-full dd-type-control dd-type-control-strong leading-5 text-stone-900">{category}</span>
           </button>
         ))}
       </div>
