@@ -36,16 +36,16 @@ function RealSaverCategoryRail({
             type="button"
             onClick={() => onOpenCategory(category)}
             aria-label={`See ${count} Real Saver${count === 1 ? "" : "s"} in ${category}`}
-            className="flex min-h-[164px] w-[142px] shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-3xl border border-fair-100 bg-white px-3 py-2.5 text-center shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+            className="flex min-h-[172px] w-[142px] shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-3xl border border-fair-100 bg-white px-3 py-2.5 text-center transition-colors hover:bg-fair-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
           >
             <span className="w-full text-center font-display text-2xl font-extrabold leading-7 tabular-nums text-fair-800">{count}</span>
             <Image
               src={getCategoryImageSrc(category)}
               alt=""
-              width={64}
-              height={64}
-              sizes="64px"
-              className="h-16 w-16 shrink-0 object-contain"
+              width={72}
+              height={72}
+              sizes="72px"
+              className="h-[72px] w-[72px] shrink-0 object-contain"
               aria-hidden="true"
             />
             <span className="line-clamp-2 w-full dd-type-control dd-type-control-strong leading-5 text-stone-900">{category}</span>
