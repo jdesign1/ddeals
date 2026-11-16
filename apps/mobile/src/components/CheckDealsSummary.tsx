@@ -93,7 +93,7 @@ function CheckDealsSummary({
   const visibleCounts = isAnimating ? animatedCounts : counts;
 
   return (
-    <section className="mt-2 bg-white py-5" aria-labelledby="current-specials-title">
+    <section className="bg-white py-5" aria-labelledby="current-specials-title">
       <div className="mx-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col items-start gap-1.5">
