@@ -1329,9 +1329,7 @@ export default function HomePage() {
               <RealSaverCategoryRail
                 categories={categoryDiscoveryItems}
                 title={preferredCategories.length > 0 ? "Explore other categories" : "Real Savers by category"}
-                description={preferredCategories.length > 0
-                  ? "Find Real Saver deals beyond your saved categories"
-                  : "Browse categories with the most genuine savings"}
+                description="Browse categories with the most genuine specials"
                 onOpenCategory={handleRealSaverCategoryOpen}
               />
               <PersonalDealRail
