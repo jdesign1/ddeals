@@ -58,7 +58,7 @@ export default function DismissWorthAnotherLookSheet({
                   This will hide the missed items section from your Home screen.
                 </p>
                 <div className="mt-auto flex flex-col gap-3 pt-4">
-                  <button type="button" onClick={onClose} className="dd-btn dd-btn-success w-full cursor-pointer">
+                  <button type="button" onClick={onClose} className="dd-btn dd-btn-outline-success w-full cursor-pointer">
                     Not now
                   </button>
                   <button type="button" onClick={onRemove} className="dd-btn dd-btn-outline-alert w-full cursor-pointer">

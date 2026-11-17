@@ -1489,6 +1489,15 @@ html[data-theme="dark"] .theme-loader-surface {
 .dd-btn-outline-muted:hover:not(:disabled) {
   background: rgb(120 113 108 / 0.06);
 }
+.dd-btn-outline-success {
+  padding: 14px 26px;
+  background: transparent;
+  color: var(--color-fair-800);
+  border: 2px solid var(--color-fair-700);
+}
+.dd-btn-outline-success:hover:not(:disabled) {
+  background: var(--color-fair-50);
+}
 .dd-btn-ghost {
   padding: 14px 6px;
   background: transparent;
