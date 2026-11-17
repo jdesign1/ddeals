@@ -41,7 +41,7 @@ export default function DismissWorthAnotherLookSheet({
             >
               <div className="dd-bottom-sheet-titlebar flex shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4">
                 <h2 id="dismiss-worth-another-look-title" className="dd-type-sheet-title text-stone-900">
-                  Remove missed items?
+                  Hide missed items?
                 </h2>
                 <button
                   type="button"
@@ -55,14 +55,14 @@ export default function DismissWorthAnotherLookSheet({
 
               <div className="flex flex-1 flex-col gap-3 px-5 py-5 pb-safe-sm">
                 <p id="dismiss-worth-another-look-description" className="dd-type-body text-stone-600">
-                  Are you sure you want to remove these items you might have missed? This only hides this section.
+                  This will hide the missed items section from your Home screen.
                 </p>
                 <div className="mt-auto flex flex-col gap-3 pt-4">
                   <button type="button" onClick={onClose} className="dd-btn dd-btn-success w-full cursor-pointer">
                     Not now
                   </button>
                   <button type="button" onClick={onRemove} className="dd-btn dd-btn-outline-alert w-full cursor-pointer">
-                    Remove items
+                    Hide section
                   </button>
                 </div>
               </div>
