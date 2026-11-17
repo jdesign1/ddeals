@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
@@ -766,7 +767,7 @@ export default function DealAssessmentPage() {
     </div>
       </motion.div>
 
-    {showProductImage && (
+    {showProductImage && typeof document !== "undefined" && createPortal(
       <div
         className="fixed inset-0 z-[100] flex h-[100dvh] max-h-[100dvh] touch-none items-center justify-center overflow-hidden overscroll-none bg-stone-950/80 p-4"
         role="dialog"
@@ -798,7 +799,8 @@ export default function DealAssessmentPage() {
             className="product-image-content max-h-[78vh] max-w-[84vw] object-contain"
           />
         </div>
-      </div>
+      </div>,
+      document.body,
     )}
 
     </>
