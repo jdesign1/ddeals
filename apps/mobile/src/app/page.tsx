@@ -25,7 +25,7 @@ import LoggedOutAccountCard from "@/components/LoggedOutAccountCard";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
 import { useSearchBrowse, useSearchCatalogue, useSearchNavigation } from "@/lib/search-context";
-import { useAuthActions, useAuthCategoryInterestsActions, useAuthStatus } from "@/lib/auth-context";
+import { useAuthActions, useAuthCategoryInterestsActions, useAuthOverlay, useAuthStatus } from "@/lib/auth-context";
 import { useNewSpecialsActions, useNewSpecialsData } from "@/lib/new-specials-context";
 import { getNewSpecialDealKey, getNewSpecialsStorageScope } from "@/lib/new-specials";
 import {
@@ -651,6 +651,7 @@ export default function HomePage() {
   const { isActive: isSearchActive, openSearchForFilter } = useSearchNavigation();
   const { selectedStores, toggleStore, dealFilter, setDealFilter } = useSearchBrowse();
   const { session, user, profile, isAnonymousSession, loading: authLoading } = useAuthStatus();
+  const { hasOpenedAuthSheet, isAuthSheetOpen } = useAuthOverlay();
   const { openAuthSheet } = useAuthActions();
   const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
   const { digest } = useNewSpecialsData();
@@ -728,6 +729,10 @@ export default function HomePage() {
   const closeBeltOrderSheet = useCallback(() => setIsBeltOrderSheetOpen(false), []);
 
   useEffect(() => {
+    // New accounts are prompted inside AuthSheet before it routes to Home.
+    // Do not open a second portalized copy here: BottomSheetPortal makes
+    // sibling layers inert while open, so duplicate sheets can appear frozen.
+    if (hasOpenedAuthSheet || isAuthSheetOpen) return;
     if (!user || isAnonymousSession || !profile?.onboarding_complete || profile.category_interests_prompted_at) {
       if (!user) categoryInterestsPromptedForRef.current = null;
       return;
@@ -736,7 +741,7 @@ export default function HomePage() {
     categoryInterestsPromptedForRef.current = profile.id;
     setCategoryInterestsError(null);
     setIsCategoryInterestsSheetOpen(true);
-  }, [isAnonymousSession, profile?.category_interests_prompted_at, profile?.id, profile?.onboarding_complete, user]);
+  }, [hasOpenedAuthSheet, isAnonymousSession, isAuthSheetOpen, profile?.category_interests_prompted_at, profile?.id, profile?.onboarding_complete, user]);
 
   useEffect(() => {
     // The history rail is hidden behind the global search overlay. Defer its
