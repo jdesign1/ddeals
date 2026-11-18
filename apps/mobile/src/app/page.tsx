@@ -614,22 +614,6 @@ function buildSnapshotDealGroups(
 
 const TRENDING_PAGE_SIZE = 12;
 
-type IdleSchedulerWindow = Window & {
-  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-  cancelIdleCallback?: (handle: number) => void;
-};
-
-function scheduleIdleWork(callback: () => void): () => void {
-  const idleWindow = window as IdleSchedulerWindow;
-  if (typeof idleWindow.requestIdleCallback === "function") {
-    const handle = idleWindow.requestIdleCallback(callback, { timeout: 1200 });
-    return () => idleWindow.cancelIdleCallback?.(handle);
-  }
-
-  const timeout = window.setTimeout(callback, 250);
-  return () => window.clearTimeout(timeout);
-}
-
 export default function HomePage() {
   // `products`/`loadingProducts`/`error` and the search bar's own
   // query/active state now come from the global `SearchProvider`
@@ -642,7 +626,6 @@ export default function HomePage() {
   const {
     products,
     loadingProducts,
-    catalogueLiveLoaded,
     cataloguePublicationKey,
     cataloguePublicationComplete,
     error,
@@ -744,30 +727,26 @@ export default function HomePage() {
   }, [hasOpenedAuthSheet, isAnonymousSession, isAuthSheetOpen, profile?.category_interests_prompted_at, profile?.id, profile?.onboarding_complete, user]);
 
   useEffect(() => {
-    // The history rail is hidden behind the global search overlay. Defer its
-    // account-scoped fetch until Home is visible again so opening Search does
-    // not compete with the catalogue/ranking work needed by the active view.
-    if (!accessToken || !catalogueLiveLoaded || isSearchActive) return;
+    // Fetch history alongside the live catalogue so the low-page belt is
+    // ready before users scroll down to it. The network request is
+    // asynchronous, so it does not hold up the first Home paint.
+    if (!accessToken || isSearchActive) return;
 
     let cancelled = false;
-    const cancelScheduledLoad = scheduleIdleWork(() => {
-      if (cancelled) return;
-      fetchDealCheckHistoryFromApi(accessToken, { scope: "history" })
-        .then(({ rows }) => {
-          if (!cancelled) setCheckedHistoryState({ accessToken, rows });
-        })
-        .catch(() => {
-          // This belt is an enhancement to the live catalogue. A history
-          // failure must not turn a healthy Check Deals page into an error state.
-          if (!cancelled) setCheckedHistoryState({ accessToken, rows: [] });
-        });
-    });
+    fetchDealCheckHistoryFromApi(accessToken, { scope: "history" })
+      .then(({ rows }) => {
+        if (!cancelled) setCheckedHistoryState({ accessToken, rows });
+      })
+      .catch(() => {
+        // This belt is an enhancement to the live catalogue. A history
+        // failure must not turn a healthy Check Deals page into an error state.
+        if (!cancelled) setCheckedHistoryState({ accessToken, rows: [] });
+      });
 
     return () => {
       cancelled = true;
-      cancelScheduledLoad();
     };
-  }, [accessToken, catalogueLiveLoaded, isSearchActive]);
+  }, [accessToken, isSearchActive]);
 
   const checkedHistory = useMemo(
     () => checkedHistoryState.accessToken === accessToken ? checkedHistoryState.rows : [],

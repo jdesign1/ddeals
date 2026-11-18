@@ -2,6 +2,7 @@
 
 import { ArrowRight, X } from "lucide-react";
 import { memo, useMemo, useRef } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { getDealSnapshotAmount, type DealSnapshotKind } from "@dodgey-deals/shared";
 import ProductListCard from "@/components/ProductListCard";
 import type { CheckDealsRailItem } from "@/lib/check-deals-home";
@@ -59,11 +60,19 @@ function PersonalDealRail({
     [tone, visibleDeals],
   );
   const styles = toneStyles[tone];
+  const prefersReducedMotion = useReducedMotion() ?? false;
+  const animateOnMount = tone === "history" && !prefersReducedMotion;
 
   if (visibleDeals.length === 0) return null;
 
   return (
-    <section className={`flex flex-col gap-3 px-5 py-5 ${styles.section}`} aria-labelledby={`${id}-title`}>
+    <motion.section
+      initial={animateOnMount ? { opacity: 0, y: 6 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={animateOnMount ? { duration: 0.24, ease: "easeOut" } : { duration: 0 }}
+      className={`flex flex-col gap-3 px-5 py-5 ${styles.section}`}
+      aria-labelledby={`${id}-title`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id={`${id}-title`} className={`dd-type-section ${styles.title}`}>{title}</h2>
@@ -122,7 +131,7 @@ function PersonalDealRail({
           </button>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 }
 
