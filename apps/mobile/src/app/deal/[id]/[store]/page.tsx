@@ -31,6 +31,7 @@ import {
   STORE_DISPLAY_FALLBACK,
   logDealCheck,
   describeFetchError,
+  buildPriceHistoryInsights,
 } from "@dodgey-deals/shared";
 import { supabaseConfig } from "@/lib/config";
 import { useAuthStatus } from "@/lib/auth-context";
@@ -39,6 +40,8 @@ import { requireAccountsSupabaseClient } from "@/lib/accounts-supabase-client";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 import { usePageHeader } from "@/lib/header-context";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
+import PriceHistoryInsightCard from "@/components/PriceHistoryInsightCard";
+import PriceTimingRecommendation, { type PriceTimingSeries } from "@/components/PriceTimingRecommendation";
 import CheaperAlternativesSection from "@/components/CheaperAlternativesSection";
 import ErrorState from "@/components/ErrorState";
 import AddToListButton from "@/components/AddToListButton";
@@ -301,6 +304,19 @@ export default function DealAssessmentPage() {
 
   const priceHistoryLoadingForSelection = priceHistoryLoading;
   const priceHistoryErrorForSelection = priceHistoryResult?.error ?? null;
+  const priceHistoryInsights = useMemo(
+    () => (historyDeal ? buildPriceHistoryInsights(historyDeal) : []),
+    [historyDeal]
+  );
+  const priceTimingSeries = useMemo<PriceTimingSeries[]>(
+    () => historyDeal ? [{
+      store: effectiveHistoryStore,
+      points: priceHistoryPoints,
+      currentPrice: historyDeal.price,
+      currentIsSpecial: historyDeal.isOnSpecial,
+    }] : [],
+    [effectiveHistoryStore, historyDeal, priceHistoryPoints]
+  );
 
   // The catalogue is intentionally allowed to render from IndexedDB first,
   // but a deal assessment should validate the exact retailer row in the
@@ -416,6 +432,7 @@ export default function DealAssessmentPage() {
   // screen either way), it just shows/hides one inline section, so a
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
+  const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("should-buy");
   const toggleCheaperCarousel = useCallback(() => {
     setShowCheaperCarousel((open) => !open);
   }, []);
@@ -754,6 +771,71 @@ export default function DealAssessmentPage() {
           </div>
         </div>
       </div>
+
+      <section className="dd-deal-assessment-card space-y-3 rounded-2xl border border-stone-300 bg-white p-4 shadow-xs" aria-labelledby="price-trends-title">
+        <h3 id="price-trends-title" className="dd-type-section text-stone-900">Price trends</h3>
+        <div
+          className="flex items-center gap-0.5 rounded-lg bg-stone-200 p-1 shadow-inner shadow-black/5"
+          role="tablist"
+          aria-label="Price trends"
+          aria-orientation="horizontal"
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            event.preventDefault();
+            const nextTab = priceHistoryTab === "should-buy" ? "price-tips" : "should-buy";
+            setPriceHistoryTab(nextTab);
+            document.getElementById(nextTab === "should-buy" ? "price-trends-should-buy-tab" : "price-trends-tips-tab")?.focus();
+          }}
+        >
+          <button
+            id="price-trends-should-buy-tab"
+            type="button"
+            role="tab"
+            aria-selected={priceHistoryTab === "should-buy"}
+            tabIndex={priceHistoryTab === "should-buy" ? 0 : -1}
+            aria-controls="price-trends-panel"
+            onClick={() => setPriceHistoryTab("should-buy")}
+            className={`relative flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-colors ${priceHistoryTab === "should-buy" ? "text-stone-900" : "text-stone-600 hover:text-stone-900"}`}
+          >
+            {priceHistoryTab === "should-buy" && <motion.span layoutId="price-trends-active-tab" className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white shadow-sm ring-1 ring-black/5" transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 35 }} aria-hidden="true" />}
+            <span className="relative">Should you buy?</span>
+          </button>
+          <button
+            id="price-trends-tips-tab"
+            type="button"
+            role="tab"
+            aria-selected={priceHistoryTab === "price-tips"}
+            tabIndex={priceHistoryTab === "price-tips" ? 0 : -1}
+            aria-controls="price-trends-panel"
+            onClick={() => setPriceHistoryTab("price-tips")}
+            className={`relative flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-center dd-type-control transition-colors ${priceHistoryTab === "price-tips" ? "text-stone-900" : "text-stone-600 hover:text-stone-900"}`}
+          >
+            {priceHistoryTab === "price-tips" && <motion.span layoutId="price-trends-active-tab" className="dd-segmented-control-active-fill pointer-events-none absolute inset-0 rounded-md bg-white shadow-sm ring-1 ring-black/5" transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 35 }} aria-hidden="true" />}
+            <span className="relative">Price tips</span>
+          </button>
+        </div>
+        <div
+          id="price-trends-panel"
+          role="tabpanel"
+          aria-labelledby={priceHistoryTab === "should-buy" ? "price-trends-should-buy-tab" : "price-trends-tips-tab"}
+        >
+          <motion.div key={priceHistoryTab} initial={prefersReducedMotion ? false : { opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.16, ease: "easeOut" }}>
+            {priceHistoryTab === "should-buy" ? (
+              priceHistoryLoadingForSelection ? (
+                <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-600" role="status">Loading price trends…</p>
+              ) : priceHistoryErrorForSelection ? (
+                <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-600">Price trends aren’t available right now.</p>
+              ) : (
+                <PriceTimingRecommendation series={priceTimingSeries} />
+              )
+            ) : priceHistoryInsights.length > 0 ? (
+              <PriceHistoryInsightCard insights={priceHistoryInsights} verdict={getAssessmentVerdict(historyStatsDeal)} />
+            ) : (
+              <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-600">Price tips aren’t available for this item yet.</p>
+            )}
+          </motion.div>
+        </div>
+      </section>
 
       <CommunityPriceNotesSection
         productId={product.id}
