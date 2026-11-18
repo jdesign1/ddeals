@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Gamepad2, X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import DealDetectiveQuiz from "@/components/DealDetectiveQuiz";
+import DealDetectiveEntryCard from "@/components/DealDetectiveEntryCard";
 import MascotImage from "@/components/MascotImage";
 import type { DealDetectiveQuizCase } from "@/lib/deal-detective-quiz";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
@@ -127,7 +128,11 @@ function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllN
     return () => {
       window.cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", handleEscape);
-      if (previouslyFocusedRef.current && document.contains(previouslyFocusedRef.current)) previouslyFocusedRef.current.focus();
+      if (previouslyFocusedRef.current && document.contains(previouslyFocusedRef.current)) {
+        previouslyFocusedRef.current.focus();
+      } else {
+        document.getElementById("global-header-menu-btn")?.focus();
+      }
     };
   }, [handleClose, open]);
 
@@ -294,25 +299,14 @@ function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllN
                         <span>See all {summary.total} new specials</span>
                       </button>
                       {quizCase && consumedQuizCaseKey !== quizCaseKey && (
-                        <button
-                          type="button"
-                          ref={quizTriggerRef}
+                        <DealDetectiveEntryCard
+                          buttonRef={quizTriggerRef}
                           onClick={() => {
                             setDisplayedQuizCase(quizCase);
                             setShowQuiz(true);
                           }}
-                          aria-label="Play Deal Detective"
-                          className="mt-4 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 rounded-2xl border border-fair-200 bg-fair-50 px-3 py-3 text-left transition-colors hover:bg-fair-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fair-700 focus-visible:ring-offset-2"
-                        >
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-fair-800 shadow-xs" aria-hidden="true">
-                            <Gamepad2 className="h-5 w-5" />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block dd-type-control dd-type-control-strong text-fair-900">Deal Detective</span>
-                            <span className="mt-0.5 block dd-type-meta text-stone-600">Earn points to rank up</span>
-                          </span>
-                          <span className="shrink-0 rounded-full bg-fair-800 px-3 py-2 text-xs font-bold text-white">Play</span>
-                        </button>
+                          className="mt-4"
+                        />
                       )}
                     </div>
                   )}

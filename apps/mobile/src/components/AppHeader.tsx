@@ -237,7 +237,9 @@ export default function AppHeader({
 
       {(newSpecialsModalSummary || (isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalPreview))) && (
         <NewSpecialsModal
-          open={isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalPreview || pathname === "/") && !popupSuppressedUntilHomeExit}
+          open={isNewSpecialsModalOpen
+            && (newSpecialsModalGameOnly || newSpecialsModalPreview || pathname === "/")
+            && (newSpecialsModalGameOnly || !popupSuppressedUntilHomeExit)}
           summary={newSpecialsModalSummary}
           onClose={handleNewSpecialsClose}
           onSelectFilter={handleSelectNewSpecialsFilter}

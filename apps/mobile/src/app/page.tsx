@@ -21,6 +21,7 @@ import PersonalDealRail from "@/components/PersonalDealRail";
 import ForYouCategoryRail from "@/components/ForYouCategoryRail";
 import RealSaverCategoryRail, { type RealSaverCategoryCount } from "@/components/RealSaverCategoryRail";
 import BrandRail from "@/components/BrandRail";
+import DealDetectiveEntryCard from "@/components/DealDetectiveEntryCard";
 import LoggedOutAccountCard from "@/components/LoggedOutAccountCard";
 import DismissWorthAnotherLookSheet from "@/components/DismissWorthAnotherLookSheet";
 import CategoryInterestsSheet from "@/components/CategoryInterestsSheet";
@@ -637,8 +638,8 @@ export default function HomePage() {
   const { hasOpenedAuthSheet, isAuthSheetOpen } = useAuthOverlay();
   const { openAuthSheet } = useAuthActions();
   const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
-  const { digest } = useNewSpecialsData();
-  const { markReviewed } = useNewSpecialsActions();
+  const { digest, canOpenDetectiveCase } = useNewSpecialsData();
+  const { markReviewed, requestDetectiveCaseOpen } = useNewSpecialsActions();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
@@ -1354,6 +1355,11 @@ export default function HomePage() {
                 dodgyDeals={dealVerdictSummary.dodgyDeals}
                 onOpenFilter={handleDealVerdictSelect}
               />
+              {canOpenDetectiveCase && (
+                <div className="px-5 pt-4">
+                  <DealDetectiveEntryCard onClick={requestDetectiveCaseOpen} />
+                </div>
+              )}
               <div className="px-5 pb-2 pt-4">
                 <button
                   type="button"
