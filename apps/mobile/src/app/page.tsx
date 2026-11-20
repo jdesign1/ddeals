@@ -638,8 +638,8 @@ export default function HomePage() {
   const { hasOpenedAuthSheet, isAuthSheetOpen } = useAuthOverlay();
   const { openAuthSheet } = useAuthActions();
   const { updateCategoryInterests, dismissCategoryInterestsPrompt } = useAuthCategoryInterestsActions();
-  const { digest, canOpenDetectiveCase } = useNewSpecialsData();
-  const { markReviewed, requestDetectiveCaseOpen } = useNewSpecialsActions();
+  const { digest, canOpenDailyGames } = useNewSpecialsData();
+  const { markReviewed, requestDailyGamesOpen } = useNewSpecialsActions();
   const accessToken = session?.access_token ?? null;
   // `selectedStores` lives in `SearchProvider`, not on either surface, so a
   // supermarket choice carries between Check deals and full-screen search.
@@ -1355,9 +1355,14 @@ export default function HomePage() {
                 dodgyDeals={dealVerdictSummary.dodgyDeals}
                 onOpenFilter={handleDealVerdictSelect}
               />
-              {canOpenDetectiveCase && (
+              {canOpenDailyGames && (
                 <div className="px-5 pt-4">
-                  <DealDetectiveEntryCard onClick={requestDetectiveCaseOpen} />
+                  <DealDetectiveEntryCard
+                    onClick={requestDailyGamesOpen}
+                    title="Today’s games"
+                    description="Your daily deal-spotting games"
+                    buttonLabel="Play"
+                  />
                 </div>
               )}
               <div className="px-5 pb-2 pt-4">

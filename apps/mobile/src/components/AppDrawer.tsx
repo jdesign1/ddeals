@@ -31,8 +31,8 @@ export default function AppDrawer() {
   const { user, profile, loading, profileLoading, isAnonymousSession } = useAuthStatus();
   const { openAuthSheet, requestOnboardingTour } = useAuthActions();
   const { unreadAlerts } = useNotificationsData();
-  const { canOpenDetectiveCase } = useNewSpecialsData();
-  const { requestDetectiveCaseOpen, requestPreviewOpen } = useNewSpecialsActions();
+  const { canOpenDailyGames } = useNewSpecialsData();
+  const { requestDailyGamesOpen, requestPreviewOpen } = useNewSpecialsActions();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const { products, catalogueLiveLoaded } = useSearchCatalogue();
   const { savedProductIds, savedItemsReady } = useWatchlistData();
@@ -238,17 +238,17 @@ export default function AppDrawer() {
               </span>
               How to use Dodgy Deal
             </button>
-          {canOpenDetectiveCase && (
+          {canOpenDailyGames && (
             <button
               type="button"
               onClick={() => {
                 closeDrawer();
-                requestDetectiveCaseOpen();
+                requestDailyGamesOpen();
               }}
               className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
             >
               <Gamepad2 className="h-5 w-5 shrink-0 text-fair-700" aria-hidden="true" />
-              Deal Detective game
+              Today’s games
             </button>
           )}
           <button

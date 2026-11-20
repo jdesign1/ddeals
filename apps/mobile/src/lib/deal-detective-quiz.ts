@@ -1,5 +1,6 @@
 import { groupCategory, normalizeStoreKey, type CurrentDeal, type ProductCard } from "@dodgey-deals/shared";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
+import { newZealandGameDate } from "@/lib/daily-game-date";
 
 export const DEAL_DETECTIVE_QUIZ_VERSION = 1;
 export const DEAL_DETECTIVE_CASE_STORAGE_VERSION = 1;
@@ -8,10 +9,21 @@ const DEAL_DETECTIVE_CASE_STORAGE_PREFIX = "dd-deal-detective-case-v1:";
 const DEAL_DETECTIVE_PLAYED_STORAGE_PREFIX = "dd-deal-detective-played-v1:";
 const DEAL_DETECTIVE_CASE_NUMBER_STORAGE_PREFIX = "dd-deal-detective-case-number-v1:";
 const DEAL_DETECTIVE_PAIR_HISTORY_STORAGE_PREFIX = "dd-deal-detective-pairs-v1:";
+const DAILY_GAME_STATE_STORAGE_PREFIX = "dd-daily-games-v1:";
 
 export type DealDetectiveQuizSide = "left" | "right";
 export type DealDetectiveQuizKind = "real" | "dodgy";
 export type DealDetectiveQuestionKind = "real" | "dodgy";
+export type DailyDetectiveGameType = "deal-detective" | "supermarket-showdown";
+
+export interface SupermarketShowdownCase {
+  product: ProductCard;
+  leftDeal: CurrentDeal;
+  rightDeal: CurrentDeal;
+  leftDealKey: string;
+  rightDealKey: string;
+  correctSide: DealDetectiveQuizSide;
+}
 
 export interface DealDetectiveQuizCandidate {
   side: DealDetectiveQuizSide;
@@ -47,6 +59,11 @@ export interface StoredDealDetectivePlayedState {
   questionKind: DealDetectiveQuestionKind;
 }
 
+export interface StoredDailyGameState {
+  gameDate: string;
+  completedGameTypes: DailyDetectiveGameType[];
+}
+
 export interface DealDetectiveQuizResult {
   already_recorded: boolean;
   correct: boolean;
@@ -70,6 +87,51 @@ function scopedPlayedStorageKey(scope: string): string {
 
 function scopedCaseNumberStorageKey(scope: string): string {
   return `${DEAL_DETECTIVE_CASE_NUMBER_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+function scopedDailyGameStateKey(scope: string): string {
+  return `${DAILY_GAME_STATE_STORAGE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+export function readDailyGameState(scope = "device"): StoredDailyGameState {
+  const today = newZealandGameDate();
+  if (typeof window === "undefined") return { gameDate: today, completedGameTypes: [] };
+  try {
+    const raw = window.localStorage.getItem(scopedDailyGameStateKey(scope));
+    if (!raw) return { gameDate: today, completedGameTypes: [] };
+    const parsed = JSON.parse(raw) as Partial<StoredDailyGameState>;
+    if (parsed.gameDate !== today || !Array.isArray(parsed.completedGameTypes)) {
+      return { gameDate: today, completedGameTypes: [] };
+    }
+    return {
+      gameDate: today,
+      completedGameTypes: [...new Set(parsed.completedGameTypes.filter((value): value is DailyDetectiveGameType => (
+        value === "deal-detective" || value === "supermarket-showdown"
+      )))],
+    };
+  } catch {
+    return { gameDate: today, completedGameTypes: [] };
+  }
+}
+
+export function writeDailyGamePlayed(
+  gameType: DailyDetectiveGameType,
+  scope = "device",
+  gameDate = newZealandGameDate(),
+): StoredDailyGameState {
+  const current = readDailyGameState(scope);
+  const completedGameTypes = current.gameDate === gameDate
+    ? [...new Set([...current.completedGameTypes, gameType])]
+    : [gameType];
+  const next = { gameDate, completedGameTypes };
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(scopedDailyGameStateKey(scope), JSON.stringify(next));
+    } catch {
+      // The current session still tracks completion when local storage is unavailable.
+    }
+  }
+  return next;
 }
 
 function isQuizCandidate(value: unknown): value is DealDetectiveQuizCandidate {
@@ -219,6 +281,58 @@ export function dealDetectivePairKey(leftDealKey: string, rightDealKey: string):
   return [leftDealKey, rightDealKey].sort((left, right) => left.localeCompare(right)).join("|");
 }
 
+export function dealDetectiveDealKey(productId: string, store: string): string {
+  return `${productId}::${normalizeStoreKey(store)}`;
+}
+
+export function buildSupermarketShowdownCase(
+  products: readonly ProductCard[],
+  rotationIndex = 0,
+  excludedPairKeys: readonly string[] = [],
+): SupermarketShowdownCase | null {
+  const excludedPairs = new Set(excludedPairKeys);
+  const pairs: SupermarketShowdownCase[] = [];
+
+  for (const product of products) {
+    const currentDealsByStore = new Map<string, CurrentDeal>();
+    for (const deal of product.currentDeals) {
+      if (!deal.isOnSpecial || !Number.isFinite(deal.price) || deal.price <= 0) continue;
+      const storeKey = normalizeStoreKey(deal.store);
+      if (!storeKey || currentDealsByStore.has(storeKey)) continue;
+      currentDealsByStore.set(storeKey, deal);
+    }
+
+    const deals = [...currentDealsByStore.values()].sort((left, right) => (
+      normalizeStoreKey(left.store).localeCompare(normalizeStoreKey(right.store))
+    ));
+    for (let leftIndex = 0; leftIndex < deals.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < deals.length; rightIndex += 1) {
+        const leftDeal = deals[leftIndex];
+        const rightDeal = deals[rightIndex];
+        if (Math.abs(leftDeal.price - rightDeal.price) < 0.005) continue;
+        const leftDealKey = dealDetectiveDealKey(product.id, leftDeal.store);
+        const rightDealKey = dealDetectiveDealKey(product.id, rightDeal.store);
+        if (excludedPairs.has(dealDetectivePairKey(leftDealKey, rightDealKey))) continue;
+        pairs.push({
+          product,
+          leftDeal,
+          rightDeal,
+          leftDealKey,
+          rightDealKey,
+          correctSide: leftDeal.price < rightDeal.price ? "left" : "right",
+        });
+      }
+    }
+  }
+
+  pairs.sort((left, right) => dealDetectivePairKey(left.leftDealKey, left.rightDealKey).localeCompare(
+    dealDetectivePairKey(right.leftDealKey, right.rightDealKey),
+  ));
+  if (pairs.length === 0) return null;
+  const safeRotationIndex = Number.isSafeInteger(rotationIndex) && rotationIndex >= 0 ? rotationIndex : 0;
+  return pairs[safeRotationIndex % pairs.length];
+}
+
 export function dealDetectivePairKeyForCase(quizCase: DealDetectiveQuizCase): string {
   return dealDetectivePairKey(quizCase.left.dealKey, quizCase.right.dealKey);
 }
@@ -250,20 +364,36 @@ export function writeStoredDealDetectivePairKeys(pairKeys: readonly string[], sc
   }
 }
 
-export async function loadStoredDealDetectivePairKeys(
+export interface DealDetectiveHistory {
+  pairKeys: string[];
+  completedGameTypes: DailyDetectiveGameType[];
+  gameDate: string | null;
+  dailyGamesReady: boolean;
+}
+
+export async function loadDealDetectiveHistory(
   accessToken: string,
   signal?: AbortSignal,
-): Promise<string[]> {
+): Promise<DealDetectiveHistory> {
   const response = await fetch("/api/deal-detective/history", {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
     signal,
   });
-  const payload = await response.json().catch(() => null) as { pair_keys?: unknown; error?: string } | null;
+  const payload = await response.json().catch(() => null) as { pair_keys?: unknown; completed_game_types?: unknown; game_date?: unknown; daily_games_ready?: unknown; error?: string } | null;
   if (!response.ok) throw new Error(payload?.error ?? "Deal Detective history is unavailable.");
-  return Array.isArray(payload?.pair_keys)
-    ? [...new Set(payload.pair_keys.filter((value): value is string => typeof value === "string" && value.length > 0))]
-    : [];
+  return {
+    pairKeys: Array.isArray(payload?.pair_keys)
+      ? [...new Set(payload.pair_keys.filter((value): value is string => typeof value === "string" && value.length > 0))]
+      : [],
+    completedGameTypes: Array.isArray(payload?.completed_game_types)
+      ? [...new Set(payload.completed_game_types.filter((value): value is DailyDetectiveGameType => (
+        value === "deal-detective" || value === "supermarket-showdown"
+      )))]
+      : [],
+    gameDate: typeof payload?.game_date === "string" ? payload.game_date : null,
+    dailyGamesReady: payload?.daily_games_ready === true,
+  };
 }
 
 export async function issueDealDetectiveChallenge(
@@ -280,6 +410,24 @@ export async function issueDealDetectiveChallenge(
   if (!response.ok) throw new Error(payload?.error ?? "That case is no longer available.");
   if (typeof payload?.challenge_token !== "string" || payload.challenge_token.length < 20) {
     throw new Error("We couldn't confirm that case. Please try again.");
+  }
+  return { challenge_token: payload.challenge_token };
+}
+
+export async function issueSupermarketShowdownChallenge(
+  showdownCase: SupermarketShowdownCase,
+  signal?: AbortSignal,
+): Promise<DealDetectiveQuizChallenge> {
+  const params = new URLSearchParams({
+    leftDealKey: showdownCase.leftDealKey,
+    rightDealKey: showdownCase.rightDealKey,
+    gameType: "supermarket-showdown",
+  });
+  const response = await fetch(`/api/deal-detective/quiz?${params.toString()}`, { cache: "no-store", signal });
+  const payload = await response.json().catch(() => null) as Partial<DealDetectiveQuizChallenge> & { error?: string } | null;
+  if (!response.ok) throw new Error(payload?.error ?? "That supermarket comparison is no longer available.");
+  if (typeof payload?.challenge_token !== "string" || payload.challenge_token.length < 20) {
+    throw new Error("We couldn’t confirm that comparison. Please try again.");
   }
   return { challenge_token: payload.challenge_token };
 }
@@ -314,6 +462,44 @@ export async function submitDealDetectiveQuiz(
     || typeof payload.quiz_attempts !== "number"
     || typeof payload.detective_rank !== "string"
   ) throw new Error("We couldn't confirm your Deal Detective score.");
+  return {
+    already_recorded: payload.already_recorded === true,
+    correct: payload.correct,
+    points_awarded: payload.points_awarded,
+    quiz_correct: payload.quiz_correct,
+    quiz_attempts: payload.quiz_attempts,
+    detective_rank: payload.detective_rank,
+  };
+}
+
+export async function submitSupermarketShowdown(
+  showdownCase: SupermarketShowdownCase,
+  selectedSide: DealDetectiveQuizSide,
+  accessToken: string,
+  challengeToken: string,
+  signal?: AbortSignal,
+): Promise<DealDetectiveQuizResult> {
+  const response = await fetch("/api/deal-detective/quiz", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      gameType: "supermarket-showdown",
+      leftDealKey: showdownCase.leftDealKey,
+      rightDealKey: showdownCase.rightDealKey,
+      selectedSide,
+      challengeToken,
+    }),
+    signal,
+  });
+  const payload = await response.json().catch(() => null) as Partial<DealDetectiveQuizResult> & { error?: string } | null;
+  if (!response.ok) throw new Error(payload?.error ?? "We couldn’t save your Showdown score right now.");
+  if (
+    typeof payload?.correct !== "boolean"
+    || typeof payload.points_awarded !== "number"
+    || typeof payload.quiz_correct !== "number"
+    || typeof payload.quiz_attempts !== "number"
+    || typeof payload.detective_rank !== "string"
+  ) throw new Error("We couldn’t confirm your Showdown result.");
   return {
     already_recorded: payload.already_recorded === true,
     correct: payload.correct,

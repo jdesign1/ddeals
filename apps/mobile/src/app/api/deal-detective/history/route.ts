@@ -1,4 +1,5 @@
 import { getAuthenticatedAccount, requireAccountsAdmin } from "@/lib/accounts-server";
+import { newZealandGameDate } from "@/lib/daily-game-date";
 import { dealDetectivePairKey } from "@/lib/deal-detective-quiz";
 
 export const runtime = "nodejs";
@@ -18,17 +19,38 @@ export async function GET(request: Request): Promise<Response> {
     const account = await getAuthenticatedAccount(token);
     if (!account || account.is_anonymous) return Response.json({ error: "Sign in to load your Deal Detective history." }, { status: 401 });
 
-    const { data, error } = await requireAccountsAdmin()
-      .from("deal_detective_quiz_attempts")
-      .select("left_deal_key,right_deal_key")
-      .eq("user_id", account.id)
-      .limit(5000);
-    if (error) throw error;
+    const accounts = requireAccountsAdmin();
+    const [pairHistory, dailyCompletions] = await Promise.all([
+      accounts
+        .from("deal_detective_quiz_attempts")
+        .select("left_deal_key,right_deal_key")
+        .eq("user_id", account.id)
+        .limit(5000),
+      accounts
+        .from("deal_detective_daily_completions")
+        .select("game_type")
+        .eq("user_id", account.id)
+        .eq("game_date", newZealandGameDate()),
+    ]);
+    if (pairHistory.error) throw pairHistory.error;
 
-    const pairKeys = [...new Set((data ?? []).map((row: { left_deal_key: string; right_deal_key: string }) => (
+    const pairKeys = [...new Set((pairHistory.data ?? []).map((row: { left_deal_key: string; right_deal_key: string }) => (
       dealDetectivePairKey(row.left_deal_key, row.right_deal_key)
     )))];
-    return Response.json({ pair_keys: pairKeys }, { headers: { "Cache-Control": "no-store" } });
+    if (dailyCompletions.error) {
+      if (/42P01|PGRST205|deal_detective_daily_completions/i.test(`${dailyCompletions.error.code ?? ""} ${dailyCompletions.error.message}`)) {
+        return Response.json(
+          { pair_keys: pairKeys, completed_game_types: [], game_date: newZealandGameDate(), daily_games_ready: false },
+          { headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      throw dailyCompletions.error;
+    }
+    const completedGameTypes = [...new Set((dailyCompletions.data ?? []).map((row: { game_type: string }) => row.game_type))];
+    return Response.json(
+      { pair_keys: pairKeys, completed_game_types: completedGameTypes, game_date: newZealandGameDate(), daily_games_ready: true },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     console.error("Deal Detective history request failed.", error instanceof Error ? error.message : "Unknown error");
     return Response.json({ error: "Deal Detective history is unavailable right now." }, { status: 503 });

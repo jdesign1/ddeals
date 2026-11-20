@@ -3,6 +3,7 @@ import { buildCatalogueArtifact, normalizeStoreKey, type CatalogueArtifact, type
 import { getCommunityDetectiveRank } from "@/lib/community-reputation";
 import { getAuthenticatedAccount, requireAccountsAdmin } from "@/lib/accounts-server";
 import { supabaseConfig } from "@/lib/config";
+import { newZealandGameDate } from "@/lib/daily-game-date";
 import { DEAL_DETECTIVE_QUIZ_VERSION, type DealDetectiveQuestionKind } from "@/lib/deal-detective-quiz";
 
 export const runtime = "nodejs";
@@ -17,10 +18,12 @@ type QuizKind = "real" | "dodgy";
 
 interface QuizChallenge {
   version: number;
+  gameType: "deal-detective" | "supermarket-showdown";
+  gameDate: string;
   publicationKey: string;
   leftDealKey: string;
   rightDealKey: string;
-  questionKind: DealDetectiveQuestionKind;
+  questionKind?: DealDetectiveQuestionKind;
   correctSide: QuizSide;
   expiresAt: number;
 }
@@ -65,16 +68,21 @@ function readChallengeToken(value: unknown): QuizChallenge | null {
     const parsed = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as Partial<QuizChallenge>;
     if (
       parsed.version !== DEAL_DETECTIVE_QUIZ_VERSION
+      || (parsed.gameType !== "deal-detective" && parsed.gameType !== "supermarket-showdown")
+      || typeof parsed.gameDate !== "string"
       || typeof parsed.publicationKey !== "string"
       || typeof parsed.leftDealKey !== "string"
       || typeof parsed.rightDealKey !== "string"
-      || !isQuestionKind(parsed.questionKind)
+      || (parsed.gameType === "deal-detective" && !isQuestionKind(parsed.questionKind))
+      || (parsed.gameType === "supermarket-showdown" && parsed.questionKind !== undefined)
       || !isQuizSide(parsed.correctSide)
       || typeof parsed.expiresAt !== "number"
       || parsed.expiresAt <= Date.now()
     ) return null;
     return {
       version: parsed.version,
+      gameType: parsed.gameType,
+      gameDate: parsed.gameDate,
       publicationKey: parsed.publicationKey,
       leftDealKey: parsed.leftDealKey,
       rightDealKey: parsed.rightDealKey,
@@ -155,28 +163,56 @@ function validateCurrentPair(artifact: CatalogueArtifact, leftDealKey: unknown, 
   };
 }
 
+function validateShowdownPair(artifact: CatalogueArtifact, leftDealKey: unknown, rightDealKey: unknown) {
+  const leftKey = parseDealKey(leftDealKey);
+  const rightKey = parseDealKey(rightDealKey);
+  if (!leftKey || !rightKey || leftKey.productId !== rightKey.productId || leftKey.storeKey === rightKey.storeKey) return null;
+  const product = artifact.products.find((candidate) => candidate.id === leftKey.productId);
+  if (!product) return null;
+  const leftDeal = product.currentDeals.find((deal) => deal.isOnSpecial && normalizeStoreKey(deal.store) === leftKey.storeKey);
+  const rightDeal = product.currentDeals.find((deal) => deal.isOnSpecial && normalizeStoreKey(deal.store) === rightKey.storeKey);
+  if (!leftDeal || !rightDeal || !Number.isFinite(leftDeal.price) || !Number.isFinite(rightDeal.price) || leftDeal.price <= 0 || rightDeal.price <= 0) return null;
+  if (Math.abs(leftDeal.price - rightDeal.price) < 0.005) return null;
+  return {
+    correctSide: (leftDeal.price < rightDeal.price ? "left" : "right") as QuizSide,
+  };
+}
+
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const leftDealKey = url.searchParams.get("leftDealKey");
   const rightDealKey = url.searchParams.get("rightDealKey");
   const questionKind = url.searchParams.get("questionKind");
-  if (!parseDealKey(leftDealKey) || !parseDealKey(rightDealKey) || !isQuestionKind(questionKind)) {
+  const gameType = url.searchParams.get("gameType") ?? "deal-detective";
+  if (
+    !parseDealKey(leftDealKey)
+    || !parseDealKey(rightDealKey)
+    || (gameType !== "deal-detective" && gameType !== "supermarket-showdown")
+    || (gameType === "deal-detective" && !isQuestionKind(questionKind))
+    || (gameType === "supermarket-showdown" && questionKind !== null)
+  ) {
     return jsonError("That case could not be opened.", 400);
   }
 
   try {
     const artifact = await getCurrentCatalogue();
     if (artifact.sourceUpdatedAt === null) return jsonError("The current case is not ready yet. Please try again.", 503);
-    const pair = validateCurrentPair(artifact, leftDealKey, rightDealKey);
+    const pair = gameType === "supermarket-showdown"
+      ? validateShowdownPair(artifact, leftDealKey, rightDealKey)
+      : validateCurrentPair(artifact, leftDealKey, rightDealKey);
     if (!pair) return jsonError("That case has changed. Please try the next one.", 409);
 
     const challenge: QuizChallenge = {
       version: DEAL_DETECTIVE_QUIZ_VERSION,
+      gameType,
+      gameDate: newZealandGameDate(),
       publicationKey: String(artifact.sourceUpdatedAt),
       leftDealKey: String(leftDealKey),
       rightDealKey: String(rightDealKey),
-      questionKind,
-      correctSide: (pair.left.kind === questionKind ? "left" : "right") as QuizSide,
+      ...(gameType === "deal-detective" ? { questionKind: questionKind as DealDetectiveQuestionKind } : {}),
+      correctSide: gameType === "deal-detective"
+        ? ((pair as NonNullable<ReturnType<typeof validateCurrentPair>>).left.kind === questionKind ? "left" : "right")
+        : pair.correctSide,
       expiresAt: Date.now() + CHALLENGE_TTL_MS,
     };
     return Response.json({ challenge_token: createChallengeToken(challenge) }, { headers: NO_STORE_HEADERS });
@@ -210,7 +246,14 @@ export async function POST(request: Request): Promise<Response> {
   const leftDealKey = payload.leftDealKey;
   const rightDealKey = payload.rightDealKey;
   const challengeToken = payload.challengeToken;
-  if (!isQuizSide(selectedSide) || !parseDealKey(leftDealKey) || !parseDealKey(rightDealKey) || typeof challengeToken !== "string") {
+  const gameType = payload.gameType ?? "deal-detective";
+  if (
+    !isQuizSide(selectedSide)
+    || !parseDealKey(leftDealKey)
+    || !parseDealKey(rightDealKey)
+    || typeof challengeToken !== "string"
+    || (gameType !== "deal-detective" && gameType !== "supermarket-showdown")
+  ) {
     return jsonError("That case could not be scored.", 400);
   }
 
@@ -219,22 +262,29 @@ export async function POST(request: Request): Promise<Response> {
     if (!account || account.is_anonymous) return jsonError("Sign in to save your Deal Detective score.", 401);
 
     const challenge = readChallengeToken(challengeToken);
-    if (!challenge || challenge.leftDealKey !== leftDealKey || challenge.rightDealKey !== rightDealKey) {
+    if (!challenge || challenge.leftDealKey !== leftDealKey || challenge.rightDealKey !== rightDealKey || challenge.gameType !== gameType) {
       return jsonError("That case has changed. Please try the next one.", 409);
     }
+    if (challenge.gameDate !== newZealandGameDate()) return jsonError("Today’s game has ended. Come back tomorrow for a fresh round.", 409);
 
     const artifact = await getCurrentCatalogue();
     if (artifact.sourceUpdatedAt === null || String(artifact.sourceUpdatedAt) !== challenge.publicationKey) {
       return jsonError("That case has changed. Please try the next one.", 409);
     }
-    const pair = validateCurrentPair(artifact, challenge.leftDealKey, challenge.rightDealKey);
-    const expectedCorrectSide = pair && (pair.left.kind === challenge.questionKind ? "left" : "right");
+    const pair = challenge.gameType === "supermarket-showdown"
+      ? validateShowdownPair(artifact, challenge.leftDealKey, challenge.rightDealKey)
+      : validateCurrentPair(artifact, challenge.leftDealKey, challenge.rightDealKey);
+    const expectedCorrectSide = pair && (challenge.gameType === "supermarket-showdown"
+      ? pair.correctSide
+      : (pair as NonNullable<ReturnType<typeof validateCurrentPair>>).left.kind === challenge.questionKind ? "left" : "right");
     if (!pair || expectedCorrectSide !== challenge.correctSide) {
       return jsonError("That case has changed. Please try the next one.", 409);
     }
     const accounts = requireAccountsAdmin();
-    const { data, error } = await accounts.rpc("record_deal_detective_quiz_attempt", {
+    let { data, error } = await accounts.rpc("record_deal_detective_daily_attempt", {
       p_user_id: account.id,
+      p_game_date: challenge.gameDate,
+      p_game_type: challenge.gameType,
       p_publication_key: String(artifact.sourceUpdatedAt),
       p_quiz_version: DEAL_DETECTIVE_QUIZ_VERSION,
       p_left_deal_key: challenge.leftDealKey,
@@ -242,6 +292,21 @@ export async function POST(request: Request): Promise<Response> {
       p_selected_side: selectedSide,
       p_correct_side: challenge.correctSide,
     });
+    // Keep existing score submissions working while the account-project
+    // migration is being rolled out. Daily availability remains hidden until
+    // the new server ledger is present, so this fallback cannot claim a daily
+    // turn was consumed across devices.
+    if (error && /PGRST202|42883|record_deal_detective_daily_attempt/i.test(`${error.code ?? ""} ${error.message}`)) {
+      ({ data, error } = await accounts.rpc("record_deal_detective_quiz_attempt", {
+        p_user_id: account.id,
+        p_publication_key: String(artifact.sourceUpdatedAt),
+        p_quiz_version: DEAL_DETECTIVE_QUIZ_VERSION,
+        p_left_deal_key: challenge.leftDealKey,
+        p_right_deal_key: challenge.rightDealKey,
+        p_selected_side: selectedSide,
+        p_correct_side: challenge.correctSide,
+      }));
+    }
     if (error) throw error;
 
     const result = Array.isArray(data) ? data[0] : data;
@@ -263,7 +328,7 @@ export async function POST(request: Request): Promise<Response> {
     }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (/deal_detective_quiz_attempts|record_deal_detective_quiz_attempt|not configured|PGRST202|42P01/i.test(message)) {
+    if (/deal_detective_daily_completions|record_deal_detective_daily_attempt|deal_detective_quiz_attempts|record_deal_detective_quiz_attempt|not configured|PGRST202|42P01/i.test(message)) {
       return jsonError("The Deal Detective case is unavailable right now. Please try again later.", 503);
     }
     console.error("Deal Detective quiz request failed.", message || "Unknown error");

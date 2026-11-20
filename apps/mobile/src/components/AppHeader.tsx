@@ -54,8 +54,12 @@ export default function AppHeader({
     popupEligible,
     popupSuppressedUntilHomeExit,
     openRequested,
-    detectiveCase,
+    availableDetectiveCase,
     detectiveCaseOpenRequested,
+    dailyGamesOpenRequested,
+    canOpenDetectiveCase,
+    canOpenSupermarketShowdown,
+    showdownCase,
     previewSummary,
     previewOpenRequested,
   } = useNewSpecialsData();
@@ -63,14 +67,17 @@ export default function AppHeader({
     consumeOpenRequest,
     consumePreviewOpenRequest,
     consumeDetectiveCaseOpenRequest,
+    consumeDailyGamesOpenRequest,
     markPopupShown,
     markDetectiveCasePlayed,
+    markSupermarketShowdownPlayed,
   } = useNewSpecialsActions();
   const [isHiddenOnCheckDeals, setIsHiddenOnCheckDeals] = useState(false);
   const [isLaunchSplashFinished, setIsLaunchSplashFinished] = useState(false);
   const [isNewSpecialsModalOpen, setIsNewSpecialsModalOpen] = useState(false);
   const [newSpecialsModalSummary, setNewSpecialsModalSummary] = useState<NewSpecialsSummary | null>(null);
   const [newSpecialsModalGameOnly, setNewSpecialsModalGameOnly] = useState(false);
+  const [newSpecialsModalDailyGames, setNewSpecialsModalDailyGames] = useState(false);
   const [newSpecialsModalPreview, setNewSpecialsModalPreview] = useState(false);
 
   useEffect(() => {
@@ -90,29 +97,33 @@ export default function AppHeader({
     && !popupSuppressedUntilHomeExit;
   const shouldPresentDetectiveCaseModal = isLaunchSplashFinished
     && detectiveCaseOpenRequested
-    && Boolean(detectiveCase);
+    && Boolean(availableDetectiveCase);
+  const shouldPresentDailyGamesModal = isLaunchSplashFinished && dailyGamesOpenRequested;
   const shouldPresentNewSpecialsPreview = isLaunchSplashFinished
     && previewOpenRequested
     && !popupSuppressedUntilHomeExit;
   useEffect(() => {
     const shouldPresentAutomatically = shouldPresentNewSpecialsModal && (openRequested || popupEligible);
-    if (!shouldPresentAutomatically && !shouldPresentDetectiveCaseModal && !shouldPresentNewSpecialsPreview) return;
+    if (!shouldPresentAutomatically && !shouldPresentDetectiveCaseModal && !shouldPresentDailyGamesModal && !shouldPresentNewSpecialsPreview) return;
     const presentationTimer = window.setTimeout(() => {
-      const openGameOnly = shouldPresentDetectiveCaseModal;
-      const openPreview = !openGameOnly && shouldPresentNewSpecialsPreview;
-      if (!openGameOnly && !openPreview && (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible))) return;
+      const openDailyGames = shouldPresentDailyGamesModal;
+      const openGameOnly = !openDailyGames && shouldPresentDetectiveCaseModal;
+      const openPreview = !openDailyGames && !openGameOnly && shouldPresentNewSpecialsPreview;
+      if (!openDailyGames && !openGameOnly && !openPreview && (!shouldPresentNewSpecialsModal || (!openRequested && !popupEligible))) return;
       consumeOpenRequest();
       consumePreviewOpenRequest();
       consumeDetectiveCaseOpenRequest();
+      consumeDailyGamesOpenRequest();
       const nextSummary = openPreview ? previewSummary : digest;
-      if (!openGameOnly && !nextSummary) return;
-      setNewSpecialsModalSummary(openGameOnly ? null : nextSummary);
+      if (!openDailyGames && !openGameOnly && !nextSummary) return;
+      setNewSpecialsModalSummary(openGameOnly || openDailyGames ? null : nextSummary);
       setNewSpecialsModalGameOnly(openGameOnly);
+      setNewSpecialsModalDailyGames(openDailyGames);
       setNewSpecialsModalPreview(openPreview);
       setIsNewSpecialsModalOpen(true);
     }, 0);
     return () => window.clearTimeout(presentationTimer);
-  }, [consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, digest, openRequested, popupEligible, previewOpenRequested, previewSummary, shouldPresentDetectiveCaseModal, shouldPresentNewSpecialsModal, shouldPresentNewSpecialsPreview]);
+  }, [consumeDailyGamesOpenRequest, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, dailyGamesOpenRequested, availableDetectiveCase, digest, openRequested, popupEligible, previewOpenRequested, previewSummary, shouldPresentDailyGamesModal, shouldPresentDetectiveCaseModal, shouldPresentNewSpecialsModal, shouldPresentNewSpecialsPreview]);
 
   useEffect(() => {
     if (isNewSpecialsModalOpen && newSpecialsModalSummary && !newSpecialsModalPreview) markPopupShown();
@@ -124,6 +135,7 @@ export default function AppHeader({
     setIsHiddenOnCheckDeals(false);
     setIsNewSpecialsModalOpen(false);
     setNewSpecialsModalGameOnly(false);
+    setNewSpecialsModalDailyGames(false);
     setNewSpecialsModalPreview(false);
   }
 
@@ -142,6 +154,7 @@ export default function AppHeader({
   const handleNewSpecialsClose = useCallback(() => {
     setIsNewSpecialsModalOpen(false);
     setNewSpecialsModalGameOnly(false);
+    setNewSpecialsModalDailyGames(false);
     setNewSpecialsModalPreview(false);
   }, []);
   const handleShowAllNewDeals = useCallback((dealKeys: string[]) => {
@@ -235,20 +248,25 @@ export default function AppHeader({
         </header>
       </div>
 
-      {(newSpecialsModalSummary || (isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalPreview))) && (
+      {(newSpecialsModalSummary || (isNewSpecialsModalOpen && (newSpecialsModalGameOnly || newSpecialsModalDailyGames || newSpecialsModalPreview))) && (
         <NewSpecialsModal
           open={isNewSpecialsModalOpen
-            && (newSpecialsModalGameOnly || newSpecialsModalPreview || pathname === "/")
-            && (newSpecialsModalGameOnly || !popupSuppressedUntilHomeExit)}
+            && (newSpecialsModalGameOnly || newSpecialsModalDailyGames || newSpecialsModalPreview || pathname === "/")
+            && (newSpecialsModalGameOnly || newSpecialsModalDailyGames || !popupSuppressedUntilHomeExit)}
           summary={newSpecialsModalSummary}
           onClose={handleNewSpecialsClose}
           onSelectFilter={handleSelectNewSpecialsFilter}
           onSelectAllNewDeals={handleShowAllNewDeals}
-          quizCase={detectiveCase}
+          quizCase={availableDetectiveCase}
           detectiveStreakScope={detectiveStreakScope}
-          accessToken={session?.access_token ?? null}
+          accessToken={isAnonymousSession ? null : session?.access_token ?? null}
           onPlayed={markDetectiveCasePlayed}
+          onSupermarketShowdownPlayed={markSupermarketShowdownPlayed}
+          canOpenDetectiveCase={canOpenDetectiveCase}
+          canOpenSupermarketShowdown={canOpenSupermarketShowdown}
+          showdownCase={showdownCase}
           gameOnly={newSpecialsModalGameOnly}
+          dailyGamesOnly={newSpecialsModalDailyGames}
         />
       )}
     </>

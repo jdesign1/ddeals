@@ -8,7 +8,8 @@ import BottomSheetPortal from "@/components/BottomSheetPortal";
 import DealDetectiveQuiz from "@/components/DealDetectiveQuiz";
 import DealDetectiveEntryCard from "@/components/DealDetectiveEntryCard";
 import MascotImage from "@/components/MascotImage";
-import type { DealDetectiveQuizCase } from "@/lib/deal-detective-quiz";
+import SupermarketShowdown from "@/components/SupermarketShowdown";
+import type { DealDetectiveQuizCase, SupermarketShowdownCase } from "@/lib/deal-detective-quiz";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 const CLOSE_COMPLETION_FALLBACK_MS = 650;
@@ -22,15 +23,37 @@ interface NewSpecialsModalProps {
   quizCase: DealDetectiveQuizCase | null;
   detectiveStreakScope: string;
   accessToken: string | null;
-  onPlayed: () => void;
+  onPlayed: (quizCase?: DealDetectiveQuizCase) => void;
+  onSupermarketShowdownPlayed: (showdownCase: SupermarketShowdownCase) => void;
+  canOpenDetectiveCase?: boolean;
+  canOpenSupermarketShowdown?: boolean;
+  showdownCase?: SupermarketShowdownCase | null;
   gameOnly?: boolean;
+  dailyGamesOnly?: boolean;
 }
 
-function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllNewDeals, quizCase, detectiveStreakScope, accessToken, onPlayed, gameOnly = false }: NewSpecialsModalProps) {
+function NewSpecialsModal({
+  open,
+  summary,
+  onClose,
+  onSelectFilter,
+  onSelectAllNewDeals,
+  quizCase,
+  detectiveStreakScope,
+  accessToken,
+  onPlayed,
+  onSupermarketShowdownPlayed,
+  canOpenDetectiveCase = false,
+  canOpenSupermarketShowdown = false,
+  showdownCase = null,
+  gameOnly = false,
+  dailyGamesOnly = false,
+}: NewSpecialsModalProps) {
   // The portal unlocks as soon as `open` flips false. The exiting backdrop and
   // panel still cover the page visually, while the pending navigation action
   // waits for the animation to finish (or the fallback timer below).
   const [showQuiz, setShowQuiz] = useState(gameOnly);
+  const [showShowdown, setShowShowdown] = useState(false);
   const [displayedQuizCase, setDisplayedQuizCase] = useState<DealDetectiveQuizCase | null>(quizCase);
   const [consumedQuizCaseKey, setConsumedQuizCaseKey] = useState<string | null>(null);
   const hasNewSpecials = (summary?.total ?? 0) > 0;
@@ -58,6 +81,7 @@ function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllN
     const syncTimer = window.setTimeout(() => {
       if (!open) {
         setShowQuiz(false);
+        setShowShowdown(false);
         setDisplayedQuizCase(null);
         setConsumedQuizCaseKey(null);
         return;
@@ -187,27 +211,41 @@ function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllN
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-2 top-2 bottom-2 mx-auto flex h-auto max-h-none w-auto max-w-[27rem] translate-y-0 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${showQuiz && displayedQuizCase ? "p-0" : "px-5 pb-6 pt-4"}`}
+              className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-2 top-2 bottom-2 mx-auto flex h-auto max-h-none w-auto max-w-[27rem] translate-y-0 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${(showQuiz && displayedQuizCase) || showShowdown ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
               <div className="pointer-events-none sticky top-0 z-40 h-0">
                 <button
                   type="button"
                   onClick={handleClose}
-                  aria-label={gameOnly ? "Close Deal Detective case" : "Close new specials message"}
+                  aria-label={dailyGamesOnly ? "Close today’s games" : gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                   ref={closeButtonRef}
-                  className={`pointer-events-auto absolute ${gameOnly || (showQuiz && displayedQuizCase) ? "right-3 top-3" : "-right-2 -top-2"} flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800`}
+                  className={`pointer-events-auto absolute ${gameOnly || dailyGamesOnly || (showQuiz && displayedQuizCase) || showShowdown ? "right-3 top-3" : "-right-2 -top-2"} flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800`}
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
 
-              {showQuiz && displayedQuizCase ? (
+              {showShowdown && showdownCase ? (
+                <SupermarketShowdown
+                  key={`${showdownCase.leftDealKey}-${showdownCase.rightDealKey}`}
+                  showdownCase={showdownCase}
+                  accessToken={accessToken}
+                  onBack={() => setShowShowdown(false)}
+                  onDone={() => setShowShowdown(false)}
+                  onPlayed={onSupermarketShowdownPlayed}
+                />
+              ) : showQuiz && displayedQuizCase ? (
                 <DealDetectiveQuiz
                   key={`${displayedQuizCase.caseNumber ?? "case"}-${displayedQuizCase.questionKind ?? "real"}-${displayedQuizCase.left.dealKey}-${displayedQuizCase.right.dealKey}`}
                   quizCase={displayedQuizCase}
                   accessToken={accessToken}
                   streakScope={detectiveStreakScope}
                   onBack={() => {
+                    if (dailyGamesOnly) {
+                      setShowQuiz(false);
+                      setDisplayedQuizCase(null);
+                      return;
+                    }
                     if (gameOnly) {
                       handleClose();
                       return;
@@ -223,12 +261,55 @@ function NewSpecialsModal({ open, summary, onClose, onSelectFilter, onSelectAllN
                     }
                     handleSelectAllNewDeals(summary.allDealKeys);
                   }}
-                  onDone={handleClose}
+                  onDone={() => {
+                    if (dailyGamesOnly) {
+                      setShowQuiz(false);
+                      setDisplayedQuizCase(null);
+                    } else {
+                      handleClose();
+                    }
+                  }}
                   onAnswered={() => setConsumedQuizCaseKey(quizCaseKey)}
-                  onPlayed={onPlayed}
+                  onPlayed={() => onPlayed(displayedQuizCase)}
                   showViewDealsButton={false}
                   showBackButton={!gameOnly}
                 />
+              ) : dailyGamesOnly ? (
+                <div className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-14">
+                  <div className="mb-5 text-center">
+                    <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">A fresh turn each day</p>
+                    <h2 id="new-specials-title" className="mt-1 font-display text-2xl font-extrabold text-stone-900">Today’s games</h2>
+                    <p id="new-specials-description" className="mt-2 dd-type-secondary text-stone-600">Your daily deal-spotting games.</p>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {canOpenDetectiveCase && quizCase && (
+                      <DealDetectiveEntryCard
+                        onClick={() => {
+                          setDisplayedQuizCase(quizCase);
+                          setShowQuiz(true);
+                        }}
+                        title="Deal Detective"
+                        description="Spot the Real Saver or Dodgy Deal"
+                        buttonLabel="Play"
+                      />
+                    )}
+                    {canOpenSupermarketShowdown && showdownCase && (
+                      <DealDetectiveEntryCard
+                        onClick={() => setShowShowdown(true)}
+                        title="Supermarket Showdown"
+                        description={`Pick the cheaper ${showdownCase.product.name}`}
+                        buttonLabel="Play"
+                      />
+                    )}
+                  </div>
+                  {!canOpenDetectiveCase && !canOpenSupermarketShowdown && (
+                    <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-center" role="status">
+                      <p className="dd-type-control dd-type-control-strong text-stone-900">You’re all done for today</p>
+                      <p className="mt-1 dd-type-secondary text-stone-600">Come back tomorrow for two fresh games.</p>
+                    </div>
+                  )}
+                  <button type="button" onClick={handleClose} className="dd-btn dd-btn-outline-muted mt-auto min-h-12 w-full cursor-pointer">Close</button>
+                </div>
               ) : (
                 <>
                   <div className="-mx-5 -mt-4 aspect-square w-[calc(100%+2.5rem)] overflow-hidden rounded-t-3xl bg-stone-100">

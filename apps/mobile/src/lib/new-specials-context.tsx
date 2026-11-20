@@ -4,26 +4,32 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname } from "next/navigation";
 import { useAuthStatus } from "./auth-context";
 import { useSearchCatalogue } from "./search-context";
-import { useSubscriptionStatus } from "./subscription-context";
 import {
   buildCurrentDealDetectiveQuizCase,
   buildDealDetectiveQuizCase,
+  buildSupermarketShowdownCase,
+  dealDetectivePairKey,
   clearStoredDealDetectiveCase,
   clearStoredDealDetectivePlayedState,
   createStoredDealDetectiveCase,
   dealDetectivePairKeyForCase,
-  loadStoredDealDetectivePairKeys,
+  loadDealDetectiveHistory,
   nextDealDetectiveCaseNumber,
   readStoredDealDetectiveCase,
   readStoredDealDetectivePairKeys,
   readStoredDealDetectivePlayedState,
+  readDailyGameState,
   writeStoredDealDetectiveCase,
   writeStoredDealDetectivePairKeys,
   writeStoredDealDetectivePlayedState,
+  writeDailyGamePlayed,
   type DealDetectiveQuizCase,
   type DealDetectiveQuestionKind,
+  type DailyDetectiveGameType,
+  type SupermarketShowdownCase,
   type StoredDealDetectiveCase,
 } from "./deal-detective-quiz";
+import { newZealandGameDate } from "./daily-game-date";
 import {
   clearNewSpecialsPending,
   createNewSpecialsPending,
@@ -55,8 +61,12 @@ import type { DealFilter } from "./deal-filters";
 interface NewSpecialsContextValue {
   digest: NewSpecialsSummary | null;
   detectiveCase: DealDetectiveQuizCase | null;
+  availableDetectiveCase: DealDetectiveQuizCase | null;
   hasUnplayedDetectiveCase: boolean;
   canOpenDetectiveCase: boolean;
+  showdownCase: SupermarketShowdownCase | null;
+  canOpenSupermarketShowdown: boolean;
+  canOpenDailyGames: boolean;
   hasPendingDigest: boolean;
   popupEligible: boolean;
   /** Startup can leave the launch cover once catalogue and local popup state are reconciled. */
@@ -66,14 +76,18 @@ interface NewSpecialsContextValue {
   previewSummary: NewSpecialsSummary;
   previewOpenRequested: boolean;
   detectiveCaseOpenRequested: boolean;
+  dailyGamesOpenRequested: boolean;
   requestOpen: () => void;
   requestPreviewOpen: () => void;
   requestDetectiveCaseOpen: () => void;
+  requestDailyGamesOpen: () => void;
   consumeOpenRequest: () => void;
   consumePreviewOpenRequest: () => void;
   consumeDetectiveCaseOpenRequest: () => void;
+  consumeDailyGamesOpenRequest: () => void;
   markPopupShown: () => void;
-  markDetectiveCasePlayed: () => void;
+  markDetectiveCasePlayed: (quizCase?: DealDetectiveQuizCase) => void;
+  markSupermarketShowdownPlayed: (showdownCase: SupermarketShowdownCase) => void;
   markReviewed: (dealKeys?: string[], filter?: DealFilter) => void;
 }
 
@@ -81,8 +95,12 @@ export type NewSpecialsDataContextValue = Pick<
   NewSpecialsContextValue,
   | "digest"
   | "detectiveCase"
+  | "availableDetectiveCase"
   | "hasUnplayedDetectiveCase"
   | "canOpenDetectiveCase"
+  | "showdownCase"
+  | "canOpenSupermarketShowdown"
+  | "canOpenDailyGames"
   | "hasPendingDigest"
   | "popupEligible"
   | "launchDecisionReady"
@@ -91,6 +109,7 @@ export type NewSpecialsDataContextValue = Pick<
   | "previewSummary"
   | "previewOpenRequested"
   | "detectiveCaseOpenRequested"
+  | "dailyGamesOpenRequested"
 >;
 
 export type NewSpecialsActionsContextValue = Pick<
@@ -98,11 +117,14 @@ export type NewSpecialsActionsContextValue = Pick<
   | "requestOpen"
   | "requestPreviewOpen"
   | "requestDetectiveCaseOpen"
+  | "requestDailyGamesOpen"
   | "consumeOpenRequest"
   | "consumePreviewOpenRequest"
   | "consumeDetectiveCaseOpenRequest"
+  | "consumeDailyGamesOpenRequest"
   | "markPopupShown"
   | "markDetectiveCasePlayed"
+  | "markSupermarketShowdownPlayed"
   | "markReviewed"
 >;
 
@@ -168,20 +190,34 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const { products, loadingProducts, catalogueLiveLoaded, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
   const latestProductsRef = useRef(products);
   const { user, profile, loading: authLoading, isAnonymousSession, session } = useAuthStatus();
-  const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const detectiveAccessToken = session?.access_token ?? null;
   const scope = authLoading ? null : getNewSpecialsStorageScope(user?.id, isAnonymousSession);
   const [stored, setStored] = useState<StoredNewSpecialsState>({ scope: null, snapshot: null, pending: null, popupState: null, detectiveCase: null, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null });
   const [playedPairKeys, setPlayedPairKeys] = useState<string[]>([]);
   const [playedPairHistoryReady, setPlayedPairHistoryReady] = useState(false);
+  const [dailyGameDate, setDailyGameDate] = useState(() => newZealandGameDate());
+  const [dailyHistoryRetryCount, setDailyHistoryRetryCount] = useState(0);
+  const [localDailyGameState, setLocalDailyGameState] = useState<{ scope: string | null; gameDate: string; gameTypes: DailyDetectiveGameType[] }>({ scope: null, gameDate: "", gameTypes: [] });
+  const [serverDailyGameState, setServerDailyGameState] = useState<{ scope: string | null; gameDate: string; gameTypes: DailyDetectiveGameType[]; ready: boolean }>({ scope: null, gameDate: "", gameTypes: [], ready: false });
   const [now] = useState(() => Date.now());
   const [openRequested, setOpenRequested] = useState(false);
   const [previewOpenRequested, setPreviewOpenRequested] = useState(false);
   const [detectiveCaseOpenRequested, setDetectiveCaseOpenRequested] = useState(false);
+  const [dailyGamesOpenRequested, setDailyGamesOpenRequested] = useState(false);
   const [lastProcessedPublicationKey, setLastProcessedPublicationKey] = useState<string | null>(null);
   const [sessionPopupState, setSessionPopupState] = useState<NewSpecialsPopupState | null>(null);
   const [popupSuppressedUntilHomeExit, setPopupSuppressedUntilHomeExit] = useState(false);
   const suppressionReachedHomeRef = useRef(false);
+
+  useEffect(() => {
+    const refreshGameDate = () => setDailyGameDate(newZealandGameDate());
+    const intervalId = window.setInterval(refreshGameDate, 30_000);
+    window.addEventListener("focus", refreshGameDate);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshGameDate);
+    };
+  }, []);
 
   useEffect(() => {
     latestProductsRef.current = products;
@@ -205,6 +241,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       writeNewSpecialsPopupState(hydratedPopupState, scope);
     }
     const hydratedPlayedState = readStoredDealDetectivePlayedState(scope);
+    const hydratedDailyState = readDailyGameState(scope);
     const hydratedPairKeys = readStoredDealDetectivePairKeys(scope);
     let hydratedDetectiveCase = readStoredDealDetectiveCase(scope);
     // Older stored cases predate the shopper-facing case number. Assign one
@@ -229,11 +266,14 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       detectiveCasePlayedQuestionKind: hydratedPlayedState?.questionKind ?? null,
     });
     setPlayedPairKeys(hydratedPairKeys);
+    setLocalDailyGameState({ scope, gameDate: hydratedDailyState.gameDate, gameTypes: hydratedDailyState.completedGameTypes });
+    setServerDailyGameState({ scope, gameDate: dailyGameDate, gameTypes: [], ready: isAnonymousSession || !detectiveAccessToken });
     setPlayedPairHistoryReady(isAnonymousSession);
     setOpenRequested(false);
     setPreviewOpenRequested(false);
     setDetectiveCaseOpenRequested(false);
-  }, [isAnonymousSession, scope]);
+    setDailyGamesOpenRequested(false);
+  }, [dailyGameDate, detectiveAccessToken, isAnonymousSession, scope]);
 
   const storageReady = scope !== null && stored.scope === scope;
   const launchDecisionReady = catalogueLiveLoaded && storageReady && (
@@ -247,27 +287,49 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     if (!scope || !storageReady) return;
     if (isAnonymousSession || !detectiveAccessToken) {
       setPlayedPairHistoryReady(true);
+      setServerDailyGameState({ scope, gameDate: dailyGameDate, gameTypes: [], ready: true });
       return;
     }
     const controller = new AbortController();
     setPlayedPairHistoryReady(false);
-    loadStoredDealDetectivePairKeys(detectiveAccessToken, controller.signal)
-      .then((remotePairKeys) => {
+    setServerDailyGameState((current) => ({ ...current, scope, gameDate: dailyGameDate, ready: false }));
+    const retryTimer = { id: 0 };
+    const scheduleRetry = () => {
+      const delay = Math.min(15_000 * (2 ** Math.min(dailyHistoryRetryCount, 4)), 5 * 60_000);
+      retryTimer.id = window.setTimeout(() => setDailyHistoryRetryCount((count) => count + 1), delay);
+    };
+    loadDealDetectiveHistory(detectiveAccessToken, controller.signal)
+      .then((history) => {
         setPlayedPairKeys((currentPairKeys) => {
-          const mergedPairKeys = [...new Set([...currentPairKeys, ...remotePairKeys])];
+          const mergedPairKeys = [...new Set([...currentPairKeys, ...history.pairKeys])];
           writeStoredDealDetectivePairKeys(mergedPairKeys, scope);
           return mergedPairKeys;
         });
+        setServerDailyGameState({
+          scope,
+          gameDate: history.gameDate ?? dailyGameDate,
+          gameTypes: history.completedGameTypes,
+          ready: history.dailyGamesReady,
+        });
         setPlayedPairHistoryReady(true);
+        if (!history.dailyGamesReady) {
+          scheduleRetry();
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        // Local history remains a safe fallback if the optional history read is
-        // temporarily unavailable; the scoring RPC still rejects duplicates.
+        // Keep account games hidden until the server can confirm today's turns.
+        // Showing a local fallback here could offer a game already used on
+        // another device, so retry quietly instead.
         setPlayedPairHistoryReady(true);
+        setServerDailyGameState({ scope, gameDate: dailyGameDate, gameTypes: [], ready: false });
+        scheduleRetry();
       });
-    return () => controller.abort();
-  }, [detectiveAccessToken, isAnonymousSession, scope, storageReady]);
+    return () => {
+      controller.abort();
+      if (retryTimer.id) window.clearTimeout(retryTimer.id);
+    };
+  }, [dailyGameDate, dailyHistoryRetryCount, detectiveAccessToken, isAnonymousSession, scope, storageReady]);
 
   useEffect(() => {
     const suppressPopup = () => {
@@ -354,6 +416,25 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     () => (shouldBuildCurrentQuizCase && storageReady && playedPairHistoryReady && products.length > 0 ? buildCurrentQuizCase() : null),
     [buildCurrentQuizCase, playedPairHistoryReady, products.length, shouldBuildCurrentQuizCase, storageReady],
   );
+  const dailyGameStatusReady = Boolean(
+    storageReady
+    && localDailyGameState.scope === scope
+    && localDailyGameState.gameDate === dailyGameDate
+    && (isAnonymousSession || !user || (
+      serverDailyGameState.scope === scope
+      && serverDailyGameState.gameDate === dailyGameDate
+      && serverDailyGameState.ready
+    )),
+  );
+  const completedDailyGameTypes = useMemo(() => new Set([
+    ...(localDailyGameState.scope === scope && localDailyGameState.gameDate === dailyGameDate ? localDailyGameState.gameTypes : []),
+    ...(serverDailyGameState.scope === scope && serverDailyGameState.gameDate === dailyGameDate ? serverDailyGameState.gameTypes : []),
+  ]), [dailyGameDate, localDailyGameState, scope, serverDailyGameState]);
+  const showdownCase = useMemo(() => {
+    if (!storageReady || !playedPairHistoryReady || products.length === 0) return null;
+    const dayRotation = Number(dailyGameDate.replaceAll("-", "")) || 0;
+    return buildSupermarketShowdownCase(products, dayRotation, playedPairKeys);
+  }, [dailyGameDate, playedPairHistoryReady, playedPairKeys, products, storageReady]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
@@ -533,22 +614,44 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   // A valid case can be recovered from the current catalogue even when an
   // earlier render missed the localStorage write. Do not recreate a case that
   // this account has already answered for the current publication.
-  const detectiveCasePlayedForCurrentPublication = Boolean(
-    cataloguePublicationKey && detectiveCasePlayedPublicationKey === cataloguePublicationKey,
+  const canCreateDetectiveCaseOnDemand = Boolean(currentQuizCase && playedPairHistoryReady && storageReady);
+  const canOpenDetectiveCase = Boolean(
+    dailyGameStatusReady
+    && !completedDailyGameTypes.has("deal-detective")
+    && (detectiveCase || canCreateDetectiveCaseOnDemand),
   );
-  const canCreateDetectiveCaseOnDemand = Boolean(currentQuizCase && playedPairHistoryReady && storageReady && !detectiveCasePlayedForCurrentPublication);
-  // Plus accounts retain a profile-menu replay path for QA and support. This
-  // does not recreate the automatic launch popup after a case is answered;
-  // it only lets the user explicitly start the game again from their profile.
-  const canReplayDetectiveCaseFromProfile = Boolean(!subscriptionLoading && isPremium && currentQuizCase && playedPairHistoryReady && storageReady);
-  const canOpenDetectiveCase = Boolean(detectiveCase || canCreateDetectiveCaseOnDemand || canReplayDetectiveCaseFromProfile);
+  const canOpenSupermarketShowdown = Boolean(
+    dailyGameStatusReady
+    && !completedDailyGameTypes.has("supermarket-showdown")
+    && showdownCase,
+  );
+  const canOpenDailyGames = canOpenDetectiveCase || canOpenSupermarketShowdown;
+  const availableDetectiveCase = detectiveCase ?? (canOpenDetectiveCase ? currentQuizCase : null);
+
+  const markDailyGamePlayed = useCallback((gameType: DailyDetectiveGameType) => {
+    if (!scope || !storageReady) return;
+    const completedDate = newZealandGameDate();
+    const nextLocalState = writeDailyGamePlayed(gameType, scope, completedDate);
+    setLocalDailyGameState({ scope, gameDate: completedDate, gameTypes: nextLocalState.completedGameTypes });
+    setServerDailyGameState((current) => ({
+      scope,
+      gameDate: completedDate,
+      gameTypes: [...new Set([...(current.scope === scope && current.gameDate === completedDate ? current.gameTypes : []), gameType])],
+      ready: current.scope === scope && current.gameDate === completedDate ? current.ready : isAnonymousSession,
+    }));
+  }, [isAnonymousSession, scope, storageReady]);
+
+  const requestDailyGamesOpen = useCallback(() => {
+    if (canOpenDailyGames) setDailyGamesOpenRequested(true);
+  }, [canOpenDailyGames]);
 
   const requestDetectiveCaseOpen = useCallback(() => {
+    if (!canOpenDetectiveCase) return;
     if (detectiveCase) {
       setDetectiveCaseOpenRequested(true);
       return;
     }
-    if (!currentQuizCase || !playedPairHistoryReady || !scope || !storageReady || (detectiveCasePlayedForCurrentPublication && !canReplayDetectiveCaseFromProfile)) return;
+    if (!currentQuizCase || !playedPairHistoryReady || !scope || !storageReady || completedDailyGameTypes.has("deal-detective")) return;
 
     // The normal reconciliation effect persists a case as soon as the
     // catalogue marker is ready. This on-demand path covers a cold profile
@@ -568,7 +671,7 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     clearStoredDealDetectivePlayedState(scope);
     setStored((current) => ({ ...current, detectiveCase: nextCase, detectiveCasePlayedPublicationKey: null, detectiveCasePlayedQuestionKind: null }));
     setDetectiveCaseOpenRequested(true);
-  }, [buildCurrentQuizCase, canReplayDetectiveCaseFromProfile, cataloguePublicationKey, currentQuizCase, detectiveCase, detectiveCasePlayedForCurrentPublication, detectiveCasePlayedQuestionKind, playedPairHistoryReady, scope, storageReady]);
+  }, [buildCurrentQuizCase, canOpenDetectiveCase, cataloguePublicationKey, completedDailyGameTypes, currentQuizCase, detectiveCase, detectiveCasePlayedQuestionKind, playedPairHistoryReady, scope, storageReady]);
 
   const consumeOpenRequest = useCallback(() => {
     setOpenRequested(false);
@@ -582,26 +685,35 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     setDetectiveCaseOpenRequested(false);
   }, []);
 
-  const markDetectiveCasePlayed = useCallback(() => {
-    if (!scope || !storageReady || !storedDetectiveCase) return;
-    // Anonymous Test mode intentionally keeps the case available so it can be
-    // replayed while the interaction is being QA-tested. Real accounts still
-    // consume the case permanently after the first answer.
-    if (isAnonymousSession) {
-      setDetectiveCaseOpenRequested(false);
-      return;
-    }
-    const playedPublicationKey = storedDetectiveCase.publicationKey;
-    const playedQuestionKind = storedDetectiveCase.quizCase.questionKind ?? "real";
-    const playedPairKey = dealDetectivePairKeyForCase(storedDetectiveCase.quizCase);
+  const consumeDailyGamesOpenRequest = useCallback(() => {
+    setDailyGamesOpenRequested(false);
+  }, []);
+
+  const markDetectiveCasePlayed = useCallback((playedQuizCase?: DealDetectiveQuizCase) => {
+    if (!scope || !storageReady) return;
+    const quizCaseToRecord = storedDetectiveCase?.quizCase ?? playedQuizCase;
+    if (!quizCaseToRecord) return;
+    const playedPublicationKey = storedDetectiveCase?.publicationKey ?? cataloguePublicationKey ?? "anonymous-test-case";
+    const playedQuestionKind = quizCaseToRecord.questionKind ?? "real";
+    const playedPairKey = dealDetectivePairKeyForCase(quizCaseToRecord);
     const nextPlayedPairKeys = [...new Set([...playedPairKeys, playedPairKey])];
     writeStoredDealDetectivePairKeys(nextPlayedPairKeys, scope);
     setPlayedPairKeys(nextPlayedPairKeys);
     writeStoredDealDetectivePlayedState(playedPublicationKey, playedQuestionKind, scope);
+    markDailyGamePlayed("deal-detective");
     clearStoredDealDetectiveCase(scope);
     setStored((current) => ({ ...current, detectiveCase: null, detectiveCasePlayedPublicationKey: playedPublicationKey, detectiveCasePlayedQuestionKind: playedQuestionKind }));
     setDetectiveCaseOpenRequested(false);
-  }, [isAnonymousSession, playedPairKeys, scope, storageReady, storedDetectiveCase]);
+  }, [cataloguePublicationKey, markDailyGamePlayed, playedPairKeys, scope, storageReady, storedDetectiveCase]);
+
+  const markSupermarketShowdownPlayed = useCallback((caseResult: SupermarketShowdownCase) => {
+    if (!scope || !storageReady) return;
+    const pairKey = dealDetectivePairKey(caseResult.leftDealKey, caseResult.rightDealKey);
+    const nextPlayedPairKeys = [...new Set([...playedPairKeys, pairKey])];
+    writeStoredDealDetectivePairKeys(nextPlayedPairKeys, scope);
+    setPlayedPairKeys(nextPlayedPairKeys);
+    markDailyGamePlayed("supermarket-showdown");
+  }, [markDailyGamePlayed, playedPairKeys, scope, storageReady]);
 
   const markPopupShown = useCallback(() => {
     if (!scope || !storageReady || !activePending) return;
@@ -669,8 +781,12 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     () => ({
       digest,
       detectiveCase,
+      availableDetectiveCase,
       hasUnplayedDetectiveCase: Boolean(detectiveCase),
       canOpenDetectiveCase,
+      showdownCase,
+      canOpenSupermarketShowdown,
+      canOpenDailyGames,
       hasPendingDigest: Boolean(pendingDigest?.total),
       popupEligible,
       launchDecisionReady,
@@ -679,25 +795,33 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       previewSummary,
       previewOpenRequested,
       detectiveCaseOpenRequested,
+      dailyGamesOpenRequested,
       requestOpen,
       requestPreviewOpen,
       requestDetectiveCaseOpen,
+      requestDailyGamesOpen,
       consumeOpenRequest,
       consumePreviewOpenRequest,
       consumeDetectiveCaseOpenRequest,
+      consumeDailyGamesOpenRequest,
       markPopupShown,
       markReviewed,
       markDetectiveCasePlayed,
+      markSupermarketShowdownPlayed,
     }),
-    [canOpenDetectiveCase, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, detectiveCaseOpenRequested, digest, launchDecisionReady, markDetectiveCasePlayed, markPopupShown, markReviewed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
+    [availableDetectiveCase, canOpenDailyGames, canOpenDetectiveCase, canOpenSupermarketShowdown, consumeDailyGamesOpenRequest, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, detectiveCase, detectiveCaseOpenRequested, dailyGamesOpenRequested, digest, launchDecisionReady, markDetectiveCasePlayed, markPopupShown, markReviewed, markSupermarketShowdownPlayed, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, requestDailyGamesOpen, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen, showdownCase],
   );
 
   const dataValue = useMemo<NewSpecialsDataContextValue>(
     () => ({
       digest,
       detectiveCase,
+      availableDetectiveCase,
       hasUnplayedDetectiveCase: Boolean(detectiveCase),
       canOpenDetectiveCase,
+      showdownCase,
+      canOpenSupermarketShowdown,
+      canOpenDailyGames,
       hasPendingDigest: Boolean(pendingDigest?.total),
       popupEligible,
       launchDecisionReady,
@@ -706,8 +830,9 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       previewSummary,
       previewOpenRequested,
       detectiveCaseOpenRequested,
+      dailyGamesOpenRequested,
     }),
-    [canOpenDetectiveCase, detectiveCase, detectiveCaseOpenRequested, digest, launchDecisionReady, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary],
+    [availableDetectiveCase, canOpenDailyGames, canOpenDetectiveCase, canOpenSupermarketShowdown, dailyGamesOpenRequested, detectiveCase, detectiveCaseOpenRequested, digest, launchDecisionReady, openRequested, pendingDigest, popupEligible, popupSuppressedUntilHomeExit, previewOpenRequested, previewSummary, showdownCase],
   );
 
   const actionsValue = useMemo<NewSpecialsActionsContextValue>(
@@ -715,14 +840,17 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
       requestOpen,
       requestPreviewOpen,
       requestDetectiveCaseOpen,
+      requestDailyGamesOpen,
       consumeOpenRequest,
       consumePreviewOpenRequest,
       consumeDetectiveCaseOpenRequest,
+      consumeDailyGamesOpenRequest,
       markPopupShown,
       markDetectiveCasePlayed,
+      markSupermarketShowdownPlayed,
       markReviewed,
     }),
-    [consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, markDetectiveCasePlayed, markPopupShown, markReviewed, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
+    [consumeDailyGamesOpenRequest, consumeDetectiveCaseOpenRequest, consumeOpenRequest, consumePreviewOpenRequest, markDetectiveCasePlayed, markPopupShown, markReviewed, markSupermarketShowdownPlayed, requestDailyGamesOpen, requestDetectiveCaseOpen, requestOpen, requestPreviewOpen],
   );
 
   return (
