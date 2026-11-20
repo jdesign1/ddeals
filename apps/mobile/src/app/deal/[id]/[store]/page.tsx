@@ -433,6 +433,7 @@ export default function DealAssessmentPage() {
   // boolean is what the state actually means now.
   const [showCheaperCarousel, setShowCheaperCarousel] = useState(false);
   const [priceHistoryTab, setPriceHistoryTab] = useState<"should-buy" | "price-tips">("should-buy");
+  const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
   const toggleCheaperCarousel = useCallback(() => {
     setShowCheaperCarousel((open) => !open);
   }, []);
@@ -671,9 +672,15 @@ export default function DealAssessmentPage() {
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
           <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
             <h2 className="min-w-0 flex-1">
-              <span className={`inline-flex max-w-full truncate rounded-full border px-3 py-1.5 text-base leading-5 font-extrabold tracking-tight ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}>
+              <button
+                type="button"
+                onClick={() => setIsEvidenceOpen(true)}
+                aria-label={`Show evidence for ${getVerdictTitle(verdict)}`}
+                aria-haspopup="dialog"
+                className={`inline-flex max-w-full cursor-pointer truncate rounded-full border px-3 py-1.5 text-base leading-5 font-extrabold tracking-tight transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}
+              >
                 {getVerdictTitle(verdict)}
-              </span>
+              </button>
             </h2>
             <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] min-w-0 shrink-0" />
           </div>
@@ -715,6 +722,8 @@ export default function DealAssessmentPage() {
             )}
             triggerClassName="mt-0 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border-0 bg-transparent px-1.5 py-2 text-center text-sm font-semibold leading-5 text-stone-700 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700"
             assessmentCopy={assessmentSummary.body}
+            open={isEvidenceOpen}
+            onOpenChange={setIsEvidenceOpen}
             compactSpacing
           />
 

@@ -74,6 +74,33 @@ interface SelectedPriceHistory {
   error: string | null;
 }
 
+function onboardingPriceStatement(candidate: DealDetectiveQuizCandidate, points: PriceHistoryPoint[]): string {
+  const price = candidate.deal.price;
+  const historicalPrices = points
+    .map((point) => point.price)
+    .filter((pointPrice) => Number.isFinite(pointPrice) && pointPrice > 0);
+  const lowestPrice = historicalPrices.length > 0 ? Math.min(...historicalPrices) : null;
+
+  if (candidate.kind === "real") {
+    if (lowestPrice != null && price <= lowestPrice + 0.005) {
+      return `Real Saver — today’s $${price.toFixed(2)} is the lowest price we’ve seen in 90 days.`;
+    }
+    if (lowestPrice != null) {
+      if (price <= lowestPrice * 1.05) {
+        return `Real Saver — today’s $${price.toFixed(2)} is close to the 90-day low of $${lowestPrice.toFixed(2)}.`;
+      }
+      return `Real Saver — today’s $${price.toFixed(2)} is lower than usual, though we’ve seen it as low as $${lowestPrice.toFixed(2)}.`;
+    }
+    return "Real Saver — today’s price is lower than its usual price.";
+  }
+
+  if (lowestPrice != null && lowestPrice < price - 0.005) {
+    const difference = price - lowestPrice;
+    return `Dodgy Deal — we’ve seen it for $${lowestPrice.toFixed(2)} before. Today’s $${price.toFixed(2)} is $${difference.toFixed(2)} more.`;
+  }
+  return "Dodgy Deal — it has been cheaper during past specials, so today’s price is higher than a good special.";
+}
+
 function ConfettiBurst() {
   return (
     <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden="true">
@@ -182,6 +209,9 @@ export default function DealDetectiveQuiz({
   const correct = selectedSide === correctSide;
   const rankLabel = accessToken ? scoreResult?.detective_rank ?? currentRank : null;
   const selectedCandidate = selectedSide === "left" ? quizCase.left : selectedSide === "right" ? quizCase.right : null;
+  const onboardingPriceSummary = onboardingMode && selectedCandidate
+    ? onboardingPriceStatement(selectedCandidate, selectedPriceHistory.points)
+    : null;
   const isOnboardingHistory = onboardingMode && showPriceHistory && selectedCandidate !== null;
   const mascotAnimationKey = `${quizCase.caseNumber ?? "case"}-${questionKind}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`;
   const streakCaseKey = `${dealDetectivePairKeyForCase(quizCase)}::${questionKind}`;
@@ -495,7 +525,6 @@ export default function DealDetectiveQuiz({
               {onboardingMode ? (
                 <div className="px-1 pb-2 text-center">
                   <p className="font-display text-lg font-extrabold text-stone-900">Price history is the clue</p>
-                  <p className="mt-1 dd-type-body text-stone-600">We compare the price history.</p>
                 </div>
               ) : (
                 <p className="px-1 pb-2 text-center dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-stone-500">
@@ -514,6 +543,11 @@ export default function DealDetectiveQuiz({
                 animateOnMount
                 compact={onboardingMode}
               />
+              {onboardingPriceSummary && (
+                <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-left" role="status" aria-live="polite">
+                  <p className="dd-type-secondary leading-5 text-stone-700">{onboardingPriceSummary}</p>
+                </div>
+              )}
               {!onboardingMode && streakLength >= 2 && (
                 <motion.div
                   initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.96 }}
