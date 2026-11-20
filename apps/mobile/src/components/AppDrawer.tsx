@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, FlaskConical, Gamepad2, X } from "lucide-react";
+import { Bell, Gamepad2, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import LoggedOutAccountCard from "@/components/LoggedOutAccountCard";
 import { getAccountDisplayName } from "@/lib/account-display";
@@ -32,7 +32,7 @@ export default function AppDrawer() {
   const { openAuthSheet, requestOnboardingTour } = useAuthActions();
   const { unreadAlerts } = useNotificationsData();
   const { canOpenDailyGames } = useNewSpecialsData();
-  const { requestDailyGamesOpen, requestPreviewOpen } = useNewSpecialsActions();
+  const { requestDailyGamesOpen } = useNewSpecialsActions();
   const { isPremium, loading: subscriptionLoading } = useSubscriptionStatus();
   const { products, catalogueLiveLoaded } = useSearchCatalogue();
   const { savedProductIds, savedItemsReady } = useWatchlistData();
@@ -251,17 +251,6 @@ export default function AppDrawer() {
               Today’s games
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              closeDrawer();
-              requestPreviewOpen();
-            }}
-            className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-500 transition-colors hover:bg-stone-50"
-          >
-            <FlaskConical className="h-5 w-5 shrink-0 text-stone-700" aria-hidden="true" />
-            New deals popup (test)
-          </button>
           {!subscriptionLoading && !isPremium && (
             <Link href="/subscribe" onClick={closeDrawer} className="flex min-h-14 items-center gap-3 rounded-xl px-3 dd-type-control text-fair-800 transition-colors hover:bg-fair-50">
               <span className="material-symbols-outlined text-[24px] leading-none" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24" }} aria-hidden="true">
