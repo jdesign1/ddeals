@@ -3,6 +3,7 @@ export const DEAL_DETECTIVE_STREAK_VERSION = 2;
 export interface DealDetectiveStreakState {
   version: number;
   streak: number;
+  bestStreak: number;
   lastCaseKey: string | null;
   lastResult: "win" | "loss" | null;
   completedCaseKeys: string[];
@@ -13,6 +14,7 @@ const DEAL_DETECTIVE_STREAK_STORAGE_PREFIX = "dd-deal-detective-streak-v2:";
 const EMPTY_STREAK: DealDetectiveStreakState = {
   version: DEAL_DETECTIVE_STREAK_VERSION,
   streak: 0,
+  bestStreak: 0,
   lastCaseKey: null,
   lastResult: null,
   completedCaseKeys: [],
@@ -40,11 +42,17 @@ export function readDealDetectiveStreak(scope = "device"): DealDetectiveStreakSt
     if (!raw) return { ...EMPTY_STREAK };
     const parsed = JSON.parse(raw) as Partial<DealDetectiveStreakState>;
     const parsedStreak = parsed.streak;
+    const parsedBestStreak = parsed.bestStreak;
     if (
       parsed.version !== DEAL_DETECTIVE_STREAK_VERSION
       || typeof parsedStreak !== "number"
       || !Number.isSafeInteger(parsedStreak)
       || parsedStreak < 0
+      || (parsedBestStreak !== undefined && (
+        typeof parsedBestStreak !== "number"
+        || !Number.isSafeInteger(parsedBestStreak)
+        || parsedBestStreak < parsedStreak
+      ))
       || (parsed.lastCaseKey !== null && typeof parsed.lastCaseKey !== "string")
       || (parsed.lastResult !== null && parsed.lastResult !== "win" && parsed.lastResult !== "loss")
       || !Array.isArray(parsed.completedCaseKeys)
@@ -54,6 +62,7 @@ export function readDealDetectiveStreak(scope = "device"): DealDetectiveStreakSt
     return {
       version: DEAL_DETECTIVE_STREAK_VERSION,
       streak,
+      bestStreak: parsedBestStreak ?? streak,
       lastCaseKey: parsed.lastCaseKey ?? null,
       lastResult: parsed.lastResult ?? null,
       completedCaseKeys: parsed.completedCaseKeys,
@@ -69,9 +78,11 @@ export function advanceDealDetectiveStreak(
   won: boolean,
 ): DealDetectiveStreakState {
   if (current.completedCaseKeys.includes(caseKey)) return current;
+  const streak = won && current.lastResult === "win" ? current.streak + 1 : won ? 1 : 0;
   return {
     version: DEAL_DETECTIVE_STREAK_VERSION,
-    streak: won && current.lastResult === "win" ? current.streak + 1 : won ? 1 : 0,
+    streak,
+    bestStreak: Math.max(current.bestStreak ?? current.streak, streak),
     lastCaseKey: caseKey,
     lastResult: won ? "win" : "loss",
     completedCaseKeys: [...current.completedCaseKeys, caseKey],

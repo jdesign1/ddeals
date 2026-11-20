@@ -3,12 +3,13 @@
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, X } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
 import DealDetectiveEntryCard from "@/components/DealDetectiveEntryCard";
 import MascotImage from "@/components/MascotImage";
 import type { DealDetectiveQuizCase, SupermarketShowdownCase } from "@/lib/deal-detective-quiz";
+import { readDealDetectiveStreak, type DealDetectiveStreakState } from "@/lib/deal-detective-streak";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 const CLOSE_COMPLETION_FALLBACK_MS = 650;
@@ -27,6 +28,11 @@ const DealDetectiveQuiz = dynamic(() => import("@/components/DealDetectiveQuiz")
 });
 
 const SupermarketShowdown = dynamic(() => import("@/components/SupermarketShowdown"), {
+  ssr: false,
+  loading: GameScreenLoading,
+});
+
+const DealDetectiveStreakLeaderboard = dynamic(() => import("@/components/DealDetectiveStreakLeaderboard"), {
   ssr: false,
   loading: GameScreenLoading,
 });
@@ -71,6 +77,7 @@ function NewSpecialsModal({
   // waits for the animation to finish (or the fallback timer below).
   const [showQuiz, setShowQuiz] = useState(gameOnly);
   const [showShowdown, setShowShowdown] = useState(false);
+  const [showStreakLeaderboard, setShowStreakLeaderboard] = useState(false);
   const [displayedShowdownCase, setDisplayedShowdownCase] = useState<SupermarketShowdownCase | null>(null);
   const [displayedQuizCase, setDisplayedQuizCase] = useState<DealDetectiveQuizCase | null>(quizCase);
   const [consumedQuizCaseKey, setConsumedQuizCaseKey] = useState<string | null>(null);
@@ -88,6 +95,11 @@ function NewSpecialsModal({
   const quizCaseKey = quizCase
     ? `${quizCase.caseNumber ?? "case"}-${quizCase.questionKind ?? "real"}-${quizCase.left.dealKey}-${quizCase.right.dealKey}`
     : null;
+  const dailyStreak = useMemo<DealDetectiveStreakState | null>(() => (
+    open && dailyGamesOnly && !showQuiz && !showShowdown && !showStreakLeaderboard
+      ? readDealDetectiveStreak(detectiveStreakScope)
+      : null
+  ), [dailyGamesOnly, detectiveStreakScope, open, showQuiz, showShowdown, showStreakLeaderboard]);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -100,6 +112,7 @@ function NewSpecialsModal({
       if (!open) {
         setShowQuiz(false);
         setShowShowdown(false);
+        setShowStreakLeaderboard(false);
         setDisplayedShowdownCase(null);
         setDisplayedQuizCase(null);
         setConsumedQuizCaseKey(null);
@@ -238,7 +251,7 @@ function NewSpecialsModal({
                   onClick={handleClose}
                   aria-label={dailyGamesOnly ? "Close today’s games" : gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                   ref={closeButtonRef}
-                  className={`pointer-events-auto absolute ${gameOnly || dailyGamesOnly || (showQuiz && displayedQuizCase) || showShowdown ? "right-3 top-3" : "-right-2 -top-2"} flex h-11 w-11 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2`}
+                  className={`pointer-events-auto absolute border-0 ${gameOnly || dailyGamesOnly || (showQuiz && displayedQuizCase) || showShowdown ? "right-3 top-3" : "-right-2 -top-2"} flex h-11 w-11 items-center justify-center rounded-full bg-ink-900 text-white shadow-none outline-none transition-colors hover:bg-ink-800 focus:outline-none focus-visible:outline-none focus-visible:ring-0`}
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -296,8 +309,38 @@ function NewSpecialsModal({
                   showBackButton={!gameOnly && !dailyGamesOnly}
                 />
               ) : dailyGamesOnly ? (
-                <div className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-14">
-                  <div className="-mx-5 -mt-14 mb-5 h-40 overflow-hidden rounded-t-3xl bg-fair-50">
+                <AnimatePresence mode="wait" initial={false}>
+                  {showStreakLeaderboard ? (
+                    <motion.div
+                      key="daily-game-streak-leaderboard"
+                      initial={{ opacity: 0, x: 32 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -24 }}
+                      transition={{ duration: 0.24, ease: "easeOut" }}
+                      className="flex min-h-full flex-1 flex-col"
+                    >
+                      <div className="flex min-h-14 items-center border-b border-stone-200 px-5 pt-3">
+                        <button type="button" onClick={() => setShowStreakLeaderboard(false)} className="-ml-2 flex min-h-11 items-center gap-1 rounded-full px-2 dd-type-control dd-type-control-strong text-stone-700 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600" aria-label="Back to today’s games">
+                          <ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" />
+                          Back
+                        </button>
+                        <h2 id="new-specials-title" className="ml-2 font-display text-lg font-extrabold text-stone-900">Streak leaderboard</h2>
+                      </div>
+                      <div className="flex-1 overflow-y-auto px-5 py-4">
+                        <p id="new-specials-description" className="mb-4 dd-type-secondary text-stone-600">Public tip contributors ranked by their best Deal Detective win streak.</p>
+                        <DealDetectiveStreakLeaderboard accessToken={accessToken} />
+                      </div>
+                    </motion.div>
+                  ) : (
+                <motion.div
+                  key="daily-games-menu"
+                  initial={{ opacity: 0, x: -24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 28 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-14"
+                >
+                  <div className="-mx-5 -mt-14 mb-5 h-52 overflow-hidden rounded-t-3xl bg-fair-50">
                     <MascotImage
                       src="/deal-detective-case-mascot-wide.webp"
                       darkSrc="/deal-detective-case-mascot-wide.webp"
@@ -310,9 +353,8 @@ function NewSpecialsModal({
                     />
                   </div>
                   <div className="mb-5">
-                    <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">A fresh turn each day</p>
                     <h2 id="new-specials-title" className="mt-1 font-display text-2xl font-extrabold text-stone-900">Today’s games</h2>
-                    <p id="new-specials-description" className="mt-1 dd-type-secondary text-stone-600">Two quick challenges. Fresh every day.</p>
+                    <p id="new-specials-description" className="sr-only">Choose one of today’s deal-spotting games.</p>
                   </div>
                   <div className="flex flex-col gap-3">
                     {canOpenDetectiveCase && quizCase && (
@@ -345,11 +387,23 @@ function NewSpecialsModal({
                   {!canOpenDetectiveCase && !canOpenSupermarketShowdown && (
                     <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-center" role="status">
                       <p className="dd-type-control dd-type-control-strong text-stone-900">You’re all done for today</p>
-                      <p className="mt-1 dd-type-secondary text-stone-600">Come back tomorrow for two fresh games.</p>
+                      <p className="mt-1 dd-type-secondary text-stone-600">Come back tomorrow for more deal-spotting.</p>
                     </div>
                   )}
+                  {dailyStreak && dailyStreak.streak >= 2 && dailyStreak.lastResult === "win" && (
+                    <button type="button" onClick={() => setShowStreakLeaderboard(true)} className="group mt-4 flex min-h-[4.5rem] w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left shadow-xs transition-colors hover:bg-amber-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-amber-700 shadow-xs" aria-hidden="true">🔥</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block dd-type-control dd-type-control-strong text-amber-950">{dailyStreak.streak}-win streak!</span>
+                        <span className="mt-0.5 block dd-type-meta text-amber-900/75">Personal best: {dailyStreak.bestStreak} wins · View leaderboard</span>
+                      </span>
+                      <ArrowRight className="h-5 w-5 shrink-0 text-amber-800 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </button>
+                  )}
                   <button type="button" onClick={handleClose} className="dd-btn dd-btn-outline-muted mt-auto min-h-12 w-full cursor-pointer">Close</button>
-                </div>
+                </motion.div>
+                  )}
+                </AnimatePresence>
               ) : (
                 <>
                   <div className="-mx-5 -mt-4 aspect-square w-[calc(100%+2.5rem)] overflow-hidden rounded-t-3xl bg-stone-100">

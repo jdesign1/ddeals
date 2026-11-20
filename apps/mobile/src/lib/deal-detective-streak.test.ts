@@ -5,6 +5,7 @@ import { advanceDealDetectiveStreak, DEAL_DETECTIVE_STREAK_VERSION, type DealDet
 const empty: DealDetectiveStreakState = {
   version: DEAL_DETECTIVE_STREAK_VERSION,
   streak: 0,
+  bestStreak: 0,
   lastCaseKey: null,
   lastResult: null,
   completedCaseKeys: [],
