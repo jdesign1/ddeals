@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
+import { Check, LockKeyhole, X } from "lucide-react";
 import type { DealDetectiveQuizResult, DealDetectiveQuizSide, SupermarketShowdownCase } from "@/lib/deal-detective-quiz";
 import { dealDetectiveDealKey, issueSupermarketShowdownChallenge, submitSupermarketShowdown } from "@/lib/deal-detective-quiz";
 import DealDetectiveConfetti from "@/components/DealDetectiveConfetti";
@@ -12,7 +12,6 @@ import StoreLogoBadge from "@/components/StoreLogoBadge";
 interface SupermarketShowdownProps {
   showdownCase: SupermarketShowdownCase;
   accessToken: string | null;
-  onBack: () => void;
   onDone: () => void;
   onPlayed: (showdownCase: SupermarketShowdownCase) => void;
 }
@@ -21,7 +20,7 @@ function currency(price: number): string {
   return `$${price.toFixed(2)}`;
 }
 
-export default function SupermarketShowdown({ showdownCase, accessToken, onBack, onDone, onPlayed }: SupermarketShowdownProps) {
+export default function SupermarketShowdown({ showdownCase, accessToken, onDone, onPlayed }: SupermarketShowdownProps) {
   const [selectedDealKey, setSelectedDealKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
@@ -92,14 +91,9 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onBack,
   };
 
   return (
-    <div className="relative isolate flex min-h-full flex-1 flex-col px-5 pb-6 pt-12" aria-busy={isSubmitting}>
+    <div className="relative isolate flex min-h-full flex-1 flex-col px-5 pb-6 pt-16" aria-busy={isSubmitting}>
       {answered && selectedSide === showdownCase.correctSide && <DealDetectiveConfetti key={selectedDealKey} />}
-      <button type="button" onClick={onBack} className="-ml-2 mb-3 flex min-h-11 w-fit items-center gap-1 rounded-full px-2 dd-type-control text-stone-600 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700">
-        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-        Today’s games
-      </button>
       <div className="mb-4 flex flex-col items-center gap-2 text-center">
-        <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-stone-500">Supermarket Showdown</p>
         <h2 id="new-specials-title" className="font-display text-xl font-extrabold text-stone-900">Which store has the better price?</h2>
         <p id="new-specials-description" className="dd-type-secondary text-stone-600">Pick one to reveal today’s prices.</p>
       </div>
@@ -146,7 +140,7 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onBack,
 
       <div className="mt-auto pt-6">
         <button type="button" disabled={!answered || isSubmitting} onClick={onDone} className="dd-btn dd-btn-primary min-h-12 w-full cursor-pointer disabled:cursor-default disabled:opacity-50">
-          {answered ? "Back to today’s games" : "Choose a supermarket"}
+          {answered ? "Done" : "Choose a supermarket"}
         </button>
       </div>
     </div>

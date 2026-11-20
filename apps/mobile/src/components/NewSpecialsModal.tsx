@@ -213,7 +213,7 @@ function NewSpecialsModal({
               ref={dialogRef}
               onKeyDown={handleDialogKeyDown}
               onClick={(event) => event.stopPropagation()}
-              className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-2 top-2 bottom-2 mx-auto flex h-auto max-h-none w-auto max-w-[27rem] translate-y-0 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${(showQuiz && displayedQuizCase) || showShowdown ? "p-0" : "px-5 pb-6 pt-4"}`}
+              className={`dd-bottom-sheet dd-bottom-sheet-surface fixed inset-x-4 top-2 bottom-2 mx-auto flex h-auto max-h-none w-auto max-w-[27rem] translate-y-0 flex-col overflow-y-auto rounded-3xl border border-stone-200 shadow-2xl ${(showQuiz && displayedQuizCase) || showShowdown || dailyGamesOnly ? "p-0" : "px-5 pb-6 pt-4"}`}
             >
               <div className="pointer-events-none sticky top-0 z-40 h-0">
                 <button
@@ -221,7 +221,7 @@ function NewSpecialsModal({
                   onClick={handleClose}
                   aria-label={dailyGamesOnly ? "Close today’s games" : gameOnly ? "Close Deal Detective case" : "Close new specials message"}
                   ref={closeButtonRef}
-                  className={`pointer-events-auto absolute ${gameOnly || dailyGamesOnly || (showQuiz && displayedQuizCase) || showShowdown ? "right-3 top-3" : "-right-2 -top-2"} flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800`}
+                  className={`pointer-events-auto absolute ${gameOnly || dailyGamesOnly || (showQuiz && displayedQuizCase) || showShowdown ? "right-3 top-3" : "-right-2 -top-2"} flex h-11 w-11 items-center justify-center rounded-full bg-ink-900 text-white shadow-md transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2`}
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -232,10 +232,6 @@ function NewSpecialsModal({
                   key={`${displayedShowdownCase.leftDealKey}-${displayedShowdownCase.rightDealKey}`}
                   showdownCase={displayedShowdownCase}
                   accessToken={accessToken}
-                  onBack={() => {
-                    setShowShowdown(false);
-                    setDisplayedShowdownCase(null);
-                  }}
                   onDone={() => {
                     setShowShowdown(false);
                     setDisplayedShowdownCase(null);
@@ -280,14 +276,26 @@ function NewSpecialsModal({
                   onAnswered={() => setConsumedQuizCaseKey(quizCaseKey)}
                   onPlayed={() => onPlayed(displayedQuizCase)}
                   showViewDealsButton={false}
-                  showBackButton={!gameOnly}
+                  showBackButton={!gameOnly && !dailyGamesOnly}
                 />
               ) : dailyGamesOnly ? (
                 <div className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-14">
-                  <div className="mb-5 text-center">
+                  <div className="-mx-5 -mt-14 mb-5 h-40 overflow-hidden rounded-t-3xl bg-fair-50">
+                    <MascotImage
+                      src="/deal-detective-case-mascot-wide.webp"
+                      darkSrc="/deal-detective-case-mascot-wide.webp"
+                      alt="Dodgy Deal mascot investigating supermarket deals"
+                      width={1024}
+                      height={931}
+                      sizes="(max-width: 480px) calc(100vw - 32px), 432px"
+                      unoptimized
+                      className="h-full w-full object-cover object-[center_42%]"
+                    />
+                  </div>
+                  <div className="mb-5">
                     <p className="dd-type-meta dd-type-meta-strong uppercase tracking-[0.1em] text-fair-800">A fresh turn each day</p>
                     <h2 id="new-specials-title" className="mt-1 font-display text-2xl font-extrabold text-stone-900">Today’s games</h2>
-                    <p id="new-specials-description" className="mt-2 dd-type-secondary text-stone-600">Your daily deal-spotting games.</p>
+                    <p id="new-specials-description" className="mt-1 dd-type-secondary text-stone-600">Two quick challenges. Fresh every day.</p>
                   </div>
                   <div className="flex flex-col gap-3">
                     {canOpenDetectiveCase && quizCase && (
@@ -297,8 +305,10 @@ function NewSpecialsModal({
                           setShowQuiz(true);
                         }}
                         title="Deal Detective"
-                        description="Spot the Real Saver or Dodgy Deal"
+                        description="Pick the Real Saver or Dodgy Deal"
                         buttonLabel="Play"
+                        eyebrow="CASE 01"
+                        variant="detective"
                       />
                     )}
                     {canOpenSupermarketShowdown && showdownCase && (
@@ -308,8 +318,10 @@ function NewSpecialsModal({
                           setShowShowdown(true);
                         }}
                         title="Supermarket Showdown"
-                        description={`Pick the cheaper ${showdownCase.product.name}`}
+                        description={`Guess the lowest price for ${showdownCase.product.name}`}
                         buttonLabel="Play"
+                        eyebrow="PRICE BATTLE"
+                        variant="showdown"
                       />
                     )}
                   </div>
