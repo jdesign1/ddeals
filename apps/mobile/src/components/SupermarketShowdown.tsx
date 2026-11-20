@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, ChevronLeft, LockKeyhole, X } from "lucide-react";
 import type { DealDetectiveQuizResult, DealDetectiveQuizSide, SupermarketShowdownCase } from "@/lib/deal-detective-quiz";
 import { dealDetectiveDealKey, issueSupermarketShowdownChallenge, submitSupermarketShowdown } from "@/lib/deal-detective-quiz";
+import DealDetectiveConfetti from "@/components/DealDetectiveConfetti";
 import ProductImage from "@/components/ProductImage";
 import StoreLogoBadge from "@/components/StoreLogoBadge";
 
@@ -91,7 +92,8 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onBack,
   };
 
   return (
-    <div className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-12" aria-busy={isSubmitting}>
+    <div className="relative isolate flex min-h-full flex-1 flex-col px-5 pb-6 pt-12" aria-busy={isSubmitting}>
+      {answered && selectedSide === showdownCase.correctSide && <DealDetectiveConfetti key={selectedDealKey} />}
       <button type="button" onClick={onBack} className="-ml-2 mb-3 flex min-h-11 w-fit items-center gap-1 rounded-full px-2 dd-type-control text-stone-600 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700">
         <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         Today’s games
