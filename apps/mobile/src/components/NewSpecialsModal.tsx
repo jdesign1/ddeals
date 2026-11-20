@@ -1,18 +1,35 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, X } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
-import DealDetectiveQuiz from "@/components/DealDetectiveQuiz";
 import DealDetectiveEntryCard from "@/components/DealDetectiveEntryCard";
 import MascotImage from "@/components/MascotImage";
-import SupermarketShowdown from "@/components/SupermarketShowdown";
 import type { DealDetectiveQuizCase, SupermarketShowdownCase } from "@/lib/deal-detective-quiz";
 import type { NewSpecialsSummary } from "@/lib/new-specials";
 
 const CLOSE_COMPLETION_FALLBACK_MS = 650;
+
+function GameScreenLoading() {
+  return (
+    <div className="flex min-h-full flex-1 items-center justify-center px-5 pt-16 pb-6" role="status" aria-label="Loading game">
+      <span className="dd-type-control dd-type-control-strong text-stone-600">Loading game…</span>
+    </div>
+  );
+}
+
+const DealDetectiveQuiz = dynamic(() => import("@/components/DealDetectiveQuiz"), {
+  ssr: false,
+  loading: GameScreenLoading,
+});
+
+const SupermarketShowdown = dynamic(() => import("@/components/SupermarketShowdown"), {
+  ssr: false,
+  loading: GameScreenLoading,
+});
 
 interface NewSpecialsModalProps {
   open: boolean;

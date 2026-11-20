@@ -439,9 +439,15 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
     ...(serverDailyGameState.scope === scope && serverDailyGameState.gameDate === dailyGameDate ? serverDailyGameState.gameTypes : []),
   ]), [dailyGameDate, localDailyGameState, scope, serverDailyGameState]);
   const showdownCase = useMemo(() => {
-    if (!storageReady || !playedPairHistoryReady || products.length === 0) return null;
+    if (
+      !storageReady
+      || !playedPairHistoryReady
+      || !dailyGameStatusReady
+      || completedDailyGameTypes.has("supermarket-showdown")
+      || products.length === 0
+    ) return null;
     return buildSupermarketShowdownCase(products, dailyShowdownRotationIndex(dailyGameDate, scope ?? "device"), playedPairKeys);
-  }, [dailyGameDate, playedPairHistoryReady, playedPairKeys, products, scope, storageReady]);
+  }, [completedDailyGameTypes, dailyGameDate, dailyGameStatusReady, playedPairHistoryReady, playedPairKeys, products, scope, storageReady]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;
