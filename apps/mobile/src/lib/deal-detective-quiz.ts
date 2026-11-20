@@ -18,6 +18,8 @@ export type DailyDetectiveGameType = "deal-detective" | "supermarket-showdown";
 
 export interface SupermarketShowdownCase {
   product: ProductCard;
+  choices: CurrentDeal[];
+  correctDealKey: string;
   leftDeal: CurrentDeal;
   rightDeal: CurrentDeal;
   leftDealKey: string;
@@ -291,46 +293,73 @@ export function buildSupermarketShowdownCase(
   excludedPairKeys: readonly string[] = [],
 ): SupermarketShowdownCase | null {
   const excludedPairs = new Set(excludedPairKeys);
-  const pairs: SupermarketShowdownCase[] = [];
+  const pairsByCheapestStore = new Map<string, SupermarketShowdownCase[]>();
+  const eligibleStores = new Set(["newworld", "paknsave", "woolworths", "woolworthsnz"]);
 
   for (const product of products) {
     const currentDealsByStore = new Map<string, CurrentDeal>();
     for (const deal of product.currentDeals) {
       if (!deal.isOnSpecial || !Number.isFinite(deal.price) || deal.price <= 0) continue;
       const storeKey = normalizeStoreKey(deal.store);
+      if (!eligibleStores.has(storeKey)) continue;
       if (!storeKey || currentDealsByStore.has(storeKey)) continue;
       currentDealsByStore.set(storeKey, deal);
     }
 
-    const deals = [...currentDealsByStore.values()].sort((left, right) => (
+    const deals = [...currentDealsByStore.values()];
+    if (deals.length < 2) continue;
+    const dealsByPrice = [...deals].sort((left, right) => left.price - right.price || (
       normalizeStoreKey(left.store).localeCompare(normalizeStoreKey(right.store))
     ));
-    for (let leftIndex = 0; leftIndex < deals.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < deals.length; rightIndex += 1) {
-        const leftDeal = deals[leftIndex];
-        const rightDeal = deals[rightIndex];
-        if (Math.abs(leftDeal.price - rightDeal.price) < 0.005) continue;
-        const leftDealKey = dealDetectiveDealKey(product.id, leftDeal.store);
-        const rightDealKey = dealDetectiveDealKey(product.id, rightDeal.store);
-        if (excludedPairs.has(dealDetectivePairKey(leftDealKey, rightDealKey))) continue;
-        pairs.push({
-          product,
-          leftDeal,
-          rightDeal,
-          leftDealKey,
-          rightDealKey,
-          correctSide: leftDeal.price < rightDeal.price ? "left" : "right",
-        });
-      }
-    }
+    const [cheapestDeal, runnerUpDeal] = dealsByPrice;
+    if (Math.abs(cheapestDeal.price - runnerUpDeal.price) < 0.005) continue;
+
+    const leftDealKey = dealDetectiveDealKey(product.id, cheapestDeal.store);
+    const rightDealKey = dealDetectiveDealKey(product.id, runnerUpDeal.store);
+    if (excludedPairs.has(dealDetectivePairKey(leftDealKey, rightDealKey))) continue;
+    const showdownCase: SupermarketShowdownCase = {
+      product,
+      choices: dealsByPrice,
+      correctDealKey: leftDealKey,
+      leftDeal: cheapestDeal,
+      rightDeal: runnerUpDeal,
+      leftDealKey,
+      rightDealKey,
+      correctSide: "left",
+    };
+    const storePairs = pairsByCheapestStore.get(normalizeStoreKey(cheapestDeal.store)) ?? [];
+    storePairs.push(showdownCase);
+    pairsByCheapestStore.set(normalizeStoreKey(cheapestDeal.store), storePairs);
   }
 
-  pairs.sort((left, right) => dealDetectivePairKey(left.leftDealKey, left.rightDealKey).localeCompare(
+  const safeRotationIndex = Number.isSafeInteger(rotationIndex) && rotationIndex >= 0 ? rotationIndex : 0;
+  const winnerStoreKeys = [...pairsByCheapestStore.keys()].sort((left, right) => left.localeCompare(right));
+  // If all remaining cases have the same winning retailer, the answer stops
+  // being a real guess. Leave Showdown unavailable until there is variety.
+  if (winnerStoreKeys.length < 2) return null;
+
+  // Balance the winning retailer instead of sampling the raw pool, which is
+  // heavily weighted toward Pak'nSave. With today's catalogue a uniform pool
+  // would make Pak'nSave the answer about four times out of five.
+  const selectedWinnerKey = winnerStoreKeys[safeRotationIndex % winnerStoreKeys.length];
+  const winnerPairs = pairsByCheapestStore.get(selectedWinnerKey) ?? [];
+  winnerPairs.sort((left, right) => dealDetectivePairKey(left.leftDealKey, left.rightDealKey).localeCompare(
     dealDetectivePairKey(right.leftDealKey, right.rightDealKey),
   ));
-  if (pairs.length === 0) return null;
-  const safeRotationIndex = Number.isSafeInteger(rotationIndex) && rotationIndex >= 0 ? rotationIndex : 0;
-  return pairs[safeRotationIndex % pairs.length];
+  const selectedCase = winnerPairs[Math.floor(safeRotationIndex / winnerStoreKeys.length) % winnerPairs.length];
+  if (!selectedCase) return null;
+
+  const choiceOffset = safeRotationIndex % selectedCase.choices.length;
+  const rotatedChoices = [
+    ...selectedCase.choices.slice(choiceOffset),
+    ...selectedCase.choices.slice(0, choiceOffset),
+  ];
+  return {
+    ...selectedCase,
+    choices: Math.floor(safeRotationIndex / selectedCase.choices.length) % 2 === 0
+      ? rotatedChoices
+      : rotatedChoices.reverse(),
+  };
 }
 
 export function dealDetectivePairKeyForCase(quizCase: DealDetectiveQuizCase): string {

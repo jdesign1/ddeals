@@ -185,6 +185,14 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
   return kind === "real" ? "dodgy" : "real";
 }
 
+function dailyShowdownRotationIndex(gameDate: string, scope: string): number {
+  let hash = 2_166_136_261;
+  for (const character of `${gameDate}:${scope}`) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619);
+  }
+  return hash >>> 0;
+}
+
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { products, loadingProducts, catalogueLiveLoaded, cataloguePublicationKey, cataloguePublicationComplete } = useSearchCatalogue();
@@ -432,9 +440,8 @@ export function NewSpecialsProvider({ children }: { children: ReactNode }) {
   ]), [dailyGameDate, localDailyGameState, scope, serverDailyGameState]);
   const showdownCase = useMemo(() => {
     if (!storageReady || !playedPairHistoryReady || products.length === 0) return null;
-    const dayRotation = Number(dailyGameDate.replaceAll("-", "")) || 0;
-    return buildSupermarketShowdownCase(products, dayRotation, playedPairKeys);
-  }, [dailyGameDate, playedPairHistoryReady, playedPairKeys, products, storageReady]);
+    return buildSupermarketShowdownCase(products, dailyShowdownRotationIndex(dailyGameDate, scope ?? "device"), playedPairKeys);
+  }, [dailyGameDate, playedPairHistoryReady, playedPairKeys, products, scope, storageReady]);
 
   useEffect(() => {
     if (!scope || !storageReady || loadingProducts || products.length === 0 || !cataloguePublicationKey || !cataloguePublicationComplete) return;

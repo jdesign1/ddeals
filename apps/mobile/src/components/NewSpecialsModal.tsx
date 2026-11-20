@@ -54,6 +54,7 @@ function NewSpecialsModal({
   // waits for the animation to finish (or the fallback timer below).
   const [showQuiz, setShowQuiz] = useState(gameOnly);
   const [showShowdown, setShowShowdown] = useState(false);
+  const [displayedShowdownCase, setDisplayedShowdownCase] = useState<SupermarketShowdownCase | null>(null);
   const [displayedQuizCase, setDisplayedQuizCase] = useState<DealDetectiveQuizCase | null>(quizCase);
   const [consumedQuizCaseKey, setConsumedQuizCaseKey] = useState<string | null>(null);
   const hasNewSpecials = (summary?.total ?? 0) > 0;
@@ -82,6 +83,7 @@ function NewSpecialsModal({
       if (!open) {
         setShowQuiz(false);
         setShowShowdown(false);
+        setDisplayedShowdownCase(null);
         setDisplayedQuizCase(null);
         setConsumedQuizCaseKey(null);
         return;
@@ -225,13 +227,19 @@ function NewSpecialsModal({
                 </button>
               </div>
 
-              {showShowdown && showdownCase ? (
+              {showShowdown && displayedShowdownCase ? (
                 <SupermarketShowdown
-                  key={`${showdownCase.leftDealKey}-${showdownCase.rightDealKey}`}
-                  showdownCase={showdownCase}
+                  key={`${displayedShowdownCase.leftDealKey}-${displayedShowdownCase.rightDealKey}`}
+                  showdownCase={displayedShowdownCase}
                   accessToken={accessToken}
-                  onBack={() => setShowShowdown(false)}
-                  onDone={() => setShowShowdown(false)}
+                  onBack={() => {
+                    setShowShowdown(false);
+                    setDisplayedShowdownCase(null);
+                  }}
+                  onDone={() => {
+                    setShowShowdown(false);
+                    setDisplayedShowdownCase(null);
+                  }}
                   onPlayed={onSupermarketShowdownPlayed}
                 />
               ) : showQuiz && displayedQuizCase ? (
@@ -295,7 +303,10 @@ function NewSpecialsModal({
                     )}
                     {canOpenSupermarketShowdown && showdownCase && (
                       <DealDetectiveEntryCard
-                        onClick={() => setShowShowdown(true)}
+                        onClick={() => {
+                          setDisplayedShowdownCase(showdownCase);
+                          setShowShowdown(true);
+                        }}
                         title="Supermarket Showdown"
                         description={`Pick the cheaper ${showdownCase.product.name}`}
                         buttonLabel="Play"
