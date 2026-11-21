@@ -79,13 +79,18 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
           animate={{ rotateY: 0, opacity: 1 }}
           transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.42, delay: index * 0.055, ease: [0.22, 0.7, 0.25, 1] }}
           style={{ transformPerspective: 900, backfaceVisibility: "hidden" }}
-          className="flex w-full flex-col items-center gap-2"
+          className="flex w-full flex-col items-center gap-1"
         >
           <StoreLogoBadge store={deal.store} variant="showdown" decorative />
-          <span className="line-clamp-2 min-h-10 dd-type-meta dd-type-meta-strong text-stone-900">{deal.store}</span>
+          <span className="line-clamp-2 min-h-9 dd-type-meta dd-type-meta-strong text-stone-900">{deal.store}</span>
           {answered
             ? <span className="font-display text-lg font-extrabold tabular-nums text-stone-900">{currency(deal.price)}</span>
-            : <span className="rounded-full bg-stone-100 px-2 py-1 dd-type-meta dd-type-meta-strong text-stone-600">Tap to pick</span>}
+            : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-1 dd-type-meta dd-type-meta-strong text-stone-600">
+                <span className="material-symbols-outlined text-[16px] leading-none" style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20" }} aria-hidden="true">touch_app</span>
+                Tap to pick
+              </span>
+            )}
           {answered && (
             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 dd-type-meta dd-type-meta-strong ${isCorrect ? "bg-fair-100 text-fair-900" : isSelected ? "bg-alert-100 text-alert-900" : "bg-stone-100 text-stone-700"}`}>
               {isCorrect ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : isSelected ? <X className="h-3.5 w-3.5" aria-hidden="true" /> : null}
@@ -106,7 +111,9 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
       </div>
 
       <div className="mb-4 flex flex-col items-center rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center shadow-xs">
-        <ProductImage src={showdownCase.product.image} alt="" width={112} height={112} sizes="112px" className="h-28 w-28 object-contain" />
+        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl bg-stone-50 p-2">
+          <ProductImage src={showdownCase.product.image} alt="" width={112} height={112} sizes="112px" className="h-full w-full object-contain mix-blend-multiply" />
+        </div>
         <p className="mt-2 dd-type-control dd-type-control-strong text-stone-900">{showdownCase.product.name}</p>
       </div>
 

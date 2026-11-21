@@ -36,6 +36,7 @@ interface DealDetectiveQuizProps {
   showViewDealsButton?: boolean;
   showBackButton?: boolean;
   onboardingMode?: boolean;
+  hideTopImage?: boolean;
 }
 
 // Give the answer result a little more room to land before the evidence chart
@@ -148,6 +149,7 @@ export default function DealDetectiveQuiz({
   showViewDealsButton = true,
   showBackButton = true,
   onboardingMode = false,
+  hideTopImage = false,
 }: DealDetectiveQuizProps) {
   const [selectedSide, setSelectedSide] = useState<DealDetectiveQuizSide | null>(null);
   const [scoreResult, setScoreResult] = useState<DealDetectiveQuizResult | null>(null);
@@ -159,6 +161,7 @@ export default function DealDetectiveQuiz({
   const [streakLength, setStreakLength] = useState(0);
   const [isMascotImageLoaded, setIsMascotImageLoaded] = useState(false);
   const [mascotImageFailed, setMascotImageFailed] = useState(false);
+  const isMascotImageReady = hideTopImage || isMascotImageLoaded;
   const prefersReducedMotion = useReducedMotion();
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const onboardingHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -179,13 +182,13 @@ export default function DealDetectiveQuiz({
   const streakCaseKey = `${dealDetectivePairKeyForCase(quizCase)}::${questionKind}`;
 
   useEffect(() => {
-    if (!isMascotImageLoaded) return;
+    if (!isMascotImageReady) return;
     backButtonRef.current?.focus();
-  }, [isMascotImageLoaded]);
+  }, [isMascotImageReady]);
 
   useEffect(() => {
-    if (onboardingMode && isMascotImageLoaded) onboardingHeadingRef.current?.focus();
-  }, [isMascotImageLoaded, onboardingMode, showPriceHistory]);
+    if (onboardingMode && isMascotImageReady) onboardingHeadingRef.current?.focus();
+  }, [isMascotImageReady, onboardingMode, showPriceHistory]);
 
   useEffect(() => () => {
     if (priceHistoryRevealTimeoutRef.current !== null) window.clearTimeout(priceHistoryRevealTimeoutRef.current);
@@ -302,14 +305,14 @@ export default function DealDetectiveQuiz({
   };
 
   return (
-    <div className="relative flex min-h-full flex-1 flex-col" aria-busy={!isMascotImageLoaded}>
-      {!isMascotImageLoaded && <DealDetectiveQuizSkeleton />}
+    <div className="relative flex min-h-full flex-1 flex-col" aria-busy={!isMascotImageReady}>
+      {!isMascotImageReady && <DealDetectiveQuizSkeleton />}
       <motion.div
         initial={false}
-        animate={isMascotImageLoaded ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+        animate={isMascotImageReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
         transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
-        aria-hidden={!isMascotImageLoaded}
-        inert={!isMascotImageLoaded ? true : undefined}
+        aria-hidden={!isMascotImageReady}
+        inert={!isMascotImageReady ? true : undefined}
         className="relative flex min-h-full flex-1 flex-col"
       >
       {!onboardingMode && correct && answered && <DealDetectiveConfetti key={selectedSide} />}
@@ -356,7 +359,7 @@ export default function DealDetectiveQuiz({
               />
             </motion.div>
           )
-        ) : (
+        ) : hideTopImage ? null : (
           <div
             key={mascotAnimationKey}
             className="relative flex aspect-[1.1/1] justify-center overflow-hidden rounded-t-3xl bg-stone-50"
@@ -382,7 +385,7 @@ export default function DealDetectiveQuiz({
         )}
       </AnimatePresence>
 
-      <div className="flex flex-1 flex-col px-5">
+      <div className={`flex flex-1 flex-col px-5 ${hideTopImage && !showPriceHistory ? "pt-14" : ""}`}>
         {!showPriceHistory ? (
           <div className="text-center">
             <h2

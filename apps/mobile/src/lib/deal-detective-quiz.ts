@@ -346,7 +346,9 @@ export function buildSupermarketShowdownCase(
   winnerPairs.sort((left, right) => dealDetectivePairKey(left.leftDealKey, left.rightDealKey).localeCompare(
     dealDetectivePairKey(right.leftDealKey, right.rightDealKey),
   ));
-  const selectedCase = winnerPairs[Math.floor(safeRotationIndex / winnerStoreKeys.length) % winnerPairs.length];
+  const threeStoreCases = winnerPairs.filter((showdownCase) => showdownCase.choices.length >= 3);
+  const matchupPool = threeStoreCases.length > 0 ? threeStoreCases : winnerPairs;
+  const selectedCase = matchupPool[Math.floor(safeRotationIndex / winnerStoreKeys.length) % matchupPool.length];
   if (!selectedCase) return null;
 
   const choiceOffset = safeRotationIndex % selectedCase.choices.length;

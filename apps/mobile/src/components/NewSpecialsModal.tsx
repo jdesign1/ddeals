@@ -305,6 +305,7 @@ function NewSpecialsModal({
                   }}
                   onAnswered={() => setConsumedQuizCaseKey(quizCaseKey)}
                   onPlayed={() => onPlayed(displayedQuizCase)}
+                  hideTopImage={dailyGamesOnly || gameOnly}
                   showViewDealsButton={false}
                   showBackButton={!gameOnly && !dailyGamesOnly}
                 />
@@ -340,7 +341,7 @@ function NewSpecialsModal({
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-14"
                 >
-                  <div className="-mx-5 -mt-14 mb-5 h-52 overflow-hidden rounded-t-3xl bg-fair-50">
+                  <div className="-mx-5 -mt-14 mb-5 h-64 overflow-hidden rounded-t-3xl bg-fair-50">
                     <MascotImage
                       src="/deal-detective-case-mascot-wide.webp"
                       darkSrc="/deal-detective-case-mascot-wide.webp"
@@ -364,7 +365,7 @@ function NewSpecialsModal({
                           setShowQuiz(true);
                         }}
                         title="Deal Detective"
-                        description="Pick the Real Saver or Dodgy Deal"
+                        description="Spot the Real or Dodgy deal."
                         buttonLabel="Play"
                         eyebrow="CASE 01"
                         variant="detective"
@@ -377,9 +378,9 @@ function NewSpecialsModal({
                           setShowShowdown(true);
                         }}
                         title="Supermarket Showdown"
-                        description={`Guess the lowest price for ${showdownCase.product.name}`}
+                        description="Guess the lowest price"
                         buttonLabel="Play"
-                        eyebrow="PRICE BATTLE"
+                        eyebrow="CASE 02"
                         variant="showdown"
                       />
                     )}

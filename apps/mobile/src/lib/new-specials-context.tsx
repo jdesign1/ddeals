@@ -186,11 +186,18 @@ function alternateQuestionKind(kind: DealDetectiveQuestionKind): DealDetectiveQu
 }
 
 function dailyShowdownRotationIndex(gameDate: string, scope: string): number {
-  let hash = 2_166_136_261;
-  for (const character of `${gameDate}:${scope}`) {
-    hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619);
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(gameDate);
+  let scopeHash = 2_166_136_261;
+  for (const character of scope) {
+    scopeHash = Math.imul(scopeHash ^ character.charCodeAt(0), 16_777_619);
   }
-  return hash >>> 0;
+  if (!dateParts) return scopeHash >>> 0;
+
+  const [, year, month, day] = dateParts;
+  const dayNumber = Math.floor(Date.UTC(Number(year), Number(month) - 1, Number(day)) / 86_400_000);
+  // Advance one winner slot each day for a stable account/device scope. This
+  // keeps the correct retailer from feeling predictable across consecutive days.
+  return dayNumber + (scopeHash >>> 0);
 }
 
 export function NewSpecialsProvider({ children }: { children: ReactNode }) {

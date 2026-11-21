@@ -36,7 +36,7 @@ export default function DealDetectiveEntryCard({
         card: "border-fair-200 bg-fair-50 hover:bg-fair-100/70",
         icon: "bg-white text-fair-800",
         eyebrow: "text-fair-800",
-        action: "bg-fair-800 text-white",
+        action: "bg-stone-900 text-white",
         focus: "focus-visible:ring-fair-700",
       };
 
