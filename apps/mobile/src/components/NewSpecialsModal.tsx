@@ -341,7 +341,7 @@ function NewSpecialsModal({
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className="flex min-h-full flex-1 flex-col px-5 pb-6 pt-14"
                 >
-                  <div className="-mx-5 -mt-14 mb-5 h-64 overflow-hidden rounded-t-3xl bg-fair-50">
+                  <div className="-mx-5 -mt-14 mb-5 aspect-[1.1/1] overflow-hidden rounded-t-3xl bg-fair-50">
                     <MascotImage
                       src="/deal-detective-case-mascot-wide.webp"
                       darkSrc="/deal-detective-case-mascot-wide.webp"
@@ -350,7 +350,7 @@ function NewSpecialsModal({
                       height={931}
                       sizes="(max-width: 480px) calc(100vw - 32px), 432px"
                       unoptimized
-                      className="h-full w-full object-cover object-[center_42%]"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                   <div className="mb-5">

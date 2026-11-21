@@ -385,7 +385,7 @@ export default function DealDetectiveQuiz({
         )}
       </AnimatePresence>
 
-      <div className={`flex flex-1 flex-col px-5 ${hideTopImage && !showPriceHistory ? "pt-14" : ""}`}>
+      <div className={`flex flex-1 flex-col px-5 ${hideTopImage && (!showPriceHistory || onboardingMode) ? "pt-14" : ""} ${hideTopImage && !showPriceHistory ? "justify-center" : ""}`}>
         {!showPriceHistory ? (
           <div className="text-center">
             <h2

@@ -14,9 +14,9 @@ const DealDetectiveQuiz = dynamic(() => import("@/components/DealDetectiveQuiz")
     <div className="flex h-full min-h-[100dvh] w-full flex-col bg-[#faf8f4]" role="status" aria-label="Loading Deal Detective case">
       <h2 id="new-specials-title" className="sr-only">Your first Deal Detective case</h2>
       <p id="new-specials-description" className="sr-only">Loading a pair of current specials to compare.</p>
-      <div className="dd-skeleton-shimmer aspect-[1.1/1] w-full shrink-0" aria-hidden="true" />
-      <div className="flex flex-1 flex-col px-5 pt-4">
+      <div className="flex flex-1 flex-col px-5 pt-14">
         <div className="mx-auto dd-skeleton-shimmer h-7 w-64 max-w-full rounded" aria-hidden="true" />
+        <div className="mx-auto mt-3 dd-skeleton-shimmer h-5 w-56 max-w-full rounded" aria-hidden="true" />
         <div className="mt-5 flex gap-3" aria-hidden="true">
           <div className="dd-skeleton-shimmer h-56 min-w-0 flex-1 rounded-2xl" />
           <div className="dd-skeleton-shimmer h-56 min-w-0 flex-1 rounded-2xl" />
@@ -56,11 +56,9 @@ export default function FirstInstallOnboarding({
 
   useEffect(() => {
     if (!leftDealKey || !rightDealKey) return;
-    // Warm the existing game code and artwork while the welcome screen is on
-    // screen, so opening the first case doesn't wait on a cold chunk or image.
+    // Warm the existing game code while the welcome screen is on screen, so
+    // opening the first case doesn't wait on a cold chunk.
     void import("@/components/DealDetectiveQuiz").catch(() => undefined);
-    const caseArtwork = new window.Image();
-    caseArtwork.src = "/deal-detective-case-mascot-wide.webp";
   }, [leftDealKey, rightDealKey]);
 
   useEffect(() => {
@@ -135,6 +133,7 @@ export default function FirstInstallOnboarding({
               onPlayed={noop}
               showViewDealsButton={false}
               showBackButton={false}
+              hideTopImage
               onboardingMode
             />
           </motion.div>
@@ -148,12 +147,12 @@ export default function FirstInstallOnboarding({
             transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeOut" }}
           >
             <h1 id="first-install-loading-title" className="sr-only">Preparing your first case</h1>
-            <div className="dd-skeleton-shimmer aspect-[1.1/1] w-full shrink-0" aria-hidden="true" />
-            <div className="flex flex-1 flex-col px-5 pt-4">
+            <div className="flex flex-1 flex-col px-5 pt-14">
               <p className="text-center dd-type-body text-stone-600" role="status" aria-live="polite">
                 Getting a case ready…
               </p>
               <div className="mx-auto dd-skeleton-shimmer h-7 w-64 max-w-full rounded" aria-hidden="true" />
+              <div className="mx-auto mt-3 dd-skeleton-shimmer h-5 w-56 max-w-full rounded" aria-hidden="true" />
               <div className="mt-5 flex gap-3">
                 <div className="dd-skeleton-shimmer h-56 min-w-0 flex-1 rounded-2xl" aria-hidden="true" />
                 <div className="dd-skeleton-shimmer h-56 min-w-0 flex-1 rounded-2xl" aria-hidden="true" />
