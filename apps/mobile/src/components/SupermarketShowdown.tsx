@@ -103,12 +103,7 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
           <span className="line-clamp-2 min-h-9 dd-type-meta dd-type-meta-strong text-stone-900">{deal.store}</span>
           {answered
             ? <span className="font-display text-lg font-extrabold tabular-nums text-stone-900">{currency(deal.price)}</span>
-            : (
-              <span className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-0.5 rounded-full bg-stone-100 px-1 py-1 text-xs leading-4 font-bold text-stone-600">
-                <Pointer className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="min-w-0">Tap to pick</span>
-              </span>
-            )}
+            : null}
           {answered && (
             <span className={`inline-flex items-center rounded-full px-2.5 py-1 dd-type-meta dd-type-meta-strong ${verdict.className}`}>
               {verdict.label}
@@ -133,6 +128,13 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
         </div>
         <p className="mt-2 dd-type-control dd-type-control-strong text-stone-900">{showdownCase.product.name}</p>
       </div>
+
+      {!answered && (
+        <p className="mb-2 inline-flex items-center justify-center gap-1.5 text-center dd-type-secondary dd-type-secondary-strong text-stone-600">
+          <Pointer className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Tap to pick an option
+        </p>
+      )}
 
       <div
         className="grid gap-2"

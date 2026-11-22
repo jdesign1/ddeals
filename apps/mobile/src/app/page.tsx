@@ -1362,6 +1362,7 @@ export default function HomePage() {
                     title="Today’s games"
                     description="Your daily deal-spotting games"
                     buttonLabel="Play"
+                    hideIcon
                   />
                 </div>
               )}

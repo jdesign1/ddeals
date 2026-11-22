@@ -288,7 +288,7 @@ export default function DealDetectiveQuiz({
           <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-1 dd-type-meta dd-type-meta-strong text-stone-700 shadow-xs">{side === "left" ? "A" : "B"}</span>
         </div>
         <div className="flex min-h-28 flex-1 flex-col p-3">
-          <p className="mt-2 min-h-12 line-clamp-2 dd-type-control text-stone-900">{candidate.product.name}</p>
+          <p className="mt-2 min-h-12 dd-type-control text-stone-900">{candidate.product.name}</p>
           <div className="mt-auto pt-1.5">
             <div className="flex items-center gap-2">
               <p className="text-lg font-black tabular-nums text-stone-900">{currency(candidate.deal.price)}</p>

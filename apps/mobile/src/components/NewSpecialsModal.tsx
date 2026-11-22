@@ -389,9 +389,9 @@ function NewSpecialsModal({
                   {!canOpenDetectiveCase && !canOpenSupermarketShowdown && (
                     <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-center" role="status">
                       <motion.span
-                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.5 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.2 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 18 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
                         className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-fair-100 text-fair-800"
                         aria-hidden="true"
                       >
