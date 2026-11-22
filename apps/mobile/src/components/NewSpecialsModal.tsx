@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Check, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DealFilter } from "@/lib/deal-filters";
 import BottomSheetPortal from "@/components/BottomSheetPortal";
@@ -72,6 +72,7 @@ function NewSpecialsModal({
   gameOnly = false,
   dailyGamesOnly = false,
 }: NewSpecialsModalProps) {
+  const prefersReducedMotion = useReducedMotion();
   // The portal unlocks as soon as `open` flips false. The exiting backdrop and
   // panel still cover the page visually, while the pending navigation action
   // waits for the animation to finish (or the fallback timer below).
@@ -350,7 +351,7 @@ function NewSpecialsModal({
                       height={931}
                       sizes="(max-width: 480px) calc(100vw - 32px), 432px"
                       unoptimized
-                      className="h-full w-full object-contain"
+                      className="h-full w-full object-cover"
                     />
                   </div>
                   <div className="mb-5">
@@ -387,8 +388,16 @@ function NewSpecialsModal({
                   </div>
                   {!canOpenDetectiveCase && !canOpenSupermarketShowdown && (
                     <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-center" role="status">
+                      <motion.span
+                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 18 }}
+                        className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-fair-100 text-fair-800"
+                        aria-hidden="true"
+                      >
+                        <Check className="h-7 w-7" strokeWidth={3} />
+                      </motion.span>
                       <p className="dd-type-control dd-type-control-strong text-stone-900">You’re all done for today</p>
-                      <p className="mt-1 dd-type-secondary text-stone-600">Come back tomorrow for more deal-spotting.</p>
                     </div>
                   )}
                   {dailyStreak && dailyStreak.streak >= 2 && dailyStreak.lastResult === "win" && (

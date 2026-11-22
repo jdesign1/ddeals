@@ -1164,7 +1164,7 @@ html[data-theme="dark"] .theme-loader-surface {
   background: #17170f;
   opacity: 0;
   transform: translate(-50%, -50%) rotate(var(--spark-angle));
-  animation: firstInstallExclamationFlicker 3.2s ease-in-out infinite;
+  animation: firstInstallExclamationFlicker 2.4s ease-in-out infinite;
 }
 
 .first-install-exclamation--one {
@@ -1199,7 +1199,7 @@ html[data-theme="dark"] .theme-loader-surface {
     opacity: 0;
   }
   12%,
-  24% {
+  28% {
     opacity: 1;
   }
 }

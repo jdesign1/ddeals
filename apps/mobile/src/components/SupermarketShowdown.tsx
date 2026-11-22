@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, LockKeyhole, X } from "lucide-react";
+import { LockKeyhole, Pointer } from "lucide-react";
 import type { DealDetectiveQuizResult, DealDetectiveQuizSide, SupermarketShowdownCase } from "@/lib/deal-detective-quiz";
 import { dealDetectiveDealKey, issueSupermarketShowdownChallenge, submitSupermarketShowdown } from "@/lib/deal-detective-quiz";
 import DealDetectiveConfetti from "@/components/DealDetectiveConfetti";
@@ -31,6 +31,23 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
   const difference = showdownCase.rightDeal.price - showdownCase.leftDeal.price;
   const cheaperStore = showdownCase.leftDeal.store;
   const cheaperPrice = showdownCase.leftDeal.price;
+  const verdictByDealKey = useMemo(() => {
+    const prices = showdownCase.choices.map((deal) => deal.price);
+    const lowestPrice = Math.min(...prices);
+    const highestPrice = Math.max(...prices);
+    return new Map(showdownCase.choices.map((deal) => {
+      const isBest = deal.price <= lowestPrice + 0.005;
+      const isWorst = deal.price >= highestPrice - 0.005;
+      return [
+        dealDetectiveDealKey(showdownCase.product.id, deal.store),
+        isBest
+          ? { label: "Best", className: "bg-fair-100 text-fair-900" }
+          : isWorst
+            ? { label: "Worst", className: "bg-alert-100 text-alert-900" }
+            : { label: "High", className: "bg-stone-100 text-stone-700" },
+      ] as const;
+    }));
+  }, [showdownCase.choices, showdownCase.product.id]);
 
   const saveAnswer = async (dealKey: string) => {
     if (isSubmitting) return;
@@ -64,6 +81,7 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
     const dealKey = dealDetectiveDealKey(showdownCase.product.id, deal.store);
     const isCorrect = dealKey === showdownCase.correctDealKey;
     const isSelected = dealKey === selectedDealKey;
+    const verdict = verdictByDealKey.get(dealKey) ?? { label: "High", className: "bg-stone-100 text-stone-700" };
     return (
       <button
         key={dealKey}
@@ -86,15 +104,14 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
           {answered
             ? <span className="font-display text-lg font-extrabold tabular-nums text-stone-900">{currency(deal.price)}</span>
             : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-1 dd-type-meta dd-type-meta-strong text-stone-600">
-                <span className="material-symbols-outlined text-[16px] leading-none" style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20" }} aria-hidden="true">touch_app</span>
-                Tap to pick
+              <span className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-0.5 rounded-full bg-stone-100 px-1 py-1 text-xs leading-4 font-bold text-stone-600">
+                <Pointer className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0">Tap to pick</span>
               </span>
             )}
           {answered && (
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 dd-type-meta dd-type-meta-strong ${isCorrect ? "bg-fair-100 text-fair-900" : isSelected ? "bg-alert-100 text-alert-900" : "bg-stone-100 text-stone-700"}`}>
-              {isCorrect ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : isSelected ? <X className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-              {isCorrect ? "Cheapest" : isSelected ? "Not cheapest" : "Higher price"}
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 dd-type-meta dd-type-meta-strong ${verdict.className}`}>
+              {verdict.label}
             </span>
           )}
         </motion.div>
