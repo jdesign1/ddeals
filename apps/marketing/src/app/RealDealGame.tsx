@@ -408,8 +408,8 @@ export default function RealDealGame() {
                 </div>
                 <MiniPriceHistory item={selectedItem} />
                 <div className="real-deal-actions">
-                  <button type="button" className="real-deal-button real-deal-button--secondary" onClick={resetCase}>Play this case again</button>
-                  <button type="button" className="real-deal-button real-deal-button--primary" onClick={tryAnotherCase}>Try another case</button>
+                  <button type="button" className="real-deal-button real-deal-button--secondary" onClick={resetCase}>Try again</button>
+                  <button type="button" className="real-deal-button real-deal-button--primary" onClick={tryAnotherCase}>Play next</button>
                 </div>
               </div>
             ) : null}
