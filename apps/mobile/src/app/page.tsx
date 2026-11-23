@@ -1356,7 +1356,13 @@ export default function HomePage() {
                 onOpenFilter={handleDealVerdictSelect}
               />
               {canOpenDailyGames && (
-                <div className="px-5 pt-4">
+                <section
+                  className="flex flex-col gap-3 bg-stone-50 px-5 pt-5 pb-2"
+                  aria-labelledby="home-detective-test-title"
+                >
+                  <h2 id="home-detective-test-title" className="dd-type-section text-stone-900">
+                    Detective test
+                  </h2>
                   <DealDetectiveEntryCard
                     onClick={requestDailyGamesOpen}
                     title="Today’s games"
@@ -1364,7 +1370,7 @@ export default function HomePage() {
                     buttonLabel="Play"
                     hideIcon
                   />
-                </div>
+                </section>
               )}
               <div className="px-5 pb-2 pt-4">
                 <button

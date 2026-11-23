@@ -245,7 +245,7 @@ export default function AppDrawer() {
                 closeDrawer();
                 requestDailyGamesOpen();
               }}
-              className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-stone-700 transition-colors hover:bg-stone-50"
+              className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-fair-800 transition-colors hover:bg-fair-50"
             >
               <Gamepad2 className="h-5 w-5 shrink-0 text-fair-700" aria-hidden="true" />
               Today’s games
