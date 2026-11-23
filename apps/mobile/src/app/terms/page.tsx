@@ -5,30 +5,15 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { usePageHeader } from "@/lib/header-context";
 
-/**
- * Public-facing Terms of Use draft for the app.
- *
- * The operator, address, contact details, and any future paid-service terms
- * must be confirmed before release. The wording is deliberately plain and
- * preserves New Zealand consumer rights rather than attempting to contract
- * out of the Fair Trading Act or Consumer Guarantees Act.
- */
+/** Public-facing terms of use for the Dodgy Deal app and related services. */
 export default function TermsPage() {
   const router = useRouter();
   usePageHeader("Terms of use", () => router.back());
 
   return (
     <main className="flex flex-col gap-4 px-5 py-5 pb-10">
-      <section className="rounded-2xl border border-dodgy-200 bg-dodgy-50 p-5 shadow-sm">
-        <p className="text-[13px] font-semibold text-dodgy-900">Please read</p>
-        <p className="mt-2 text-[15px] leading-6 text-stone-700">
-          This draft must be completed with the operator&rsquo;s legal name, address, contact details, and any
-          confirmed paid-service terms before Dodgy Deal is released publicly.
-        </p>
-      </section>
-
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <p className="text-[13px] font-medium text-stone-500">Last updated: 30 August 2026</p>
+        <p className="dd-type-meta text-stone-500">Last updated: 23 November 2026</p>
         <h1 className="mt-2 font-display text-2xl font-extrabold leading-7 text-stone-900">Terms of use</h1>
         <p className="mt-3 text-base leading-7 text-stone-600">
           These Terms of Use explain the rules that apply when you use the Dodgy Deal app and related services. By
@@ -38,13 +23,19 @@ export default function TermsPage() {
 
       <TermsSection title="1. Who we are">
         <p>
-          Dodgy Deal is operated by <strong>[insert legal entity or individual name]</strong> (referred to as
-          “Dodgy Deal”, “we”, “us”, or “our”).
+          Dodgy Deal is an independent service for New Zealand shoppers. These terms apply to the app and related
+          services offered under the Dodgy Deal name. In these terms, “we”, “us”, and “our” mean Dodgy Deal.
         </p>
         <dl className="mt-3 space-y-3 rounded-xl bg-stone-50 p-4 text-[15px] leading-6 text-stone-600">
-          <ContactRow label="Operator" value="[insert legal entity or individual name]" />
-          <ContactRow label="Address" value="[insert physical or postal address]" />
-          <ContactRow label="Support contact" value="hello@dodgydeal.co.nz" />
+          <ContactRow label="Service" value="Dodgy Deal, New Zealand" />
+          <ContactRow
+            label="Contact"
+            value={
+              <a href="mailto:dodgydealnz@gmail.com" className="underline underline-offset-2">
+                dodgydealnz@gmail.com
+              </a>
+            }
+          />
         </dl>
       </TermsSection>
 
@@ -59,19 +50,21 @@ export default function TermsPage() {
           payments, deliver products, or make the sale of a product shown in the app. Any purchase you make is with the
           relevant retailer and is subject to that retailer&rsquo;s own terms, price, availability, and refund policies.
         </p>
+        <p className="mt-3">
+          We are not affiliated with, endorsed by, or sponsored by the retailers shown in the app.
+        </p>
       </TermsSection>
 
       <TermsSection title="3. Prices, promotions, and deal ratings">
         <p>
           We work to present useful and accurate information, but retailer prices, stock, product descriptions, store
           availability, and promotion dates can change. Information may be delayed, incomplete, unavailable, or
-          different between stores.
+          different between stores or at checkout.
         </p>
         <p className="mt-3">
-          Deal ratings and price-history comparisons are estimates based on the data available to us. They are
-          informational only and are not a promise that a product is the cheapest option, a recommendation to buy, or a
-          statement made by the retailer. Check the retailer&rsquo;s current price, promotion conditions, unit size,
-          stock, and checkout total before purchasing.
+          Deal ratings estimate how the current price compares with the price history we have. They are for general
+          information, not a promise that something is the cheapest option or a recommendation to buy. Check the
+          retailer&rsquo;s current price, promotion conditions, unit size, stock, and checkout total before purchasing.
         </p>
         <p className="mt-3">
           We take reasonable care with claims shown in the app and will investigate reports of incorrect information.
@@ -81,13 +74,12 @@ export default function TermsPage() {
 
       <TermsSection title="4. Eligibility and accounts">
         <p>
-          You must be at least 13 years old to create an account. If you are under 18, you should use the app with the
-          knowledge and permission of a parent or guardian.
+          You must be at least 13 years old to create an account. If you are under 18, ask a parent or guardian before
+          using account or paid features.
         </p>
         <p className="mt-3">
-          You must provide information that is accurate and keep your sign-in details secure. Do not share your
-          password, use another person&rsquo;s account, or create an account for someone else without permission. Tell
-          us promptly if you believe your account has been accessed without authorisation.
+          Provide accurate details, keep your sign-in methods secure, and tell us promptly if you believe your account
+          has been accessed without permission. Do not use another person&rsquo;s account without their permission.
         </p>
         <p className="mt-3">
           You can browse public deal information without an account. An account is needed for features such as saving
@@ -95,31 +87,28 @@ export default function TermsPage() {
         </p>
       </TermsSection>
 
-      <TermsSection title="5. Acceptable use">
+      <TermsSection title="5. Acceptable use and your content">
         <p>You must use Dodgy Deal lawfully and respectfully. You must not:</p>
         <BulletList>
           <li>break any law or infringe another person&rsquo;s rights;</li>
           <li>interfere with, overload, probe, or bypass security controls on the app or its services;</li>
           <li>use bots, scraping, automated requests, or other methods to copy or harvest the service without our written permission;</li>
-          <li>upload or send malicious code, spam, or content that is unlawful, abusive, threatening, or misleading; or</li>
+          <li>send malicious code or spam, or post content that is unlawful, abusive, threatening, or misleading; or</li>
           <li>use Dodgy Deal to build or train a competing price database without our permission.</li>
         </BulletList>
-      </TermsSection>
-
-      <TermsSection title="6. Your content and feedback">
-        <p>
-          If you send us feedback, corrections, or other material, you confirm that you have the right to provide it.
-          You give us permission to use, reproduce, adapt, and share that material as reasonably needed to operate,
-          improve, secure, and promote Dodgy Deal.
+        <p className="mt-3">
+          You are responsible for content you submit, including community price notes, profile details, feedback, and
+          reports. You confirm you have the right to submit it. You give us permission to host, display, and adapt it
+          as reasonably needed to operate, moderate, and improve Dodgy Deal.
         </p>
         <p className="mt-3">
-          Please do not send us confidential information or another person&rsquo;s personal information unless it is
-          necessary and you have permission to do so. We may remove content that breaches these terms or creates a
-          legal, security, or safety risk.
+          Do not post another person&rsquo;s private information or anything unlawful. Other users may see community
+          notes and profile details you choose to publish. We may edit or remove content that breaches these terms or
+          creates a legal, security, or safety risk.
         </p>
       </TermsSection>
 
-      <TermsSection title="7. Intellectual property and third-party material">
+      <TermsSection title="6. Intellectual property and third-party services">
         <p>
           Dodgy Deal&rsquo;s software, design, name, branding, and original content belong to us or our licensors.
           Except as allowed by law or these terms, you must not copy, modify, distribute, sell, reverse engineer, or
@@ -134,13 +123,11 @@ export default function TermsPage() {
           If you believe material in the app infringes your rights, contact us with enough information for us to
           investigate.
         </p>
-      </TermsSection>
-
-      <TermsSection title="8. Third-party websites and services">
-        <p>
+        <p className="mt-3">
           Dodgy Deal may link to retailer websites or rely on third-party services to provide hosting, authentication,
-          data, or other functionality. Those services are controlled by their own operators and terms. We are not
-          responsible for third-party content, availability, security, pricing, or practices.
+          data, or other functionality. Those services are controlled by their own operators and terms. We do not
+          control their content, availability, security, pricing, or practices. This does not limit any responsibility
+          or consumer rights that cannot legally be excluded.
         </p>
         <p className="mt-3">
           A link or reference does not mean that Dodgy Deal endorses a retailer, product, service, or claim. Review the
@@ -148,7 +135,7 @@ export default function TermsPage() {
         </p>
       </TermsSection>
 
-      <TermsSection title="9. Availability and changes">
+      <TermsSection title="7. Availability and changes">
         <p>
           We may update, suspend, restrict, or discontinue all or part of Dodgy Deal, including individual features,
           data sources, or retailer coverage. We may do this for maintenance, security, legal, commercial, or
@@ -159,57 +146,65 @@ export default function TermsPage() {
           free from interruptions. We will take reasonable care to maintain the service and address material problems
           that are reported to us.
         </p>
+        <p className="mt-3">
+          We may update these terms when the app, our service, or our legal obligations change. We will update the date
+          at the top of this page. If a change is material, we will provide a prominent notice in the app or by email
+          where appropriate. Continuing to use Dodgy Deal after an update takes effect means you accept the new terms,
+          except where the law requires a different process.
+        </p>
       </TermsSection>
 
-      <TermsSection title="10. Fees and purchases">
+      <TermsSection title="8. Fees and purchases">
         <p>
-          Dodgy Deal Plus is an optional auto-renewable subscription available through Apple in the iOS app. The
-          available monthly and annual plans, prices, and any introductory offer are shown before you confirm a
-          purchase. Apple processes the payment; Dodgy Deal does not process purchases for retailer products.
+          Dodgy Deal Plus is an optional auto-renewing subscription available through Apple in the iOS app. The plan,
+          price, billing period, and any introductory offer are shown before you confirm a purchase. Apple processes
+          the payment; Dodgy Deal does not process purchases for retailer products.
         </p>
         <p className="mt-3">
           Apple renews the plan you choose automatically unless you cancel it in your Apple Account subscription
-          settings. If you cancel, access continues until the end of the current billing period. Apple controls
-          purchase history, billing, and refunds under its applicable terms and policies.
+          settings. Any free trial or introductory offer and what you will be charged after it ends are shown before
+          you confirm. If you cancel, access usually continues until the end of the current billing period. Deleting
+          your Dodgy Deal account does not cancel the subscription. Apple handles billing and refund requests under its
+          applicable terms and policies. Your rights under New Zealand law still apply.
         </p>
       </TermsSection>
 
-      <TermsSection title="11. Consumer rights">
+      <TermsSection title="9. Consumer rights">
         <p>
           Nothing in these terms removes, restricts, or replaces a right or remedy that cannot lawfully be excluded.
           This includes rights under the New Zealand Fair Trading Act 1986 and, where it applies, the Consumer
           Guarantees Act 1993.
         </p>
         <p className="mt-3">
-          New Zealand consumer law may apply to digital products and services, including free smartphone apps. If you
-          believe Dodgy Deal has not met an applicable legal guarantee, contact us and explain the problem so we can
-          investigate and try to put it right.
+          The Fair Trading Act 1986 applies to our claims about Dodgy Deal, and the Consumer Guarantees Act 1993 may
+          apply to services we provide. If you think something has gone wrong, contact us so we can investigate and
+          try to put it right.
         </p>
       </TermsSection>
 
-      <TermsSection title="12. Liability">
+      <TermsSection title="10. Liability">
         <p>
-          To the maximum extent permitted by law, we are not responsible for losses that result from a retailer&rsquo;s
-          price, stock, product, promotion, conduct, website, or transaction, or from your decision to rely on
-          information displayed in Dodgy Deal.
+          Retailers control their prices, promotions, stock, products, websites, and sales. We are not responsible for
+          a retailer&rsquo;s actions or a purchase you make from them. Our price information can be delayed or
+          incomplete, so check with the retailer before buying.
         </p>
         <p className="mt-3">
-          We are also not responsible for loss caused by your misuse of the app, unauthorised access to your account
-          resulting from your failure to protect your sign-in details, or events outside our reasonable control.
+          We are not responsible for loss caused by your unlawful or unauthorised use of the app, or events outside our
+          reasonable control.
         </p>
         <p className="mt-3">
-          This section does not limit liability or consumer rights where doing so would be unlawful, including for
-          misleading conduct, fraud, or rights and remedies that apply under New Zealand consumer law.
+          Nothing in these terms excludes, restricts, or modifies any consumer right, guarantee, or remedy that cannot
+          legally be excluded under New Zealand law.
         </p>
       </TermsSection>
 
-      <TermsSection title="13. Suspension and ending use">
+      <TermsSection title="11. Privacy, account deletion, and suspension">
         <p>
-          You can stop using Dodgy Deal at any time. You can request account deletion as described in our{" "}
+          You can stop using Dodgy Deal at any time. Our{" "}
           <Link href="/privacy" className="font-bold text-ink-600 underline underline-offset-2">
             Privacy policy
           </Link>
-          .
+          {" "}explains how we handle personal information and request account deletion.
         </p>
         <p className="mt-3">
           We may suspend or end access if reasonably necessary to protect the app, users, providers, or our legal
@@ -218,21 +213,11 @@ export default function TermsPage() {
         </p>
       </TermsSection>
 
-      <TermsSection title="14. Privacy">
-        <p>
-          Our{" "}
-          <Link href="/privacy" className="font-bold text-ink-600 underline underline-offset-2">
-            Privacy policy
-          </Link>{" "}
-          explains how we collect, use, store, disclose, and protect personal information.
-        </p>
-      </TermsSection>
-
-      <TermsSection title="15. Complaints and contact">
+      <TermsSection title="12. Contact and New Zealand law">
         <p>
           If you have a question, complaint, or report about the app, a deal, or these terms, contact us at{" "}
-          <a href="mailto:hello@dodgydeal.co.nz" className="font-bold text-ink-600 underline underline-offset-2">
-            hello@dodgydeal.co.nz
+          <a href="mailto:dodgydealnz@gmail.com" className="font-bold text-ink-600 underline underline-offset-2">
+            dodgydealnz@gmail.com
           </a>
           . We will review the issue and try to resolve it fairly.
         </p>
@@ -240,26 +225,14 @@ export default function TermsPage() {
           If your concern relates to privacy, use the contact process in our Privacy policy. You may also contact the
           relevant New Zealand regulator or use any other legal avenue available to you.
         </p>
-      </TermsSection>
-
-      <TermsSection title="16. Changes to these terms">
-        <p>
-          We may update these terms when the app, our business, or our legal obligations change. We will update the date
-          at the top of this page. If a change is material, we will provide a prominent notice in the app or by email
-          where appropriate. Continuing to use Dodgy Deal after an updated version takes effect means you accept the
-          updated terms, except where the law requires a different process.
-        </p>
-      </TermsSection>
-
-      <TermsSection title="17. New Zealand law">
-        <p>
+        <p className="mt-3">
           These terms are governed by New Zealand law. Subject to any mandatory consumer rights and dispute-resolution
           process, the New Zealand courts have jurisdiction over disputes relating to Dodgy Deal.
         </p>
       </TermsSection>
 
-      <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <h2 className="font-display text-lg font-extrabold leading-6 text-stone-900">Related information</h2>
+      <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 className="dd-type-section text-stone-900">Related information</h2>
         <div className="mt-3 flex flex-col gap-3 text-[15px] font-semibold leading-6">
           <Link href="/settings" className="text-ink-600 underline underline-offset-2">
             Back to settings
@@ -267,6 +240,14 @@ export default function TermsPage() {
           <Link href="/privacy" className="text-ink-600 underline underline-offset-2">
             Read our Privacy policy
           </Link>
+          <a
+            href="https://www.consumerprotection.govt.nz/general-help/consumer-laws/consumer-guarantees-act"
+            target="_blank"
+            rel="noreferrer"
+            className="text-ink-600 underline underline-offset-2"
+          >
+            New Zealand consumer rights
+          </a>
         </div>
       </section>
     </main>
@@ -276,7 +257,7 @@ export default function TermsPage() {
 function TermsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
-      <h2 className="font-display text-lg font-extrabold leading-6 text-stone-900">{title}</h2>
+      <h2 className="dd-type-section text-stone-900">{title}</h2>
       <div className="settings-document-copy mt-3 text-stone-600">{children}</div>
     </section>
   );
@@ -286,7 +267,7 @@ function BulletList({ children }: { children: ReactNode }) {
   return <ul className="list-disc space-y-2 pl-5">{children}</ul>;
 }
 
-function ContactRow({ label, value }: { label: string; value: string }) {
+function ContactRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
       <dt className="font-semibold text-stone-700">{label}</dt>
