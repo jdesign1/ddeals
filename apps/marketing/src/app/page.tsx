@@ -1,6 +1,7 @@
 import Image from "next/image";
 import FaqAccordion from "./FaqAccordion";
-import { Logo, SiteFooter, SiteHeader } from "./MarketingChrome";
+import { SiteFooter, SiteHeader } from "./MarketingChrome";
+import RealDealGame from "./RealDealGame";
 
 const firstFeatures = [
   {
@@ -130,6 +131,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <RealDealGame />
 
       <section className="feature-section" id="how-it-works" aria-labelledby="first-feature-title">
         <div className="section-intro">
