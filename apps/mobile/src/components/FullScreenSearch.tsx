@@ -57,6 +57,14 @@ import {
   type BrandSummary,
 } from "@/lib/brand-browse";
 
+function getSearchEmptyStateTitle(filter: DealFilter) {
+  if (filter === "dodgy") return "No Dodgy Deals found right now";
+  if (filter === "real") return "No Real Savers found right now";
+  return "No deals found right now";
+}
+
+const SEARCH_EMPTY_STATE_HELP = "Try widening your filters above to see more deals.";
+
 /**
  * Full-screen search overlay — ported from Prototype/index.html's
  * `SearchTab`, specifically its `isSearchActive` render branch (lines
@@ -937,8 +945,6 @@ export default function FullScreenSearch() {
     setResultsSortBy(getDefaultDealSort(dealFilter));
   };
 
-  const getStoreDisplayName = (key: string) => STORE_DISPLAY_FALLBACK[key] || key;
-
   const dealFilterTintClass =
     dealFilter === "real" ? "deal-filter-real-surface" : dealFilter === "dodgy" ? "deal-filter-dodgy-surface" : "";
 
@@ -1497,15 +1503,12 @@ export default function FullScreenSearch() {
                     )}
                   </div>
                 ) : (
-                  <div className="mt-8 space-y-1 py-8 text-center">
-                    <p className="dd-type-secondary dd-type-secondary-strong text-stone-500">
-                      {dealFilter === "dodgy"
-                        ? "No Dodgy Deals or review signals found right now"
-                        : dealFilter === "real"
-                          ? "No real deals found right now"
-                          : "No deals found right now"}
+                  <div className="mt-8 space-y-2 rounded-2xl border border-stone-200 bg-white px-4 py-6 text-center">
+                    <AlertCircle className="mx-auto h-10 w-10 text-stone-300" aria-hidden="true" />
+                    <p className="dd-type-control dd-type-control-strong text-stone-800">
+                      {getSearchEmptyStateTitle(dealFilter)}
                     </p>
-                    <p className="dd-type-secondary text-stone-500">Try widening the supermarket filter above.</p>
+                    <p className="dd-type-secondary mt-1 text-stone-500">{SEARCH_EMPTY_STATE_HELP}</p>
                   </div>
                 )}
               </div>
@@ -1675,19 +1678,11 @@ export default function FullScreenSearch() {
                     ) : (
                       <div className="col-span-full w-full space-y-2 rounded-2xl border border-stone-200 bg-white px-4 py-6 text-center">
                         <AlertCircle className="mx-auto h-10 w-10 text-stone-300" aria-hidden="true" />
-                        <p className="dd-type-control text-stone-500">
-                          {!selectedStores.includes("all")
-                            ? selectedStores.length === 1
-                              ? `No ${deferredTrimmedQuery || "grocery"} items were found at ${getStoreDisplayName(selectedStores[0])}`
-                              : `No ${deferredTrimmedQuery || "grocery"} items were found at the selected supermarkets (${selectedStores
-                                  .map(getStoreDisplayName)
-                                  .join(", ")})`
-                            : `No items matching '${deferredTrimmedQuery}'`}
+                        <p className="dd-type-control dd-type-control-strong text-stone-800">
+                          {getSearchEmptyStateTitle(dealFilter)}
                         </p>
                         <p className="dd-type-secondary text-stone-500">
-                          {!selectedStores.includes("all")
-                            ? "Try selecting 'All' or search for another item."
-                            : 'Try searching for "milk", "bread" or "eggs"'}
+                          {SEARCH_EMPTY_STATE_HELP}
                         </p>
                       </div>
                     )}
