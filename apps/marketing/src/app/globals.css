@@ -113,9 +113,9 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .demo-history-chart-wrap { width: 100%; margin: 8px 0 0; }
 .demo-history-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .demo-history-gridline { stroke: #e7e5e4; stroke-width: 1; stroke-dasharray: 3 4; }
-.demo-history-axis-price, .demo-history-axis-label { fill: #57534e; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: 10px; font-weight: 700; }
+.demo-history-axis-price, .demo-history-axis-label { fill: #57534e; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: 9px; font-weight: 700; }
 .demo-history-area { opacity: 0; animation: demo-history-area-in .55s ease-out .15s both; }
-.demo-history-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: demo-history-line-in 1s ease-out forwards; }
+.demo-history-line { fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: demo-history-line-in 1s ease-out forwards; }
 .demo-history-point { fill: var(--chart-regular); stroke: #fafaf9; stroke-width: 1.25; transform-box: fill-box; transform-origin: center; animation: demo-history-point-in .28s ease-out var(--history-point-delay, 0ms) both; }
 .demo-history-point--special { fill: var(--chart-special); }
 .demo-history-legend { margin: -5px 0 0; display: flex; align-items: center; justify-content: center; gap: 17px; color: #57534e; font-size: .82rem; font-weight: 700; }
