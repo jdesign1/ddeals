@@ -43,6 +43,7 @@ interface HistoryResponse {
 
 const RESULT_STEP_DURATION_MS = 1_700;
 const HISTORY_CHART_VIEWBOX_WIDTH = 360;
+const HISTORY_CHART_AXIS_FONT_SIZE = 12;
 const CONFETTI_PIECES = [
   { left: 3, x: -48, y: "7rem", rotation: -42, color: "#22c55e", delay: 0 },
   { left: 9, x: -22, y: "9rem", rotation: 28, color: "#f59e0b", delay: 90 },
@@ -209,7 +210,7 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
 
   const width = HISTORY_CHART_VIEWBOX_WIDTH;
   const height = 184;
-  const axisFontSize = 9 / chartScale;
+  const axisFontSize = HISTORY_CHART_AXIS_FONT_SIZE / chartScale;
   const left = 68;
   const right = 344;
   const top = 8;
