@@ -9,6 +9,8 @@ const SUMMARY_STORES: Array<{ key: CheckDealsSummaryStore; label: string }> = [
   { key: "newworld", label: "New World" },
   { key: "paknsave", label: "Pak’n Save" },
   { key: "woolworths", label: "Woolworths" },
+  { key: "chemistwarehouse", label: "Chemist Warehouse" },
+  { key: "foursquare", label: "Four Square" },
 ];
 
 type SummaryCounts = Record<CheckDealsSummaryStore, number>;
@@ -19,6 +21,8 @@ const ZERO_COUNTS: SummaryCounts = {
   newworld: 0,
   paknsave: 0,
   woolworths: 0,
+  chemistwarehouse: 0,
+  foursquare: 0,
 };
 
 // Keep this entrance moment to once per client app session, including when
@@ -34,6 +38,8 @@ function interpolateCounts(target: SummaryCounts, progress: number): SummaryCoun
     newworld: Math.round(target.newworld * progress),
     paknsave: Math.round(target.paknsave * progress),
     woolworths: Math.round(target.woolworths * progress),
+    chemistwarehouse: Math.round(target.chemistwarehouse * progress),
+    foursquare: Math.round(target.foursquare * progress),
   };
 }
 
@@ -93,7 +99,7 @@ function CheckDealsSummary({
   const visibleCounts = isAnimating ? animatedCounts : counts;
 
   return (
-    <section className="bg-white py-5" aria-labelledby="current-specials-title">
+    <section className="bg-white py-4" aria-labelledby="current-specials-title">
       <div className="mx-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col items-start gap-1.5">
@@ -103,7 +109,7 @@ function CheckDealsSummary({
               </span>
               {updatedText && <span className="dd-type-meta dd-type-meta-strong text-stone-500">{updatedText}</span>}
             </div>
-            <h1 id="current-specials-title" className="dd-type-section leading-tight text-stone-900">Current specials by supermarket</h1>
+            <h1 id="current-specials-title" className="dd-type-section leading-tight text-stone-900">Real specials by supermarket</h1>
           </div>
           <button
             type="button"
@@ -116,15 +122,15 @@ function CheckDealsSummary({
             <LayoutGrid className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
-        <div className="mt-4 grid w-full grid-cols-3 divide-x divide-stone-200/80 overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs" role="group" aria-label="Current special counts by supermarket">
-          {SUMMARY_STORES.map(({ key, label }) => {
-            return (
+        <div className="hide-scrollbar -mx-5 mt-4 overflow-x-auto px-5 pb-1" role="region" aria-label="Live specials by supermarket and retailer" tabIndex={0}>
+          <div className="flex w-max overflow-hidden rounded-2xl border border-stone-200/80 bg-fair-50 shadow-xs">
+            {SUMMARY_STORES.map(({ key, label }) => (
               <button
                 key={key}
                 type="button"
                 aria-label={`See ${label} deals: ${counts[key]} current specials`}
                 onClick={() => onOpenStoreDeals(key)}
-                className="flex min-w-0 cursor-pointer flex-col items-center gap-2 px-2 py-5 text-center transition-colors hover:bg-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2"
+                className="flex w-28 shrink-0 cursor-pointer flex-col items-center gap-2 border-r border-stone-200/80 px-2 py-5 text-center transition-colors last:border-r-0 hover:bg-white/40 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
               >
                 <StoreLogoBadge store={key} variant="ranking" decorative />
                 <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-fair-800">
@@ -132,8 +138,8 @@ function CheckDealsSummary({
                   <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
                 </span>
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </section>

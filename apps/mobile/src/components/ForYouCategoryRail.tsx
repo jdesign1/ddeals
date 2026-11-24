@@ -17,10 +17,10 @@ function ForYouCategoryRail({
   onEditCategories: () => void;
 }) {
   return (
-    <section className="flex flex-col gap-3 bg-fair-50 px-5 py-5" aria-labelledby="for-you-title">
+    <section className="flex flex-col gap-3 bg-fair-50 px-5 py-4" aria-labelledby="for-you-title">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="for-you-title" className="dd-type-section text-fair-800">Your saved categories</h2>
+          <h2 id="for-you-title" className="dd-type-section text-stone-900">Your saved categories</h2>
           <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Real Saver deals in your favourite categories</p>
         </div>
         <button

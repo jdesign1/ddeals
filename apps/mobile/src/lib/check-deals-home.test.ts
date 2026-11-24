@@ -65,7 +65,13 @@ test("summary counts are unique active products per supermarket", () => {
     product("3", "Three", [deal({ store: "Woolworths", isOnSpecial: false })]),
   ];
 
-  assert.deepEqual(buildCurrentSpecialCounts(products), { newworld: 2, paknsave: 1, woolworths: 0 });
+  assert.deepEqual(buildCurrentSpecialCounts(products), {
+    newworld: 2,
+    paknsave: 1,
+    woolworths: 0,
+    chemistwarehouse: 0,
+    foursquare: 0,
+  });
 });
 
 test("current special summary shares counts and freshness from one catalogue", () => {
@@ -75,7 +81,7 @@ test("current special summary shares counts and freshness from one catalogue", (
   ];
 
   assert.deepEqual(buildCurrentSpecialSummary(products), {
-    counts: { newworld: 1, paknsave: 0, woolworths: 0 },
+    counts: { newworld: 1, paknsave: 0, woolworths: 0, chemistwarehouse: 0, foursquare: 0 },
     latestPublishedAt: "2026-10-16T03:00:00.000Z",
   });
 });
@@ -89,7 +95,7 @@ test("home primary summary keeps store-pill availability independent from active
 
   assert.deepEqual(buildHomePrimarySummary(products), {
     currentSpecialSummary: {
-      counts: { newworld: 1, paknsave: 0, woolworths: 0 },
+      counts: { newworld: 1, paknsave: 0, woolworths: 0, chemistwarehouse: 0, foursquare: 0 },
       latestPublishedAt: "2026-10-16T00:00:00.000Z",
     },
     availableStoreKeys: ["newworld", "woolworths", "chemistwarehouse"],
@@ -109,7 +115,13 @@ test("combined Home browse summary keeps global counts and filtered deals togeth
   assert.deepEqual(result.deals.map(({ product: item }) => item.id), ["real"]);
   assert.deepEqual(result.availableCategories, ["Pantry"]);
   assert.deepEqual([...result.categoryCounts.entries()], [["Pantry", 1]]);
-  assert.deepEqual(result.currentSpecialSummary.counts, { newworld: 2, paknsave: 0, woolworths: 1 });
+  assert.deepEqual(result.currentSpecialSummary.counts, {
+    newworld: 2,
+    paknsave: 0,
+    woolworths: 1,
+    chemistwarehouse: 0,
+    foursquare: 0,
+  });
   assert.deepEqual(result.availableStoreKeys, ["newworld", "paknsave", "woolworths"]);
 });
 

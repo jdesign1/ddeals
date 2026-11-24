@@ -12,7 +12,13 @@ import type { DealCheckRow } from "@dodgey-deals/shared";
 import { getNewSpecialDealKey } from "./new-specials.ts";
 import { matchesDealFilter, type DealFilter } from "./deal-filters.ts";
 
-export const CHECK_DEALS_SUMMARY_STORES = ["newworld", "paknsave", "woolworths"] as const;
+export const CHECK_DEALS_SUMMARY_STORES = [
+  "newworld",
+  "paknsave",
+  "woolworths",
+  "chemistwarehouse",
+  "foursquare",
+] as const;
 
 export type CheckDealsSummaryStore = (typeof CHECK_DEALS_SUMMARY_STORES)[number];
 

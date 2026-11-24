@@ -21,7 +21,6 @@ interface DidYouKnowCarouselProps {
   publicationKey: string | null;
   publicationComplete: boolean;
   storageScope: string;
-  flushTop?: boolean;
   onBrowse: (card: DidYouKnowCard) => void;
 }
 
@@ -95,7 +94,7 @@ const DidYouKnowCardView = memo(function DidYouKnowCardView({ card, hasNewData, 
   );
 });
 
-function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storageScope, flushTop = false, onBrowse }: DidYouKnowCarouselProps) {
+function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storageScope, onBrowse }: DidYouKnowCarouselProps) {
   const [seenState, setSeenState] = useState<ReturnType<typeof readDidYouKnowSeenState>>(null);
   const [storageReady, setStorageReady] = useState(false);
 
@@ -142,7 +141,7 @@ function DidYouKnowCarousel({ cards, publicationKey, publicationComplete, storag
   if (cards.length === 0) return null;
 
   return (
-    <section className={`flex flex-col gap-3 bg-white py-4 ${flushTop ? "-mt-2" : ""}`} aria-labelledby="did-you-know-title">
+    <section className="flex flex-col gap-3 bg-white py-4" aria-labelledby="did-you-know-title">
       <div className="mx-5 flex items-center gap-3">
         <h2 id="did-you-know-title" className="flex items-center gap-2 dd-type-section text-stone-900">
           Did you know?

@@ -84,7 +84,7 @@ import { buildBrandSummaries, type BrandSummary } from "@/lib/brand-browse";
 const WORTH_ANOTHER_LOOK_DISMISSAL_STORAGE_PREFIX = "dodgey-deals:worth-another-look-dismissed:v1";
 const EMPTY_AVAILABLE_STORE_KEYS: string[] = [];
 const EMPTY_CURRENT_SPECIAL_SUMMARY: CurrentSpecialSummary = {
-  counts: { newworld: 0, paknsave: 0, woolworths: 0 },
+  counts: { newworld: 0, paknsave: 0, woolworths: 0, chemistwarehouse: 0, foursquare: 0 },
   latestPublishedAt: null,
 };
 const EMPTY_DEAL_VERDICT_SUMMARY = { realSavers: 0, dodgyDeals: 0 };
@@ -1094,7 +1094,7 @@ export default function HomePage() {
     <>
       <div className="relative">
       <main
-          className={`flex flex-col gap-2 pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"} ${!loadingProducts && !error ? "check-deals-page-enter" : ""}`}
+          className={`flex flex-col gap-0 pb-6 transition-[background-color] duration-300 ease-out ${dealFilterTintClass || "bg-stone-100"} ${!loadingProducts && !error ? "check-deals-page-enter" : ""}`}
         >
       {!isSearchActive && !loadingProducts && !error && (
         <CheckDealsSummary
@@ -1253,7 +1253,7 @@ export default function HomePage() {
                 if (belt === "did-you-know") {
                   if (didYouKnowCards.length === 0) {
                     return isDidYouKnowPending
-                      ? <DidYouKnowCarouselSkeleton key={belt} flushTop={checkDealsBeltOrder[0] === "did-you-know"} />
+                      ? <DidYouKnowCarouselSkeleton key={belt} />
                       : null;
                   }
                   return (
@@ -1263,7 +1263,6 @@ export default function HomePage() {
                       publicationKey={cataloguePublicationKey}
                       publicationComplete={cataloguePublicationComplete}
                       storageScope={didYouKnowStorageScope}
-                      flushTop={checkDealsBeltOrder[0] === "did-you-know"}
                       onBrowse={handleDidYouKnowBrowse}
                     />
                   );
@@ -1338,7 +1337,7 @@ export default function HomePage() {
               <BrandRail brands={topRealSaverBrands} onSelectBrand={handleBrandSelect} />
               <RealSaverCategoryRail
                 categories={categoryDiscoveryItems}
-                title="Top Categories"
+                title="Top saver categories"
                 description="Categories with the most genuine specials"
                 onOpenCategory={handleRealSaverCategoryOpen}
               />
@@ -1357,7 +1356,7 @@ export default function HomePage() {
               />
               {canOpenDailyGames && (
                 <section
-                  className="flex flex-col gap-3 bg-stone-50 px-5 pt-5 pb-2"
+                  className="flex flex-col gap-3 bg-stone-50 px-5 py-4"
                   aria-labelledby="home-detective-test-title"
                 >
                   <h2 id="home-detective-test-title" className="dd-type-section text-stone-900">
@@ -1369,6 +1368,7 @@ export default function HomePage() {
                     description="Your daily deal-spotting games"
                     buttonLabel="Play"
                     hideIcon
+                    notificationLabel="New daily game available"
                   />
                 </section>
               )}
@@ -1471,9 +1471,9 @@ function HomeCatalogueSkeleton() {
 }
 
 /** Reserve the Did you know belt's position while its deferred catalogue pass runs. */
-function DidYouKnowCarouselSkeleton({ flushTop = false }: { flushTop?: boolean }) {
+function DidYouKnowCarouselSkeleton() {
   return (
-    <section className={`flex flex-col gap-3 bg-white py-4 ${flushTop ? "-mt-2" : ""}`} aria-hidden="true">
+    <section className="flex flex-col gap-3 bg-white py-4" aria-hidden="true">
       <div className="mx-5">
         <div className="dd-skeleton-shimmer h-6 w-36 rounded" />
       </div>

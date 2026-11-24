@@ -36,7 +36,7 @@ function CheckDealsVerdictSummary({
   onOpenFilter: (filter: VerdictFilter) => void;
 }) {
   return (
-    <section className="-mt-2 bg-white pb-2 pt-5" aria-labelledby="current-deal-verdicts-title">
+    <section className="bg-white pb-6 pt-4" aria-labelledby="current-deal-verdicts-title">
       <div className="mx-5">
         <h2 id="current-deal-verdicts-title" className="dd-type-section leading-tight text-stone-900">
           Current deals by rating

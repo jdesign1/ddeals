@@ -245,10 +245,12 @@ export default function AppDrawer() {
                 closeDrawer();
                 requestDailyGamesOpen();
               }}
+              aria-label="Today’s games, new unplayed game available"
               className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 text-left dd-type-control text-fair-800 transition-colors hover:bg-fair-50"
             >
               <Gamepad2 className="h-5 w-5 shrink-0 text-fair-700" aria-hidden="true" />
               Today’s games
+              <span className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-alert-600" aria-hidden="true" />
             </button>
           )}
           {!subscriptionLoading && !isPremium && (

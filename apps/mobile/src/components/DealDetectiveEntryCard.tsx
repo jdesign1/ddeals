@@ -11,6 +11,7 @@ interface DealDetectiveEntryCardProps {
   eyebrow?: string;
   variant?: "detective" | "showdown";
   hideIcon?: boolean;
+  notificationLabel?: string;
 }
 
 export default function DealDetectiveEntryCard({
@@ -23,6 +24,7 @@ export default function DealDetectiveEntryCard({
   eyebrow = "DAILY CASE",
   variant = "detective",
   hideIcon = false,
+  notificationLabel,
 }: DealDetectiveEntryCardProps) {
   const isShowdown = variant === "showdown";
   const GameIcon = isShowdown ? Store : Search;
@@ -47,9 +49,15 @@ export default function DealDetectiveEntryCard({
       ref={buttonRef}
       type="button"
       onClick={onClick}
-      aria-label={`${buttonLabel} ${title}`}
-      className={`group flex min-h-[6.25rem] w-full cursor-pointer items-center gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-xs transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${accent.card} ${accent.focus} ${className}`}
+      aria-label={`${buttonLabel} ${title}${notificationLabel ? `, ${notificationLabel}` : ""}`}
+      className={`group relative flex min-h-[6.25rem] w-full cursor-pointer items-center gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-xs transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${accent.card} ${accent.focus} ${className}`}
     >
+      {notificationLabel && (
+        <span
+          className="pointer-events-none absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-alert-600 ring-2 ring-white"
+          aria-hidden="true"
+        />
+      )}
       {!hideIcon && (
         <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-xs ${accent.icon}`} aria-hidden="true">
           <GameIcon className="h-6 w-6" strokeWidth={2.2} />

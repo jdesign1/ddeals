@@ -70,7 +70,7 @@ function PersonalDealRail({
       initial={animateOnMount ? { opacity: 0, y: 6 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={animateOnMount ? { duration: 0.24, ease: "easeOut" } : { duration: 0 }}
-      className={`flex flex-col gap-3 px-5 py-5 ${styles.section}`}
+      className={`flex flex-col gap-3 px-5 py-4 ${styles.section}`}
       aria-labelledby={`${id}-title`}
     >
       <div className="flex items-start justify-between gap-3">

@@ -35,9 +35,9 @@ function BrandRail({
   if (brands.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3 bg-fair-50 px-5 py-5" aria-labelledby="top-brands-real-savings-title">
+    <section className="flex flex-col gap-3 bg-fair-50 px-5 py-4" aria-labelledby="top-brands-real-savings-title">
       <div>
-        <h2 id="top-brands-real-savings-title" className="dd-type-section text-fair-800">Top brands with real savings</h2>
+        <h2 id="top-brands-real-savings-title" className="dd-type-section text-stone-900">Top brands with real savings</h2>
         <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">Brands with the most current Real Savers</p>
       </div>
 
@@ -47,7 +47,7 @@ function BrandRail({
             key={brand.key}
             type="button"
             onClick={() => onSelectBrand(brand)}
-            className="relative flex min-h-[142px] w-[166px] shrink-0 cursor-pointer flex-col items-start justify-between rounded-3xl bg-white p-3 text-left shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
+            className="relative flex min-h-[142px] w-[154px] shrink-0 cursor-pointer flex-col items-start justify-between rounded-3xl bg-white p-3 text-left shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fair-700"
             aria-label={`Browse ${brand.name}, ${brand.realSaverCount} Real Saver${brand.realSaverCount === 1 ? "" : "s"}${brand.unreadRealSaverDealKeys.length > 0 ? ", includes new Real Saver items" : ""}`}
           >
             {brand.unreadRealSaverDealKeys.length > 0 && (
@@ -56,11 +56,11 @@ function BrandRail({
             <BrandVisual brand={brand} />
             <span className="mt-3 line-clamp-1 w-full font-display text-base font-extrabold text-stone-900">{brand.name}</span>
             <span className="mt-1 flex items-baseline gap-1 text-fair-800">
-              <span className="text-sm leading-5 font-extrabold">{brand.realSaverCount}</span>
+              <span className="text-base leading-5 font-extrabold">{brand.realSaverCount}</span>
               <span className="text-xs leading-4 font-semibold">Real Saver{brand.realSaverCount === 1 ? "" : "s"}</span>
             </span>
             <span className="flex items-baseline gap-1 text-stone-500">
-              <span className="text-sm leading-5 font-bold">{brand.currentSpecialCount}</span>
+              <span className="text-base leading-5 font-bold">{brand.currentSpecialCount}</span>
               <span className="text-xs leading-4 font-semibold">current special{brand.currentSpecialCount === 1 ? "" : "s"}</span>
             </span>
           </button>
