@@ -300,7 +300,11 @@ function CheckDealsToolbar({
                   }`}
                   aria-label={`Filter to new deals since your last visit, ${newDealsCount} available`}
                 >
-                  <span className="rounded-full bg-alert-600 px-1.5 py-[3px] text-[10px] leading-none text-white">
+                  <span
+                    className={`inline-flex rounded-full bg-alert-600 px-1.5 py-[3px] text-[10px] leading-none text-white ${
+                      newForYouFilterActive ? "" : "new-deals-count-pulse"
+                    }`}
+                  >
                     {newDealsCount}
                   </span>
                   New to you

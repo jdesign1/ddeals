@@ -99,6 +99,57 @@ a[aria-label="Dodgy Deal home"] {
   }
 }
 
+@keyframes new-deals-count-pulse {
+  0%,
+  82%,
+  100% {
+    transform: scale(1);
+  }
+  86% {
+    transform: scale(1.1);
+  }
+  90% {
+    transform: scale(1);
+  }
+  94% {
+    transform: scale(1.06);
+  }
+  98% {
+    transform: scale(1);
+  }
+}
+
+@keyframes top-saver-category-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+  }
+}
+
+.new-deals-count-pulse {
+  transform-origin: center;
+  animation: new-deals-count-pulse 3.2s ease-in-out infinite;
+}
+
+.top-category-image-float {
+  animation: top-saver-category-float 3.6s ease-in-out infinite;
+}
+
+.top-saver-categories-track > :nth-child(2) .top-category-image-float {
+  animation-delay: -1.2s;
+}
+
+.top-saver-categories-track > :nth-child(3) .top-category-image-float {
+  animation-delay: -2.4s;
+}
+
+.top-saver-categories-track > :nth-child(4) .top-category-image-float {
+  animation-delay: -0.6s;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   [data-check-deals-return="true"] .check-deals-page-enter {
     animation: check-deals-page-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
@@ -197,6 +248,11 @@ a[aria-label="Dodgy Deal home"] {
   }
 
   .mascot-wave {
+    animation: none;
+  }
+
+  .new-deals-count-pulse,
+  .top-category-image-float {
     animation: none;
   }
 

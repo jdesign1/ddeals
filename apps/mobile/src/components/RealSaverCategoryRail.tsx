@@ -29,7 +29,7 @@ function RealSaverCategoryRail({
         <p className="dd-type-secondary mt-1 max-w-[19rem] text-stone-600">{description}</p>
       </div>
 
-      <div className="hide-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1" aria-label="Real Saver deals by category">
+      <div className="top-saver-categories-track hide-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1" aria-label="Real Saver deals by category">
         {categories.map(({ category, count }) => (
           <button
             key={category}
@@ -46,7 +46,7 @@ function RealSaverCategoryRail({
               width={72}
               height={72}
               sizes="72px"
-              className="h-[72px] w-[72px] shrink-0 object-contain"
+              className="top-category-image-float h-[72px] w-[72px] shrink-0 object-contain"
               aria-hidden="true"
             />
             <span className="line-clamp-2 w-full dd-type-control dd-type-control-strong leading-5 text-stone-900">{category}</span>
