@@ -434,15 +434,14 @@ export default function RealDealGame() {
                 <>
                   <h3 ref={questionRef} tabIndex={-1} className="real-deal-question">Select an item</h3>
                   <div className="real-deal-choice-grid" role="group" aria-label="Choose the item you think is a real saving">
-                    {currentItems.map((item, index) => (
+                    {currentItems.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         className="real-deal-choice"
                         onClick={() => setSelectedItemId(item.id)}
-                        aria-label={`${String.fromCharCode(65 + index)}: ${item.brand ? `${item.brand} ` : ""}${item.name}, ${item.unit || "size not listed"}, ${currency(item.price)} at ${item.store}. Select this item.`}
+                        aria-label={`${item.brand ? `${item.brand} ` : ""}${item.name}, ${item.unit || "size not listed"}, ${currency(item.price)} at ${item.store}. Select this item.`}
                       >
-                        <span className="real-deal-choice-letter">{String.fromCharCode(65 + index)}</span>
                         <ProductPhoto item={item} />
                         <span className="real-deal-choice-body">
                           <span className="real-deal-product-brand">{item.brand || item.category}</span>
