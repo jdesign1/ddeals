@@ -694,7 +694,8 @@ export const productTitleCase = (s: string | null | undefined): string =>
 export async function fetchAllRows<T = Record<string, unknown>>(
   config: SupabaseRestConfig,
   path: string,
-  pageSize = 1000
+  pageSize = 1000,
+  signal?: AbortSignal
 ): Promise<T[]> {
   const page = pageSize;
   const MAX_PAGES = 100; // safety cap based on the number of rows the server actually returns per page
@@ -709,6 +710,7 @@ export async function fetchAllRows<T = Record<string, unknown>>(
         Range: `${start}-${start + count - 1}`,
         ...extraHeaders,
       },
+      signal,
     });
     if (!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
     return res;
@@ -1285,7 +1287,7 @@ interface TargetedDealValidationEntry {
 /** Exported for tests only; the app should use validateCurrentDeal(). */
 export const __targetedDealValidations = new Map<string, TargetedDealValidationEntry>();
 
-async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string): Promise<T | null> {
+async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string, signal?: AbortSignal): Promise<T | null> {
   const response = await fetch(`${config.url}/rest/v1/${path}`, {
     cache: "no-store",
     headers: {
@@ -1294,6 +1296,7 @@ async function fetchFirstRow<T>(config: SupabaseRestConfig, path: string): Promi
       "Range-Unit": "items",
       Range: "0-0",
     },
+    signal,
   });
   if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}`);
   const rows = (await response.json()) as T[];
@@ -1490,7 +1493,8 @@ async function fetchTargetedDealRow(
 export async function fetchPriceHistory90d(
   config: SupabaseRestConfig,
   productId: string,
-  storeId: string
+  storeId: string,
+  options: { signal?: AbortSignal } = {}
 ): Promise<PriceHistoryPoint[]> {
   interface PriceHistoryRow {
     price: number | null;
@@ -1503,11 +1507,12 @@ export async function fetchPriceHistory90d(
     `&product_id=eq.${encodeURIComponent(productId)}` +
     `&store_id=eq.${encodeURIComponent(storeId)}`;
   const [carryIn, recent] = await Promise.all([
-    fetchFirstRow<PriceHistoryRow>(config, `${base}&scraped_at=lt.${encodeURIComponent(start)}&order=scraped_at.desc&limit=1`),
+    fetchFirstRow<PriceHistoryRow>(config, `${base}&scraped_at=lt.${encodeURIComponent(start)}&order=scraped_at.desc&limit=1`, options.signal),
     fetchAllRows<PriceHistoryRow>(
       config,
       `${base}&scraped_at=gte.${encodeURIComponent(start)}&order=scraped_at.asc`,
-      1000
+      1000,
+      options.signal
     ),
   ]);
 

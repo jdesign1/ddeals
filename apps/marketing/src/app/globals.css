@@ -16,6 +16,10 @@
   --line: #e4e1dc;
   --fair: #079b60;
   --fair-dark: #087549;
+  --verdict-real: #417a50;
+  --verdict-dodgy: #9d424a;
+  --chart-special: #15803d;
+  --chart-regular: #a8a29e;
   --white: #ffffff;
   --hero-sand: #fdfbf9;
 }
@@ -50,7 +54,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }.feature-card { min-width: 0; overflow: hidden; border: 0; border-radius: 18px; background: var(--white); box-shadow: 0 8px 24px rgba(12, 12, 11, .045); text-align: center; transition: transform .18s ease-out, box-shadow .18s ease-out; }.feature-image { aspect-ratio: 1.57; overflow: hidden; background: var(--paper); }.feature-image img { --feature-image-scale: 1; --feature-image-hover-scale: 1.02; display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(var(--feature-image-scale)); transition: transform .18s ease-out; }.feature-card h3 { margin: 21px 0 12px; padding: 0 20px; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.05rem; font-weight: 700; line-height: 1.15; letter-spacing: normal; transition: color .18s ease-out; }.feature-card p { max-width: 340px; margin: 0 auto; padding: 0 20px 26px; color: var(--ink); font-size: .9rem; line-height: 1.46; }
 .feature-image-graph img { --feature-image-scale: 1.34; --feature-image-hover-scale: 1.38; }
 
-.real-deal-section { padding: 72px 32px 68px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); }
+.real-deal-section { padding: 72px 32px 68px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; }
 .real-deal-inner { max-width: 1180px; margin: 0 auto; }
 .real-deal-intro { max-width: 760px; margin: 0 auto 36px; text-align: center; }
 .real-deal-eyebrow { margin: 0 0 12px; color: var(--fair-dark); font-size: .74rem; font-weight: 800; letter-spacing: .12em; line-height: 1.2; text-transform: uppercase; }
@@ -64,29 +68,35 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .real-deal-case-content { animation: real-deal-case-enter .24s ease-out both; }
 .real-deal-question { margin: 24px 0 18px; text-align: center; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.2rem; font-weight: 750; line-height: 1.25; }
 .real-deal-question:focus { outline: 3px solid rgba(7, 155, 96, .32); outline-offset: 5px; border-radius: 4px; }
-.real-deal-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.real-deal-choice { min-width: 0; overflow: hidden; display: flex; flex-direction: column; padding: 0; border: 1px solid var(--line); border-radius: 17px; background: var(--white); color: var(--ink); cursor: pointer; text-align: left; transition: transform .18s ease-out, border-color .18s ease-out, box-shadow .18s ease-out, background-color .18s ease-out; }
+.real-deal-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.real-deal-choice { position: relative; min-width: 0; min-height: 164px; overflow: hidden; display: flex; align-items: stretch; padding: 0; border: 1px solid #dedbd5; border-radius: 17px; background: var(--white); color: var(--ink); cursor: pointer; text-align: left; transition: transform .18s ease-out, border-color .18s ease-out, box-shadow .18s ease-out, background-color .18s ease-out; }
 .real-deal-choice:focus-visible, .real-deal-button:focus-visible { outline: 3px solid rgba(7, 155, 96, .32); outline-offset: 4px; }
-.real-deal-choice[aria-disabled="true"] { cursor: default; }
+.real-deal-choice:disabled { cursor: default; }
 .real-deal-choice.is-real { border-color: #8fc9ab; background: #fcfffd; }
 .real-deal-choice.is-dodgy-selected { border-color: #d99b8f; background: #fffdfc; }
-.real-deal-art-panel { position: relative; min-height: 154px; display: grid; place-items: center; overflow: hidden; background: var(--hero-sand); }
-.real-deal-choice-letter { position: absolute; top: 12px; left: 12px; z-index: 1; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: rgba(255, 255, 255, .94); color: var(--ink); font-size: .76rem; font-weight: 800; }
-.real-deal-special-tag { position: absolute; right: 12px; bottom: 12px; padding: 5px 9px; border: 1px solid #e7d9b6; border-radius: 999px; background: #fffaf0; color: #725616; font-size: .65rem; font-weight: 800; letter-spacing: .08em; }
-.demo-product-art { width: min(42%, 156px); height: 112px; color: var(--ink); filter: drop-shadow(0 5px 3px rgba(12, 12, 11, .08)); }
-.demo-product-art text { fill: var(--ink); font-family: "Manrope Local", ui-sans-serif, sans-serif; font-size: 9px; font-weight: 800; letter-spacing: .06em; }
-.demo-product-art--coffee text, .demo-product-art--butter text, .demo-product-art--eggs text, .demo-product-art--cereal text, .demo-product-art--bread text, .demo-product-art--biscuits text { paint-order: stroke; stroke: rgba(255, 255, 255, .45); stroke-width: .7px; }
-.real-deal-choice-body { min-width: 0; min-height: 155px; display: flex; flex: 1; flex-direction: column; padding: 17px 18px 18px; }
-.real-deal-product-name { color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.04rem; font-weight: 750; line-height: 1.3; }
-.real-deal-product-size { margin-top: 3px; color: #716d66; font-size: .83rem; line-height: 1.35; }
-.real-deal-price-row { margin-top: auto; padding-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.real-deal-price { color: var(--fair-dark); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.real-deal-store { max-width: 52%; overflow: hidden; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-soft); font-size: .72rem; font-weight: 750; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.real-deal-verdict { width: fit-content; margin-top: 12px; padding: 6px 10px; border-radius: 999px; font-size: .76rem; font-weight: 800; line-height: 1.2; }
+.real-deal-photo { width: 132px; min-width: 132px; min-height: 164px; display: grid; place-items: center; overflow: hidden; padding: 12px; border-right: 1px solid #efede9; background: #f5f5f4; }
+.real-deal-photo img { display: block; width: 100%; height: 100%; max-height: 138px; object-fit: contain; mix-blend-mode: multiply; }
+.real-deal-photo-fallback { color: #78746d; font-size: .72rem; font-weight: 650; text-align: center; }
+.real-deal-choice-letter { position: absolute; top: 9px; left: 9px; z-index: 1; width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: rgba(255, 255, 255, .95); color: var(--ink); font-size: .7rem; font-weight: 800; }
+.real-deal-choice-body { min-width: 0; display: flex; flex: 1; flex-direction: column; align-items: flex-start; padding: 15px 15px 13px; }
+.real-deal-product-brand { display: block; color: #66625c; font-size: .75rem; font-weight: 600; line-height: 1.25; }
+.real-deal-product-name { display: block; margin-top: 3px; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: .98rem; font-weight: 750; line-height: 1.25; }
+.real-deal-product-size { display: block; margin-top: 3px; color: #716d66; font-size: .77rem; line-height: 1.3; }
+.real-deal-price { display: block; margin-top: auto; padding-top: 9px; color: var(--fair-dark); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.22rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.real-deal-store-line { min-width: 0; display: inline-flex; align-items: center; gap: 7px; color: #57534e; font-size: .73rem; font-weight: 700; line-height: 1.2; }
+.real-deal-store-line > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.real-deal-choice-body > .real-deal-store-line { margin-top: 8px; }
+.demo-retailer-mark { width: 27px; height: 23px; flex: 0 0 27px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 5px; box-shadow: 0 0 0 1px rgb(0 0 0 / .1); }
+.demo-retailer-mark img { display: block; width: 82%; height: 82%; object-fit: contain; }
+.demo-retailer-mark--woolworths img { width: 76%; height: 76%; }
+.demo-retailer-mark--paknsave img, .demo-retailer-mark--newworld img { width: 100%; height: 100%; object-fit: contain; }
+.demo-retailer-mark--supervalue img { width: 88%; height: auto; max-height: 60%; }
+.demo-retailer-mark--fallback { background: #57534e; color: white; font-size: .63rem; font-weight: 800; }
+.real-deal-verdict { width: fit-content; margin-top: 8px; padding: 5px 8px; border-radius: 999px; font-size: .69rem; font-weight: 800; line-height: 1.2; }
 .real-deal-verdict--real { background: #e7f5ed; color: #087549; }
 .real-deal-verdict--dodgy { background: #fff0ec; color: #a53c2b; }
-.real-deal-prompt { margin: 18px 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-soft); font-size: .88rem; font-weight: 700; text-align: center; }
-.real-deal-prompt svg { flex: 0 0 auto; }
+.real-deal-prompt { margin: 18px 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-soft); font-size: .88rem; font-weight: 650; text-align: center; }
+.real-deal-prompt span { color: var(--ink); font-size: 1.08rem; line-height: 1; }
 .real-deal-reveal { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
 .real-deal-result { margin-bottom: 16px; display: flex; align-items: flex-start; gap: 13px; padding: 16px 18px; border: 1px solid; border-radius: 15px; }
 .real-deal-result--real { border-color: #d8e9de; background: #f5fbf7; }
@@ -96,38 +106,66 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .real-deal-result-icon--dodgy { background: #a53c2b; color: white; }
 .real-deal-result h3 { margin: 1px 0 4px; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1rem; font-weight: 800; line-height: 1.35; }
 .real-deal-result p { margin: 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.45; }
-.demo-history-card { max-width: 760px; margin: 0 auto; padding: 18px 20px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
-.demo-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.demo-history-heading h4 { margin: 0; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: .95rem; font-weight: 800; }
-.demo-history-heading p { margin: 4px 0 0; color: #716d66; font-size: .78rem; line-height: 1.35; }
-.demo-history-price { color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.demo-selected-product { max-width: 760px; margin: 0 auto 14px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
+.demo-selected-product .real-deal-photo { width: 82px; min-width: 82px; min-height: 92px; padding: 8px; border-right: 0; }
+.demo-selected-product .real-deal-photo img { max-height: 76px; }
+.demo-selected-product-copy { min-width: 0; flex: 1; padding: 12px 14px; }
+.demo-selected-product-copy h4 { margin: 3px 0 0; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: .96rem; font-weight: 750; line-height: 1.3; }
+.demo-selected-product-footer { margin-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.demo-selected-product-footer > strong { color: var(--fair-dark); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.12rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.demo-history-card { max-width: 760px; margin: 0 auto; padding: 17px 18px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--white); }
+.demo-history-card > h4 { margin: 0; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: .98rem; font-weight: 800; }
+.demo-history-stats { margin: 14px 0 11px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid #e8e6e2; border-radius: 11px; background: #fbfbfa; }
+.demo-history-stats > div { min-width: 0; padding: 9px 5px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.demo-history-stats > div + div { border-left: 1px solid #dedbd5; }
+.demo-history-stats strong { overflow: hidden; max-width: 100%; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.demo-history-stats span { color: #57534e; font-size: .68rem; font-weight: 650; line-height: 1.2; }
 .demo-history-chart-wrap { width: 100%; max-width: 520px; margin: 8px auto 0; }
 .demo-history-chart { width: 100%; height: auto; display: block; overflow: visible; }
-.demo-history-date-labels { padding: 0 2.2% 0 13.3%; display: flex; align-items: center; justify-content: space-between; color: #716d66; font-size: .76rem; font-weight: 800; }
-.demo-history-gridline { stroke: #e6e2dc; stroke-width: 1; stroke-dasharray: 3 5; }
-.demo-history-line { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
-.demo-history-point { stroke: var(--white); stroke-width: 2.5; }
-.demo-history-chart--real .demo-history-line { stroke: var(--fair); }
-.demo-history-chart--real .demo-history-point { fill: var(--fair); }
-.demo-history-chart--dodgy .demo-history-line { stroke: #b64a38; }
-.demo-history-chart--dodgy .demo-history-point { fill: #b64a38; }
-.demo-history-evidence { margin: 4px 0 0; padding: 11px 13px; border: 1px solid; border-radius: 11px; font-size: .86rem; font-weight: 700; line-height: 1.45; }
+.demo-history-gridline { stroke: #e7e5e4; stroke-width: 1; stroke-dasharray: 3 4; }
+.demo-history-axis-price, .demo-history-axis-label { fill: #57534e; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: 14px; font-weight: 700; }
+.demo-history-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.demo-history-point { fill: var(--chart-regular); stroke: #fafaf9; stroke-width: 2; }
+.demo-history-point--special { fill: var(--chart-special); }
+.demo-history-legend { margin: -5px 0 0; display: flex; align-items: center; justify-content: center; gap: 17px; color: #57534e; font-size: .77rem; font-weight: 700; }
+.demo-history-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.demo-history-legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chart-regular); }
+.demo-history-legend-dot--special { background: var(--chart-special); }
+.demo-history-evidence { margin: 14px 0 0; padding: 11px 13px; border: 1px solid; border-radius: 11px; font-size: .86rem; font-weight: 650; line-height: 1.45; }
 .demo-history-evidence--real { border-color: #cce5d5; background: #f2faf5; color: #155b3b; }
 .demo-history-evidence--dodgy { border-color: #ead0c9; background: #fff7f4; color: #843c30; }
+.demo-history-loading, .demo-history-unavailable { min-height: 190px; margin: 0; display: grid; place-items: center; color: var(--ink-soft); font-size: .86rem; line-height: 1.45; text-align: center; }
+.demo-history-unavailable { min-height: 120px; }
 .real-deal-actions { margin-top: 18px; display: flex; justify-content: center; gap: 12px; }
-.real-deal-button { min-height: 48px; padding: 0 19px; border: 1px solid var(--ink); border-radius: 999px; cursor: pointer; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: .86rem; font-weight: 800; transition: transform .18s ease-out, background-color .18s ease-out, color .18s ease-out, border-color .18s ease-out; }
+.real-deal-button { min-height: 48px; padding: 0 19px; border: 1px solid var(--ink); border-radius: 999px; cursor: pointer; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: .86rem; font-weight: 750; transition: transform .18s ease-out, background-color .18s ease-out, color .18s ease-out, border-color .18s ease-out; }
 .real-deal-button--primary { background: var(--ink); color: white; }
 .real-deal-button--secondary { background: white; color: var(--ink); }
+.real-deal-empty { max-width: 540px; margin: 28px auto 8px; padding: 25px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); text-align: center; }
+.real-deal-empty h3 { margin: 0; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.05rem; font-weight: 800; }
+.real-deal-empty p { margin: 9px 0 17px; color: var(--ink-soft); font-size: .9rem; line-height: 1.5; }
+.real-deal-loading { padding-top: 24px; }
+.real-deal-loading-title { width: min(310px, 74%); height: 20px; margin: 0 auto 18px; border-radius: 8px; background: #eeece8; }
+.real-deal-loading-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.real-deal-loading-card { min-height: 164px; padding: 13px; display: grid; grid-template-columns: 105px 1fr; grid-template-rows: 18px 20px 16px; align-content: center; gap: 8px 13px; border: 1px solid var(--line); border-radius: 17px; }
+.real-deal-loading-card > div { grid-row: 1 / 4; border-radius: 11px; background: #eeece8; }
+.real-deal-loading-card > span, .real-deal-loading-card > i { display: block; border-radius: 7px; background: #eeece8; }
+.real-deal-loading-card > span { width: 55%; }
+.real-deal-loading-card > i:last-child { width: 70%; }
 .real-deal-download-prompt { margin: 22px 0 0; color: var(--ink-soft); font-size: .9rem; text-align: center; }
 .real-deal-download-prompt a { color: var(--fair-dark); font-weight: 800; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 @keyframes real-deal-case-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .real-deal-case-content { animation: none; }
+  .real-deal-button { transition: none; }
+}
 
 @media (hover: hover) and (pointer: fine) {
   .hero-animation:hover .hero-animation__stage { transform: translateY(-3px) rotate(-.6deg) scale(1.015); transition: transform .22s ease-out; }
   .feature-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(12, 12, 11, .09); }
   .feature-card:hover h3 { color: var(--fair); }
   .feature-card:hover .feature-image img { transform: scale(var(--feature-image-hover-scale)); }
-  .real-deal-choice:not([aria-disabled="true"]):hover { transform: translateY(-2px); border-color: #b8b1a7; box-shadow: 0 9px 24px rgba(12, 12, 11, .075); }
+  .real-deal-choice:not(:disabled):hover { transform: translateY(-2px); border-color: #b8b1a7; box-shadow: 0 9px 24px rgba(12, 12, 11, .075); }
   .real-deal-button--primary:hover { transform: translateY(-1px); background: #252522; }
   .real-deal-button--secondary:hover { transform: translateY(-1px); background: var(--paper); }
 }
@@ -196,7 +234,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
   .site-header { min-height: 76px; padding: 13px 20px; }.logo-lockup { gap: 9px; font-size: 1.1rem; }.logo-lockup img { width: 32px; height: 32px; }.header-nav { gap: 14px; }.header-link { font-size: .78rem; }
   .download-hero-inner { min-height: 0; padding: 38px 20px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 20px; }.download-copy { text-align: center; }.download-copy h1 { max-width: 520px; margin-left: auto; margin-right: auto; font-size: clamp(2.05rem, 8.5vw, 2.75rem); }.download-copy p { max-width: 34rem; margin-left: auto; margin-right: auto; font-size: .95rem; }.store-badge { margin: 0 auto; }.download-visual { min-height: 0; height: auto; }.hero-animation__stage { width: 100%; /* The artwork reserves left-side space for the desktop headline; center the visible phone/mascot composition on mobile. */ transform: translateX(-15%); }
   .feature-section, .feature-section-secondary { padding: 62px 20px 26px; }.feature-section-secondary { padding-top: 70px; padding-bottom: 64px; }.section-intro { margin-bottom: 32px; }.section-intro h2 { font-size: clamp(1.65rem, 7vw, 2.05rem); }.section-intro p { max-width: 34rem; margin-inline: auto; font-size: .9rem; }.feature-grid { grid-template-columns: 1fr; gap: 40px; }.feature-image { max-width: 520px; margin: 0 auto; }.feature-image-graph img { transform: scale(1.18); }.feature-card h3 { margin-top: 17px; font-size: 1.02rem; }.feature-card p { max-width: 34rem; font-size: .9rem; }
-  .real-deal-section { padding: 54px 20px 50px; }.real-deal-intro { margin-bottom: 28px; }.real-deal-intro h2 { font-size: clamp(1.7rem, 7vw, 2.1rem); }.real-deal-intro > p:last-child { font-size: .92rem; }.real-deal-game-card { padding: 19px 16px; border-radius: 19px; }.real-deal-choice-grid { grid-template-columns: 1fr; gap: 12px; }.real-deal-choice { flex-direction: row; min-height: 132px; }.real-deal-art-panel { width: 122px; min-width: 122px; min-height: 132px; }.demo-product-art { width: 94px; height: auto; }.real-deal-special-tag { right: 7px; bottom: 8px; padding: 4px 7px; font-size: .58rem; }.real-deal-choice-letter { top: 8px; left: 8px; width: 25px; height: 25px; font-size: .7rem; }.real-deal-choice-body { min-height: 132px; padding: 14px 12px; }.real-deal-product-name { font-size: .96rem; }.real-deal-product-size { font-size: .78rem; }.real-deal-price-row { gap: 6px; padding-top: 10px; }.real-deal-price { font-size: 1.15rem; }.real-deal-store { max-width: 55%; padding: 4px 7px; font-size: .66rem; }.real-deal-verdict { margin-top: 8px; padding: 5px 8px; font-size: .7rem; }.real-deal-question { margin-top: 21px; font-size: 1.08rem; }.real-deal-result { padding: 14px 13px; }.demo-history-card { padding: 14px 12px 12px; }.real-deal-actions { flex-direction: column-reverse; }.real-deal-button { width: 100%; }
+  .real-deal-section { padding: 54px 20px 50px; }.real-deal-intro { margin-bottom: 28px; }.real-deal-intro h2 { font-size: clamp(1.7rem, 7vw, 2.1rem); }.real-deal-intro > p:last-child { font-size: .92rem; }.real-deal-game-card { padding: 19px 16px; border-radius: 19px; }.real-deal-choice-grid { grid-template-columns: 1fr; gap: 12px; }.real-deal-choice { min-height: 148px; }.real-deal-photo { width: 112px; min-width: 112px; min-height: 148px; padding: 10px; }.real-deal-photo img { max-height: 126px; }.real-deal-choice-body { min-height: 0; padding: 13px 12px; }.real-deal-product-name { font-size: .96rem; }.real-deal-product-size { font-size: .78rem; }.real-deal-price { font-size: 1.15rem; }.real-deal-store-line { font-size: .68rem; }.real-deal-verdict { margin-top: 7px; padding: 5px 8px; font-size: .7rem; }.real-deal-question { margin-top: 21px; font-size: 1.08rem; }.real-deal-result { padding: 14px 13px; }.demo-history-card { padding: 14px 12px 12px; }.demo-selected-product .real-deal-photo { width: 72px; min-width: 72px; }.real-deal-actions { flex-direction: column-reverse; }.real-deal-button { width: 100%; }
+  .real-deal-loading-grid { grid-template-columns: 1fr; }
   .closing-cta { margin: 0 20px 52px; padding: 34px 20px 38px; border-radius: 22px; }.closing-cta h2 { font-size: clamp(1.6rem, 6.5vw, 2rem); }.closing-cta p { max-width: 34rem; font-size: .9rem; }.faq-section { margin-bottom: 64px; padding: 0 20px; }.faq-trigger { min-height: 68px; padding-top: 20px; padding-bottom: 20px; font-size: .96rem; }.faq-answer p { padding-right: 24px; font-size: .88rem; }.site-footer { padding: 22px 20px 34px; gap: 18px; align-items: start; }.site-footer .logo-lockup { font-size: .9rem; }.footer-links { max-width: 170px; justify-content: flex-end; gap: 10px 12px; font-size: .7rem; }
   .legal-hero-inner { padding: 52px 20px 48px; }.legal-hero h1 { font-size: clamp(2.35rem, 11vw, 3.2rem); }.legal-lede { font-size: 1rem; line-height: 1.62; }.legal-layout { display: block; padding: 42px 20px 64px; }.legal-index { position: static; margin-bottom: 42px; padding: 18px 20px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }.legal-index ol { columns: 2; column-gap: 24px; }.legal-index li { break-inside: avoid; }.legal-index li + li { margin-top: 9px; }.legal-notice { margin-bottom: 46px; padding: 18px 19px 20px; }.legal-section { padding-bottom: 38px; }.legal-section + .legal-section { padding-top: 38px; }.legal-copy { font-size: .95rem; line-height: 1.72; }.legal-contact-row { display: block; }.legal-contact-row dd { margin-top: 2px; text-align: left; }.legal-related { margin-top: 38px; }
 }
@@ -209,10 +248,21 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
   .real-deal-section { padding-inline: 14px; }
   .real-deal-game-card { padding: 16px 12px; }
   .real-deal-card-topline { align-items: flex-start; flex-direction: column; gap: 7px; }
-  .real-deal-art-panel { width: 98px; min-width: 98px; }
+  .real-deal-choice { min-height: 138px; }
+  .real-deal-photo { width: 96px; min-width: 96px; min-height: 138px; padding: 8px; }
   .real-deal-choice-body { padding-inline: 10px; }
-  .real-deal-store { font-size: .61rem; }
+  .real-deal-product-name { font-size: .91rem; }
+  .real-deal-price { font-size: 1.05rem; }
+  .real-deal-store-line { gap: 5px; font-size: .64rem; }
   .real-deal-prompt { align-items: flex-start; font-size: .81rem; }
+  .demo-history-card { padding: 13px 10px 12px; }
+  .demo-history-stats strong { font-size: .9rem; }
+  .demo-history-stats span { font-size: .61rem; }
+  .demo-history-legend { gap: 10px; font-size: .7rem; }
+  .demo-selected-product-copy { padding: 10px; }
+  .demo-selected-product-footer { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .demo-history-evidence { font-size: .8rem; }
+  .real-deal-actions { gap: 9px; }
   .demo-history-heading p { max-width: 200px; }
 }
 
