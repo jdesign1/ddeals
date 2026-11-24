@@ -234,6 +234,7 @@ export default function RealDealGame() {
   const [itemOrders, setItemOrders] = useState<DemoItemOrders>({});
   const [casePosition, setCasePosition] = useState(0);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
   const [caseKey, setCaseKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [shouldLoad, setShouldLoad] = useState(false);
