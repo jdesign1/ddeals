@@ -494,7 +494,12 @@ export default function RealDealGame() {
                     ) : (
                       <PriceHistoryGraph item={selectedItem} points={historyPoints} />
                     )}
-                    <p className={`demo-history-evidence demo-history-evidence--${selectedItem.verdict}`}>{currentHistoryStatement}</p>
+                    <p className={`demo-history-evidence demo-history-evidence--${selectedItem.verdict}`}>
+                      <span className={`demo-history-verdict-badge demo-history-verdict-badge--${selectedItem.verdict}`}>
+                        {selectedItem.verdict === "real" ? "Real Saver" : "Dodgy Deal"}
+                      </span>{" "}
+                      {currentHistoryStatement}
+                    </p>
                   </section>
 
                   <div className="real-deal-actions">
