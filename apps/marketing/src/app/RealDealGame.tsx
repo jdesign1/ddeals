@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 
 type DealVerdict = "real" | "dodgy";
@@ -42,6 +42,23 @@ interface HistoryResponse {
 }
 
 const RESULT_STEP_DURATION_MS = 1_700;
+const CONFETTI_PIECES = [
+  { left: 3, x: -48, y: "7rem", rotation: -42, color: "#22c55e", delay: 0 },
+  { left: 9, x: -22, y: "9rem", rotation: 28, color: "#f59e0b", delay: 90 },
+  { left: 15, x: 34, y: "8rem", rotation: -24, color: "#6366f1", delay: 170 },
+  { left: 21, x: -56, y: "10rem", rotation: 46, color: "#ef4444", delay: 45 },
+  { left: 28, x: 26, y: "8rem", rotation: -55, color: "#14b8a6", delay: 220 },
+  { left: 35, x: -36, y: "11rem", rotation: 36, color: "#eab308", delay: 120 },
+  { left: 42, x: 52, y: "7rem", rotation: -32, color: "#ec4899", delay: 190 },
+  { left: 49, x: -18, y: "9rem", rotation: 54, color: "#22c55e", delay: 25 },
+  { left: 56, x: 44, y: "10rem", rotation: -48, color: "#f97316", delay: 145 },
+  { left: 63, x: -58, y: "11rem", rotation: 25, color: "#6366f1", delay: 260 },
+  { left: 70, x: 30, y: "8rem", rotation: -36, color: "#ef4444", delay: 70 },
+  { left: 77, x: -26, y: "10rem", rotation: 42, color: "#14b8a6", delay: 235 },
+  { left: 84, x: 56, y: "7rem", rotation: -28, color: "#f59e0b", delay: 160 },
+  { left: 91, x: -44, y: "9rem", rotation: 50, color: "#22c55e", delay: 105 },
+  { left: 97, x: 24, y: "11rem", rotation: -44, color: "#ec4899", delay: 285 },
+] as const;
 
 const STORE_LOGOS: Record<string, { src: string; background: string }> = {
   woolworths: { src: "/store-logos/woolworths.svg", background: "#ffffff" },
@@ -115,6 +132,27 @@ function ProductPhoto({ item, compact = false }: { item: DemoItem; compact?: boo
       ) : (
         <span className="real-deal-photo-fallback" aria-label={`${item.name} image unavailable`}>Image unavailable</span>
       )}
+    </div>
+  );
+}
+
+function DealConfetti() {
+  return (
+    <div className="real-deal-confetti-layer" aria-hidden="true">
+      {CONFETTI_PIECES.map((piece, index) => (
+        <span
+          key={index}
+          className="real-deal-confetti"
+          style={{
+            left: `${piece.left}%`,
+            backgroundColor: piece.color,
+            animationDelay: `${piece.delay}ms`,
+            "--confetti-x": `${piece.x}px`,
+            "--confetti-y": piece.y,
+            "--confetti-rotation": `${piece.rotation}deg`,
+          } as CSSProperties}
+        />
+      ))}
     </div>
   );
 }
@@ -378,12 +416,6 @@ export default function RealDealGame() {
         </header>
 
         <div className="real-deal-game-card">
-          <div className="real-deal-card-topline">
-            <span className="real-deal-case-number">
-              {currentCase ? <>CASE {String(casePosition + 1).padStart(2, "0")} <span>OF {String(cases.length).padStart(2, "0")}</span></> : "TODAY’S SPECIALS"}
-            </span>
-          </div>
-
           {loading ? <CaseSkeleton /> : loadError ? (
             <div className="real-deal-empty" role="status">
               <h3>Live specials aren’t available right now.</h3>
@@ -419,6 +451,7 @@ export default function RealDealGame() {
                 </>
               ) : !showPriceHistory && selectedItem ? (
                 <div className={`real-deal-result real-deal-result--${selectedItem.verdict}`} role="status" aria-live="polite">
+                  {selectedItem.verdict === "real" && <DealConfetti key={selectedItem.id} />}
                   <span className={`real-deal-result-icon real-deal-result-icon--${selectedItem.verdict}`} aria-hidden="true">
                     {selectedItem.verdict === "real" ? "✓" : "!"}
                   </span>
