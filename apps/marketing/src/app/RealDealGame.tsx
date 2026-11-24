@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 
 type DealVerdict = "real" | "dodgy";
@@ -42,6 +42,7 @@ interface HistoryResponse {
 }
 
 const RESULT_STEP_DURATION_MS = 1_700;
+const HISTORY_CHART_VIEWBOX_WIDTH = 360;
 const CONFETTI_PIECES = [
   { left: 3, x: -48, y: "7rem", rotation: -42, color: "#22c55e", delay: 0 },
   { left: 9, x: -22, y: "9rem", rotation: 28, color: "#f59e0b", delay: 90 },
@@ -158,6 +159,8 @@ function DealConfetti() {
 }
 
 function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHistoryPoint[] }) {
+  const chartWrapRef = useRef<HTMLDivElement>(null);
+  const [chartScale, setChartScale] = useState(1);
   const chartNow = useMemo(() => Date.now(), [item.id, points]);
   const visiblePoints = useMemo(() => {
     const start = chartNow - 90 * 24 * 60 * 60 * 1000;
@@ -179,12 +182,34 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
     return observed.filter((point) => Date.parse(point.scrapedAt) <= chartNow && Date.parse(point.scrapedAt) >= start - 90 * 24 * 60 * 60 * 1000);
   }, [chartNow, item.price, points]);
 
+  useLayoutEffect(() => {
+    const chartWrap = chartWrapRef.current;
+    if (!chartWrap) return;
+
+    const updateScale = () => {
+      const nextScale = chartWrap.getBoundingClientRect().width / HISTORY_CHART_VIEWBOX_WIDTH;
+      if (!Number.isFinite(nextScale) || nextScale <= 0) return;
+      setChartScale((current) => Math.abs(current - nextScale) < 0.001 ? current : nextScale);
+    };
+
+    updateScale();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateScale);
+      return () => window.removeEventListener("resize", updateScale);
+    }
+
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(chartWrap);
+    return () => observer.disconnect();
+  }, [visiblePoints.length]);
+
   if (visiblePoints.length < 2) {
     return <p className="demo-history-unavailable">There isn’t enough recorded history to draw this graph yet.</p>;
   }
 
-  const width = 360;
+  const width = HISTORY_CHART_VIEWBOX_WIDTH;
   const height = 184;
+  const axisFontSize = 9 / chartScale;
   const left = 68;
   const right = 344;
   const top = 8;
@@ -212,7 +237,7 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
   const verdictColor = item.verdict === "real" ? "var(--verdict-real)" : "var(--verdict-dodgy)";
 
   return (
-    <div className="demo-history-chart-wrap">
+    <div ref={chartWrapRef} className="demo-history-chart-wrap">
       <svg
         className="demo-history-chart"
         viewBox={`0 0 ${width} ${height}`}
@@ -230,7 +255,7 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
           return (
             <g key={index}>
               <line x1={left} x2={right} y1={y} y2={y} className="demo-history-gridline" />
-              <text x={left - 9} y={y + 4} textAnchor="end" className="demo-history-axis-price">{currency(value)}</text>
+              <text x={left - 9} y={y + 4} textAnchor="end" className="demo-history-axis-price" style={{ fontSize: `${axisFontSize}px` }}>{currency(value)}</text>
             </g>
           );
         })}
@@ -248,8 +273,8 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
             <title>{`${new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short" }).format(new Date(point.scrapedAt))}: ${currency(point.price)} · ${point.isSpecial ? "On special" : "Regular price"}`}</title>
           </g>
         ))}
-        <text x={left} y={bottom + 27} textAnchor="start" className="demo-history-axis-label">90 days ago</text>
-        <text x={right} y={bottom + 27} textAnchor="end" className="demo-history-axis-label">Today</text>
+        <text x={left} y={bottom + 27} textAnchor="start" className="demo-history-axis-label" style={{ fontSize: `${axisFontSize}px` }}>90 days ago</text>
+        <text x={right} y={bottom + 27} textAnchor="end" className="demo-history-axis-label" style={{ fontSize: `${axisFontSize}px` }}>Today</text>
       </svg>
       <div className="demo-history-legend" aria-hidden="true">
         <span><i className="demo-history-legend-dot demo-history-legend-dot--special" />On special</span>
