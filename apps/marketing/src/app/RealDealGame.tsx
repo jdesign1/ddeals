@@ -234,11 +234,17 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
             </g>
           );
         })}
-        <path d={areaPath} fill="url(#demo-history-fade)" />
-          <path d={linePath} className="demo-history-line" style={{ stroke: verdictColor }} />
-        {coordinates.map(({ point, x, y }) => (
+        <path d={areaPath} className="demo-history-area" fill="url(#demo-history-fade)" />
+        <path d={linePath} pathLength={1} className="demo-history-line" style={{ stroke: verdictColor }} />
+        {coordinates.map(({ point, x, y }, index) => (
           <g key={`${point.scrapedAt}-${point.price}`}>
-            <circle cx={x} cy={y} r="3.5" className={point.isSpecial ? "demo-history-point demo-history-point--special" : "demo-history-point"} />
+            <circle
+              cx={x}
+              cy={y}
+              r="3"
+              className={point.isSpecial ? "demo-history-point demo-history-point--special" : "demo-history-point"}
+              style={{ "--history-point-delay": `${Math.min(index * 35, 525)}ms` } as CSSProperties}
+            />
             <title>{`${new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short" }).format(new Date(point.scrapedAt))}: ${currency(point.price)} · ${point.isSpecial ? "On special" : "Regular price"}`}</title>
           </g>
         ))}
