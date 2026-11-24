@@ -493,19 +493,6 @@ export default function RealDealGame() {
                 </div>
               ) : selectedItem ? (
                 <div className="real-deal-reveal">
-                  <article className="demo-selected-product" aria-label={`${selectedItem.name} at ${selectedItem.store}`}>
-                    <ProductPhoto item={selectedItem} compact />
-                    <div className="demo-selected-product-copy">
-                      <span className="real-deal-product-brand">{selectedItem.brand || selectedItem.category}</span>
-                      <h4>{selectedItem.name}</h4>
-                      {selectedItem.unit && <span className="real-deal-product-size">{selectedItem.unit}</span>}
-                      <div className="demo-selected-product-footer">
-                        <strong>{currency(selectedItem.price)}</strong>
-                        <span className="real-deal-store-line"><RetailerBadge store={selectedItem.store} /> {selectedItem.store}</span>
-                      </div>
-                    </div>
-                  </article>
-
                   <section className="demo-history-card" aria-labelledby="demo-history-title">
                     <h4 id="demo-history-title">90-day deal history</h4>
                     <div className="demo-history-stats" role="group" aria-label="90-day price history summary">
@@ -520,13 +507,27 @@ export default function RealDealGame() {
                     ) : (
                       <PriceHistoryGraph item={selectedItem} points={historyPoints} />
                     )}
-                    <p className={`demo-history-evidence demo-history-evidence--${selectedItem.verdict}`}>
-                      <span className={`demo-history-verdict-badge demo-history-verdict-badge--${selectedItem.verdict}`}>
-                        {selectedItem.verdict === "real" ? "Real Saver" : "Dodgy Deal"}
-                      </span>{" "}
-                      {currentHistoryStatement}
-                    </p>
                   </section>
+
+                  <p className={`demo-history-evidence demo-history-evidence--${selectedItem.verdict}`}>
+                    <span className={`demo-history-verdict-badge demo-history-verdict-badge--${selectedItem.verdict}`}>
+                      {selectedItem.verdict === "real" ? "Real Saver" : "Dodgy Deal"}
+                    </span>{" "}
+                    {currentHistoryStatement}
+                  </p>
+
+                  <article className="demo-selected-product" aria-label={`${selectedItem.name} at ${selectedItem.store}`}>
+                    <ProductPhoto item={selectedItem} compact />
+                    <div className="demo-selected-product-copy">
+                      <span className="real-deal-product-brand">{selectedItem.brand || selectedItem.category}</span>
+                      <h4>{selectedItem.name}</h4>
+                      {selectedItem.unit && <span className="real-deal-product-size">{selectedItem.unit}</span>}
+                      <div className="demo-selected-product-footer">
+                        <strong>{currency(selectedItem.price)}</strong>
+                        <span className="real-deal-store-line"><RetailerBadge store={selectedItem.store} /> {selectedItem.store}</span>
+                      </div>
+                    </div>
+                  </article>
 
                   <div className="real-deal-actions">
                     <button type="button" className="real-deal-button real-deal-button--secondary" onClick={resetCase}>Try again</button>
