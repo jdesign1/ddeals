@@ -154,20 +154,29 @@ function buildCases(realRows: PublishedGameRow[], dodgyRows: PublishedGameRow[])
   const dodgy = shuffle(dodgyRows);
   const usedIds = new Set<string>();
   const cases: GameCase[] = [];
+  const pairCandidates: { real: PublishedGameRow; dodgy: PublishedGameRow; categoryScore: number }[] = [];
 
   for (const realRow of real) {
-    if (cases.length >= MAX_CASES || usedIds.has(realRow.product_id)) continue;
     const realCategory = (realRow.category || "").trim().toLowerCase();
-    const matchingIndex = dodgy.findIndex((row) => (
-      !usedIds.has(row.product_id)
-      && realCategory
-      && (row.category || "").trim().toLowerCase() === realCategory
-    ));
-    const anyIndex = dodgy.findIndex((row) => !usedIds.has(row.product_id));
-    const dodgyIndex = matchingIndex >= 0 ? matchingIndex : anyIndex;
-    if (dodgyIndex < 0) continue;
+    const realRootCategory = realCategory.split(/\s*>\s*/, 1)[0];
+    for (const dodgyRow of dodgy) {
+      if (realRow.product_id === dodgyRow.product_id) continue;
+      const dodgyCategory = (dodgyRow.category || "").trim().toLowerCase();
+      const dodgyRootCategory = dodgyCategory.split(/\s*>\s*/, 1)[0];
+      const categoryScore = realCategory && realCategory === dodgyCategory
+        ? 2
+        : realRootCategory && realRootCategory === dodgyRootCategory ? 1 : 0;
+      pairCandidates.push({ real: realRow, dodgy: dodgyRow, categoryScore });
+    }
+  }
 
-    const dodgyRow = dodgy.splice(dodgyIndex, 1)[0];
+  // Prioritize comparable products across the whole candidate pool before
+  // filling any remaining cases with unrelated categories. The candidate
+  // arrays are shuffled first, so ties still produce varied daily pairs.
+  pairCandidates.sort((left, right) => right.categoryScore - left.categoryScore);
+  for (const { real: realRow, dodgy: dodgyRow } of pairCandidates) {
+    if (cases.length >= MAX_CASES) break;
+    if (usedIds.has(realRow.product_id) || usedIds.has(dodgyRow.product_id)) continue;
     usedIds.add(realRow.product_id);
     usedIds.add(dodgyRow.product_id);
     cases.push({
