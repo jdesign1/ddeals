@@ -184,11 +184,11 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
   }
 
   const width = 360;
-  const height = 210;
+  const height = 184;
   const left = 68;
   const right = 344;
-  const top = 10;
-  const bottom = 164;
+  const top = 8;
+  const bottom = 136;
   const start = chartNow - 90 * 24 * 60 * 60 * 1000;
   const prices = visiblePoints.map((point) => point.price);
   const minPrice = Math.min(...prices);
@@ -238,12 +238,12 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
           <path d={linePath} className="demo-history-line" style={{ stroke: verdictColor }} />
         {coordinates.map(({ point, x, y }) => (
           <g key={`${point.scrapedAt}-${point.price}`}>
-            <circle cx={x} cy={y} r="5" className={point.isSpecial ? "demo-history-point demo-history-point--special" : "demo-history-point"} />
+            <circle cx={x} cy={y} r="3.5" className={point.isSpecial ? "demo-history-point demo-history-point--special" : "demo-history-point"} />
             <title>{`${new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short" }).format(new Date(point.scrapedAt))}: ${currency(point.price)} · ${point.isSpecial ? "On special" : "Regular price"}`}</title>
           </g>
         ))}
-        <text x={left} y={bottom + 28} textAnchor="start" className="demo-history-axis-label">90 days ago</text>
-        <text x={right} y={bottom + 28} textAnchor="end" className="demo-history-axis-label">Today</text>
+        <text x={left} y={bottom + 27} textAnchor="start" className="demo-history-axis-label">90 days ago</text>
+        <text x={right} y={bottom + 27} textAnchor="end" className="demo-history-axis-label">Today</text>
       </svg>
       <div className="demo-history-legend" aria-hidden="true">
         <span><i className="demo-history-legend-dot demo-history-legend-dot--special" />On special</span>
@@ -502,7 +502,7 @@ export default function RealDealGame() {
           ) : null}
         </div>
 
-        {showPriceHistory && answered && <p className="real-deal-download-prompt">Want to check your own specials? <a href="#top">Explore the Dodgy Deal app</a></p>}
+        {showPriceHistory && answered && <p className="real-deal-download-prompt">Want to check your own specials? <a href="#how-it-works">Explore</a></p>}
       </div>
     </section>
   );

@@ -85,8 +85,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .demo-retailer-mark--paknsave img, .demo-retailer-mark--newworld img { width: 100%; height: 100%; object-fit: contain; }
 .demo-retailer-mark--supervalue img { width: 88%; height: auto; max-height: 60%; }
 .demo-retailer-mark--fallback { background: #57534e; color: white; font-size: .63rem; font-weight: 800; }
-.real-deal-reveal { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
-.real-deal-result { position: relative; isolation: isolate; overflow: hidden; max-width: 760px; min-height: 104px; margin: 24px auto 0; display: flex; align-items: center; gap: 13px; padding: 16px 18px; border: 1px solid; border-radius: 15px; }
+.real-deal-reveal { margin-top: 0; padding-top: 0; border-top: 0; }
+.real-deal-result { position: relative; isolation: isolate; overflow: hidden; max-width: 760px; min-height: 104px; margin: 24px auto 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px 18px; border: 1px solid; border-radius: 15px; text-align: center; }
 .real-deal-confetti-layer { position: absolute; inset: 0; z-index: 2; overflow: hidden; border-radius: inherit; pointer-events: none; }
 .real-deal-confetti { position: absolute; top: 0; width: 8px; height: 16px; border-radius: 2px; animation: dealDetectiveConfetti 1750ms cubic-bezier(.22, .8, .34, 1) forwards; will-change: opacity, transform; }
 .real-deal-result--real { border-color: #d8e9de; background: #f5fbf7; }
@@ -94,9 +94,10 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .real-deal-result-icon { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 50%; font-size: 1rem; font-weight: 900; }
 .real-deal-result-icon--real { background: var(--fair); color: white; }
 .real-deal-result-icon--dodgy { background: #a53c2b; color: white; }
+.real-deal-result > div { width: 100%; max-width: 100%; }
 .real-deal-result h3 { margin: 1px 0 4px; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1rem; font-weight: 800; line-height: 1.35; }
 .real-deal-result p { margin: 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.45; }
-.demo-selected-product { max-width: 760px; margin: 0 auto 14px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
+.demo-selected-product { width: 100%; max-width: 480px; margin: 0 auto 10px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
 .demo-selected-product .real-deal-photo { width: 82px; min-width: 82px; min-height: 92px; padding: 8px; border-right: 0; }
 .demo-selected-product .real-deal-photo img { max-height: 76px; }
 .demo-selected-product-copy { min-width: 0; flex: 1; padding: 12px 14px; }
@@ -108,14 +109,14 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .demo-history-stats { margin: 14px 0 11px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid #e8e6e2; border-radius: 11px; background: #fbfbfa; }
 .demo-history-stats > div { min-width: 0; padding: 9px 5px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
 .demo-history-stats > div + div { border-left: 1px solid #dedbd5; }
-.demo-history-stats strong { overflow: hidden; max-width: 100%; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.16rem; font-weight: 800; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.demo-history-stats span { color: #57534e; font-size: .68rem; font-weight: 650; line-height: 1.2; }
+.demo-history-stats strong { overflow: hidden; max-width: 100%; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.demo-history-stats span { color: #57534e; font-size: .78rem; font-weight: 650; line-height: 1.2; }
 .demo-history-chart-wrap { width: 100%; max-width: 520px; margin: 8px auto 0; }
 .demo-history-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .demo-history-gridline { stroke: #e7e5e4; stroke-width: 1; stroke-dasharray: 3 4; }
-.demo-history-axis-price, .demo-history-axis-label { fill: #57534e; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: 12px; font-weight: 700; }
+.demo-history-axis-price, .demo-history-axis-label { fill: #57534e; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: 11px; font-weight: 700; }
 .demo-history-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.demo-history-point { fill: var(--chart-regular); stroke: #fafaf9; stroke-width: 2; }
+.demo-history-point { fill: var(--chart-regular); stroke: #fafaf9; stroke-width: 1.5; }
 .demo-history-point--special { fill: var(--chart-special); }
 .demo-history-legend { margin: -5px 0 0; display: flex; align-items: center; justify-content: center; gap: 17px; color: #57534e; font-size: .77rem; font-weight: 700; }
 .demo-history-legend > span { display: inline-flex; align-items: center; gap: 6px; }
@@ -252,8 +253,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
   .real-deal-price { font-size: 1.05rem; }
   .real-deal-store-line { gap: 5px; font-size: .64rem; }
   .demo-history-card { padding: 13px 10px 12px; }
-  .demo-history-stats strong { font-size: 1.02rem; }
-  .demo-history-stats span { font-size: .61rem; }
+  .demo-history-stats strong { font-size: 1.15rem; }
+  .demo-history-stats span { font-size: .72rem; }
   .demo-history-legend { gap: 10px; font-size: .7rem; }
   .demo-selected-product-copy { padding: 10px; }
   .demo-history-evidence { font-size: .8rem; }
