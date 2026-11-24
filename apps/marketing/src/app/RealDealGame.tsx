@@ -41,6 +41,8 @@ interface HistoryResponse {
   points?: PriceHistoryPoint[];
 }
 
+const RESULT_STEP_DURATION_MS = 1_700;
+
 const STORE_LOGOS: Record<string, { src: string; background: string }> = {
   woolworths: { src: "/store-logos/woolworths.svg", background: "#ffffff" },
   paknsave: {
@@ -65,14 +67,6 @@ const STORE_ALIASES: [string, string][] = [
 
 function currency(value: number): string {
   return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(value);
-}
-
-function TapIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M8.5 11V5.75a1.5 1.5 0 0 1 3 0V11 8.75a1.5 1.5 0 0 1 3 0V11 9.75a1.5 1.5 0 0 1 3 0v5.1c0 3.4-2.3 5.65-5.7 5.65h-1.15c-1.45 0-2.8-.62-3.78-1.7L4.5 14.1a1.55 1.55 0 0 1 2.25-2.13L8.5 13.8V11Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 function shuffle<T>(values: T[]): T[] {
@@ -270,6 +264,7 @@ export default function RealDealGame() {
       setItemOrders(createItemOrders(nextCases));
       setCasePosition(0);
       setSelectedItemId(null);
+      setShowPriceHistory(false);
       setHistoryPoints([]);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
@@ -305,6 +300,12 @@ export default function RealDealGame() {
   }, [loadCases, shouldLoad]);
 
   useEffect(() => {
+    if (!selectedItemId) return;
+    const revealTimer = window.setTimeout(() => setShowPriceHistory(true), RESULT_STEP_DURATION_MS);
+    return () => window.clearTimeout(revealTimer);
+  }, [selectedItemId]);
+
+  useEffect(() => {
     if (!selectedItem) {
       setHistoryPoints([]);
       setHistoryLoading(false);
@@ -335,6 +336,7 @@ export default function RealDealGame() {
 
   const tryAnotherCase = () => {
     setSelectedItemId(null);
+    setShowPriceHistory(false);
     if (casePosition < caseOrder.length - 1) {
       setCasePosition((position) => position + 1);
     } else {
@@ -347,6 +349,7 @@ export default function RealDealGame() {
 
   const resetCase = () => {
     setSelectedItemId(null);
+    setShowPriceHistory(false);
     setCaseKey((key) => key + 1);
   };
 
@@ -369,8 +372,7 @@ export default function RealDealGame() {
     <section ref={sectionRef} className="real-deal-section" id="try-a-case" aria-labelledby="real-deal-title">
       <div className="real-deal-inner">
         <header className="real-deal-intro">
-          <p className="real-deal-eyebrow">Try a case</p>
-          <h2 id="real-deal-title">Which special is the real deal?</h2>
+          <h2 id="real-deal-title">Which is the real deal?</h2>
           <p>Pick the special you think is a genuine saving. Then check the item’s 90-day price history.</p>
         </header>
 
@@ -379,7 +381,6 @@ export default function RealDealGame() {
             <span className="real-deal-case-number">
               {currentCase ? <>CASE {String(casePosition + 1).padStart(2, "0")} <span>OF {String(cases.length).padStart(2, "0")}</span></> : "TODAY’S SPECIALS"}
             </span>
-            <span className="real-deal-sample-note">Real NZ products · real price history</span>
           </div>
 
           {loading ? <CaseSkeleton /> : loadError ? (
@@ -389,51 +390,44 @@ export default function RealDealGame() {
               <button type="button" className="real-deal-button real-deal-button--primary" onClick={() => void loadCases()}>Try again</button>
             </div>
           ) : currentCase ? (
-            <div key={caseKey} className="real-deal-case-content">
-              <h3 ref={questionRef} tabIndex={-1} className="real-deal-question">Which item looks like a real saving?</h3>
-              <div className="real-deal-choice-grid" role="group" aria-label="Choose the item you think is a real saving">
-                {currentItems.map((item, index) => {
-                  const isSelected = item.id === selectedItemId;
-                  const isReal = item.verdict === "real";
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`real-deal-choice${answered && isReal ? " is-real" : ""}${answered && isSelected && !isReal ? " is-dodgy-selected" : ""}`}
-                      onClick={() => { if (!answered) setSelectedItemId(item.id); }}
-                      disabled={answered}
-                      aria-pressed={isSelected}
-                      aria-label={`${String.fromCharCode(65 + index)}: ${item.brand ? `${item.brand} ` : ""}${item.name}, ${item.unit || "size not listed"}, ${currency(item.price)} at ${item.store}${answered ? `, ${isReal ? "Real Saver" : "Dodgy Deal"}` : ". Choose this special"}`}
-                    >
-                      <span className="real-deal-choice-letter">{String.fromCharCode(65 + index)}</span>
-                      <ProductPhoto item={item} />
-                      <span className="real-deal-choice-body">
-                        <span className="real-deal-product-brand">{item.brand || item.category}</span>
-                        <span className="real-deal-product-name">{item.name}</span>
-                        {item.unit && <span className="real-deal-product-size">{item.unit}</span>}
-                        <span className="real-deal-price">{currency(item.price)}</span>
-                        <span className="real-deal-store-line"><RetailerBadge store={item.store} /> <span>{item.store}</span></span>
-                        {answered && <span className={`real-deal-verdict real-deal-verdict--${item.verdict}`}>{isReal ? "Real Saver" : "Dodgy Deal"}</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
+            <div key={`${caseKey}-${answered ? showPriceHistory ? "history" : "result" : "choice"}`} className="real-deal-case-content">
               {!answered ? (
-                <p className="real-deal-prompt"><TapIcon /> Tap or click an item to reveal its price history</p>
+                <>
+                  <h3 ref={questionRef} tabIndex={-1} className="real-deal-question">Select an item</h3>
+                  <div className="real-deal-choice-grid" role="group" aria-label="Choose the item you think is a real saving">
+                    {currentItems.map((item, index) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="real-deal-choice"
+                        onClick={() => setSelectedItemId(item.id)}
+                        aria-label={`${String.fromCharCode(65 + index)}: ${item.brand ? `${item.brand} ` : ""}${item.name}, ${item.unit || "size not listed"}, ${currency(item.price)} at ${item.store}. Select this item.`}
+                      >
+                        <span className="real-deal-choice-letter">{String.fromCharCode(65 + index)}</span>
+                        <ProductPhoto item={item} />
+                        <span className="real-deal-choice-body">
+                          <span className="real-deal-product-brand">{item.brand || item.category}</span>
+                          <span className="real-deal-product-name">{item.name}</span>
+                          {item.unit && <span className="real-deal-product-size">{item.unit}</span>}
+                          <span className="real-deal-price">{currency(item.price)}</span>
+                          <span className="real-deal-store-line"><RetailerBadge store={item.store} /> <span>{item.store}</span></span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : !showPriceHistory && selectedItem ? (
+                <div className={`real-deal-result real-deal-result--${selectedItem.verdict}`} role="status" aria-live="polite">
+                  <span className={`real-deal-result-icon real-deal-result-icon--${selectedItem.verdict}`} aria-hidden="true">
+                    {selectedItem.verdict === "real" ? "✓" : "!"}
+                  </span>
+                  <div>
+                    <h3>{selectedItem.verdict === "real" ? "Good eye — that’s a real saving." : "Close — the other item is the real saving."}</h3>
+                    <p>{selectedItem.verdict === "real" ? "You picked the Real Saver." : "This one is a Dodgy Deal. Let’s see what its price history says."}</p>
+                  </div>
+                </div>
               ) : selectedItem ? (
                 <div className="real-deal-reveal">
-                  <div className={`real-deal-result real-deal-result--${selectedItem.verdict}`} role="status" aria-live="polite">
-                    <span className={`real-deal-result-icon real-deal-result-icon--${selectedItem.verdict}`} aria-hidden="true">
-                      {selectedItem.verdict === "real" ? "✓" : "!"}
-                    </span>
-                    <div>
-                      <h3>{selectedItem.verdict === "real" ? "Good eye — that’s a real saving." : "Close — the other item is the real saving."}</h3>
-                      <p>{selectedItem.verdict === "real" ? "You picked the Real Saver." : "This one is a Dodgy Deal. Let’s see what its price history says."}</p>
-                    </div>
-                  </div>
-
                   <article className="demo-selected-product" aria-label={`${selectedItem.name} at ${selectedItem.store}`}>
                     <ProductPhoto item={selectedItem} compact />
                     <div className="demo-selected-product-copy">
@@ -474,7 +468,7 @@ export default function RealDealGame() {
           ) : null}
         </div>
 
-        {answered && <p className="real-deal-download-prompt">Want to check your own specials? <a href="#top">Explore the Dodgy Deal app</a></p>}
+        {showPriceHistory && answered && <p className="real-deal-download-prompt">Want to check your own specials? <a href="#top">Explore the Dodgy Deal app</a></p>}
       </div>
     </section>
   );
