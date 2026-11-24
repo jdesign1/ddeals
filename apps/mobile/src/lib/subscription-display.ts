@@ -5,8 +5,8 @@ import type { AppleSubscriptionProduct } from "@/lib/native-apple-subscriptions"
 export type SubscriptionPlanPeriod = "monthly" | "annual" | "unknown";
 
 const NZ_SUBSCRIPTION_DISPLAY_PRICES: Record<string, string> = {
-  [SUBSCRIPTION_PRODUCT_IDS.monthly]: "NZ$1.99",
-  [SUBSCRIPTION_PRODUCT_IDS.annual]: "NZ$19.99",
+  [SUBSCRIPTION_PRODUCT_IDS.monthly]: "NZ $1.99",
+  [SUBSCRIPTION_PRODUCT_IDS.annual]: "NZ $19.99",
 };
 
 /**
@@ -21,8 +21,10 @@ export function formatAppleSubscriptionPrice(
   const configuredNzPrice = NZ_SUBSCRIPTION_DISPLAY_PRICES[product.id];
   if (configuredNzPrice && product.currencyCode !== "NZD") return configuredNzPrice;
   if (product.currencyCode !== "NZD") return product.displayPrice;
-  if (product.displayPrice.includes("NZ$") || product.displayPrice.includes("NZD")) return product.displayPrice;
-  return product.displayPrice.replace("$", "NZ$");
+  if (product.displayPrice.includes("NZ$") || product.displayPrice.includes("NZD")) {
+    return product.displayPrice.replace(/^NZD\$/, "NZD $").replace(/^NZ\$/, "NZ $");
+  }
+  return product.displayPrice.replace("$", "NZ $");
 }
 
 export function getSubscriptionPlanPeriod(productId: string | null | undefined): SubscriptionPlanPeriod {

@@ -3,13 +3,14 @@ import Image from "next/image";
 import { STORE_DISPLAY_FALLBACK, normalizeStoreKey } from "@dodgey-deals/shared";
 import { getStoreLogoMeta } from "@/lib/store-meta";
 
-export type StoreLogoBadgeVariant = "selector" | "compact" | "card" | "ranking" | "showdown";
+export type StoreLogoBadgeVariant = "selector" | "compact" | "card" | "ranking" | "summary" | "showdown";
 
 const SIZE_CLASS: Record<StoreLogoBadgeVariant, string> = {
   selector: "h-5 w-5",
   compact: "h-5 w-7",
   card: "h-6 w-8",
   ranking: "h-8 w-8",
+  summary: "h-10 w-10",
   showdown: "h-10 w-10",
 };
 

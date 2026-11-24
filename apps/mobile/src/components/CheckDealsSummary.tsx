@@ -132,8 +132,8 @@ function CheckDealsSummary({
                 onClick={() => onOpenStoreDeals(key)}
                 className="flex w-28 shrink-0 cursor-pointer flex-col items-center gap-2 border-r border-stone-200/80 px-2 py-5 text-center transition-colors last:border-r-0 hover:bg-white/40 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-inset"
               >
-                <StoreLogoBadge store={key} variant="ranking" decorative />
-                <span className="flex items-center gap-1 text-xl font-black leading-none tabular-nums text-fair-800">
+                <StoreLogoBadge store={key} variant="summary" decorative />
+                <span className="flex items-center gap-2 text-xl font-black leading-none tabular-nums text-fair-800">
                   <span className="relative left-1.5">{visibleCounts[key]}</span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-stone-500" strokeWidth={2.5} aria-hidden="true" />
                 </span>

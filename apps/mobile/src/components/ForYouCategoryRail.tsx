@@ -57,10 +57,10 @@ function ForYouCategoryRail({
                 aria-hidden="true"
               />
               <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate dd-type-control dd-type-control-strong text-stone-900">{category}</span>
+                <span className="flex min-w-0 items-start gap-1.5">
+                  <span className="min-w-0 flex-1 truncate dd-type-control dd-type-control-strong text-stone-900">{category}</span>
                   {hasUnreadItems && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-alert-600" aria-hidden="true" />
+                    <span className="mt-0.5 ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-alert-600 ring-2 ring-white" aria-hidden="true" />
                   )}
                 </span>
                 <span className="mt-0.5 block dd-type-meta text-stone-600">Real Saver{count === 1 ? "" : "s"}</span>

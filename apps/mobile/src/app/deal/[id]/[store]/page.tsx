@@ -145,14 +145,18 @@ function DealActions({ productId, productName, dataOnboarding, immediateAdd = fa
   );
 }
 
+const ASSESSMENT_HEADER_INLINE_LABEL_LIMIT = 12;
+
 function DealStoreLink({
   deal,
   productName,
   className = "mt-0",
+  centered = false,
 }: {
   deal: CurrentDeal;
   productName: string;
   className?: string;
+  centered?: boolean;
 }) {
   const storeLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(deal.store)] || deal.store;
 
@@ -162,9 +166,9 @@ function DealStoreLink({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${storeLabel} product listing`}
-      className={`${className} inline-flex min-h-11 min-w-0 max-w-full items-center gap-0.5 overflow-hidden whitespace-nowrap rounded-md py-1 text-left text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
+      className={`${className} inline-flex min-h-11 min-w-0 max-w-full items-center gap-0.5 overflow-hidden rounded-md py-1 ${centered ? "justify-center text-center whitespace-normal" : "text-left whitespace-nowrap"} text-[15px] font-bold leading-5 text-stone-700 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700`}
     >
-      <span className="min-w-0 flex-1 truncate">{storeLabel}</span>
+      <span className={centered ? "min-w-0" : "min-w-0 flex-1 truncate"}>{storeLabel}</span>
       <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
     </a>
   );
@@ -577,6 +581,10 @@ export default function DealAssessmentPage() {
     ? formatUnitPrice(selectedDeal.saleUnitPrice, selectedDeal.saleUnitLabel)
     : null;
   const verdict = getAssessmentVerdict(selectedDeal);
+  const verdictTitle = getVerdictTitle(verdict);
+  const selectedStoreLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(selectedDeal.store)] || selectedDeal.store;
+  const shouldStackVerdictHeader = verdictTitle.length > ASSESSMENT_HEADER_INLINE_LABEL_LIMIT
+    || selectedStoreLabel.length > ASSESSMENT_HEADER_INLINE_LABEL_LIMIT;
   const uncertain = isUncertainAssessment(verdict);
   const assessmentPriceColorClass = verdict === "Real Saver"
     ? "text-fair-700"
@@ -670,19 +678,24 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className="flex min-w-0 items-center justify-between gap-2" data-onboarding="deal-verdict">
-            <h2 className="min-w-0 flex-1">
+          <div className={`flex min-w-0 ${shouldStackVerdictHeader ? "flex-col items-center gap-1.5 text-center" : "items-center justify-between gap-2"}`} data-onboarding="deal-verdict">
+            <h2 className={shouldStackVerdictHeader ? "w-full min-w-0 text-center" : "min-w-0 flex-1"}>
               <button
                 type="button"
                 onClick={() => setIsEvidenceOpen(true)}
-                aria-label={`Show evidence for ${getVerdictTitle(verdict)}`}
+                aria-label={`Show evidence for ${verdictTitle}`}
                 aria-haspopup="dialog"
-                className={`inline-flex max-w-full cursor-pointer truncate rounded-full border px-3 py-1.5 text-base leading-5 font-extrabold tracking-tight transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}
+                className={`inline-flex max-w-full cursor-pointer ${shouldStackVerdictHeader ? "whitespace-normal text-center" : "truncate"} rounded-full border px-3 py-1.5 text-base leading-5 font-extrabold tracking-tight transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 ${verdictColorClass} ${verdictBgClass} ${verdictBorderClass}`}
               >
-                {getVerdictTitle(verdict)}
+                {verdictTitle}
               </button>
             </h2>
-            <DealStoreLink deal={selectedDeal} productName={product.name} className="max-w-[58%] min-w-0 shrink-0" />
+            <DealStoreLink
+              deal={selectedDeal}
+              productName={product.name}
+              className={shouldStackVerdictHeader ? "w-full" : "max-w-[58%] min-w-0 shrink-0"}
+              centered={shouldStackVerdictHeader}
+            />
           </div>
 
           <div className="flex items-start gap-4 rounded-xl bg-stone-50 p-3" data-onboarding="deal-summary">

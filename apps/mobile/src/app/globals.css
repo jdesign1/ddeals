@@ -1279,6 +1279,8 @@ html[data-theme="dark"] .theme-loader-surface {
 
 .wink-mascot--search .wink-mascot__eye-fill,
 .wink-mascot--search .wink-mascot__pupil,
+.wink-mascot--evidence-trigger .wink-mascot__eye-fill,
+.wink-mascot--evidence-trigger .wink-mascot__pupil,
 .wink-mascot--account-prompt .wink-mascot__eye-fill,
 .wink-mascot--account-prompt .wink-mascot__pupil {
   transform-box: fill-box;
@@ -1375,6 +1377,8 @@ html[data-theme="dark"] .theme-loader-surface {
 
   .wink-mascot--search .wink-mascot__eye-fill,
   .wink-mascot--search .wink-mascot__pupil,
+  .wink-mascot--evidence-trigger .wink-mascot__eye-fill,
+  .wink-mascot--evidence-trigger .wink-mascot__pupil,
   .wink-mascot--account-prompt .wink-mascot__eye-fill,
   .wink-mascot--account-prompt .wink-mascot__pupil {
     animation: none;
