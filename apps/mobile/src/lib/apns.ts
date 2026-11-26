@@ -1,4 +1,4 @@
-import { createSign } from "node:crypto";
+import { createPrivateKey, createSign } from "node:crypto";
 import { connect, type ClientHttp2Session } from "node:http2";
 
 interface ApnsResult {
@@ -15,6 +15,8 @@ interface ApnsCredentials {
 }
 
 let cachedProviderToken: { value: string; createdAt: number } | null = null;
+
+export type ApnsConfigurationStatus = "configured" | "missing_credentials" | "invalid_auth_key";
 
 function base64Url(value: string | Buffer): string {
   return Buffer.from(value).toString("base64url");
@@ -122,12 +124,30 @@ async function sendToHost(
   });
 }
 
+export function getApnsConfigurationStatus(): ApnsConfigurationStatus {
+  const rawKey = process.env.APNS_AUTH_KEY_P8?.trim();
+  const keyId = process.env.APNS_KEY_ID?.trim();
+  const teamId = process.env.APNS_TEAM_ID?.trim();
+  if (!rawKey || !keyId || !teamId) return "missing_credentials";
+
+  try {
+    const privateKey = createPrivateKey(rawKey.replaceAll("\\n", "\n"));
+    if (
+      privateKey.asymmetricKeyType !== "ec" ||
+      privateKey.asymmetricKeyDetails?.namedCurve !== "prime256v1"
+    ) {
+      return "invalid_auth_key";
+    }
+    // This confirms the local key format; only an APNs response confirms
+    // Apple's acceptance of the key and topic.
+    return "configured";
+  } catch {
+    return "invalid_auth_key";
+  }
+}
+
 export function isApnsConfigured(): boolean {
-  return Boolean(
-    process.env.APNS_AUTH_KEY_P8?.trim() &&
-    process.env.APNS_KEY_ID?.trim() &&
-    process.env.APNS_TEAM_ID?.trim()
-  );
+  return getApnsConfigurationStatus() === "configured";
 }
 
 export async function sendApnsAlert(

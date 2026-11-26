@@ -22,14 +22,14 @@ test("does not alert on the first observation", () => {
   }), []);
 });
 
-test("alerts when any confirmed price changes", () => {
+test("alerts when an item returns to a verified special", () => {
   assert.deepEqual(detectWatchlistAlerts({
-    previous: state,
+    previous: { ...state, last_is_special: false, last_verdict: null },
     previousIsFresh: true,
     currentIsFresh: true,
     currentPrice: 9.25,
     currentVerdict: "GENUINE",
-  }), ["price_changed"]);
+  }), ["returned_to_special"]);
 });
 
 test("alerts when a watched verdict changes without a price change", () => {
@@ -59,7 +59,7 @@ test("keeps simultaneous price and verdict changes as two signals", () => {
     currentIsFresh: true,
     currentPrice: 9,
     currentVerdict: "DODGY",
-  }), ["price_changed", "verdict_changed"]);
+  }), ["better_special_price", "verdict_changed"]);
 });
 
 test("does not repeatedly alert for unchanged price and verdict", () => {
@@ -98,14 +98,14 @@ test("ignores sub-cent floating-point noise", () => {
   }), []);
 });
 
-test("alerts when a regular price changes", () => {
+test("does not alert for regular-price changes", () => {
   assert.deepEqual(detectWatchlistAlerts({
-    previous: { last_price: 10, last_is_special: false, last_notified_price: null },
+    previous: { last_price: 10, last_is_special: false, last_verdict: null, last_notified_price: null },
     previousIsFresh: true,
     currentIsFresh: true,
     currentPrice: 8.5,
     currentVerdict: null,
-  }), ["price_changed"]);
+  }), []);
 });
 
 test("never alerts for a stale or invalid observation", () => {

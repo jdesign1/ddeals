@@ -1,3 +1,5 @@
+/// <reference types="@capacitor/push-notifications" />
+
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
@@ -56,6 +58,9 @@ const config: CapacitorConfig = {
     contentInset: "never",
   },
   plugins: {
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
     SplashScreen: {
       // The web app adds its own short branded hand-off layer. Auto-hide the
       // native storyboard so a failed/slow remote deployment cannot leave the

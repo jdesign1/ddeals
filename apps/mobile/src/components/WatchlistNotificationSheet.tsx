@@ -73,8 +73,8 @@ export default function WatchlistNotificationSheet({
                     </p>
                     <p id="watchlist-notification-description" className="mt-1 dd-type-body text-stone-600">
                       {permissionDenied
-                        ? "Allow notifications in iPhone Settings to hear when something on your Watchlist gets a better price."
-                        : "Turn on notifications and we’ll let you know when something goes on special again or gets meaningfully cheaper."}
+                        ? "Allow notifications in iPhone Settings to hear when an item on your Watchlist is back on special, drops meaningfully in price, or its deal verdict changes."
+                        : "Turn on notifications and we’ll let you know when an item on your Watchlist is back on special, drops meaningfully in price, or its deal verdict changes."}
                     </p>
                   </div>
                 </div>

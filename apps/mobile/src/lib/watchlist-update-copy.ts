@@ -38,9 +38,11 @@ function storeKey(update: UnreadListAlert): string {
 }
 
 function updatePriority(update: UnreadListAlert): number {
+  if (update.event_type === "returned_to_special") return 130;
+  if (update.event_type === "better_special_price") return 120;
   if (typeof update.previous_price === "number" && update.price !== update.previous_price) return 100;
   if (update.event_type === "verdict_changed" || update.event_type === "became_real_saver" || update.event_type === "became_dodgy") return 80;
-  if (update.event_type === "returned_to_special" || update.event_type === "better_special_price" || update.event_type === "dodgy_special") return 60;
+  if (update.event_type === "dodgy_special") return 60;
   return 10;
 }
 
@@ -62,6 +64,19 @@ export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdate
   const previousPrice = priceChange.previousPrice;
   const priceDescription = `${price ?? "The price was updated"} at ${update.store_name}.`;
 
+  if (update.event_type === "returned_to_special") {
+    return { title: "Back on special", description: priceDescription, toneClass: "text-fair-700" };
+  }
+  if (update.event_type === "better_special_price") {
+    return {
+      title: "Price dropped",
+      description: previousPrice && price
+        ? `Was ${previousPrice}, now dropped to ${price}.`
+        : priceDescription,
+      toneClass: "text-fair-700",
+    };
+  }
+
   if (priceChange.direction === "down") {
     return {
       title: "Price dropped",
@@ -82,12 +97,6 @@ export function getWatchlistUpdateCopy(update: UnreadListAlert): WatchlistUpdate
     };
   }
 
-  if (update.event_type === "returned_to_special") {
-    return { title: "Back on special", description: priceDescription, toneClass: "text-fair-700" };
-  }
-  if (update.event_type === "better_special_price") {
-    return { title: "Price dropped", description: priceDescription, toneClass: "text-fair-700" };
-  }
   if (update.event_type === "price_changed") {
     return { title: "Price updated", description: priceDescription, toneClass: "text-stone-700" };
   }

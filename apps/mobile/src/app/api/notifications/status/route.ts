@@ -1,5 +1,6 @@
 import { createSupabaseClient } from "@dodgey-deals/shared";
 import { accountsConfig } from "@/lib/accounts-config";
+import { isApnsConfigured } from "@/lib/apns";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +9,7 @@ export async function GET() {
   const environmentReady = Boolean(
     process.env.CRON_SECRET &&
     serviceKey &&
-    process.env.APNS_AUTH_KEY_P8 &&
-    process.env.APNS_KEY_ID &&
-    process.env.APNS_TEAM_ID
+    isApnsConfigured()
   );
 
   if (!environmentReady || !serviceKey) {

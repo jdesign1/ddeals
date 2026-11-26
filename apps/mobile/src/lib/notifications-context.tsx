@@ -84,6 +84,14 @@ const NotificationsDataContext = createContext<NotificationsDataContextValue | n
 const NotificationsActionsContext = createContext<NotificationsActionsContextValue | null>(null);
 const NotificationsPushContext = createContext<NotificationsPushContextValue | null>(null);
 const alertKey = (listId: string, listItemId: string) => `${listId}:${listItemId}`;
+const visibleUnreadEventTypes: readonly UnreadListAlert["event_type"][] = [
+  "verdict_changed",
+  "returned_to_special",
+  "better_special_price",
+  "became_real_saver",
+  "became_dodgy",
+  "dodgy_special",
+];
 // Verdict changes have a separate derived set for callers that need to style
 // assessment changes differently. The Watchlist unread dot is broader: it
 // represents any unread price or verdict update for a saved item.
@@ -181,6 +189,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const unreadResult = await client
           .from("list_price_alert_events")
           .select("id,list_id,list_item_id,product_id,product_name,store_name,event_type,verdict,previous_verdict,price,previous_price,created_at")
+          .in("event_type", [...visibleUnreadEventTypes])
           .is("viewed_at", null)
           .order("created_at", { ascending: false })
           .range(offset, offset + 499);
