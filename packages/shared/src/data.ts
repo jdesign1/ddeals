@@ -2023,6 +2023,8 @@ interface CurrentPriceRow {
   product_id: string;
   store_id: string;
   price: number;
+  is_special?: boolean | null;
+  regular_seen_at?: string | null;
 }
 
 interface ProductRow {
@@ -2051,12 +2053,21 @@ export async function fetchNonSpecialProductCards(
   const ids = [...new Set(productIds)].filter(Boolean);
   if (!ids.length) return [];
   const [priceRows, productRows] = await Promise.all([
-    fetchByIds<CurrentPriceRow>(config, "current_prices", "product_id", "product_id,store_id,price", ids),
+    fetchByIds<CurrentPriceRow>(config, "current_prices", "product_id", "product_id,store_id,price,is_special,regular_seen_at", ids),
     fetchByIds<ProductRow>(config, "products", "id", "id,name,brand,category,image_url,unit_size", ids),
   ]);
   const productById = new Map(productRows.map((p) => [p.id, p]));
 
+  const now = Date.now();
   return priceRows
+    .filter((row) => {
+      if (row.store_id !== "chemistwarehouse") return true;
+      const seenAt = Date.parse(row.regular_seen_at ?? "");
+      return row.is_special === false
+        && Number.isFinite(seenAt)
+        && seenAt <= now + 5 * 60 * 1000
+        && now - seenAt <= 35 * 24 * 60 * 60 * 1000;
+    })
     .map((row): ProductCard | null => {
       const meta = productById.get(row.product_id);
       if (!meta || !meta.name) return null;

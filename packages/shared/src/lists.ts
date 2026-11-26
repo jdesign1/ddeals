@@ -214,6 +214,7 @@ export interface CurrentPriceLookupRow {
   store_id: string;
   price: number;
   is_special: boolean | null;
+  regular_seen_at?: string | null;
 }
 
 interface DodgyDealsLookupRow extends PublishedAssessmentRow {
@@ -307,8 +308,8 @@ export async function fetchListPriceLookups(
   const ids = [...new Set(productIds)];
   if (!ids.length) return EMPTY_LOOKUPS;
 
-  const [priceRows, dealRows] = await Promise.all([
-    fetchByIds<CurrentPriceLookupRow>(config, "current_prices", "product_id", "product_id,store_id,price,is_special", ids),
+  const [allPriceRows, dealRows] = await Promise.all([
+    fetchByIds<CurrentPriceLookupRow>(config, "current_prices", "product_id", "product_id,store_id,price,is_special,regular_seen_at", ids),
     // 2026-08-12 (peer review, "efficiency deep dive" session): was
     // "dodgy_deals" (the live, non-materialized view) -- caught as a real
     // remaining gap after that session's dodgy_deals_cache fix, because
@@ -338,6 +339,25 @@ export async function fetchListPriceLookups(
     ),
   ]);
 
+  const dealByProductStore = new Map<string, DodgyDealsLookupRow>();
+  for (const row of dealRows) dealByProductStore.set(`${row.product_id}:${row.store_id}`, row);
+
+  // A Chemist Warehouse row becomes a usable regular price only after a
+  // product page confirms it and `regular_seen_at` is fresh. Until then the
+  // stored amount may still be its last sale price, so don't use it for list
+  // totals or fallbacks.
+  const now = Date.now();
+  const priceRows = allPriceRows.filter((row) => {
+    if (row.store_id !== "chemistwarehouse") return true;
+    const deal = dealByProductStore.get(`${row.product_id}:${row.store_id}`);
+    if (row.is_special === true) return isVerifiedLiveSpecial(row, deal);
+    const seenAt = Date.parse(row.regular_seen_at ?? "");
+    return row.is_special === false
+      && Number.isFinite(seenAt)
+      && seenAt <= now + 5 * 60 * 1000
+      && now - seenAt <= 35 * 24 * 60 * 60 * 1000;
+  });
+
   // Cheapest current price per product, across any store.
   const cheapestByProduct = new Map<string, CurrentPriceLookupRow>();
   const pricesByProduct = new Map<string, CurrentPriceLookupRow[]>();
@@ -352,9 +372,6 @@ export async function fetchListPriceLookups(
   // A list item's deal availability must match the same verified live deal
   // source the deal-assessment page uses. `current_prices.is_special` alone
   // can be stale after a partial source run.
-  const dealByProductStore = new Map<string, DodgyDealsLookupRow>();
-  for (const row of dealRows) dealByProductStore.set(`${row.product_id}:${row.store_id}`, row);
-
   // Keep every price that has both a current special flag and a matching live
   // deal row. The stable ordering prevents equal-price offers moving between
   // supermarket sections from one refresh to the next.

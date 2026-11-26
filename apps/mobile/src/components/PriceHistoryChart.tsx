@@ -353,12 +353,10 @@ function PriceHistoryChart({
             series.coordinates.slice(0, -1).map((coordinate, index) => {
               const next = series.coordinates[index + 1];
               return (
-                <motion.line
+                <motion.path
                   key={`${series.store}-${coordinate.point.scrapedAt}-${next.point.scrapedAt}`}
-                  x1={coordinate.x}
-                  x2={next.x}
-                  y1={coordinate.y}
-                  y2={next.y}
+                  d={`M ${coordinate.x} ${coordinate.y} H ${next.x} V ${next.y}`}
+                  fill="none"
                   stroke={showingAllStores ? series.color : series.verdictColor}
                   strokeWidth="3"
                   strokeLinecap="round"
