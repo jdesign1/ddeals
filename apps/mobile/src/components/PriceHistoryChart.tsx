@@ -355,7 +355,7 @@ function PriceHistoryChart({
               return (
                 <motion.path
                   key={`${series.store}-${coordinate.point.scrapedAt}-${next.point.scrapedAt}`}
-                  d={`M ${coordinate.x} ${coordinate.y} H ${next.x} V ${next.y}`}
+                  d={`M ${coordinate.x} ${coordinate.y} L ${next.x} ${next.y}`}
                   fill="none"
                   stroke={showingAllStores ? series.color : series.verdictColor}
                   strokeWidth="3"
@@ -375,14 +375,13 @@ function PriceHistoryChart({
           {coordinatesBySeries.map((series) =>
             series.coordinates.map(({ point, x, y }, index) => (
               <g key={`${series.store}-${point.scrapedAt}-${point.price}`}>
-                <motion.circle
-                  cx={x}
-                  cy={y}
+                <motion.path
+                  d={`M ${x} ${y - 5.5} L ${x + 5} ${y + 4.5} L ${x - 5} ${y + 4.5} Z`}
                   fill={showingAllStores ? series.color : point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
                   stroke="var(--dd-chart-point-stroke)"
                   strokeWidth="2"
-                  initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
-                  animate={shouldShowChartAnimation ? { r: 5, opacity: 1 } : { r: 0, opacity: 0 }}
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={shouldShowChartAnimation ? { opacity: 1 } : { opacity: 0 }}
                   transition={{
                     duration: shouldReduceMotion ? 0 : 0.24,
                     delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
