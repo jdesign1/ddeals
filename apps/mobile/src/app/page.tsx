@@ -7,11 +7,13 @@ import {
   STORE_DISPLAY_FALLBACK,
   groupCategory,
   compareDealSnapshotEntries,
+  fetchRecentSpecialPriceDrops,
   isEligibleForDealSnapshot,
   type DealSnapshotKind,
   type DealCheckRow,
   type ProductCard,
   type CurrentDeal,
+  type RecentSpecialPriceDrop,
 } from "@dodgey-deals/shared";
 import MascotImage from "@/components/MascotImage";
 import CheckDealsSummary from "@/components/CheckDealsSummary";
@@ -71,6 +73,7 @@ import {
   type CheckDealsSortBy,
 } from "@/lib/deal-sorting";
 import { useCardLayout } from "@/lib/card-layout-context";
+import { supabaseConfig } from "@/lib/config";
 import { compareLatestSpecials } from "@/lib/special-freshness";
 import { normalizeCategoryInterests } from "@/lib/category-interests";
 import {
@@ -89,6 +92,7 @@ const EMPTY_CURRENT_SPECIAL_SUMMARY: CurrentSpecialSummary = {
 };
 const EMPTY_DEAL_VERDICT_SUMMARY = { realSavers: 0, dodgyDeals: 0 };
 const EMPTY_DID_YOU_KNOW_CARDS: DidYouKnowCard[] = [];
+const EMPTY_RECENT_PRICE_DROPS: RecentSpecialPriceDrop[] = [];
 const EMPTY_DID_YOU_KNOW_SUMMARY: DidYouKnowCardsWithVerdictSummary = {
   cards: EMPTY_DID_YOU_KNOW_CARDS,
   verdictSummary: EMPTY_DEAL_VERDICT_SUMMARY,
@@ -657,6 +661,10 @@ export default function HomePage() {
   const [isWorthAnotherLookSheetOpen, setIsWorthAnotherLookSheetOpen] = useState(false);
   const [isBeltOrderSheetOpen, setIsBeltOrderSheetOpen] = useState(false);
   const [isCategoryInterestsSheetOpen, setIsCategoryInterestsSheetOpen] = useState(false);
+  const [recentPriceDropState, setRecentPriceDropState] = useState<{
+    publicationKey: string;
+    drops: RecentSpecialPriceDrop[];
+  } | null>(null);
   const [isSavingCategoryInterests, setIsSavingCategoryInterests] = useState(false);
   const [categoryInterestsError, setCategoryInterestsError] = useState<string | null>(null);
   const categoryInterestsPromptedForRef = useRef<string | null>(null);
@@ -753,6 +761,35 @@ export default function HomePage() {
     };
   }, [accessToken, isSearchActive]);
 
+  useEffect(() => {
+    if (!cataloguePublicationComplete || !cataloguePublicationKey) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let active = true;
+    fetchRecentSpecialPriceDrops(supabaseConfig, controller.signal)
+      .then((drops) => {
+        if (active) setRecentPriceDropState({ publicationKey: cataloguePublicationKey, drops });
+      })
+      .catch(() => {
+        // This is optional discovery content. Keep Home usable if the small
+        // supporting query is unavailable or the request is cancelled.
+        if (active) setRecentPriceDropState({ publicationKey: cataloguePublicationKey, drops: [] });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [cataloguePublicationComplete, cataloguePublicationKey]);
+
+  const recentPriceDrops = cataloguePublicationComplete
+    && cataloguePublicationKey
+    && recentPriceDropState?.publicationKey === cataloguePublicationKey
+    ? recentPriceDropState.drops
+    : EMPTY_RECENT_PRICE_DROPS;
+
   const checkedHistory = useMemo(
     () => checkedHistoryState.accessToken === accessToken ? checkedHistoryState.rows : [],
     [accessToken, checkedHistoryState],
@@ -833,8 +870,8 @@ export default function HomePage() {
   const didYouKnowSummary = useMemo(
     () => isSearchActive
       ? EMPTY_DID_YOU_KNOW_SUMMARY
-      : buildDidYouKnowCardsWithVerdictSummary(deferredCatalogueProducts, selectedStores),
-    [deferredCatalogueProducts, isSearchActive, selectedStores],
+      : buildDidYouKnowCardsWithVerdictSummary(deferredCatalogueProducts, selectedStores, Date.now(), 4, recentPriceDrops),
+    [deferredCatalogueProducts, isSearchActive, recentPriceDrops, selectedStores],
   );
   const didYouKnowCards = didYouKnowSummary.cards;
   const isDidYouKnowPending = products.length > 0 && deferredCatalogueProducts !== products;

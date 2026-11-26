@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { CurrentDeal, ProductCard } from "@dodgey-deals/shared";
+import type { CurrentDeal, ProductCard, RecentSpecialPriceDrop } from "@dodgey-deals/shared";
 import {
   buildDidYouKnowCards,
   buildDidYouKnowCardsWithVerdictSummary,
@@ -12,6 +12,7 @@ import {
   readDidYouKnowSeenState,
   writeDidYouKnowSeenState,
 } from "./did-you-know.ts";
+import { getNewSpecialDealKey } from "./new-specials.ts";
 
 const NOW = Date.parse("2026-11-05T12:00:00.000Z");
 
@@ -100,6 +101,77 @@ test("store scope changes card facts without counting unselected supermarkets", 
   ], ["woolworths"], NOW);
 
   assert.equal(cards.length, 0);
+});
+
+test("price-drop insight links only current offers whose source and price match", () => {
+  const offers = ["drop-1", "drop-2", "drop-3"].map((sourceProductId, index) => ({
+    product: product(`group-${index}`, "Pantry", [deal({
+      sourceProductId,
+      sourceStoreId: "newworld",
+      store: "New World",
+      price: 8,
+    })]),
+    drop: { productId: sourceProductId, storeId: "newworld", currentPrice: 8, changedAt: "2026-11-05T09:00:00.000Z" } satisfies RecentSpecialPriceDrop,
+  }));
+  const staleOffer = product("stale-group", "Pantry", [deal({
+    sourceProductId: "stale-drop",
+    sourceStoreId: "newworld",
+    store: "New World",
+    price: 8,
+  })]);
+  const drops = [
+    ...offers.map(({ drop }) => drop),
+    { productId: "stale-drop", storeId: "newworld", currentPrice: 7, changedAt: "2026-11-05T09:00:00.000Z" },
+  ];
+
+  const cards = buildDidYouKnowCards(
+    [...offers.map(({ product: offer }) => offer), staleOffer],
+    ["all"],
+    NOW,
+    5,
+    drops,
+  );
+  const priceDrop = cards.find((card) => card.kind === "price-drop");
+
+  assert.ok(priceDrop);
+  assert.equal(priceDrop.category, "Pantry");
+  assert.equal(priceDrop.metric, 3);
+  assert.equal(priceDrop.metricLabel, "specials");
+  assert.deepEqual(priceDrop.search.dealKeys?.sort(), [
+    getNewSpecialDealKey("group-0", "New World"),
+    getNewSpecialDealKey("group-1", "New World"),
+    getNewSpecialDealKey("group-2", "New World"),
+  ].sort());
+  assert.equal(priceDrop.search.preserveSelectedStores, true);
+
+  const updatedDrops = drops.map((drop) => drop.productId === "drop-1"
+    ? { ...drop, changedAt: "2026-11-05T10:00:00.000Z" }
+    : drop);
+  const updatedPriceDrop = buildDidYouKnowCards(
+    [...offers.map(({ product: offer }) => offer), staleOffer],
+    ["all"],
+    NOW,
+    5,
+    updatedDrops,
+  ).find((card) => card.kind === "price-drop");
+  assert.ok(updatedPriceDrop);
+  assert.notEqual(getDidYouKnowFingerprint([updatedPriceDrop]), getDidYouKnowFingerprint([priceDrop]));
+});
+
+test("price-drop insight stays hidden below its minimum useful count", () => {
+  const currentDrops = ["drop-1", "drop-2"].map((sourceProductId, index) => product(
+    `group-${index}`,
+    "Pantry",
+    [deal({ sourceProductId, sourceStoreId: "newworld", store: "New World", price: 8 })],
+  ));
+  const recentDrops = ["drop-1", "drop-2"].map((productId) => ({
+    productId,
+    storeId: "newworld",
+    currentPrice: 8,
+    changedAt: "2026-11-05T09:00:00.000Z",
+  }));
+
+  assert.equal(buildDidYouKnowCards(currentDrops, ["all"], NOW, 5, recentDrops).some((card) => card.kind === "price-drop"), false);
 });
 
 test("discovery summary counts unique selected-store verdict products", () => {

@@ -216,6 +216,14 @@ export interface SupabaseRestConfig {
   allowDirectCatalogueFallback?: boolean;
 }
 
+/** A current, published special that is cheaper than its previous recorded special price. */
+export interface RecentSpecialPriceDrop {
+  productId: string;
+  storeId: string;
+  currentPrice: number;
+  changedAt: string;
+}
+
 export const STORE_DISPLAY_FALLBACK: Record<string, string> = {
   newworld: "New World",
   paknsave: "PAK'nSAVE",
@@ -738,6 +746,42 @@ export async function fetchAllRows<T = Record<string, unknown>>(
   );
   const restData = await Promise.all(restResponses.map((res) => res.json() as Promise<T[]>));
   return firstData.concat(...restData);
+}
+
+/**
+ * Fetch current specials that became cheaper than their previous recorded
+ * special price during the last seven days. The database view does the
+ * indexed history comparison; the caller intersects these source IDs and
+ * prices with the loaded catalogue before showing or linking any offer.
+ */
+export async function fetchRecentSpecialPriceDrops(
+  config: SupabaseRestConfig,
+  signal?: AbortSignal,
+): Promise<RecentSpecialPriceDrop[]> {
+  const rows = await fetchAllRows<{
+    product_id: string | null;
+    store_id: string | null;
+    current_price: number | string | null;
+    changed_at: string | null;
+  }>(
+    config,
+    "recent_special_price_drops?select=product_id,store_id,current_price,changed_at&order=changed_at.desc",
+    1000,
+    signal,
+  );
+
+  return rows.flatMap((row) => {
+    const currentPrice = Number(row.current_price);
+    const changedAt = row.changed_at ? Date.parse(row.changed_at) : NaN;
+    if (
+      !row.product_id
+      || !row.store_id
+      || !Number.isFinite(currentPrice)
+      || currentPrice <= 0
+      || !Number.isFinite(changedAt)
+    ) return [];
+    return [{ productId: row.product_id, storeId: row.store_id, currentPrice, changedAt: row.changed_at as string }];
+  });
 }
 
 /** Batched `in.(...)` lookups, chunked to stay under PostgREST/URL length limits. */

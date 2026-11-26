@@ -3,6 +3,7 @@ import {
   matchesAnySelectedStore,
   type CurrentDeal,
   type ProductCard,
+  type RecentSpecialPriceDrop,
 } from "@dodgey-deals/shared";
 import { matchesDealFilter, type DealFilter } from "./deal-filters.ts";
 import type { CheckDealsSortBy } from "./deal-sorting.ts";
@@ -16,16 +17,17 @@ export const DID_YOU_KNOW_MIN_DODGY_PRODUCTS = 2;
 export const DID_YOU_KNOW_MIN_NINETY_DAY_LOW_PRODUCTS = 5;
 export const DID_YOU_KNOW_MIN_HISTORY_SAMPLES = 6;
 export const DID_YOU_KNOW_MIN_HISTORY_DAYS = 45;
-export const DID_YOU_KNOW_MIN_PRICE_CHANGES = 2;
+export const DID_YOU_KNOW_MIN_PRICE_DROPS = 3;
 export const DID_YOU_KNOW_FRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const NINETY_DAY_LOW_EPSILON = 0.01;
+const PRICE_MATCH_EPSILON = 0.005;
 
 export type DidYouKnowCardKind =
   | "real-saver-leader"
   | "ninety-day-low"
   | "historical-value"
   | "fresh-deal-wave"
-  | "price-movement"
+  | "price-drop"
   | "dodgy-alert";
 
 export type DidYouKnowAccent = "fair" | "neutral" | "alert";
@@ -47,12 +49,13 @@ export interface DidYouKnowCard {
   metricFormat: "count" | "percentage";
   metricLabel: string;
   supportingText: string;
+  /** Changes in the underlying fact can re-surface the card's unread cue even if its count is unchanged. */
+  dataFingerprint?: string;
   search: DidYouKnowSearchTarget;
 }
 
 interface HistoryEntry {
   averageDiscountPct: number;
-  priceChanges: number;
 }
 
 interface CategoryBucket {
@@ -62,10 +65,14 @@ interface CategoryBucket {
   dodgyProducts: Set<string>;
   freshDealKeys: Set<string>;
   historyEntries: HistoryEntry[];
-  movementProducts: Set<string>;
-  trackedHistoryProducts: Set<string>;
   ninetyDayLowProducts: Set<string>;
   ninetyDayLowDealKeys: Set<string>;
+  priceDropDealKeys: Set<string>;
+  priceDropFingerprints: Map<string, string>;
+}
+
+function sourceDealKey(productId: string, storeId: string): string {
+  return JSON.stringify([productId, storeId]);
 }
 
 export interface DidYouKnowCardsWithVerdictSummary {
@@ -107,13 +114,6 @@ function averageDiscount(deal: CurrentDeal): number | null {
   return Number.isFinite(discount) ? discount : null;
 }
 
-function priceChanges(deal: CurrentDeal): number | null {
-  const changes = deal.ninetyDayPriceChanges;
-  return Number.isFinite(changes) && (changes ?? 0) >= DID_YOU_KNOW_MIN_PRICE_CHANGES
-    ? Math.round(changes ?? 0)
-    : null;
-}
-
 function median(values: number[]): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((left, right) => left - right);
@@ -127,11 +127,15 @@ function createBuckets(
   products: readonly ProductCard[],
   selectedStores: readonly string[],
   now: number,
+  recentPriceDrops: readonly RecentSpecialPriceDrop[],
 ): { buckets: CategoryBucket[]; verdictSummary: DidYouKnowCardsWithVerdictSummary["verdictSummary"] } {
   const buckets = new Map<string, CategoryBucket>();
   const storeFilters = [...selectedStores];
   const realSaverProductIds = new Set<string>();
   const dodgyDealProductIds = new Set<string>();
+  const recentPriceDropsBySourceDeal = new Map<string, RecentSpecialPriceDrop>(
+    recentPriceDrops.map((drop) => [sourceDealKey(drop.productId, drop.storeId), drop] as const),
+  );
 
   for (const product of products) {
     const category = groupCategory(product.category, product.name);
@@ -140,16 +144,21 @@ function createBuckets(
     let hasAssessedDeal = false;
     let hasRealDeal = false;
     let hasDodgyDeal = false;
-    let hasHistory = false;
     let hasNinetyDayLow = false;
     let bestHistoricalValue: number | null = null;
-    let bestPriceChangeCount: number | null = null;
     for (const deal of product.currentDeals) {
       if (!matchesAnySelectedStore(deal.store, storeFilters)) continue;
       if (matchesDealFilter(deal, "real")) realSaverProductIds.add(product.id);
       if (matchesDealFilter(deal, "dodgy")) dodgyDealProductIds.add(product.id);
       if (!isCurrentSpecial(deal)) continue;
-      if (!isAssessedDeal(deal)) continue;
+      const sourceProductId = deal.sourceProductId;
+      const sourceStoreId = deal.sourceStoreId;
+      const recentPriceDrop = sourceProductId && sourceStoreId
+        ? recentPriceDropsBySourceDeal.get(sourceDealKey(sourceProductId, sourceStoreId))
+        : undefined;
+      const isRecentPriceDrop = recentPriceDrop !== undefined
+        && Math.abs(recentPriceDrop.currentPrice - deal.price) < PRICE_MATCH_EPSILON;
+      if (!isAssessedDeal(deal) && !isRecentPriceDrop) continue;
       if (!bucket) {
         bucket = {
           category,
@@ -158,19 +167,24 @@ function createBuckets(
           dodgyProducts: new Set<string>(),
           freshDealKeys: new Set<string>(),
           historyEntries: [],
-          movementProducts: new Set<string>(),
-          trackedHistoryProducts: new Set<string>(),
           ninetyDayLowProducts: new Set<string>(),
           ninetyDayLowDealKeys: new Set<string>(),
+          priceDropDealKeys: new Set<string>(),
+          priceDropFingerprints: new Map<string, string>(),
         } satisfies CategoryBucket;
         buckets.set(category, bucket);
       }
+      if (isRecentPriceDrop && recentPriceDrop) {
+        const dealKey = getNewSpecialDealKey(product.id, deal.store);
+        bucket.priceDropDealKeys.add(dealKey);
+        bucket.priceDropFingerprints.set(dealKey, JSON.stringify([recentPriceDrop.currentPrice, recentPriceDrop.changedAt]));
+      }
+      if (!isAssessedDeal(deal)) continue;
       hasAssessedDeal = true;
       if (deal.dealType === "Real Deal") hasRealDeal = true;
       if (deal.dealType === "Dodgy Deal") hasDodgyDeal = true;
       if (freshDeal(deal, now)) bucket.freshDealKeys.add(getNewSpecialDealKey(product.id, deal.store));
       if (!isHistoryReady(deal)) continue;
-      hasHistory = true;
 
       if (deal.dealType === "Real Deal") {
         const low = deal.ninetyDayLow;
@@ -190,31 +204,16 @@ function createBuckets(
         }
       }
 
-      const changes = priceChanges(deal);
-      if (changes !== null && (bestPriceChangeCount === null || changes > bestPriceChangeCount)) {
-        bestPriceChangeCount = changes;
-      }
     }
     if (!hasAssessedDeal || !bucket) continue;
 
     bucket.assessedProducts.add(product.id);
     if (hasRealDeal) bucket.realProducts.add(product.id);
     if (hasDodgyDeal) bucket.dodgyProducts.add(product.id);
-    if (hasHistory) bucket.trackedHistoryProducts.add(product.id);
     if (hasNinetyDayLow) bucket.ninetyDayLowProducts.add(product.id);
 
     if (bestHistoricalValue !== null) {
-      bucket.historyEntries.push({
-        averageDiscountPct: bestHistoricalValue,
-        priceChanges: 0,
-      });
-    }
-
-    if (bestPriceChangeCount !== null) {
-      bucket.movementProducts.add(product.id);
-      const historyEntry = bucket.historyEntries.find((entry) => entry.priceChanges === 0);
-      if (historyEntry) historyEntry.priceChanges = bestPriceChangeCount;
-      else bucket.historyEntries.push({ averageDiscountPct: 0, priceChanges: bestPriceChangeCount });
+      bucket.historyEntries.push({ averageDiscountPct: bestHistoricalValue });
     }
   }
 
@@ -333,30 +332,32 @@ function freshDealCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
     }));
 }
 
-function priceMovementCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
+function priceDropCards(buckets: readonly CategoryBucket[]): DidYouKnowCard[] {
   return buckets
-    .map((bucket) => {
-      const tracked = bucket.trackedHistoryProducts.size;
-      const changed = bucket.movementProducts.size;
-      if (tracked < DID_YOU_KNOW_MIN_HISTORY_PRODUCTS || changed === 0) return null;
-      return { bucket, changed, changeRate: changed / tracked };
-    })
-    .filter((candidate): candidate is { bucket: CategoryBucket; changed: number; changeRate: number } => candidate !== null)
+    .filter((bucket) => bucket.priceDropDealKeys.size >= DID_YOU_KNOW_MIN_PRICE_DROPS)
     .sort((left, right) => (
-      right.changeRate - left.changeRate
-      || right.changed - left.changed
-      || left.bucket.category.localeCompare(right.bucket.category)
+      right.priceDropDealKeys.size - left.priceDropDealKeys.size
+      || left.category.localeCompare(right.category)
     ))
-    .map(({ bucket, changed }) => ({
-      id: "price-movement",
-      kind: "price-movement" as const,
+    .map((bucket) => ({
+      id: "price-drop",
+      kind: "price-drop" as const,
       category: bucket.category,
       accent: "neutral" as const,
-      metric: changed,
+      metric: bucket.priceDropDealKeys.size,
       metricFormat: "count" as const,
-      metricLabel: "price changes",
-      supportingText: `${bucket.category} has had the most price changes lately.`,
-      search: { filter: "all" as const, category: bucket.category, sortBy: "latest" as const },
+      metricLabel: "specials",
+      supportingText: `Some ${bucket.category} specials are cheaper than their last special price.`,
+      dataFingerprint: JSON.stringify(
+        [...bucket.priceDropFingerprints.entries()].sort(([left], [right]) => left.localeCompare(right)),
+      ),
+      search: {
+        filter: "all" as const,
+        category: bucket.category,
+        sortBy: "latest" as const,
+        dealKeys: [...bucket.priceDropDealKeys],
+        preserveSelectedStores: true,
+      },
     }));
 }
 
@@ -397,9 +398,9 @@ function buildCardsFromBuckets(
     // should not disappear merely because that category is also fresh.
     () => dodgyAlertCards(buckets),
     () => ninetyDayLowCards(buckets),
+    () => priceDropCards(buckets),
     () => historicalValueCards(buckets),
     () => freshDealCards(buckets),
-    () => priceMovementCards(buckets),
   ];
   const cards: DidYouKnowCard[] = [];
   const usedCategories = new Set<string>();
@@ -428,12 +429,13 @@ export function buildDidYouKnowCardsWithVerdictSummary(
   selectedStores: readonly string[] = ["all"],
   now = Date.now(),
   maxCards = 4,
+  recentPriceDrops: readonly RecentSpecialPriceDrop[] = [],
 ): DidYouKnowCardsWithVerdictSummary {
   if (products.length === 0) {
     return { cards: [], verdictSummary: { realSavers: 0, dodgyDeals: 0 } };
   }
 
-  const { buckets, verdictSummary } = createBuckets(products, selectedStores, now);
+  const { buckets, verdictSummary } = createBuckets(products, selectedStores, now, recentPriceDrops);
   return {
     cards: buildCardsFromBuckets(buckets, maxCards),
     verdictSummary,
@@ -445,9 +447,10 @@ export function buildDidYouKnowCards(
   selectedStores: readonly string[] = ["all"],
   now = Date.now(),
   maxCards = 4,
+  recentPriceDrops: readonly RecentSpecialPriceDrop[] = [],
 ): DidYouKnowCard[] {
   if (products.length === 0 || maxCards <= 0) return [];
-  return buildDidYouKnowCardsWithVerdictSummary(products, selectedStores, now, maxCards).cards;
+  return buildDidYouKnowCardsWithVerdictSummary(products, selectedStores, now, maxCards, recentPriceDrops).cards;
 }
 
 export function getDidYouKnowCardKey(card: DidYouKnowCard): string {
@@ -468,6 +471,7 @@ export function getDidYouKnowCardFingerprint(card: DidYouKnowCard): string {
     card.metric,
     card.metricLabel,
     card.supportingText,
+    card.dataFingerprint ?? null,
     card.search.dealKeys ? [...card.search.dealKeys].sort() : null,
   ]);
   didYouKnowCardFingerprintCache.set(card, fingerprint);
