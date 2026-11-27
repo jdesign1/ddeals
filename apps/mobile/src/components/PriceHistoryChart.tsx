@@ -375,13 +375,15 @@ function PriceHistoryChart({
           {coordinatesBySeries.map((series) =>
             series.coordinates.map(({ point, x, y }, index) => (
               <g key={`${series.store}-${point.scrapedAt}-${point.price}`}>
-                <motion.path
-                  d={`M ${x} ${y - 5.5} L ${x + 5} ${y + 4.5} L ${x - 5} ${y + 4.5} Z`}
+                <motion.circle
+                  cx={x}
+                  cy={y}
+                  r={5}
                   fill={showingAllStores ? series.color : point.isSpecial ? "var(--dd-chart-special)" : "var(--dd-chart-regular)"}
                   stroke="var(--dd-chart-point-stroke)"
                   strokeWidth="2"
-                  initial={shouldReduceMotion ? false : { opacity: 0 }}
-                  animate={shouldShowChartAnimation ? { opacity: 1 } : { opacity: 0 }}
+                  initial={shouldReduceMotion ? false : { r: 0, opacity: 0 }}
+                  animate={shouldShowChartAnimation ? { r: 5, opacity: 1 } : { r: 0, opacity: 0 }}
                   transition={{
                     duration: shouldReduceMotion ? 0 : 0.24,
                     delay: shouldReduceMotion ? 0 : index * 0.1 + 0.18,
