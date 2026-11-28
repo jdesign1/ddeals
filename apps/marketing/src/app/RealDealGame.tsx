@@ -211,8 +211,6 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
   const width = HISTORY_CHART_VIEWBOX_WIDTH;
   const height = 184;
   const axisFontSize = HISTORY_CHART_AXIS_FONT_SIZE / chartScale;
-  const left = 68;
-  const right = 344;
   const top = 8;
   const bottom = 136;
   const start = chartNow - 90 * 24 * 60 * 60 * 1000;
@@ -224,6 +222,10 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
   const yMin = Math.max(0, minPrice - padding);
   const yMax = maxPrice + padding;
   const yRange = yMax - yMin || 1;
+  const gridValues = [yMax, yMin + yRange / 2, yMin];
+  const widestAxisLabel = Math.max(...gridValues.map((value) => currency(value).length * HISTORY_CHART_AXIS_FONT_SIZE * 0.56));
+  const left = (widestAxisLabel + 8) / chartScale;
+  const right = width - 6;
   const xFor = (point: PriceHistoryPoint) => {
     const time = Math.min(chartNow, Math.max(start, Date.parse(point.scrapedAt)));
     return left + ((time - start) / (90 * 24 * 60 * 60 * 1000)) * (right - left);
@@ -234,7 +236,6 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
   const first = coordinates[0];
   const last = coordinates[coordinates.length - 1];
   const areaPath = `${linePath} L ${last.x} ${bottom} L ${first.x} ${bottom} Z`;
-  const gridValues = [yMax, yMin + yRange / 2, yMin];
   const verdictColor = item.verdict === "real" ? "var(--verdict-real)" : "var(--verdict-dodgy)";
 
   return (
@@ -256,7 +257,7 @@ function PriceHistoryGraph({ item, points }: { item: DemoItem; points: PriceHist
           return (
             <g key={index}>
               <line x1={left} x2={right} y1={y} y2={y} className="demo-history-gridline" />
-              <text x={left - 9} y={y + 4} textAnchor="end" className="demo-history-axis-price" style={{ fontSize: `${axisFontSize}px` }}>{currency(value)}</text>
+              <text x="0" y={y + 4} textAnchor="start" className="demo-history-axis-price" style={{ fontSize: `${axisFontSize}px` }}>{currency(value)}</text>
             </g>
           );
         })}
@@ -493,6 +494,13 @@ export default function RealDealGame() {
                 </div>
               ) : selectedItem ? (
                 <div className="real-deal-reveal">
+                  <p className={`demo-history-evidence demo-history-evidence--${selectedItem.verdict}`}>
+                    <span className={`demo-history-verdict-badge demo-history-verdict-badge--${selectedItem.verdict}`}>
+                      {selectedItem.verdict === "real" ? "Real Saver" : "Dodgy Deal"}
+                    </span>{" "}
+                    {currentHistoryStatement}
+                  </p>
+
                   <section className="demo-history-card" aria-labelledby="demo-history-title">
                     <h4 id="demo-history-title">90-day deal history</h4>
                     <div className="demo-history-stats" role="group" aria-label="90-day price history summary">
@@ -508,13 +516,6 @@ export default function RealDealGame() {
                       <PriceHistoryGraph item={selectedItem} points={historyPoints} />
                     )}
                   </section>
-
-                  <p className={`demo-history-evidence demo-history-evidence--${selectedItem.verdict}`}>
-                    <span className={`demo-history-verdict-badge demo-history-verdict-badge--${selectedItem.verdict}`}>
-                      {selectedItem.verdict === "real" ? "Real Saver" : "Dodgy Deal"}
-                    </span>{" "}
-                    {currentHistoryStatement}
-                  </p>
 
                   <article className="demo-selected-product" aria-label={`${selectedItem.name} at ${selectedItem.store}`}>
                     <ProductPhoto item={selectedItem} compact />

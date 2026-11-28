@@ -110,8 +110,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .demo-history-stats > div + div { border-left: 1px solid #dedbd5; }
 .demo-history-stats strong { overflow: hidden; max-width: 100%; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .demo-history-stats span { color: #57534e; font-size: .78rem; font-weight: 650; line-height: 1.2; }
-.demo-history-chart-wrap { width: 100%; margin: 8px auto 0; display: flex; flex-direction: column; align-items: center; }
-.demo-history-chart { width: 100%; height: auto; display: block; margin-inline: auto; overflow: visible; }
+.demo-history-chart-wrap { width: 100%; margin: 8px auto 0; display: flex; flex-direction: column; align-items: stretch; }
+.demo-history-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .demo-history-gridline { stroke: #e7e5e4; stroke-width: 1; stroke-dasharray: 3 4; }
 .demo-history-axis-price, .demo-history-axis-label { fill: #57534e; font-family: var(--font-inter), ui-sans-serif, sans-serif; font-size: 12px; font-weight: 700; }
 .demo-history-area { opacity: 0; animation: demo-history-area-in .55s ease-out .15s both; }
