@@ -297,10 +297,11 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 }
 
 @keyframes marketingGameMascotEntrance {
-  0%, 18% { opacity: 0; transform: translate3d(254px, 88px, 0) scale(.76); }
-  38% { opacity: .55; transform: translate3d(220px, 60px, 0) scale(.86); }
-  62% { opacity: 1; transform: translate3d(140px, 38px, 0) scale(.95); }
-  84%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  0%, 18% { opacity: 0; transform: translate3d(var(--mascot-card-center-offset, 250px), 0, 0) scale(.72); }
+  38% { opacity: .55; transform: translate3d(220px, 0, 0) scale(.84); }
+  62% { opacity: 1; transform: translate3d(140px, 0, 0) scale(.93); }
+  84% { opacity: 1; transform: translate3d(48px, 0, 0) scale(.98); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 
 @keyframes hero-mascot-inspect {
@@ -328,7 +329,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 
 @media (min-width: 721px) {
   .demo-selected-product-stage { max-width: 488px; display: flex; align-items: center; justify-content: center; gap: 12px; }
-  .demo-selected-product-mascot-arrival { z-index: 1; width: 56px; height: 56px; flex: 0 0 56px; display: block; opacity: 0; pointer-events: none; animation: marketingGameMascotEntrance 1.7s cubic-bezier(.22, .72, .32, 1) both; }
+  .demo-selected-product-mascot-arrival { --mascot-card-center-offset: 250px; z-index: 1; width: 56px; height: 56px; flex: 0 0 56px; display: block; opacity: 0; pointer-events: none; animation: marketingGameMascotEntrance 1.7s cubic-bezier(.22, .72, .32, 1) both; }
   .demo-selected-product-mascot-arrival .marketing-game-mascot { width: 56px; height: 56px; animation: marketingMascotWave 3.2s ease-in-out 1.7s infinite; transform-origin: 50% 92%; }
   .marketing-game-mascot .wink-mascot__eye-fill,
   .marketing-game-mascot .wink-mascot__pupil { animation-delay: 1.7s; }
