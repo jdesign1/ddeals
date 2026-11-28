@@ -35,16 +35,17 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .site-header { min-height: 92px; padding: 22px clamp(28px, 5.5vw, 76px); display: flex; align-items: center; justify-content: space-between; background: var(--white); }
 .logo-lockup { display: inline-flex; align-items: center; gap: 12px; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.45rem; font-weight: 800; letter-spacing: -.055em; }
 .logo-lockup img { display: block; width: 38px; height: 38px; }
-.logo-lockup .marketing-header-mascot { position: relative; display: block; width: 38px; height: 38px; flex: 0 0 38px; animation: marketingMascotWave 3.2s ease-in-out infinite; transform-origin: 50% 92%; }
-.marketing-header-mascot .wink-mascot__mark { display: block; width: 100%; height: 100%; }
-.marketing-header-mascot .wink-mascot__mark-fill,
-.marketing-header-mascot .wink-mascot__pupil-fill { fill: var(--dd-mascot-fill, #171710); }
-.marketing-header-mascot .wink-mascot__eye-fill,
-.marketing-header-mascot .wink-mascot__wink-mask { fill: var(--dd-mascot-eye, #faf8f4); }
-.marketing-header-mascot .wink-mascot__wink-mask,
-.marketing-header-mascot .wink-mascot__wink-line { opacity: 0; }
-.marketing-header-mascot .wink-mascot__eye-fill,
-.marketing-header-mascot .wink-mascot__pupil { transform-box: fill-box; transform-origin: center; animation: marketingMascotBlink 5.8s ease-in-out infinite; }
+.marketing-mascot { position: relative; display: block; }
+.marketing-mascot .wink-mascot__mark { display: block; width: 100%; height: 100%; }
+.marketing-mascot .wink-mascot__mark-fill,
+.marketing-mascot .wink-mascot__pupil-fill { fill: var(--dd-mascot-fill, #171710); }
+.marketing-mascot .wink-mascot__eye-fill,
+.marketing-mascot .wink-mascot__wink-mask { fill: var(--dd-mascot-eye, #faf8f4); }
+.marketing-mascot .wink-mascot__wink-mask,
+.marketing-mascot .wink-mascot__wink-line { opacity: 0; }
+.marketing-mascot .wink-mascot__eye-fill,
+.marketing-mascot .wink-mascot__pupil { transform-box: fill-box; transform-origin: center; animation: marketingMascotBlink 5.8s ease-in-out infinite; }
+.logo-lockup .marketing-header-mascot { width: 38px; height: 38px; flex: 0 0 38px; animation: marketingMascotWave 3.2s ease-in-out infinite; transform-origin: 50% 92%; }
 .header-nav { display: flex; align-items: center; gap: 28px; }
 .header-link { min-height: 44px; display: inline-flex; align-items: center; white-space: nowrap; font-size: .9rem; font-weight: 700; }.header-link:hover { color: var(--fair); }
 
@@ -105,7 +106,9 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .real-deal-result > div { width: 100%; max-width: 100%; }
 .real-deal-result h3 { margin: 1px 0 4px; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1rem; font-weight: 800; line-height: 1.35; }
 .real-deal-result p { margin: 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.45; }
-.demo-selected-product { width: 100%; max-width: 420px; margin: 14px auto 18px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
+.demo-selected-product-stage { width: 100%; margin: 14px auto 18px; }
+.demo-selected-product-mascot-arrival { display: none; }
+.demo-selected-product { width: 100%; max-width: 420px; margin: 0 auto; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
 .demo-selected-product .real-deal-photo { width: 82px; min-width: 82px; min-height: 92px; padding: 8px; border-right: 0; }
 .demo-selected-product .real-deal-photo img { max-height: 76px; }
 .demo-selected-product-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 12px 14px; }
@@ -291,6 +294,13 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
   76% { transform: translateY(-1px) rotate(-.6deg); }
 }
 
+@keyframes marketingGameMascotEntrance {
+  0%, 14% { opacity: 0; transform: translate3d(120px, 82px, 0) scale(.7); }
+  34% { opacity: 1; transform: translate3d(98px, 48px, 0) scale(.82); }
+  58% { opacity: 1; transform: translate3d(72px, 0, 0) scale(.92); }
+  84%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
 @keyframes hero-mascot-inspect {
   0%, 82%, 100% { opacity: 0; transform: translate3d(18%, 1.5%, 0) scale(.97) rotate(1deg); }
   20%, 35% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotate(0); }
@@ -299,14 +309,33 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .logo-lockup .marketing-header-mascot,
-  .marketing-header-mascot .wink-mascot__eye-fill,
-  .marketing-header-mascot .wink-mascot__pupil { animation: none; }
-  .logo-lockup .marketing-header-mascot { transform: none; }
+  .marketing-mascot,
+  .marketing-mascot .wink-mascot__eye-fill,
+  .marketing-mascot .wink-mascot__pupil,
+  .demo-selected-product-mascot-arrival { animation: none; }
+  .marketing-mascot,
+  .demo-selected-product-mascot-arrival { transform: none; }
+  .demo-selected-product-mascot-arrival { opacity: 1; }
   .feature-card, .feature-card h3, .feature-image img, .faq-answer, .real-deal-choice, .real-deal-button { transition: none; }
   .real-deal-case-content { animation: none; }
   .hero-animation__stage { transition: none; }
   .hero-animation__mascot { animation: none; opacity: 1; transform: none; }
+}
+
+@media (min-width: 721px) {
+  .demo-selected-product-stage { max-width: 508px; display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .demo-selected-product-mascot-arrival { z-index: 1; width: 72px; height: 72px; flex: 0 0 72px; display: block; opacity: 0; pointer-events: none; animation: marketingGameMascotEntrance 1.5s cubic-bezier(.22, .72, .32, 1) both; }
+  .demo-selected-product-mascot-arrival .marketing-game-mascot { width: 72px; height: 72px; animation: marketingMascotWave 3.2s ease-in-out 1.5s infinite; transform-origin: 50% 92%; }
+  .marketing-game-mascot .wink-mascot__eye-fill,
+  .marketing-game-mascot .wink-mascot__pupil { animation-delay: 1.5s; }
+  .demo-selected-product { flex: 1 1 420px; margin: 0; }
+}
+
+@media (min-width: 721px) and (prefers-reduced-motion: reduce) {
+  .demo-selected-product-mascot-arrival { animation: none; opacity: 1; transform: none; }
+  .demo-selected-product-mascot-arrival .marketing-game-mascot,
+  .demo-selected-product-mascot-arrival .wink-mascot__eye-fill,
+  .demo-selected-product-mascot-arrival .wink-mascot__pupil { animation: none; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) and (hover: hover) and (pointer: fine) {

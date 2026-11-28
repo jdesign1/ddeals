@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import WinkMascot from "../../../mobile/src/components/WinkMascot";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { PriceHistoryPoint } from "@dodgey-deals/shared";
 
@@ -501,18 +502,23 @@ export default function RealDealGame() {
                     {currentHistoryStatement}
                   </p>
 
-                  <article className="demo-selected-product" aria-label={`${selectedItem.name} at ${selectedItem.store}`}>
-                    <ProductPhoto item={selectedItem} compact />
-                    <div className="demo-selected-product-copy">
-                      <span className="real-deal-product-brand">{selectedItem.brand || selectedItem.category}</span>
-                      <h4>{selectedItem.name}</h4>
-                      {selectedItem.unit && <span className="real-deal-product-size">{selectedItem.unit}</span>}
-                      <div className="demo-selected-product-footer">
-                        <strong>{currency(selectedItem.price)}</strong>
-                        <span className="real-deal-store-line"><RetailerBadge store={selectedItem.store} /> {selectedItem.store}</span>
-                      </div>
+                  <div className="demo-selected-product-stage">
+                    <div className="demo-selected-product-mascot-arrival" aria-hidden="true">
+                      <WinkMascot className="wink-mascot--search marketing-mascot marketing-game-mascot" />
                     </div>
-                  </article>
+                    <article className="demo-selected-product" aria-label={`${selectedItem.name} at ${selectedItem.store}`}>
+                      <ProductPhoto item={selectedItem} compact />
+                      <div className="demo-selected-product-copy">
+                        <span className="real-deal-product-brand">{selectedItem.brand || selectedItem.category}</span>
+                        <h4>{selectedItem.name}</h4>
+                        {selectedItem.unit && <span className="real-deal-product-size">{selectedItem.unit}</span>}
+                        <div className="demo-selected-product-footer">
+                          <strong>{currency(selectedItem.price)}</strong>
+                          <span className="real-deal-store-line"><RetailerBadge store={selectedItem.store} /> {selectedItem.store}</span>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
 
                   <section className="demo-history-card" aria-labelledby="demo-history-title">
                     <h4 id="demo-history-title">90-day deal history</h4>
