@@ -39,7 +39,7 @@ export function SiteFooter() {
   return (
     <footer className="site-footer">
       <Link href="/" aria-label="Dodgy deal home">
-        <Logo />
+        <Logo animated />
       </Link>
       <nav className="footer-links" aria-label="Footer navigation">
         <a href="mailto:hello@dodgydeal.co.nz">Contact</a>
