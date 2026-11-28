@@ -162,7 +162,7 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
         disabled={answered || isSubmitting}
         aria-pressed={isSelected}
         onClick={() => void chooseStore(dealKey)}
-        className={`flex min-w-0 flex-col items-center gap-2 rounded-2xl border p-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 disabled:cursor-default sm:p-3 ${answered && isCorrect ? "border-fair-500 bg-fair-50" : answered && isSelected ? "border-alert-300 bg-alert-50" : "border-stone-200 bg-white hover:bg-stone-50"}`}
+        className={`flex h-full min-h-[9rem] min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border p-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-600 focus-visible:ring-offset-2 disabled:cursor-default sm:p-3 ${answered && isCorrect ? "border-fair-500 bg-fair-50" : answered && isSelected ? "border-alert-300 bg-alert-50" : "border-stone-200 bg-white hover:bg-stone-50"}`}
       >
         <motion.div
           key={answered ? `revealed-${dealKey}` : `covered-${dealKey}`}
@@ -170,10 +170,10 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
           animate={{ rotateY: 0, opacity: 1 }}
           transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.42, delay: index * 0.055, ease: [0.22, 0.7, 0.25, 1] }}
           style={{ transformPerspective: 900, backfaceVisibility: "hidden" }}
-          className="flex w-full flex-col items-center gap-1"
+          className="flex h-full w-full flex-col items-center justify-center gap-1"
         >
           <StoreLogoBadge store={deal.store} variant="showdown" decorative />
-          <span className="mt-1 line-clamp-2 min-h-9 dd-type-meta dd-type-meta-strong text-stone-900">{deal.store}</span>
+          <span className="line-clamp-2 min-h-9 dd-type-meta dd-type-meta-strong text-stone-900">{deal.store}</span>
           {answered
             ? <span className="font-display text-lg font-extrabold tabular-nums text-stone-900">{currency(deal.price)}</span>
             : null}
@@ -258,8 +258,8 @@ export default function SupermarketShowdown({ showdownCase, accessToken, onDone,
             </div>
 
             <div className="mb-4 flex flex-col items-center rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center shadow-xs">
-              <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl bg-stone-50 p-2">
-                <ProductImage src={showdownCase.product.image} alt="" width={112} height={112} sizes="112px" className="h-full w-full object-contain mix-blend-multiply" />
+              <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-xl bg-stone-50 p-2">
+                <ProductImage src={showdownCase.product.image} alt="" width={144} height={144} sizes="144px" className="h-full w-full object-contain mix-blend-multiply" />
               </div>
               <p className="mt-2 dd-type-control dd-type-control-strong text-stone-900">{showdownCase.product.name}</p>
             </div>

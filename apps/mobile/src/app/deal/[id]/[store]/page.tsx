@@ -145,7 +145,7 @@ function DealActions({ productId, productName, dataOnboarding, immediateAdd = fa
   );
 }
 
-const ASSESSMENT_HEADER_INLINE_LABEL_LIMIT = 12;
+const ASSESSMENT_HEADER_STACKED_VERDICT_LIMIT = 12;
 
 function DealStoreLink({
   deal,
@@ -582,9 +582,7 @@ export default function DealAssessmentPage() {
     : null;
   const verdict = getAssessmentVerdict(selectedDeal);
   const verdictTitle = getVerdictTitle(verdict);
-  const selectedStoreLabel = STORE_DISPLAY_FALLBACK[normalizeStoreKey(selectedDeal.store)] || selectedDeal.store;
-  const shouldStackVerdictHeader = verdictTitle.length > ASSESSMENT_HEADER_INLINE_LABEL_LIMIT
-    || selectedStoreLabel.length > ASSESSMENT_HEADER_INLINE_LABEL_LIMIT;
+  const shouldStackVerdictHeader = verdictTitle.length > ASSESSMENT_HEADER_STACKED_VERDICT_LIMIT;
   const uncertain = isUncertainAssessment(verdict);
   const assessmentPriceColorClass = verdict === "Real Saver"
     ? "text-fair-700"
@@ -678,8 +676,8 @@ export default function DealAssessmentPage() {
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
         <div id="selected-assessment" role="tabpanel" className={`space-y-3 rounded-2xl border bg-white p-4 text-left shadow-xs ${verdictBorderClass}`}>
-          <div className={`flex min-w-0 ${shouldStackVerdictHeader ? "flex-col items-center gap-1.5 text-center" : "items-center justify-between gap-2"}`} data-onboarding="deal-verdict">
-            <h2 className={shouldStackVerdictHeader ? "w-full min-w-0 text-center" : "min-w-0 flex-1"}>
+          <div className={`flex min-w-0 ${shouldStackVerdictHeader ? "flex-col items-center gap-1.5 text-center" : "flex-wrap items-center justify-between gap-x-2 gap-y-1"}`} data-onboarding="deal-verdict">
+            <h2 className={shouldStackVerdictHeader ? "w-full min-w-0 text-center" : "min-w-0 max-w-full"}>
               <button
                 type="button"
                 onClick={() => setIsEvidenceOpen(true)}
@@ -693,7 +691,7 @@ export default function DealAssessmentPage() {
             <DealStoreLink
               deal={selectedDeal}
               productName={product.name}
-              className={shouldStackVerdictHeader ? "w-full" : "max-w-[58%] min-w-0 shrink-0"}
+              className={shouldStackVerdictHeader ? "w-full" : "max-w-full min-w-0"}
               centered={shouldStackVerdictHeader}
             />
           </div>
