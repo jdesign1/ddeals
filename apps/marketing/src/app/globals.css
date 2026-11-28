@@ -96,7 +96,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .real-deal-result > div { width: 100%; max-width: 100%; }
 .real-deal-result h3 { margin: 1px 0 4px; color: var(--ink); font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1rem; font-weight: 800; line-height: 1.35; }
 .real-deal-result p { margin: 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.45; }
-.demo-selected-product { width: 100%; max-width: 420px; margin: 0 auto 10px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
+.demo-selected-product { width: 100%; max-width: 420px; margin: 14px auto 18px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); }
 .demo-selected-product .real-deal-photo { width: 82px; min-width: 82px; min-height: 92px; padding: 8px; border-right: 0; }
 .demo-selected-product .real-deal-photo img { max-height: 76px; }
 .demo-selected-product-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 12px 14px; }
@@ -124,8 +124,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .demo-history-legend-dot--special { background: var(--chart-special); }
 .demo-history-evidence { max-width: 760px; margin: 14px auto 10px; padding: 11px 13px; border: 1px solid; border-radius: 11px; font-size: .86rem; font-weight: 650; line-height: 1.45; text-align: center; }
 .demo-history-verdict-badge { display: inline-block; margin-right: 5px; padding: 2px 8px; border-radius: 999px; font-size: .76rem; font-weight: 800; line-height: 1.35; vertical-align: middle; white-space: nowrap; }
-.demo-history-verdict-badge--real { background: #dcefe4; color: #155b3b; }
-.demo-history-verdict-badge--dodgy { background: #f5e4df; color: #843c30; }
+.demo-history-verdict-badge--real { background: #155b3b; color: #ffffff; }
+.demo-history-verdict-badge--dodgy { background: #843c30; color: #ffffff; }
 .demo-history-evidence--real { border-color: #cce5d5; background: #f2faf5; color: #155b3b; }
 .demo-history-evidence--dodgy { border-color: #ead0c9; background: #fff7f4; color: #843c30; }
 .demo-history-loading, .demo-history-unavailable { min-height: 190px; margin: 0; display: grid; place-items: center; color: var(--ink-soft); font-size: .86rem; line-height: 1.45; text-align: center; }
