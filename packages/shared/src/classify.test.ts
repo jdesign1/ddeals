@@ -207,6 +207,19 @@ test("DODGY shrinkflation: nominal saving but $/unit barely moves", () => {
   assert.match(result.reason, /Unit price barely moved/);
 });
 
+test("rounded per-item prices do not create a false shrinkflation verdict", () => {
+  const now = new Date();
+  const rows: PriceHistoryRow[] = [
+    { scraped_at: day(now, -30), price: 16.49, is_special: false, unit_price: 0.03, unit_label: "1EA" },
+    { scraped_at: day(now, -20), price: 16.49, is_special: false, unit_price: 0.03, unit_label: "1EA" },
+    { scraped_at: day(now, -10), price: 16.49, is_special: false, unit_price: 0.03, unit_label: "1EA" },
+    { scraped_at: day(now, -1), price: 15, is_special: true },
+  ];
+  const result = classifySpecial(15, rows, 0.03, "1EA");
+  assert.equal(result.verdict, "FAIR");
+  assert.doesNotMatch(result.reason, /Unit price barely moved/);
+});
+
 test("keeps tiny unit-price savings fair with user-friendly wording", () => {
   const now = new Date();
   const rows: PriceHistoryRow[] = [

@@ -49,6 +49,8 @@ export const REAL_SAVER_THRESHOLD = 10;
 export const FAIR_THRESHOLD = 3;
 /** A unit-price warning needs at least a fair-sized nominal saving to become Dodgy. */
 export const MIN_MATERIAL_UNIT_SAVING_THRESHOLD = FAIR_THRESHOLD;
+/** Minimum expected unit-price movement that can be distinguished at cent-rounded retailer precision. */
+export const MIN_RESOLVABLE_UNIT_PRICE_CHANGE = 0.01;
 /** Repeated pre-sale lifts can still be deceptive below the real-saver threshold. */
 export const PUMP_MAX_APPARENT_SAVING_THRESHOLD = REAL_SAVER_THRESHOLD;
 /** min % the $/unit must actually drop */
@@ -349,6 +351,7 @@ export function classifySpecial(
   // seven days of coverage or one matching unit-price state held for 14 days.
   // A single short-lived status row must never be enough to accuse a retailer.
   let unitPriceChangePct: number | null = null;
+  let unitPriceSignalReliable = false;
   if (saleUnitPrice != null && saleUnitLabel) {
     const saleUnitBasis = parseComparativeUnitLabel(saleUnitLabel);
     const recentUnitSpans = recentRegularSpans.filter(
@@ -376,7 +379,7 @@ export function classifySpecial(
     );
     const hasSufficientUnitEvidence =
       (unitPriceSamples >= 2 && unitPriceCoverageDays >= 7) || maxUnitSpanDays >= 14;
-    if (hasSufficientUnitEvidence) {
+    if (saleUnitBasis && hasSufficientUnitEvidence) {
       const baselineUnitPrices = baselineUnitRows
         .map((r) => normalizedComparativeUnitPrice(r.unit_price, r.unit_label))
         .filter((value): value is number => value != null);
@@ -384,6 +387,11 @@ export function classifySpecial(
       const baselineUnitPrice = median(baselineUnitPrices);
       if (normalizedSaleUnitPrice != null && baselineUnitPrice) {
         unitPriceChangePct = ((normalizedSaleUnitPrice - baselineUnitPrice) / baselineUnitPrice) * 100;
+        // Retailers publish $/unit values rounded to cents. Ignore apparent
+        // unit-price stagnation when the nominal discount should move the
+        // displayed unit price by less than one cent in its reported basis.
+        const expectedReportedUnitPriceChange = baselineUnitPrice * saleUnitBasis.baseQuantity * (savingPct / 100);
+        unitPriceSignalReliable = expectedReportedUnitPriceChange >= MIN_RESOLVABLE_UNIT_PRICE_CHANGE;
       }
     }
   }
@@ -439,6 +447,7 @@ export function classifySpecial(
   }
   if (
     unitPriceChangePct != null &&
+    unitPriceSignalReliable &&
     unitPriceChangePct > -SHRINKFLATION_THRESHOLD &&
     savingPct >= MIN_MATERIAL_UNIT_SAVING_THRESHOLD
   ) {
