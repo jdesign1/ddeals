@@ -64,14 +64,10 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const { error: sessionRevocationError } = await admin.auth.admin.signOut(accessToken, "global");
-    if (sessionRevocationError) {
-      console.error("Account session revocation failed.", { code: sessionRevocationError.code ?? "unknown" });
-      return Response.json(
-        { error: "We couldn't securely sign out your other sessions. Please try again." },
-        { status: 503, headers: NO_STORE_HEADERS },
-      );
-    }
+    // Delete the user before revoking any sessions. Supabase invalidates the
+    // user's sessions as part of a successful deletion. Revoking them first
+    // leaves the account signed out if a foreign key or database trigger then
+    // prevents deletion, which is exactly the failure this endpoint must avoid.
     const { error: deletionError } = await admin.auth.admin.deleteUser(user.id);
     if (deletionError) {
       // Keep account identifiers and provider details out of application logs.

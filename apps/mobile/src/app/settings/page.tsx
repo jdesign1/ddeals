@@ -1107,7 +1107,7 @@ export default function SettingsPage() {
                   {accountDeleted ? (
                     <>
                       <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
-                        Your Dodgy Deal account and saved data have been deleted.
+                        Your Dodgy Deal account, saved data, and comments have been deleted. Any complete price evidence that remains is anonymous.
                       </p>
                       <p className="rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-secondary text-alert-900">
                         Deleting your Dodgy Deal account does not cancel an Apple subscription. If you had Dodgy Deal Plus, manage or cancel it in Apple to prevent future charges.
@@ -1139,7 +1139,7 @@ export default function SettingsPage() {
                   ) : (
                     <>
                       <p id="settings-delete-account-description" className="dd-type-body text-stone-600">
-                        Your profile, saved lists, and browsing history will be permanently deleted. This can&apos;t be undone.
+                        Your profile, saved lists, browsing history, and comments will be permanently deleted. Complete price evidence may remain without your name or comment to help other shoppers. This can&apos;t be undone.
                       </p>
                       <div className="rounded-xl border border-alert-100 bg-alert-50 p-3 dd-type-secondary text-alert-900">
                         <p>
