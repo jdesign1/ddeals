@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import WinkMascot from "../../../mobile/src/components/WinkMascot";
+import MarketingMascot from "./MarketingMascot";
 
 const BRAND_LOGO = "/logo.svg";
 
@@ -8,7 +8,7 @@ export function Logo({ animated = false }: { animated?: boolean }) {
   return (
     <div className="logo-lockup">
       {animated ? (
-        <WinkMascot className="wink-mascot--search mascot-wave marketing-header-mascot" />
+        <MarketingMascot className="marketing-header-mascot" />
       ) : (
         <Image src={BRAND_LOGO} alt="" width={38} height={38} unoptimized />
       )}

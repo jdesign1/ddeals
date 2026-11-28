@@ -36,6 +36,7 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 .logo-lockup { display: inline-flex; align-items: center; gap: 12px; font-family: "Manrope Local", ui-rounded, sans-serif; font-size: 1.45rem; font-weight: 800; letter-spacing: -.055em; }
 .logo-lockup img { display: block; width: 38px; height: 38px; }
 .marketing-mascot { position: relative; display: block; }
+.logo-lockup .marketing-header-mascot .marketing-mascot { width: 100%; height: 100%; }
 .marketing-mascot .wink-mascot__mark { display: block; width: 100%; height: 100%; }
 .marketing-mascot .wink-mascot__mark-fill,
 .marketing-mascot .wink-mascot__pupil-fill { fill: var(--dd-mascot-fill, #171710); }
@@ -284,7 +285,8 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 
 @keyframes marketingMascotBlink {
   0%, 89%, 100% { transform: scaleY(1); }
-  91%, 93% { transform: scaleY(.06); }
+  90%, 91% { transform: scaleY(.06); }
+  92% { transform: scaleY(1); }
 }
 
 @keyframes marketingMascotWave {
@@ -309,10 +311,12 @@ main { width: 100%; margin: 0; overflow: hidden; background: var(--white); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .logo-lockup .marketing-header-mascot,
   .marketing-mascot,
   .marketing-mascot .wink-mascot__eye-fill,
   .marketing-mascot .wink-mascot__pupil,
   .demo-selected-product-mascot-arrival { animation: none; }
+  .logo-lockup .marketing-header-mascot,
   .marketing-mascot,
   .demo-selected-product-mascot-arrival { transform: none; }
   .demo-selected-product-mascot-arrival { opacity: 1; }
